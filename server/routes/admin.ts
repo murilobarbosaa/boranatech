@@ -169,6 +169,7 @@ import {
   type RefundRow,
 } from "../lib/userAuditHistory";
 import { requireAdmin, requireAuth } from "../middleware/auth";
+import { observeAdminCapability } from "../middleware/adminRbacObserve";
 import { createError, type AppError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
 import bugsAdminRouter from "./adminBugs";
@@ -181,6 +182,7 @@ const router = Router();
 
 router.use(requireAuth);
 router.use(requireAdmin);
+router.use(observeAdminCapability);
 
 // Campanhas de e-mail pra waitlist (aba Emails). Depois dos guards de admin.
 router.use("/email-campaigns", emailCampaignsRouter);
@@ -2702,12 +2704,9 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
 
 router.get("/me", async (req, res, next) => {
   try {
-    const { data: role } = await supabaseAdmin
-      .from("admin_roles")
-      .select("role, created_at")
-      .eq("user_id", req.user!.id)
-      .single();
-    res.json({ data: { user: req.user, role: role?.role || "editor" } });
+    res.json({
+      data: { user: req.user, role: req.adminPrincipal!.context.meRole },
+    });
   } catch (err) {
     next(err);
   }

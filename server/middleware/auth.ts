@@ -2,6 +2,12 @@ import type { Request, Response } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import { env } from "../lib/env";
+import {
+  ADMIN_AUTHORIZATION_SOURCE,
+  ADMIN_RBAC_MODE,
+  isAdminRole,
+  type AdminPrincipal,
+} from "../lib/adminRbac";
 import { getCachedProStatus, setCachedProStatus } from "../lib/proStatusCache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "./error";
@@ -31,8 +37,45 @@ declare global {
     interface Request {
       user?: AuthUser;
       isPro?: boolean;
+      adminPrincipal?: AdminPrincipal;
     }
   }
+}
+
+export async function resolveAdminPrincipal(
+  userId: string,
+): Promise<AdminPrincipal | null> {
+  const { data, error } = await supabaseAdmin
+    .from("admin_roles")
+    .select("role")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  if (!Array.isArray(data)) throw new Error("invalid admin_roles response");
+  if (data.length === 0) return null;
+
+  const singleRole = data.length === 1 ? data[0]?.role : undefined;
+  const role = isAdminRole(singleRole) ? singleRole : null;
+  const roleResolution =
+    data.length > 1
+      ? "duplicate"
+      : singleRole === null || singleRole === undefined
+        ? "null"
+        : role
+          ? "resolved"
+          : "legacy";
+  const meRole =
+    data.length === 1 && typeof singleRole === "string" && singleRole.length > 0
+      ? singleRole
+      : "editor";
+
+  return {
+    userId,
+    role,
+    roleResolution,
+    authorizationSource: ADMIN_AUTHORIZATION_SOURCE,
+    context: { mode: ADMIN_RBAC_MODE, meRole },
+  };
 }
 
 async function isAdminUser(userId: string) {
@@ -204,14 +247,15 @@ export async function requireAdmin(
   }
 
   try {
-    const adminAccess = await isAdminUser(req.user.id);
+    const principal = await resolveAdminPrincipal(req.user.id);
 
-    if (!adminAccess) {
+    if (!principal) {
       return next(
         createError(403, "forbidden", "Acesso administrativo necessário."),
       );
     }
 
+    req.adminPrincipal = principal;
     next();
   } catch {
     return next(createError(403, "forbidden", "Erro ao verificar permissão."));

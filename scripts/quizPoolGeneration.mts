@@ -67,14 +67,31 @@ export function levelSections(
   return out;
 }
 
+// Teto de perguntas numa unica secao, PREFERENCIA e nao regra dura. E a maior
+// cota que o modelo cumpriu de forma confiavel nesta serie: com cota 10
+// (nivel avancado da trilha de Python, duas secoes) ele devolveu menos
+// perguntas nas CINCO tentativas e uma delas truncou o JSON, e a geracao
+// abortou sem salvar nada (registro do Lote 06). Nao aborta quando o nivel
+// nao comporta, pelo mesmo motivo de MAX_PER_FONTE e do bestValid: cota alta
+// com aviso e melhor que trilha que nao gera. Aplicado so a trilha com
+// codeLanguages: nas trilhas de area, 40 combinacoes de nivel tem duas
+// secoes e 15 perguntas, e duas secoes no teto comportam 14 (medido no
+// Lote 06b, com as pools ja publicadas).
+export const MAX_QUOTA_PER_SECTION = 7;
+
 // Orcamento do nivel: target repartido entre as secoes proporcionalmente ao
 // numero de folhas, arredondamento determinista por maiores restos (empate
 // resolve pela ordem das secoes na trilha), com piso de 1 pergunta por secao
 // e teto de MAX_PER_FONTE por folha. Falha antes de chamar a IA se a soma
-// nao fechar o target ou alguma cota estourar o teto.
+// nao fechar o target ou alguma cota estourar o teto por folha.
+// `maxPerSection` e opcional: sem ele o resultado e identico ao de sempre
+// (as pools de area foram geradas assim); com ele, o excedente das secoes
+// acima do teto migra para as demais enquanto houver folga, e o que nao
+// couber FICA, sinalizado por sectionQuotaWarnings.
 export function sectionQuotas(
   sections: SectionMaterial[],
   target: number,
+  maxPerSection?: number,
 ): number[] {
   const totalLeaves = sections.reduce(
     (sum, section) => sum + section.leaves.length,
@@ -124,6 +141,22 @@ export function sectionQuotas(
     }
   }
 
+  // Teto por secao (opcional): excedente migra pra primeira secao com folga
+  // nos DOIS tetos, na mesma ordem deterministica. Sem receptor, para: a cota
+  // alta fica e vira aviso, nunca aborto.
+  if (maxPerSection !== undefined) {
+    const capOf = (i: number) =>
+      Math.min(sections[i].leaves.length * MAX_PER_FONTE, maxPerSection);
+    for (let i = 0; i < quotas.length; i += 1) {
+      while (quotas[i] > capOf(i)) {
+        const receiver = quotas.findIndex((quota, j) => quota < capOf(j));
+        if (receiver === -1) break;
+        quotas[i] -= 1;
+        quotas[receiver] += 1;
+      }
+    }
+  }
+
   const sum = quotas.reduce((a, b) => a + b, 0);
   if (sum !== target) {
     throw new Error(`Orcamento nao fecha ${target} (somou ${sum}).`);
@@ -137,6 +170,28 @@ export function sectionQuotas(
     }
   });
   return quotas;
+}
+
+// Secoes que ficaram acima de `maxPerSection` porque o nivel nao comportava a
+// redistribuicao. Canal separado de sectionQuotas para os call sites nao
+// mudarem de forma (eles seguem lendo `quotas[i]`); o gerador imprime cada
+// aviso com prefixo [aviso] e segue.
+export function sectionQuotaWarnings(
+  sections: SectionMaterial[],
+  target: number,
+  maxPerSection?: number,
+): string[] {
+  if (maxPerSection === undefined) return [];
+  const quotas = sectionQuotas(sections, target, maxPerSection);
+  const out: string[] = [];
+  quotas.forEach((quota, i) => {
+    if (quota > maxPerSection) {
+      out.push(
+        `secao "${sections[i].title}" com cota ${quota}, acima do teto de ${maxPerSection} (o nivel tem ${sections.length} secoes para ${target} perguntas; dividir a secao maior daria uma cota menor).`,
+      );
+    }
+  });
+  return out;
 }
 
 // Resposta de UMA pergunta como o modelo a devolve. Os tres campos de codigo
@@ -256,8 +311,8 @@ export const MAX_CODE_PER_LEAF = 2;
 // a ```json do package.json numa trilha de JavaScript, nao conta: o modelo
 // so consegue escrever pergunta de codigo onde o material tem codigo.
 // Em linguagem de IMPORT_FREE_LANGUAGES a cerca so conta se o codigo dela
-// NAO casar IMPORT_RE: o prompt aponta o modelo para essas folhas e a regra
-// de trecho autocontido proibe import, require e fetch, entao apontar para
+// NAO depender de nada de fora (dependsOnExternal): o prompt aponta o modelo
+// para essas folhas e a regra de trecho autocontido proibe isso, entao apontar para
 // uma folha cujo unico codigo depende disso e pedir uma pergunta impossivel,
 // e o modelo respondeu com codigo nulo em vez de recusar (registro do 04c,
 // secao Assincronia, folha assincrono.fetch, cinco tentativas). Em bash ou
@@ -271,13 +326,10 @@ export function codeLeafIds(
     .map((lang) => lang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
   const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n([\\s\\S]*?)```", "g");
-  const semImports = codeLanguages.some((lang) =>
-    IMPORT_FREE_LANGUAGES.includes(lang),
-  );
   return section.leaves
     .filter((leaf) =>
       Array.from(leaf.content.matchAll(re)).some(
-        (m) => !semImports || !IMPORT_RE.test(m[1]),
+        (m) => !dependsOnExternal(m[1], codeLanguages),
       ),
     )
     .map((leaf) => leaf.id);
@@ -309,6 +361,40 @@ export function codeQuotaFor(
 // Regras das perguntas de codigo, anexadas ao SYSTEM_PROMPT so quando a secao
 // tem cota de codigo. O SYSTEM_PROMPT em si nao muda: trilha de area recebe
 // byte a byte o prompt de sempre.
+// O exemplo de completar sai na linguagem principal da trilha: um exemplo em
+// sintaxe de JavaScript numa trilha de Python contradiz a regra de que o
+// trecho e valido na linguagem (registro do Lote 06).
+// Linguagem sem forma propria aqui (bash, dockerfile) fica SEM exemplo: um
+// exemplo em sintaxe de JavaScript numa trilha de ferramenta ensinaria o erro
+// que o exemplo existe para evitar.
+function completarExemplo(codeLanguages: string[]): string | null {
+  if (codeLanguages[0] === "python") return `x = ${CODE_PLACEHOLDER}`;
+  if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
+    return `const x = ${CODE_PLACEHOLDER};`;
+  }
+  return null;
+}
+
+function completarErrado(codeLanguages: string[]): string | null {
+  if (codeLanguages[0] === "python") return "x = 1";
+  if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
+    return "const x = 1;";
+  }
+  return null;
+}
+
+// Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
+// 06c e 06d o modelo repetiu o trecho dentro de pergunta em quase toda secao,
+// mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa. So
+// python por enquanto: a pool de js esta publicada e o prompt dela fica byte
+// a byte, mesmo criterio do exemplo de completar.
+function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
+  if (codeLanguages[0] !== "python") return [];
+  return [
+    `- PROIBIDO (codigo no enunciado): pergunta "O que imprime print(len('abc'))?" com codigo.trecho "print(len('abc'))". CERTO: pergunta "O que este codigo imprime?" e o codigo so em codigo.trecho.`,
+  ];
+}
+
 export function buildCodeRules(codeLanguages: string[]): string {
   return [
     "Regras adicionais para perguntas de CODIGO (esta trilha tem cota de perguntas de codigo):",
@@ -321,13 +407,30 @@ export function buildCodeRules(codeLanguages: string[]): string {
     `- codigo.linguagem e obrigatoriamente uma destas: ${codeLanguages.join(", ")}; a primeira da lista e a principal.`,
     "- Distratores de codigo: erros reais de quem esta aprendendo (off-by-one, tipo errado, ordem de argumentos, escopo), nunca sintaxe absurda.",
     "- A pergunta NUNCA contem codigo nem cerca markdown: o trecho vai SOMENTE em codigo.trecho. A pergunta diz o que fazer com o trecho (por exemplo: O que este codigo imprime? Qual alternativa completa a lacuna para que a saida seja X? Qual e o defeito deste codigo?).",
+    ...exemploCodigoNoEnunciado(codeLanguages),
     "- saida: cada alternativa e EXATAMENTE o texto que o terminal mostra, linha por linha separada por quebra de linha, sem frase em volta (escrever O codigo imprime 50. esta errado; escrever 50 esta certo) e sem virgula juntando linhas. A correta e a alternativa cujo texto e a saida real do trecho: confira a saida mentalmente, linha a linha, antes de escolher a letra.",
     "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
     "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
-    "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
-    "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
-    `- Exemplo de completar: trecho const x = ${CODE_PLACEHOLDER}; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+    // Em Python a regra geral "sem import" contradizia a excecao de import da
+    // lista, e o modelo passou a omitir o import de modulo permitido
+    // (python-int-13 do Lote 06d). A regra de js e ts fica igual.
+    ...(codeLanguages.includes("python")
+      ? [
+          "- Trecho autocontido: nada de arquivo (open, leitura ou escrita), rede, entrada do usuario, aleatoriedade, data ou hora; so a linguagem e os modulos da lista abaixo.",
+          `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo. Se o trecho usa um modulo da lista, o import aparece no proprio trecho (json.dumps sem import json lanca NameError). JSON sempre sobre texto, com json.dumps e json.loads; json.dump e json.load pedem arquivo e sao proibidos.`,
+        ]
+      : [
+          "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+        ]),
+    // completar obrigatoria com 2 ou mais: nos Lotes 06c e 06d iniciante e
+    // avancado sairam sem nenhuma completar nas duas geracoes.
+    "- Variedade: em secao com 2 ou mais perguntas de codigo, pelo menos uma e completar (obrigatoria); com 3 ou mais, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
+    ...(completarExemplo(codeLanguages)
+      ? [
+          `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -349,6 +452,14 @@ export function buildUserPrompt(
       ? [
           `Dessas ${quota}, exatamente ${codeQuota} devem ser de codigo (tipos completar, erro e saida, variando entre os tres) e ${quota - codeQuota} de conceito.`,
           `Baseie as perguntas de codigo nos passos que trazem codigo no material: ${codeLeafIdList.join(", ")}. Perguntas de conceito podem vir de qualquer passo.`,
+          // Restricao explicita so quando alguma folha nao tem cerca
+          // autocontida: nas geracoes do 06 o modelo escreveu codigo sobre
+          // arquivos.with (open) mesmo com a linha acima.
+          ...(codeLeafIdList.length < section.leaves.length
+            ? [
+                `Perguntas de codigo APENAS sobre: ${codeLeafIdList.join(", ")}. As demais fontes recebem perguntas de conceito.`,
+              ]
+            : []),
         ]
       : []),
     "",
@@ -409,7 +520,83 @@ const DASH_RE = /\u2014|\u2013/;
 // cerca de export de modulos.esm que manteve a folha como material no 04d,
 // com o modelo escrevendo import em todas as cinco tentativas da secao.
 export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
-export const IMPORT_RE = /\b(import|export|require|fetch)\b|readFile|\bopen\(/;
+// Em Python, import da biblioteca padrao e legitimo num trecho autocontido,
+// e a regra unica de "sem import" (Lote 05) proibia a palavra. Lista fechada
+// de modulos deterministas e sem ambiente: fora dela ficam random, datetime,
+// time, os, sys, pathlib e urllib, que quebram determinismo ou tocam o
+// ambiente, e qualquer pacote instalado por pip.
+export const PYTHON_STDLIB_ALLOWED = [
+  "json",
+  "math",
+  "re",
+  "collections",
+  "itertools",
+  "functools",
+  "string",
+  "typing",
+  "dataclasses",
+  "decimal",
+  "fractions",
+  "statistics",
+  "enum",
+  "textwrap",
+];
+const FILE_RE = /readFile|\bopen\(/;
+const EXTERNAL_WORD_RE = /\b(export|require|fetch)\b/;
+const RELATIVE_IMPORT_RE = /\b(?:import|from)\s+['"]\.\.?\//;
+const PYTHON_IMPORT_RE =
+  /^\s*(?:import\s+([\w.]+(?:\s*,\s*[\w.]+)*)|from\s+([\w.]+)\s+import\b)/;
+
+// Um trecho depende de algo de fora quando toca rede, arquivo, modulo
+// relativo ou pacote externo. Em bash e dockerfile nunca (a checagem so vale
+// para linguagens de IMPORT_FREE_LANGUAGES). Em js e ts qualquer import e
+// externo; em python, import e from X import so sao aceitos quando cada
+// modulo (primeiro segmento) esta em PYTHON_STDLIB_ALLOWED.
+// Devolve o MOTIVO, nao so sim ou nao, porque a mensagem vira nota de
+// correcao para o modelo. A versao antiga dizia "import, require, fetch ou
+// arquivo" sem dizer qual: nos Lotes 06c e 06d todas as tentativas de
+// arquivos.json caiam por open, e o modelo reagiu como se import fosse
+// proibido (python-int-13 saiu com json.dump sem import json).
+export function externalDependency(
+  code: string,
+  codeLanguages: string[],
+): string | null {
+  if (!codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang))) {
+    return null;
+  }
+  if (FILE_RE.test(code)) {
+    return "le ou grava arquivo (open, readFile); o trecho precisa rodar sem arquivo nenhum";
+  }
+  const palavra = EXTERNAL_WORD_RE.exec(code);
+  if (palavra) return `usa ${palavra[1]}; o trecho precisa rodar sozinho`;
+  if (RELATIVE_IMPORT_RE.test(code)) return "importa modulo relativo";
+  const python = codeLanguages.includes("python");
+  for (const linha of code.split("\n")) {
+    if (!python) {
+      if (/\bimport\b/.test(linha)) {
+        return "usa import; em js e ts o trecho nao importa nada";
+      }
+      continue;
+    }
+    const m = PYTHON_IMPORT_RE.exec(linha);
+    if (!m) continue;
+    const modulos = (m[1] ?? m[2]).split(",").map((nome) => nome.trim());
+    for (const modulo of modulos) {
+      const raiz = modulo.split(/\s+as\s+/)[0].split(".")[0];
+      if (!PYTHON_STDLIB_ALLOWED.includes(raiz)) {
+        return `importa ${raiz}, fora da lista permitida (${PYTHON_STDLIB_ALLOWED.join(", ")})`;
+      }
+    }
+  }
+  return null;
+}
+
+export function dependsOnExternal(
+  code: string,
+  codeLanguages: string[],
+): boolean {
+  return externalDependency(code, codeLanguages) !== null;
+}
 // Heuristica de "alternativa de saida escrita como frase": a saida crua de um
 // programa raramente contem a palavra imprime ou termina em letra seguida de
 // ponto final; uma frase em portugues quase sempre. Pode dar falso positivo
@@ -417,18 +604,31 @@ export const IMPORT_RE = /\b(import|export|require|fetch)\b|readFile|\bopen\(/;
 // e o modelo devolve a mesma resposta, e o fallback aceita.
 const FRASE_RE = /imprime|[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00e7]\.$/i;
 
+// Rotulo de uma pergunta nas mensagens de violacao. No retry o id ainda nao
+// existe, entao o padrao e a posicao na resposta; o portao final da pool
+// passa um rotulo pelo id (poolGateViolations). O padrao e o texto de sempre,
+// entao a nota de rebalanceamento do retry nao muda.
+export type Rotulo = (question: GeneratedQuestion, index: number) => string;
+const rotuloPorPosicao: Rotulo = (question, index) =>
+  `pergunta ${index + 1} (fonte ${question.fonte})`;
+
 // Violacoes das regras de codigo numa resposta do modelo, para o retry de
 // generateSection corrigir ANTES da validacao final: sao as mesmas regras que
 // quizPoolValidation.mts aplica ao trecho, em redacao curta, uma linha por
 // violacao no formato "pergunta N (fonte X): problema". N e a posicao na
 // resposta (1 e a primeira), porque o id so nasce depois.
+// `fontesElegiveis`: folhas com cerca autocontida (codeLeafIds). Quando
+// informada, pergunta de codigo sobre outra folha viola; sem ela, a checagem
+// nao roda (quem chama sem saber a secao nao inventa a lista).
 export function codeRuleViolations(
   questions: GeneratedQuestion[],
   codeLanguages: string[],
+  rotuloDe: Rotulo = rotuloPorPosicao,
+  fontesElegiveis?: string[],
 ): string[] {
   const out: string[] = [];
   questions.forEach((question, index) => {
-    const rotulo = `pergunta ${index + 1} (fonte ${question.fonte})`;
+    const rotulo = rotuloDe(question, index);
     const ehCodigo = isCodeQuestion({ tipo: question.tipo });
     const codigo = question.codigo ?? null;
     if (ehCodigo && !codigo) {
@@ -442,6 +642,11 @@ export function codeRuleViolations(
       return;
     }
     if (!codigo) return;
+    if (fontesElegiveis && !fontesElegiveis.includes(question.fonte)) {
+      out.push(
+        `${rotulo}: pergunta de codigo sobre passo sem trecho autocontido no material; troque o tipo para conceito ou use como fonte um dos passos em "Perguntas de codigo APENAS sobre"`,
+      );
+    }
     const trecho = codigo.trecho ?? "";
     if (trecho.trim().length === 0) {
       out.push(`${rotulo}: trecho vazio`);
@@ -481,16 +686,12 @@ export function codeRuleViolations(
       question.pergunta.includes(trecho.trim())
     ) {
       out.push(
-        `${rotulo}: pergunta contem codigo (o trecho vai so em codigo.trecho)`,
+        `${rotulo}: pergunta contem codigo; mova o codigo para codigo.trecho e reescreva a pergunta sem ele (por exemplo: O que este codigo imprime?)`,
       );
     }
-    if (
-      codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang)) &&
-      IMPORT_RE.test(trecho)
-    ) {
-      out.push(
-        `${rotulo}: trecho depende de import, require, fetch ou arquivo (precisa ser autocontido)`,
-      );
+    const dependencia = externalDependency(trecho, codeLanguages);
+    if (dependencia) {
+      out.push(`${rotulo}: trecho nao e autocontido: ${dependencia}`);
     }
     const alternativas = Object.values(question.alternativas);
     if (question.tipo === "completar") {
@@ -581,6 +782,12 @@ export function codeTypeViolations(
     out.push(
       `variedade: as 2 perguntas de codigo precisam ser de tipos diferentes (vieram 2 de ${tipos[0]})`,
     );
+  } else if (tipos.length === 2 && conta("completar") === 0) {
+    // Com 3 ou mais a regra de um de cada tipo ja exige completar; com 2 so
+    // exigia tipos diferentes, e erro mais saida passava sem completar.
+    out.push(
+      `variedade: com 2 perguntas de codigo, uma precisa ser completar (vieram ${tipos[0]} e ${tipos[1]})`,
+    );
   }
   if (tipos.length > 0 && conta("saida") > tipos.length / 2) {
     out.push(
@@ -601,6 +808,7 @@ export function execViolations(
   questions: GeneratedQuestion[],
   codeLanguages: string[],
   executarPor: (linguagem: string) => Executor | null,
+  rotuloDe: Rotulo = rotuloPorPosicao,
 ): string[] {
   const out: string[] = [];
   questions.forEach((question, index) => {
@@ -618,9 +826,7 @@ export function execViolations(
       executar,
     );
     if (r.veredito === "CORRIGIR") {
-      out.push(
-        `pergunta ${index + 1} (fonte ${question.fonte}): ${r.resultado}`,
-      );
+      out.push(`${rotuloDe(question, index)}: ${r.resultado}`);
     }
   });
   return out;
@@ -664,4 +870,124 @@ export function normalizeGeneratedQuestion(
     },
     ...(raw.alternativasCodigo ? { alternativasCodigo: true as const } : {}),
   };
+}
+
+// Ponte inversa de normalizeGeneratedQuestion: a pergunta ja montada da pool
+// (com id) no shape que as funcoes de violacao leem. Existe para o portao
+// final aplicar as MESMAS funcoes do retry, sem uma segunda copia das regras.
+export function toGeneratedQuestion(question: QuizQuestion): GeneratedQuestion {
+  return {
+    pergunta: question.pergunta,
+    alternativas: question.alternativas,
+    correta: question.correta,
+    explicacao: question.explicacao,
+    fonte: question.fonte,
+    ...(question.tipo !== undefined ? { tipo: question.tipo } : {}),
+    ...(question.codigo ? { codigo: { ...question.codigo } } : {}),
+    ...(question.alternativasCodigo ? { alternativasCodigo: true } : {}),
+  };
+}
+
+// Uma secao como o laco de geracao a produziu: rotulo "<nivel> / <titulo>",
+// a cota de codigo que ela usou e os ids das perguntas que sairam dela.
+export interface GateSection {
+  label: string;
+  codeQuota: number;
+  ids: string[];
+  // Folhas da secao com cerca autocontida (codeLeafIds). Opcional: sem ela,
+  // o portao nao confere a fonte das perguntas de codigo.
+  eligible?: string[];
+}
+
+// Portao final da pool montada: a bateria inteira do retry (regras de codigo,
+// variedade por secao e execucao), rotulada pelo id. Repete o que o laco ja
+// fez de proposito: o laco tem fallback (bestValid aceita resposta ainda
+// violando), o portao nao. Instrumento de gate nao pode cobrir superficie
+// menor que o instrumento de tentativa; foi assim que a rodada do Lote 06c
+// levou ao portao pergunta com correta errada por execucao sem ninguem
+// acusar. `executarPor` null = sem execucao (--no-exec).
+export function poolGateViolations(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+  codeLanguages: string[],
+  executarPor: ((linguagem: string) => Executor | null) | null,
+): string[] {
+  const geradas = questions.map(toGeneratedQuestion);
+  const rotuloPorId: Rotulo = (question, index) =>
+    `${questions[index].id} (fonte ${question.fonte})`;
+  const porId = new Map(questions.map((question) => [question.id, question]));
+  const variedade = sections.flatMap((section) => {
+    const daSecao = section.ids.map((id) => {
+      const question = porId.get(id);
+      // Id de secao que nao esta na pool e defeito do chamador: abortar em vez
+      // de conferir uma secao menor em silencio.
+      if (!question) {
+        throw new Error(
+          `[poolGateViolations] secao "${section.label}" cita ${id}, ausente da pool.`,
+        );
+      }
+      return toGeneratedQuestion(question);
+    });
+    return codeTypeViolations(daSecao, section.codeQuota).map(
+      (violacao) => `${section.label}: ${violacao}`,
+    );
+  });
+  // Uniao das elegiveis: cada fonte pertence a uma unica secao, entao conferir
+  // contra a uniao e o mesmo que conferir secao a secao. So quando TODAS as
+  // secoes trazem a lista; faltando em uma, a checagem nao roda.
+  const elegiveis =
+    sections.length > 0 && sections.every((section) => section.eligible)
+      ? sections.flatMap((section) => section.eligible ?? [])
+      : undefined;
+  return [
+    ...codeRuleViolations(geradas, codeLanguages, rotuloPorId, elegiveis),
+    ...variedade,
+    ...(executarPor
+      ? execViolations(geradas, codeLanguages, executarPor, rotuloPorId)
+      : []),
+  ];
+}
+
+// Cota de codigo por nivel: quantas perguntas de codigo o laco PREVIU (soma
+// das cotas das secoes do nivel) contra quantas a pool tem. Canal de AVISO,
+// separado de poolGateViolations: bloquear obrigaria a autorar codigo a mao
+// em toda secao que esgota tentativas, e o aviso deixa a decisao com quem
+// revisa (no Lote 06d o bestClean aceitou o avancado com 5 de 7 em silencio).
+// O nivel de cada secao vem das perguntas dela; id ausente aborta, como no
+// portao, em vez de conferir uma secao menor.
+export function codeQuotaWarnings(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+): string[] {
+  const porId = new Map(questions.map((question) => [question.id, question]));
+  const porNivel = new Map<QuizNivel, { previstas: number; feitas: number }>();
+  for (const section of sections) {
+    const daSecao = section.ids.map((id) => {
+      const question = porId.get(id);
+      if (!question) {
+        throw new Error(
+          `[codeQuotaWarnings] secao "${section.label}" cita ${id}, ausente da pool.`,
+        );
+      }
+      return question;
+    });
+    if (daSecao.length === 0) continue;
+    const nivel = daSecao[0].nivel;
+    const conta = porNivel.get(nivel) ?? { previstas: 0, feitas: 0 };
+    conta.previstas += section.codeQuota;
+    conta.feitas += daSecao.filter((question) =>
+      isCodeQuestion(question),
+    ).length;
+    porNivel.set(nivel, conta);
+  }
+  const out: string[] = [];
+  for (const nivel of NIVEIS) {
+    const conta = porNivel.get(nivel);
+    if (conta && conta.feitas !== conta.previstas) {
+      out.push(
+        `nivel ${nivel}: ${conta.feitas} perguntas de codigo de ${conta.previstas} previstas`,
+      );
+    }
+  }
+  return out;
 }

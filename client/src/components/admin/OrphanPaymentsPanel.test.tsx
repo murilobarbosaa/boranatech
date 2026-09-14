@@ -346,8 +346,8 @@ describe("cobranças que NÃO cabem nesta fila", () => {
     // Janela de deploy: a Vercel sobe antes do Railway.
     adminSpy.adminFetch.mockResolvedValue({ data: [] });
     await montar();
+    expect(await screen.findByTestId("orfaos-vazio")).toBeTruthy();
     expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
-    expect(screen.getByTestId("orfaos-vazio")).toBeTruthy();
   });
 
   it("contagem NULA (não sei) não vira aviso", async () => {

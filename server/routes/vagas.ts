@@ -9,6 +9,7 @@ import {
   requireAdmin,
   requireAuth,
 } from "../middleware/auth";
+import { observeAdminCapability } from "../middleware/adminRbacObserve";
 import { createError } from "../middleware/error";
 
 // Rotas Pro de vagas (front VAGAS, fase 2). Contrato de seguranca (mesmo do
@@ -18,6 +19,7 @@ import { createError } from "../middleware/error";
 // (fail-closed: erro na checagem = 403).
 
 const router = Router();
+const adminRouteGuards = [requireAdmin, observeAdminCapability] as const;
 
 router.use(requireAuth);
 router.use(checkProStatus);
@@ -235,7 +237,7 @@ router.get("/destaques", async (req, res, next) => {
 // ANTES do GET /:id para o segmento "admin" nao cair no param. Todos os
 // estados de published, SEM cache (admin le fresco); limit fixo 100 cobre o
 // volume manual esperado por muito tempo.
-router.get("/admin", requireAdmin, async (_req, res, next) => {
+router.get("/admin", ...adminRouteGuards, async (_req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("external_jobs")
@@ -439,7 +441,7 @@ function adminRowFromPayload(data: AdminCreate, userId: string) {
 // POST /api/vagas/admin: cria vaga destaque manual.
 // Sem invalidacao de cache pubcache (nao existe helper de invalidacao por
 // prefixo); a janela de TTL de 120s e aceita por decisao da fase.
-router.post("/admin", requireAdmin, async (req, res, next) => {
+router.post("/admin", ...adminRouteGuards, async (req, res, next) => {
   const parsed = AdminCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     return next(
@@ -486,7 +488,7 @@ router.post("/admin", requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /api/vagas/admin/:id: edicao parcial, SOMENTE de vagas manuais.
-router.patch("/admin/:id", requireAdmin, async (req, res, next) => {
+router.patch("/admin/:id", ...adminRouteGuards, async (req, res, next) => {
   const id = z.string().uuid().safeParse(req.params.id);
   if (!id.success) {
     return next(createError(404, "not_found", "Vaga não encontrada."));

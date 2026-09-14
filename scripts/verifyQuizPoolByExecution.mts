@@ -17,6 +17,15 @@
 // do retry (execViolations em quizPoolGeneration.mts); o registry de pools e
 // o agregado de trilhas so sao importados dentro do main, para o gerador nao
 // carregar todas as pools ao importar este modulo.
+//
+// ISOLAMENTO: o trecho executado e codigo escrito por um modelo, entao o
+// spawn roda com cwd no diretorio temporario do executor, com ambiente
+// montado do zero (sem os segredos do .env que o gerador carregou), com
+// entrada vazia e com teto de saida. O que isso NAO cobre: acesso a rede,
+// escrita fora do cwd por caminho absoluto e consumo de CPU dentro do
+// timeout. Trecho de trilha e codigo didatico curto e o portao real continua
+// sendo a revisao humana da pool; cwd e env fecham o acidente que aconteceu
+// no Lote 06, em que um trecho gravou um arquivo na raiz do repositorio.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -85,6 +94,10 @@ export interface Execucao {
   stdout: string;
   erro: string;
   timeout: boolean;
+  // Stderr bruto e sinal de saida: so para a leitura humana (excecaoObservada
+  // tira dali o numero da linha). Opcionais para os stubs de teste.
+  stderr?: string;
+  sinal?: string | null;
 }
 
 export type Executor = (code: string) => Execucao;
@@ -98,12 +111,34 @@ export function makeExecutor(runner: Runner): Executor {
     const r = spawnSync(runner.command, [file], {
       encoding: "utf8",
       timeout: TIMEOUT_MS,
+      // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
+      // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
+      // criou usuario.json na raiz do worktree.
+      cwd: dir,
+      // Ambiente montado do zero, nunca process.env: o gerador carrega o .env
+      // (OPENAI_API_KEY, SUPABASE_*, REDIS_URL, STRIPE_*) e o trecho e codigo
+      // escrito por um modelo. HOME aponta para o proprio dir, entao cache e
+      // arquivo de configuracao do runner tambem ficam contidos.
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        HOME: dir,
+        LANG: process.env.LANG ?? "C.UTF-8",
+        PYTHONIOENCODING: "utf-8",
+      },
+      // Entrada vazia e fechada: trecho com input() falha na hora em vez de
+      // segurar o processo ate o timeout.
+      input: "",
+      // Teto de saida: laco que imprime sem parar morre aqui, nao na memoria
+      // do processo do gerador.
+      maxBuffer: 1024 * 1024,
     });
     return {
       status: r.status,
       stdout: r.stdout ?? "",
       erro: erroDoStderr(r.stderr ?? ""),
       timeout: r.error?.name === "Error" && /ETIMEDOUT/.test(String(r.error)),
+      stderr: r.stderr ?? "",
+      sinal: r.signal ?? null,
     };
   };
 }
@@ -196,6 +231,47 @@ export function conferirCodigo(
   };
 }
 
+// Linha do trecho onde a execucao quebrou: em Python, o ultimo frame DO
+// PROPRIO TRECHO no traceback; em Node, o primeiro `arquivo.mjs:N`, que e
+// onde lancou. Sem nenhum, null. O primeiro frame do traceback e sempre o do
+// trecho executado; a excecao pode nascer mais fundo, dentro da biblioteca
+// padrao, e a versao anterior devolvia a linha de la (python-int-14 saiu com
+// "linha 353", de json/decoder.py, no Lote 06g).
+export function linhaDoErro(stderr: string): number | null {
+  const py = [...stderr.matchAll(/File "([^"]*\.py)", line (\d+)/g)];
+  if (py.length > 0) {
+    const doTrecho = py.filter((m) => m[1] === py[0][1]);
+    return Number(doTrecho[doTrecho.length - 1][2]);
+  }
+  const js = /\.mjs:(\d+)/.exec(stderr);
+  return js ? Number(js[1]) : null;
+}
+
+// O que a execucao de uma pergunta de erro OBSERVOU: a excecao (ou o sinal
+// de saida) e a linha. Instrumento de LEITURA, nao portao. O portao confere
+// que o codigo quebra; SE ele quebra pelo motivo que a alternativa correta
+// descreve e conferencia semantica, e instrumento nao deve fingir o que nao
+// faz. A linha existe para a leitura humana levar segundos: foi a falta dela
+// que deixou passar a python-int-14 do Lote 06f, cujo trecho quebrava com
+// SyntaxError enquanto a correta falava em JSON malformado.
+export function excecaoObservada(
+  question: Pick<QuizQuestion, "tipo" | "codigo">,
+  executar: Executor,
+): string | null {
+  if (question.tipo !== "erro" || !question.codigo) return null;
+  const r = executar(question.codigo.trecho);
+  if (r.timeout) return "estourou o timeout";
+  if (r.status === 0) {
+    return `roda limpo, stdout=${JSON.stringify(normalizeStdout(r.stdout))}`;
+  }
+  if (r.status === null) {
+    return `encerrado pelo sinal ${r.sinal ?? "desconhecido"}`;
+  }
+  const erro = r.erro || `saiu com status ${r.status}`;
+  const linha = linhaDoErro(r.stderr ?? "");
+  return linha !== null ? `${erro} (linha ${linha})` : erro;
+}
+
 type Veredito = Conferencia["veredito"] | "SEM RUNNER";
 
 interface Linha {
@@ -204,6 +280,8 @@ interface Linha {
   fonte: string;
   resultado: string;
   veredito: Veredito;
+  // So em pergunta de erro: ver excecaoObservada.
+  observado?: string | null;
 }
 
 function conferir(question: QuizQuestion, executar: Executor): Linha {
@@ -212,6 +290,7 @@ function conferir(question: QuizQuestion, executar: Executor): Linha {
     tipo: question.tipo ?? "",
     fonte: question.fonte,
     ...conferirCodigo(question, executar),
+    observado: excecaoObservada(question, executar),
   };
 }
 
@@ -260,6 +339,9 @@ async function main() {
     console.log(
       `${l.id} | ${l.tipo} | ${l.fonte} | ${l.resultado} | ${l.veredito}`,
     );
+    if (l.observado) {
+      console.log(`${l.id}  ${l.tipo}  observado: ${l.observado}`);
+    }
   }
   const conta = (v: Veredito) => linhas.filter((l) => l.veredito === v).length;
   console.log(
