@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import { AlertTriangle, ExternalLink } from "lucide-react";
+import { useLocation, useSearch } from "wouter";
 
 import { adminFetch } from "@/lib/adminApi";
+import { isUuid } from "@shared/adminAttention";
 
 /**
  * Pagamentos que a Stripe registrou e que nao viraram assinatura no banco.
  *
- * POR QUE UMA TELA, se o painel de Atencao ja mostra orfaos. Porque ele mostra
- * MENOS: `server/lib/atencaoNecessaria.ts:634-635` descarta quem nao tem
- * `expected_provider_subscription_id` e quem nao passa em `orfaoAindaPedeAcao`.
- * Os descartados existiam na tabela, ninguem os via, e nao havia como carimba-los
- * como tratados. Esta tela lista TODOS os abertos, e e o unico lugar do produto
- * onde `resolved_at` e `resolution_note` podem ser preenchidos sem SQL na mao.
+ * POR QUE UMA TELA, se o painel de Atencao ja mostra orfaos. O painel e a fila
+ * resumida e somente leitura. Esta tela lista TODOS os casos abertos, mostra o
+ * detalhe protegido e preserva a operacao preexistente que registra resolucao.
  */
 
 /** Uma linha aberta, como GET /admin/billing/orphan-payments devolve. */
@@ -256,6 +255,8 @@ function ResolverModal({
 }
 
 export function OrphanPaymentsPanel() {
+  const search = useSearch();
+  const [, setLocation] = useLocation();
   const [linhas, setLinhas] = useState<OrphanPaymentRow[] | null>(null);
   /**
    * Cobrancas sem dono que a fila NAO consegue guardar (hoje, as do Asaas).
@@ -271,6 +272,9 @@ export function OrphanPaymentsPanel() {
   const [alvo, setAlvo] = useState<OrphanPaymentRow | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erroModal, setErroModal] = useState<string | null>(null);
+  const requestedOrphan = new URLSearchParams(search).get("orphan");
+  const orphanContextValid =
+    requestedOrphan === null || isUuid(requestedOrphan);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -295,6 +299,20 @@ export function OrphanPaymentsPanel() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    if (!linhas || !requestedOrphan || !orphanContextValid) return;
+    const target = document.getElementById(`orphan-${requestedOrphan}`);
+    if (typeof target?.scrollIntoView === "function")
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [linhas, orphanContextValid, requestedOrphan]);
+
+  const clearOrphanFocus = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("panel");
+    params.delete("orphan");
+    setLocation(`/admin?${params.toString()}`);
+  };
 
   async function confirmar(nota: string) {
     if (!alvo) return;
@@ -330,6 +348,28 @@ export function OrphanPaymentsPanel() {
         manual, ou falso positivo) e escreva o que foi feito.
       </p>
 
+      {requestedOrphan &&
+      (!orphanContextValid ||
+        (linhas !== null &&
+          !linhas.some((row) => row.id === requestedOrphan))) ? (
+        <div
+          data-testid="orphan-context-error"
+          className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-sm font-bold text-amber-900"
+        >
+          {!orphanContextValid
+            ? "O identificador do caso órfão é inválido."
+            : "O caso solicitado não está aberto ou não foi encontrado."}{" "}
+          A lista continua disponível.
+          <button
+            type="button"
+            onClick={clearOrphanFocus}
+            className="ml-2 underline"
+          >
+            Limpar foco
+          </button>
+        </div>
+      ) : null}
+
       {/*
         COBRANCA QUE NAO CABE NA FILA. Fica FORA do ramo de lista vazia de
         proposito: o caso que motivou este aviso e justamente a fila vazia com a
@@ -346,10 +386,9 @@ export function OrphanPaymentsPanel() {
           data-testid="orfaos-nao-enfileiraveis"
           className="mb-4 rounded-2xl border-2 border-teal-500 bg-teal-50 p-4 text-sm font-bold text-teal-900"
         >
-          {naoEnfileiraveis}{" "}
-          {naoEnfileiraveis === 1 ? "cobrança" : "cobranças"} Pix sem dono ainda
-          não entram nesta fila. Elas aparecem na faixa de saúde e precisam ser
-          tratadas no painel do Asaas.
+          {naoEnfileiraveis} {naoEnfileiraveis === 1 ? "cobrança" : "cobranças"}{" "}
+          Pix sem dono ainda não entram nesta fila. Elas aparecem na faixa de
+          saúde e precisam ser tratadas no painel do Asaas.
         </p>
       ) : null}
 
@@ -386,8 +425,14 @@ export function OrphanPaymentsPanel() {
             return (
               <li
                 key={linha.id}
+                id={`orphan-${linha.id}`}
                 data-testid="orfao-linha"
-                className="flex flex-col gap-3 rounded-2xl border-2 border-slate-900 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                data-focused={linha.id === requestedOrphan ? "true" : "false"}
+                className={`flex flex-col gap-3 rounded-2xl border-2 bg-white p-4 sm:flex-row sm:items-center sm:justify-between ${
+                  linha.id === requestedOrphan
+                    ? "border-violet-700 ring-4 ring-violet-200"
+                    : "border-slate-900"
+                }`}
               >
                 <div className="min-w-0">
                   <p className="font-display text-lg font-black text-slate-950">
@@ -411,6 +456,15 @@ export function OrphanPaymentsPanel() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  {linha.id === requestedOrphan ? (
+                    <button
+                      type="button"
+                      onClick={clearOrphanFocus}
+                      className="rounded-full border-2 border-violet-700 bg-violet-50 px-4 py-2 text-sm font-black text-violet-900"
+                    >
+                      Limpar foco
+                    </button>
+                  ) : null}
                   {href ? (
                     <a
                       href={href}

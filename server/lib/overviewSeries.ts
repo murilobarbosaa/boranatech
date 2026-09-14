@@ -1,5 +1,6 @@
 import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import type { Janela } from "./overviewWindow";
+import { classificarCustoDeIa } from "./aiUsageStats";
 import { coletarTudo, coletarTudoProvandoTotal } from "./paginate";
 import {
   classifyRegisteredPayments,
@@ -17,9 +18,8 @@ import { supabaseAdmin } from "./supabaseAdmin";
 //
 // TUDO DE TABELA LOCAL. Nenhuma chamada a Stripe em request-time: a Visao e a
 // primeira tela que o admin abre, e pendurar a latencia de uma API externa em
-// cada carga e o caminho para alguem parar de abrir. A unica leitura de Stripe
-// que sobrevive na aba e a de cobrancas falhadas no painel de atencao, que ja
-// existia atras de uma interface e sai quando a branch de billing mergear.
+// cada carga e o caminho para alguem parar de abrir. O painel de atencao tambem
+// usa somente fatos locais e declara o que o sistema nao coleta.
 //
 // MESMO BUCKETING DA FASE 2: dia civil de America/Sao_Paulo, via
 // shared/brasiliaDay.ts. Uma serie que agrupe por dia UTC ao lado de cards que
@@ -560,19 +560,20 @@ export async function montarSeriesDaVisao(
         .filter((p) => p.classification === classification)
         .map((p) => ({ quando: p.occurredAt })),
     );
+  const logsComCusto = logs.map((log) => ({
+    log,
+    custo: classificarCustoDeIa(log.status, log.cost_estimate),
+  }));
   const custoIa = agrupar(
-    logs.map((l) => {
-      const c = Number.parseFloat(l.cost_estimate || "0");
-      return { quando: l.created_at, peso: Number.isFinite(c) ? c : 0 };
-    }),
+    logsComCusto.map(({ log, custo }) => ({
+      quando: log.created_at,
+      peso: custo.custoMedido,
+    })),
   );
   const semCusto = agrupar(
-    logs
-      .filter((l) => {
-        const c = Number.parseFloat(l.cost_estimate || "0");
-        return l.status === "success" && (!Number.isFinite(c) || c === 0);
-      })
-      .map((l) => ({ quando: l.created_at })),
+    logsComCusto
+      .filter(({ custo }) => custo.semCustoMedido)
+      .map(({ log }) => ({ quando: log.created_at })),
   );
 
   // --- ESTOQUES (sem zero-fill) -------------------------------------------
@@ -684,7 +685,7 @@ export async function montarSeriesDaVisao(
 
   // --- FERRAMENTAS ---------------------------------------------------------
   const porFerramenta = new Map<string, UsoPorFerramenta>();
-  for (const l of logs) {
+  for (const { log: l, custo } of logsComCusto) {
     const atualF = porFerramenta.get(l.tool) ?? {
       tool: l.tool,
       chamadas: 0,
@@ -692,9 +693,8 @@ export async function montarSeriesDaVisao(
       semCustoMedido: 0,
     };
     atualF.chamadas += 1;
-    const c = Number.parseFloat(l.cost_estimate || "0");
-    if (Number.isFinite(c)) atualF.custoUsd += c;
-    if (l.status === "success" && (!Number.isFinite(c) || c === 0)) {
+    atualF.custoUsd += custo.custoMedido;
+    if (custo.semCustoMedido) {
       atualF.semCustoMedido += 1;
     }
     porFerramenta.set(l.tool, atualF);

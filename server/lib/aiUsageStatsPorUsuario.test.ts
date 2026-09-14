@@ -27,6 +27,9 @@ import { criarSupabaseDouble } from "../routes/adminUsersHarness.test";
 import {
   agregarUsoDeIa,
   AI_STATS_JANELA_DIAS,
+  chamadasSemCustoMedido,
+  classificarCustoDeIa,
+  custoTotalDeIa,
   custoDeIaPorUsuario,
   inicioDaJanelaDeIa,
 } from "./aiUsageStats";
@@ -67,6 +70,54 @@ afterEach(() => vi.clearAllMocks());
 const DESDE = "2026-01-01T00:00:00Z";
 
 describe("custoDeIaPorUsuario", () => {
+  it("recusa custo parcialmente parseável e valores negativos", () => {
+    expect(classificarCustoDeIa("success", "0.60lixo")).toEqual({
+      custoMedido: 0,
+      semCustoMedido: true,
+    });
+    expect(classificarCustoDeIa("success", "-1")).toEqual({
+      custoMedido: 0,
+      semCustoMedido: true,
+    });
+    expect(classificarCustoDeIa("success", "0.60")).toEqual({
+      custoMedido: 0.6,
+      semCustoMedido: false,
+    });
+  });
+
+  it("entrega ao card custo zero e uma lacuna para texto parcialmente parseável", async () => {
+    base([
+      log({
+        tool: "invalid-parser",
+        status: "success",
+        cost_estimate: "0.25lixo",
+      }),
+    ]);
+    const stats = await agregarUsoDeIa(DESDE);
+    expect(custoTotalDeIa(stats)).toBe(0);
+    expect(chamadasSemCustoMedido(stats)).toBe(1);
+    expect(stats["invalid-parser"]).toMatchObject({
+      cost: 0,
+      semCustoMedido: 1,
+    });
+  });
+
+  it("mantém o subtotal medido e as lacunas reconciliados em valores mistos", async () => {
+    base([
+      log({ cost_estimate: "0.25", status: "success" }),
+      log({ cost_estimate: "0", status: "success" }),
+      log({ cost_estimate: null, status: "success" }),
+      log({ cost_estimate: "inválido", status: "success" }),
+      log({ cost_estimate: "-1", status: "success" }),
+      log({ cost_estimate: "0", status: "error" }),
+      log({ cost_estimate: null, status: "error" }),
+      log({ cost_estimate: "0.10", status: "error" }),
+    ]);
+    const stats = await agregarUsoDeIa(DESDE);
+    expect(custoTotalDeIa(stats)).toBeCloseTo(0.35, 10);
+    expect(chamadasSemCustoMedido(stats)).toBe(4);
+  });
+
   it("soma por usuario e ordena por custo desc", async () => {
     base([
       log({ user_id: "ana", cost_estimate: "0.50" }),

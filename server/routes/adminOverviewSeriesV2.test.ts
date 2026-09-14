@@ -114,6 +114,7 @@ function setup(
   overrides: {
     profiles?: Array<{ user_id: string; created_at: string }>;
     financeRows?: Array<ReturnType<typeof finance>>;
+    aiRows?: Array<Record<string, unknown>>;
   } = {},
 ) {
   estado.double = criarSupabaseDouble(
@@ -186,7 +187,7 @@ function setup(
         ],
       },
       ai_usage_logs: {
-        rows: [
+        rows: overrides.aiRows ?? [
           {
             id: "ai-u1",
             user_id: "u1",
@@ -389,5 +390,48 @@ describe("GET /overview-series contrato v3", () => {
     const cadastros = response.series.find((s) => s.chave === "cadastros");
     expect(cadastros?.total).toBe(1);
     expect(response.funil.passos[0].valor).toBe(1);
+  });
+
+  it("reconcilia custo e lacunas das séries com o agrupamento por ferramenta", async () => {
+    const created_at = "2026-09-10T13:00:00Z";
+    const row = (
+      id: string,
+      tool: string,
+      status: string,
+      cost_estimate: string | null,
+    ) => ({ id, user_id: "u1", tool, status, cost_estimate, created_at });
+    setup(null, undefined, {
+      aiRows: [
+        row("invalid", "invalid-parser", "success", "0.25lixo"),
+        row("valid", "valid", "success", "0.25"),
+        row("zero", "zero", "success", "0"),
+        row("null", "null", "success", null),
+        row("negative", "negative", "success", "-1"),
+        row("error-zero", "error-zero", "error", "0"),
+        row("error-null", "error-null", "error", null),
+        row("error-positive", "error-positive", "error", "0.10"),
+      ],
+    });
+    const response = await carregarOverviewSeries("30");
+    const series = Object.fromEntries(
+      response.data.series.map((item) => [item.chave, item.total]),
+    );
+    const tools = Object.fromEntries(
+      response.data.ferramentas.map((item) => [item.tool, item]),
+    );
+
+    expect(series.custoIaUsd).toBeCloseTo(0.35, 10);
+    expect(series.chamadasSemCustoMedido).toBe(4);
+    expect(tools["invalid-parser"]).toMatchObject({
+      custoUsd: 0,
+      semCustoMedido: 1,
+    });
+    expect(tools.valid).toMatchObject({
+      custoUsd: 0.25,
+      semCustoMedido: 0,
+    });
+    expect(tools["error-zero"].semCustoMedido).toBe(0);
+    expect(tools["error-null"].semCustoMedido).toBe(0);
+    expect(tools["error-positive"].custoUsd).toBeCloseTo(0.1, 10);
   });
 });
