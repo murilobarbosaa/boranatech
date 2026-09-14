@@ -273,7 +273,10 @@ const naoReconhecidasOutras: string[] = [];
 // MEDIDO com `--declared`: view passou a entrar no conjunto declarado (o
 // PostgREST a expoe como expoe tabela). EXPECTED_RLS_COUNT NAO sobe junto,
 // porque view nao tem RLS propria; a leitura anonima dela e verificada a parte.
-const EXPECTED_TABLE_COUNT = 87;
+// 86 desde 20260914120000_drop_influencers_view.sql, MEDIDO com `--declared`:
+// a view de compatibilidade cai e sai do conjunto pelo DROP_VIEW_RE. RLS nao
+// muda pelo mesmo motivo de nao ter subido.
+const EXPECTED_TABLE_COUNT = 86;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -361,7 +364,12 @@ const EXPECTED_RLS_COUNT = 86;
 // mudou: 37, esperado 35". Os dois 35 eram sobre conjuntos DIFERENTES, e a
 // uniao deles tem duas funcoes a mais. Aceitar o 35 por concordancia teria
 // deixado o guard verde sobre um conjunto que nao e o que ele conta.
-const EXPECTED_FUNCTION_COUNT = 37;
+// 40 desde 20260914120100_creator_events_daily.sql, que cria TRES de uma vez:
+// creator_events_daily, admin_creators_page e creators_board_summary. Valor
+// MEDIDO com `--declared`, nao somado. As tres devolvem TABLE e o PostgREST as
+// expoe em /rpc/, entao entram nas verificaveis por REST e o contador de
+// trigger abaixo NAO sobe.
+const EXPECTED_FUNCTION_COUNT = 40;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
@@ -931,6 +939,26 @@ const ASSERCOES: AssercaoComportamental[] = [
         ? null
         : `esperava false, veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
   },
+  {
+    // 20260914120100_creator_events_daily.sql. A verificacao por nome prova que
+    // a funcao existe; esta prova que ela e CHAMAVEL pelo service_role com a
+    // assinatura que o painel usa (array de uuid, duas timestamptz) e que a
+    // lista vazia de codigos devolve lista vazia, nunca a tabela inteira. Um
+    // `any('{}')` trocado por um filtro opcional devolveria linhas aqui.
+    // STABLE e so leitura: chamar contra producao nao escreve nada.
+    funcao: "creator_events_daily",
+    args: {
+      p_affiliate_ids: [],
+      p_from: "2000-01-01T00:00:00Z",
+      p_to: "2100-01-01T00:00:00Z",
+    },
+    descricao:
+      "devolve zero linhas para uma lista vazia de codigos em qualquer janela",
+    verificar: (resultado) =>
+      Array.isArray(resultado) && resultado.length === 0
+        ? null
+        : `esperava [], veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
+  },
 ];
 
 async function chamarRpc(
@@ -1444,9 +1472,11 @@ if (!anonKey) {
 
   // VIEWS DECLARADAS: nao tem RLS propria, entao nao estao em `rlsVivas` e
   // ficariam fora de toda verificacao de leitura anonima. O criterio e o
-  // estrito das nao declaradas: nenhuma view deste projeto e publica (a unica,
-  // public.influencers, e de compatibilidade e revoga anon), entao QUALQUER
-  // leitura anon bem-sucedida e achado, inclusive com zero linhas.
+  // estrito das nao declaradas: nenhuma view deste projeto e publica (a unica
+  // que existiu, public.influencers, era de compatibilidade, revogava anon e
+  // caiu em 20260914120000), entao QUALQUER leitura anon bem-sucedida e achado,
+  // inclusive com zero linhas. Com zero views declaradas o laco nao roda, e a
+  // verificacao volta a valer sozinha para a proxima view que alguem criar.
   const viewsExpostas: string[] = [];
   const viewsVivas = [...viewsDeclaradas].filter((v) => declared.has(v)).sort();
   for (const view of viewsVivas) {
