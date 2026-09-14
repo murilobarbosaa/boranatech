@@ -110,6 +110,7 @@ import {
   LASTRO_ANALISES_MAX,
   LASTRO_JANELA_DIAS,
 } from "../../shared/linkedin/lastro";
+import { isAttentionContractV3 } from "../../shared/adminAttention";
 import {
   agregarResumos,
   readQualitative,
@@ -1666,42 +1667,90 @@ const ATENCAO_CACHE_TTL_S = 60;
 // cache repetida a mao e o desenho em que uma das pontas erra uma letra e a
 // invalidacao passa a apagar coisa nenhuma, em silencio.
 //
-// v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos novos. Sem
-// o bump, o admin continuaria lendo do Redis, ate o TTL, um payload da forma
-// antiga, e o painel novo renderizaria sem os destinos internos sem nada
-// acusar. Chave nova invalida por construcao.
-const ATENCAO_CACHE_KEY = "admincache:attention:v2";
+// v3: o payload passou a usar fatos locais, estados por fonte e acoes fechadas.
+// Sem o bump, o admin poderia ler do Redis um payload anterior e atribuir a ele
+// uma semantica que nao possui. Chave nova invalida por construcao.
+const ATENCAO_CACHE_KEY = "admincache:attention:v3";
 
-router.get("/attention", async (_req, res, next) => {
-  try {
-    const { result, computedAt } = await getOrCompute(
-      ATENCAO_CACHE_KEY,
-      ATENCAO_CACHE_TTL_S,
-      async () => ({
-        result: await montarPainelDeAtencao(),
-        computedAt: new Date().toISOString(),
-      }),
+export function attentionContractRequested(value: unknown): boolean {
+  return value === "3";
+}
+
+export function attentionRefreshRequested(value: unknown): boolean | null {
+  if (value === undefined) return false;
+  if (value === "1") return true;
+  return null;
+}
+
+function assertAttentionContractV3(value: unknown) {
+  if (!isAttentionContractV3(value)) {
+    throw createError(
+      500,
+      "attention_contract_invalid",
+      "O painel de atenção produziu um contrato inválido.",
     );
-    res.json({ data: result, computedAt });
+  }
+}
+
+export async function carregarAtencaoV3(options?: {
+  refresh?: boolean;
+  compute?: typeof montarPainelDeAtencao;
+}) {
+  const { result } = await getOrCompute(
+    ATENCAO_CACHE_KEY,
+    ATENCAO_CACHE_TTL_S,
+    async () => {
+      const result = await (options?.compute ?? montarPainelDeAtencao)();
+      assertAttentionContractV3(result);
+      return { result, computedAt: result.computedAt };
+    },
+    { refresh: options?.refresh === true },
+  );
+  assertAttentionContractV3(result);
+  return { data: result, computedAt: result.computedAt };
+}
+
+export async function attentionV3Handler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    if (!attentionContractRequested(req.query.contract)) {
+      return next(
+        createError(
+          409,
+          "attention_contract_mismatch",
+          "Contrato do painel de atenção incompatível. Atualize a página.",
+        ),
+      );
+    }
+    const refresh = attentionRefreshRequested(req.query.refresh);
+    if (refresh === null) {
+      return next(
+        createError(
+          400,
+          "attention_refresh_invalid",
+          "Parâmetro de atualização inválido.",
+        ),
+      );
+    }
+    res.json(await carregarAtencaoV3({ refresh }));
   } catch (err) {
     next(err);
   }
-});
+}
+
+router.get("/attention", attentionV3Handler);
 
 /**
  * Pagamentos orfaos ainda em aberto, TODOS eles.
  *
- * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. Porque o
- * painel mostra MENOS do que existe, e o corte e deliberado la: em
- * `server/lib/atencaoNecessaria.ts:634` ele pula quem nao tem
- * `expected_provider_subscription_id`, e em `:635` pula quem nao passa em
- * `orfaoAindaPedeAcao`. Os dois filtros fazem sentido para uma lista de
- * "aja agora": sem a chave esperada nao ha deep link para a Stripe, e o segundo
- * evita repetir um caso que ja se resolveu por outro caminho. O efeito colateral
- * e que as linhas descartadas ficavam SEM NENHUMA superficie: existiam na
- * tabela, ninguem as via, e nao havia como carimba-las como tratadas. Esta rota
- * e o lugar dessas, e por isso ela nao herda filtro nenhum: o unico criterio e
- * `resolved_at is null`.
+ * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. O painel
+ * e uma fila resumida, enquanto esta rota sustenta a lista operacional completa
+ * e seu detalhe. Ambos leem todos os casos localmente abertos; esta rota tambem
+ * fornece os campos protegidos necessarios para a tela financeira. Ela nao
+ * herda outro filtro: o unico criterio e `resolved_at is null`.
  *
  * SEM CACHE, ao contrario da `/attention`. Aquela responde "o que precisa de
  * atencao agora" e tolera 60s de atraso; esta e a lista sobre a qual se age, e

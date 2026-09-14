@@ -61,6 +61,35 @@ export type AiUsageByTool = Record<
  */
 export const AI_STATS_JANELA_DIAS = 30;
 
+const CUSTO_DECIMAL_NAO_NEGATIVO = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+/** Regra unica para custo medido, compartilhada pela aba IA e pela Visao. */
+export function classificarCustoDeIa(
+  status: string | null,
+  value: unknown,
+): { custoMedido: number; semCustoMedido: boolean } {
+  let parsed: number | null = null;
+  if (
+    typeof value === "string" &&
+    value === value.trim() &&
+    CUSTO_DECIMAL_NAO_NEGATIVO.test(value)
+  ) {
+    const number = Number(value);
+    if (Number.isFinite(number)) parsed = number;
+  } else if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0
+  ) {
+    parsed = value;
+  }
+  const custoMedido = parsed !== null && parsed > 0 ? parsed : 0;
+  return {
+    custoMedido,
+    semCustoMedido: status === "success" && custoMedido === 0,
+  };
+}
+
 /** Inicio da janela da aba IA, em ISO. Fonte unica: ver o bloco acima. */
 export function inicioDaJanelaDeIa(agora: Date = new Date()): string {
   return new Date(
@@ -94,11 +123,9 @@ export async function agregarUsoDeIa(desdeIso: string): Promise<AiUsageByTool> {
     stats[log.tool].calls += 1;
     const sucesso = log.status === "success";
     if (sucesso) stats[log.tool].success += 1;
-    const custo = parseFloat(log.cost_estimate || "0");
-    // NaN de `cost_estimate` ilegivel nao pode contaminar a soma inteira: ele
-    // conta como nao medido, que e o que de fato e.
-    if (Number.isFinite(custo)) stats[log.tool].cost += custo;
-    if (sucesso && (!Number.isFinite(custo) || custo === 0)) {
+    const custo = classificarCustoDeIa(log.status, log.cost_estimate);
+    stats[log.tool].cost += custo.custoMedido;
+    if (custo.semCustoMedido) {
       stats[log.tool].semCustoMedido += 1;
     }
   }
@@ -209,9 +236,9 @@ export async function custoDeIaPorUsuario(
     alvo.calls += 1;
     const sucesso = log.status === "success";
     if (sucesso) alvo.success += 1;
-    const custo = parseFloat(log.cost_estimate || "0");
-    if (Number.isFinite(custo)) alvo.cost += custo;
-    if (sucesso && (!Number.isFinite(custo) || custo === 0)) {
+    const custo = classificarCustoDeIa(log.status, log.cost_estimate);
+    alvo.cost += custo.custoMedido;
+    if (custo.semCustoMedido) {
       alvo.semCustoMedido += 1;
     }
   }

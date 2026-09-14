@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
@@ -7,11 +8,14 @@ import { ActiveUsersChart } from "./ActiveUsersChart";
 import { UserDetailModal } from "./UserDetailModal";
 import { UserListHeader, UserListRow } from "./UserListRow";
 import type { UserListFilter, UserRow, UsersListPayload } from "./types";
+import { isUuid } from "@shared/adminAttention";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 
 export function UsersDashboard() {
+  const searchParams = useSearch();
+  const [, setLocation] = useLocation();
   const [rows, setRows] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(true);
@@ -23,6 +27,21 @@ export function UsersDashboard() {
   const [page, setPage] = useState(1);
 
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const requestedUser = new URLSearchParams(searchParams).get("user");
+  const invalidRequestedUser = requestedUser !== null && !isUuid(requestedUser);
+
+  useEffect(() => {
+    setActiveUserId(
+      requestedUser !== null && isUuid(requestedUser) ? requestedUser : null,
+    );
+  }, [requestedUser]);
+
+  const closeUser = () => {
+    setActiveUserId(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("user");
+    setLocation(`/admin?${params.toString()}`);
+  };
 
   // Debounce da busca: so dispara a query depois da pausa na digitacao. Mudar a
   // busca volta para a pagina 1 (a pagina atual pode nao existir no resultado).
@@ -142,6 +161,16 @@ export function UsersDashboard() {
         </div>
       </div>
 
+      {invalidRequestedUser ? (
+        <p
+          data-testid="users-context-error"
+          className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-sm font-bold text-amber-900"
+        >
+          O identificador de usuário do link é inválido. A lista continua
+          disponível.
+        </p>
+      ) : null}
+
       <article
         data-testid="users-list"
         className="card-brutal overflow-hidden rounded-3xl bg-white"
@@ -216,10 +245,7 @@ export function UsersDashboard() {
       ) : null}
 
       {activeUserId ? (
-        <UserDetailModal
-          userId={activeUserId}
-          onClose={() => setActiveUserId(null)}
-        />
+        <UserDetailModal userId={activeUserId} onClose={closeUser} />
       ) : null}
     </div>
   );

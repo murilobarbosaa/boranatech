@@ -1186,3 +1186,162 @@ describe("REGRESSÃO: série de 'tudo' começa no PRIMEIRO cadastro", () => {
     );
   });
 });
+
+describe("GET /attention contrato v3", () => {
+  it("recusa consumidor sem negociação explícita", async () => {
+    base();
+    const response = await chamarAdmin("GET", "/attention");
+    expect(response.status).toBe(409);
+  });
+
+  it("serve contrato v3 e declara fontes não coletadas sem zero", async () => {
+    base();
+    const response = await chamarAdmin("GET", "/attention?contract=3");
+    expect(response.status).toBe(200);
+    expect(response.body.data.contractVersion).toBe(3);
+    expect(response.body.data.computedAt).toBe(response.body.computedAt);
+    expect(response.body.data.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "failed_charges_reconciled",
+          status: "not_collected",
+        }),
+        expect.objectContaining({
+          source: "failed_payouts_reconciled",
+          status: "not_collected",
+        }),
+      ]),
+    );
+  });
+
+  it("recusa refresh diferente do sinal fechado 1", async () => {
+    base();
+    const response = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=true",
+    );
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("attention_refresh_invalid");
+  });
+});
+
+describe("regressão integrada de custo medido na Visão", () => {
+  function aiLog(cost_estimate: string | null) {
+    return {
+      id: "ai-consistency",
+      user_id: "u1",
+      tool: "invalid-parser",
+      status: "success",
+      cost_estimate,
+      created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
+    };
+  }
+
+  function prepararCustoIntegrado(costEstimate: string | null) {
+    base({
+      profiles: {
+        rows: [
+          {
+            user_id: "u1",
+            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
+          },
+        ],
+        count: 1,
+      },
+      ai_usage_logs: { rows: [aiLog(costEstimate)] },
+    });
+  }
+
+  it("recusa texto parcialmente parseável no card, séries, ferramenta e atenção", async () => {
+    prepararCustoIntegrado("0.25lixo");
+
+    const overview = await chamarAdmin("GET", "/overview?window=30");
+    const series = await chamarAdmin(
+      "GET",
+      "/overview-series?window=30&contract=3",
+    );
+    const attention = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=1",
+    );
+
+    expect(overview.status).toBe(200);
+    expect(series.status).toBe(200);
+    expect(attention.status).toBe(200);
+    expect(overview.body.data.cards.custoIa).toMatchObject({
+      valueUsd: 0,
+      chamadasSemCustoMedido: 1,
+    });
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "custoIaUsd",
+      ).total,
+    ).toBe(0);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "chamadasSemCustoMedido",
+      ).total,
+    ).toBe(1);
+    expect(series.body.data.ferramentas).toContainEqual(
+      expect.objectContaining({
+        tool: "invalid-parser",
+        custoUsd: 0,
+        semCustoMedido: 1,
+      }),
+    );
+    expect(attention.body.data.sources).toContainEqual(
+      expect.objectContaining({
+        source: "ai_usage_logs",
+        status: "partial",
+      }),
+    );
+    expect(
+      attention.body.data.items.some(
+        (item: { kind: string }) => item.kind === "ai_cost_spike",
+      ),
+    ).toBe(false);
+  });
+
+  it("mantém decimal válido reconciliado e sem lacuna", async () => {
+    prepararCustoIntegrado("0.25");
+
+    const overview = await chamarAdmin("GET", "/overview?window=30");
+    const series = await chamarAdmin(
+      "GET",
+      "/overview-series?window=30&contract=3",
+    );
+    const attention = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=1",
+    );
+
+    expect(overview.status).toBe(200);
+    expect(series.status).toBe(200);
+    expect(attention.status).toBe(200);
+    expect(overview.body.data.cards.custoIa.valueUsd).toBeCloseTo(0.25, 10);
+    expect(overview.body.data.cards.custoIa.chamadasSemCustoMedido).toBe(0);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "custoIaUsd",
+      ).total,
+    ).toBeCloseTo(0.25, 10);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "chamadasSemCustoMedido",
+      ).total,
+    ).toBe(0);
+    expect(series.body.data.ferramentas).toContainEqual(
+      expect.objectContaining({
+        tool: "invalid-parser",
+        custoUsd: 0.25,
+        semCustoMedido: 0,
+      }),
+    );
+    expect(attention.body.data.sources).toContainEqual(
+      expect.objectContaining({
+        source: "ai_usage_logs",
+        status: "available",
+      }),
+    );
+  });
+});
