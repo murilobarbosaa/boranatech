@@ -1,9 +1,25 @@
 import { useEffect, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
 import {
+  BadgeCheck,
+  CalendarDays,
+  Check,
+  Copy,
+  DollarSign,
+  Hourglass,
+  Link2Off,
+  MousePointerClick,
+  Percent,
+  ShoppingBag,
+} from "lucide-react";
+import {
+  Area,
+  Bar,
+  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -35,15 +51,18 @@ import type {
 } from "@shared/creatorDashboard";
 
 // O PAINEL DE CREATOR, sem buscar dado nenhum. Quem busca e quem monta: a
-// pagina /creator (GET /api/creator/me) hoje, e o admin
-// (GET /api/admin/creators/:userId) no lote 04, com `visao="admin"`. O mesmo
-// componente serve os dois porque o payload e o mesmo; a visao admin so
-// acrescenta e-mail, notas e revogacao, que o servidor nem envia na visao
-// creator.
+// pagina /creator (GET /api/creator/me) e o admin
+// (GET /api/admin/creators/:userId), com `visao="admin"`. O mesmo componente
+// serve os dois porque o payload e o mesmo; a visao admin so acrescenta
+// e-mail, notas e revogacao, que o servidor nem envia na visao creator.
 //
 // DUAS FONTES, NUNCA NA MESMA FRASE: os tiles de "Desde o inicio" vem de
 // `totais` (contadores); a serie, o periodo e o delta vem de `eventos`, que
 // existem desde `events_since`, e a tela diz essa data ao lado da serie.
+//
+// SERIE CURTA: com 1 ou 2 dias o grafico vira barras. Uma linha com um ponto so
+// fica um ponto solto no meio do vazio, e a leitura some; barras dizem o valor
+// de cada dia sem precisar de vizinho.
 
 type Visao = "creator" | "admin";
 
@@ -53,6 +72,9 @@ const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> = {
   "90d": 90,
 };
 
+// A partir de quantos dias a serie volta a ser linha.
+const DIAS_MINIMOS_PARA_LINHA = 3;
+
 // TODO(Ana)
 const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
   { valor: "7d", rotulo: "7 dias" },
@@ -60,6 +82,36 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
   { valor: "90d", rotulo: "90 dias" },
   { valor: "all", rotulo: "Tudo" },
 ];
+
+const ICONE = "h-3.5 w-3.5";
+
+const SELO =
+  "inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-xs font-black";
+
+const SELO_NEUTRO = `${SELO} border-slate-300 bg-slate-50 text-slate-600`;
+
+const MARGEM_DO_GRAFICO = { top: 8, right: 8, bottom: 0, left: -8 };
+
+const EIXO = {
+  fontSize: 11,
+  fontWeight: 700,
+  fill: "var(--muted-foreground)",
+};
+
+const TOOLTIP: CSSProperties = {
+  borderRadius: 12,
+  border: "2px solid var(--bnt-ink)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const LEGENDA: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  paddingBottom: 8,
+};
 
 /** Instante ISO em dd/mm/aaaa, pelo dia civil de Brasilia. */
 function dataCurta(iso: string | null | undefined): string {
@@ -71,8 +123,12 @@ function inteiro(valor: number): string {
   return valor.toLocaleString("pt-BR");
 }
 
+function decimal(valor: number): string {
+  return valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
+
 function percentual(valor: number): string {
-  return `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+  return `${decimal(valor)}%`;
 }
 
 /**
@@ -100,7 +156,26 @@ export function deltaPermitido(
   return Date.parse(eventsSince) < Date.parse(inicioAnterior);
 }
 
-function BotaoCopiar({ texto }: { texto: string }) {
+function TituloDeSecao({
+  id,
+  children,
+  selo,
+}: {
+  id: string;
+  children: ReactNode;
+  selo?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <h3 id={id} className="font-display text-xl font-black text-slate-950">
+        {children}
+      </h3>
+      {selo}
+    </div>
+  );
+}
+
+function CampoDoLink({ link }: { link: string }) {
   const [estado, setEstado] = useState<"parado" | "copiado" | "falhou">(
     "parado",
   );
@@ -113,7 +188,7 @@ function BotaoCopiar({ texto }: { texto: string }) {
 
   async function copiar() {
     try {
-      await navigator.clipboard.writeText(texto);
+      await navigator.clipboard.writeText(link);
       setEstado("copiado");
     } catch {
       setEstado("falhou");
@@ -121,25 +196,30 @@ function BotaoCopiar({ texto }: { texto: string }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={() => void copiar()}
-        className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
-      >
-        {estado === "copiado" ? (
-          <Check className="h-3.5 w-3.5" />
-        ) : (
-          <Copy className="h-3.5 w-3.5" />
-        )}
-        {/* TODO(Ana) */}
-        {estado === "copiado" ? "Copiado" : "Copiar"}
-      </button>
+    <div className="mt-3">
+      <div className="flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-50 py-1.5 pl-3 pr-1.5">
+        <span className="min-w-0 flex-1 break-all font-mono text-xs font-bold text-slate-700 sm:text-sm">
+          {link}
+        </span>
+        <button
+          type="button"
+          onClick={() => void copiar()}
+          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+        >
+          {estado === "copiado" ? (
+            <Check className={ICONE} />
+          ) : (
+            <Copy className={ICONE} />
+          )}
+          {/* TODO(Ana) */}
+          {estado === "copiado" ? "Copiado" : "Copiar"}
+        </button>
+      </div>
       {estado === "falhou" ? (
-        <span className="text-xs font-bold text-rose-700">
+        <p className="mt-1.5 text-xs font-bold text-rose-700">
           {/* TODO(Ana) */}
           Não deu para copiar. Selecione o link e copie à mão.
-        </span>
+        </p>
       ) : null}
     </div>
   );
@@ -152,13 +232,27 @@ function CartaoDoCodigo({
   codigo: CreatorDashboardCodigo;
   visao: Visao;
 }) {
+  const numeros = [
+    // TODO(Ana)
+    { rotulo: "Cliques", valor: inteiro(codigo.clicks) },
+    // TODO(Ana)
+    { rotulo: "Vendas", valor: inteiro(codigo.sales) },
+    // TODO(Ana)
+    { rotulo: "Receita", valor: formatarCentavos(codigo.revenue_cents) },
+    {
+      // TODO(Ana)
+      rotulo: "A receber",
+      valor: formatarCentavos(codigo.commission_due_cents),
+    },
+  ];
+
   return (
     <article
       data-testid={`creator-codigo-${codigo.code}`}
-      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
+      className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-display text-xl font-black text-slate-950">
+        <p className="font-mono text-2xl font-black tracking-wider text-slate-950 sm:text-3xl">
           {codigo.code}
         </p>
         {codigo.status !== "active" ? (
@@ -169,42 +263,30 @@ function CartaoDoCodigo({
         ) : null}
       </div>
 
-      <p className="mt-2 break-all text-sm font-bold text-slate-700">
-        {codigo.link}
-      </p>
-      <div className="mt-2">
-        <BotaoCopiar texto={codigo.link} />
+      <CampoDoLink link={codigo.link} />
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className={`${SELO} border-emerald-700 bg-emerald-50 text-emerald-900`}>
+          {/* TODO(Ana) */}
+          {codigo.discount_percent > 0
+            ? `${percentual(codigo.discount_percent)} de desconto para quem usar`
+            : "Sem desconto para quem usar"}
+        </span>
+        <span className={`${SELO} border-violet-700 bg-violet-50 text-violet-900`}>
+          {/* TODO(Ana) */}
+          {`Comissão de ${percentual(codigo.commission_percent)}`}
+        </span>
       </div>
 
-      <p className="mt-3 text-sm font-bold text-slate-700">
-        {/* TODO(Ana) */}
-        {codigo.discount_percent > 0
-          ? `${percentual(codigo.discount_percent)} de desconto para quem usar`
-          : "Sem desconto para quem usar"}
-        {" · "}
-        {/* TODO(Ana) */}
-        {`Comissão de ${percentual(codigo.commission_percent)}`}
-      </p>
-
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-        {[
-          // TODO(Ana)
-          { rotulo: "Cliques", valor: inteiro(codigo.clicks) },
-          // TODO(Ana)
-          { rotulo: "Vendas", valor: inteiro(codigo.sales) },
-          // TODO(Ana)
-          { rotulo: "Receita", valor: formatarCentavos(codigo.revenue_cents) },
-          {
-            // TODO(Ana)
-            rotulo: "A receber",
-            valor: formatarCentavos(codigo.commission_due_cents),
-          },
-        ].map((item) => (
-          <div key={item.rotulo}>
+      <dl className="mt-4 grid grid-cols-2 gap-y-3 rounded-2xl border-2 border-slate-200 bg-slate-50 py-3 sm:grid-cols-4 sm:divide-x-2 sm:divide-slate-200">
+        {numeros.map((item) => (
+          <div key={item.rotulo} className="px-3">
             <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
               {item.rotulo}
             </dt>
-            <dd className="font-black text-slate-950">{item.valor}</dd>
+            <dd className="font-black tabular-nums text-slate-950">
+              {item.valor}
+            </dd>
           </div>
         ))}
       </dl>
@@ -255,6 +337,144 @@ function SeletorDeJanela({
   );
 }
 
+function Grafico({
+  serie,
+}: {
+  serie: CreatorDashboard["eventos"]["serie"];
+}) {
+  const curta = serie.length < DIAS_MINIMOS_PARA_LINHA;
+  const temVendas = serie.some((dia) => dia.sales > 0);
+  const muitosDias = serie.length > 31;
+
+  return (
+    <div className="overflow-x-auto">
+      <div
+        data-testid="creator-grafico"
+        data-forma={curta ? "barras" : "linha"}
+        data-eixo-vendas={!curta && temVendas ? "sim" : "nao"}
+        className={`h-72 ${muitosDias ? "min-w-[40rem] sm:min-w-0" : ""}`}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          {curta ? (
+            <BarChart data={serie} margin={MARGEM_DO_GRAFICO}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="dia"
+                tickFormatter={rotuloDeDia}
+                tick={EIXO}
+                tickLine={false}
+                axisLine={{ stroke: "var(--border)" }}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={EIXO}
+                tickLine={false}
+                axisLine={false}
+                width={36}
+              />
+              <Tooltip labelFormatter={rotuloDeDia} contentStyle={TOOLTIP} />
+              <Legend
+                verticalAlign="top"
+                iconType="circle"
+                wrapperStyle={LEGENDA}
+              />
+              <Bar
+                dataKey="clicks"
+                // TODO(Ana)
+                name="Cliques"
+                fill="var(--chart-1)"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={56}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="sales"
+                // TODO(Ana)
+                name="Vendas"
+                fill="var(--chart-3)"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={56}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          ) : (
+            <ComposedChart data={serie} margin={MARGEM_DO_GRAFICO}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="dia"
+                tickFormatter={rotuloDeDia}
+                interval={intervaloDeRotulos(serie.length, 6)}
+                tick={EIXO}
+                tickLine={false}
+                axisLine={{ stroke: "var(--border)" }}
+              />
+              <YAxis
+                yAxisId="cliques"
+                allowDecimals={false}
+                tick={EIXO}
+                tickLine={false}
+                axisLine={false}
+                width={36}
+              />
+              {temVendas ? (
+                <YAxis
+                  yAxisId="vendas"
+                  orientation="right"
+                  allowDecimals={false}
+                  tick={{ ...EIXO, fill: "var(--chart-3)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={36}
+                />
+              ) : null}
+              <Tooltip labelFormatter={rotuloDeDia} contentStyle={TOOLTIP} />
+              <Legend
+                verticalAlign="top"
+                iconType="circle"
+                wrapperStyle={LEGENDA}
+              />
+              <Area
+                yAxisId="cliques"
+                type="monotone"
+                dataKey="clicks"
+                // TODO(Ana)
+                name="Cliques"
+                stroke="var(--chart-1)"
+                strokeWidth={2}
+                fill="var(--chart-1)"
+                fillOpacity={0.15}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+                isAnimationActive={false}
+              />
+              <Line
+                yAxisId={temVendas ? "vendas" : "cliques"}
+                type="monotone"
+                dataKey="sales"
+                // TODO(Ana)
+                name="Vendas"
+                stroke="var(--chart-3)"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          )}
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function Serie({
   painel,
   janela,
@@ -270,13 +490,14 @@ function Serie({
 
   if (eventos.events_since === null) {
     return (
-      <p
+      <div
         data-testid="creator-sem-eventos"
-        className="rounded-2xl border-2 border-dashed border-slate-300 px-4 py-6 text-center text-sm font-bold text-slate-600"
+        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 px-4 py-10 text-center text-sm font-bold text-slate-600"
       >
+        <MousePointerClick aria-hidden="true" className="h-7 w-7 text-slate-400" />
         {/* TODO(Ana) */}
         Ainda não registramos cliques no seu link.
-      </p>
+      </div>
     );
   }
 
@@ -287,7 +508,6 @@ function Serie({
     agoraMs,
   );
   const anterior = comDelta ? eventos.periodo_anterior : null;
-  const muitosDias = eventos.serie.length > 31;
 
   const linhasDoPeriodo: Array<{
     chave: keyof CreatorEventosSomas;
@@ -317,79 +537,33 @@ function Serie({
   ];
 
   return (
-    <div data-testid="creator-serie">
-      <SeletorDeJanela janela={janela} onChange={onJanelaChange} />
-      <p
-        data-testid="creator-eventos-desde"
-        className="mt-3 text-xs font-bold text-slate-500"
-      >
-        {/* TODO(Ana) */}
-        {`Eventos desde ${dataCurta(eventos.events_since)}`}
-      </p>
-
-      <div className="mt-3 overflow-x-auto">
-        <div
-          data-testid="creator-grafico"
-          className={`h-64 ${muitosDias ? "min-w-[40rem] sm:min-w-0" : ""}`}
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={eventos.serie}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="dia"
-                tickFormatter={rotuloDeDia}
-                interval={intervaloDeRotulos(eventos.serie.length, 6)}
-                tick={{ fontSize: 11, fontWeight: 700 }}
-              />
-              <YAxis
-                yAxisId="cliques"
-                allowDecimals={false}
-                tick={{ fontSize: 11, fontWeight: 700 }}
-              />
-              <YAxis
-                yAxisId="vendas"
-                orientation="right"
-                allowDecimals={false}
-                tick={{ fontSize: 11, fontWeight: 700 }}
-              />
-              <Tooltip labelFormatter={rotuloDeDia} />
-              <Line
-                yAxisId="cliques"
-                type="monotone"
-                dataKey="clicks"
-                // TODO(Ana)
-                name="Cliques"
-                stroke="var(--chart-1)"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Line
-                yAxisId="vendas"
-                type="monotone"
-                dataKey="sales"
-                // TODO(Ana)
-                name="Vendas"
-                stroke="var(--chart-3)"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+    <div data-testid="creator-serie" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SeletorDeJanela janela={janela} onChange={onJanelaChange} />
+        <span data-testid="creator-eventos-desde" className={SELO_NEUTRO}>
+          <CalendarDays aria-hidden="true" className={ICONE} />
+          {/* TODO(Ana) */}
+          {`Eventos desde ${dataCurta(eventos.events_since)}`}
+        </span>
       </div>
+
+      <Grafico serie={eventos.serie} />
 
       <dl
         data-testid="creator-periodo"
-        className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
       >
         {linhasDoPeriodo.map((linha) => (
-          <div key={linha.chave}>
+          <div
+            key={linha.chave}
+            className="rounded-2xl border-2 border-slate-200 bg-slate-50 px-3 py-2"
+          >
             <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
               {linha.rotulo}
             </dt>
-            <dd className="font-black text-slate-950">{linha.valor}</dd>
+            <dd className="font-display text-xl font-black tabular-nums text-slate-950">
+              {linha.valor}
+            </dd>
             {anterior ? (
               <DeltaBadge
                 atual={eventos.periodo[linha.chave]}
@@ -401,18 +575,26 @@ function Serie({
         ))}
       </dl>
 
-      <p className="mt-4 text-xs font-bold text-slate-500">
-        {/* TODO(Ana) */}
-        {`Último clique: ${
-          eventos.ultimo_click_at
-            ? relativeTime(eventos.ultimo_click_at, agoraMs)
-            : "nenhum ainda"
-        } · Última venda: ${
-          eventos.ultima_venda_at
-            ? relativeTime(eventos.ultima_venda_at, agoraMs)
-            : "nenhuma ainda"
-        }`}
-      </p>
+      <div className="flex flex-wrap gap-2">
+        <span data-testid="creator-ultimo-clique" className={SELO_NEUTRO}>
+          <MousePointerClick aria-hidden="true" className={ICONE} />
+          {/* TODO(Ana) */}
+          {`Último clique: ${
+            eventos.ultimo_click_at
+              ? relativeTime(eventos.ultimo_click_at, agoraMs)
+              : "nenhum ainda"
+          }`}
+        </span>
+        <span data-testid="creator-ultima-venda" className={SELO_NEUTRO}>
+          <ShoppingBag aria-hidden="true" className={ICONE} />
+          {/* TODO(Ana) */}
+          {`Última venda: ${
+            eventos.ultima_venda_at
+              ? relativeTime(eventos.ultima_venda_at, agoraMs)
+              : "nenhuma ainda"
+          }`}
+        </span>
+      </div>
     </div>
   );
 }
@@ -434,63 +616,79 @@ export function CreatorDashboardView({
   const nome = perfil.name ?? perfil.handle ?? "Creator";
 
   return (
-    <div data-testid="creator-painel" className="space-y-6">
-      <section className="card-brutal flex flex-col gap-4 rounded-3xl bg-white p-5 sm:flex-row sm:items-center sm:p-6">
-        <UserAvatar
-          name={nome}
-          avatarUrl={perfil.avatar_url}
-          mode={perfil.avatar_url ? "photo" : "icon"}
-          size="md"
-        />
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-black text-slate-950">
-            {nome}
-          </h2>
-          {perfil.handle ? (
-            <p className="text-sm font-bold text-slate-600">@{perfil.handle}</p>
-          ) : null}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              data-testid="creator-kind"
-              className="rounded-full border-2 border-sky-800 bg-sky-50 px-2.5 py-0.5 text-xs font-black text-sky-900"
-            >
-              {rotuloDoKind(creator.kind)}
-            </span>
-            <span className="text-xs font-bold text-slate-500">
+    <div data-testid="creator-painel" className="space-y-6 md:space-y-8">
+      <section className="card-brutal rounded-3xl bg-white p-6 md:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <UserAvatar
+            name={nome}
+            avatarUrl={perfil.avatar_url}
+            mode={perfil.avatar_url ? "photo" : "icon"}
+            size="xl"
+          />
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
               {/* TODO(Ana) */}
-              {`Creator desde ${dataCurta(creator.granted_at)}`}
-            </span>
-            {visao === "admin" && creator.revoked_at ? (
-              <span
-                data-testid="creator-revogado"
-                className="rounded-full border-2 border-rose-700 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-800"
-              >
+              Creator da Bora na Tech
+            </p>
+            <h2 className="mt-2 font-display text-3xl font-black text-slate-950 md:text-4xl">
+              {nome}
+            </h2>
+            {perfil.handle ? (
+              <p className="mt-1 text-sm font-bold text-slate-600">
+                @{perfil.handle}
+              </p>
+            ) : null}
+            {visao === "creator" ? (
+              <p className="mt-2 max-w-xl text-sm font-semibold text-slate-600">
                 {/* TODO(Ana) */}
-                {`Revogado em ${dataCurta(creator.revoked_at)}`}
+                Seu link, seus números e o que você já gerou para a Bora na
+                Tech.
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span
+                data-testid="creator-kind"
+                className="rounded-full border-2 border-sky-800 bg-sky-50 px-2.5 py-0.5 text-xs font-black text-sky-900"
+              >
+                {rotuloDoKind(creator.kind)}
               </span>
+              <span className="text-xs font-bold text-slate-500">
+                {/* TODO(Ana) */}
+                {`Creator desde ${dataCurta(creator.granted_at)}`}
+              </span>
+              {visao === "admin" && creator.revoked_at ? (
+                <span
+                  data-testid="creator-revogado"
+                  className="rounded-full border-2 border-rose-700 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-800"
+                >
+                  {/* TODO(Ana) */}
+                  {`Revogado em ${dataCurta(creator.revoked_at)}`}
+                </span>
+              ) : null}
+            </div>
+            {visao === "admin" && perfil.email ? (
+              <p
+                data-testid="creator-email"
+                className="mt-2 break-all text-sm font-bold text-slate-700"
+              >
+                {perfil.email}
+              </p>
             ) : null}
           </div>
-          {visao === "admin" && perfil.email ? (
-            <p
-              data-testid="creator-email"
-              className="mt-2 break-all text-sm font-bold text-slate-700"
-            >
-              {perfil.email}
-            </p>
-          ) : null}
         </div>
       </section>
 
       {codigos.length === 0 ? (
         <section
           data-testid="creator-sem-codigo"
-          className="rounded-3xl border-2 border-dashed border-slate-400 bg-white p-6 text-center"
+          className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-slate-400 bg-white px-6 py-10 text-center"
         >
+          <Link2Off aria-hidden="true" className="h-8 w-8 text-slate-400" />
           <p className="font-display text-lg font-black text-slate-950">
             {/* TODO(Ana) */}
             Seu código de creator ainda não foi vinculado.
           </p>
-          <p className="mt-1 text-sm font-bold text-slate-600">
+          <p className="max-w-md text-sm font-bold text-slate-600">
             {/* TODO(Ana) */}O time da Bora na Tech vai vincular o código à sua
             conta e avisar você. Assim que isso acontecer, seus números aparecem
             aqui.
@@ -502,35 +700,39 @@ export function CreatorDashboardView({
             // TODO(Ana)
             nome="Seus números"
           >
-            <section aria-labelledby="creator-totais-titulo">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3
-                  id="creator-totais-titulo"
-                  className="font-display text-lg font-black text-slate-950"
-                >
-                  {/* TODO(Ana) */}
-                  Seus números
-                </h3>
-                <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                  {/* TODO(Ana) */}
-                  Desde o início
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+            <section aria-labelledby="creator-totais-titulo" className="space-y-4">
+              <TituloDeSecao
+                id="creator-totais-titulo"
+                selo={
+                  <span
+                    className={`${SELO} border-slate-900 bg-yellow-300 uppercase tracking-wide text-ink-on-accent`}
+                  >
+                    {/* TODO(Ana) */}
+                    Desde o início
+                  </span>
+                }
+              >
+                {/* TODO(Ana) */}
+                Seus números
+              </TituloDeSecao>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <CreatorMetricTile
                   testId="creator-tile-cliques"
+                  icone={<MousePointerClick className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Cliques"
                   valor={inteiro(totais.clicks)}
                 />
                 <CreatorMetricTile
                   testId="creator-tile-vendas"
+                  icone={<ShoppingBag className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Vendas"
                   valor={inteiro(totais.sales)}
                 />
                 <CreatorMetricTile
                   testId="creator-tile-conversao"
+                  icone={<Percent className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Conversão"
                   valor={
@@ -539,21 +741,30 @@ export function CreatorDashboardView({
                         "sem cliques ainda"
                       : percentual(totais.conversao_pct)
                   }
+                  detalhe={
+                    totais.conversao_pct === null
+                      ? undefined
+                      : // TODO(Ana)
+                        `${decimal(totais.conversao_pct)} vendas por 100 cliques`
+                  }
                 />
                 <CreatorMetricTile
                   testId="creator-tile-receita"
+                  icone={<DollarSign className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Receita gerada"
                   valor={formatarCentavos(totais.revenue_cents)}
                 />
                 <CreatorMetricTile
                   testId="creator-tile-a-receber"
+                  icone={<Hourglass className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Comissão a receber"
                   valor={formatarCentavos(totais.commission_due_cents)}
                 />
                 <CreatorMetricTile
                   testId="creator-tile-paga"
+                  icone={<BadgeCheck className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Comissão paga"
                   valor={formatarCentavos(totais.commission_paid_cents)}
@@ -566,15 +777,14 @@ export function CreatorDashboardView({
             // TODO(Ana)
             nome="Seus links"
           >
-            <section aria-labelledby="creator-links-titulo">
-              <h3
-                id="creator-links-titulo"
-                className="font-display text-lg font-black text-slate-950"
-              >
+            <section aria-labelledby="creator-links-titulo" className="space-y-4">
+              <TituloDeSecao id="creator-links-titulo">
                 {/* TODO(Ana) */}
                 Seus links
-              </h3>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+              </TituloDeSecao>
+              <div
+                className={`grid gap-4 ${codigos.length > 1 ? "md:grid-cols-2" : ""}`}
+              >
                 {codigos.map((codigo) => (
                   <CartaoDoCodigo
                     key={codigo.id}
@@ -592,23 +802,18 @@ export function CreatorDashboardView({
           >
             <section
               aria-labelledby="creator-serie-titulo"
-              className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
+              className="card-brutal space-y-4 rounded-3xl bg-white p-5 sm:p-6"
             >
-              <h3
-                id="creator-serie-titulo"
-                className="font-display text-lg font-black text-slate-950"
-              >
+              <TituloDeSecao id="creator-serie-titulo">
                 {/* TODO(Ana) */}
                 Cliques e vendas por dia
-              </h3>
-              <div className="mt-3">
-                <Serie
-                  painel={painel}
-                  janela={janela}
-                  onJanelaChange={onJanelaChange}
-                  agoraMs={agoraMs}
-                />
-              </div>
+              </TituloDeSecao>
+              <Serie
+                painel={painel}
+                janela={janela}
+                onJanelaChange={onJanelaChange}
+                agoraMs={agoraMs}
+              />
             </section>
           </BlocoBoundary>
         </>

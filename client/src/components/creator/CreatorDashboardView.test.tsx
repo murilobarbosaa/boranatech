@@ -241,9 +241,14 @@ describe("CreatorDashboardView: serie e delta", () => {
     expect(screen.getByTestId("creator-eventos-desde").textContent).toBe(
       "Eventos desde 10/09/2026",
     );
-    expect(
-      screen.getByText("Último clique: há 3 dias · Última venda: há 5 dias"),
-    ).toBeTruthy();
+    // Ultimo clique e ultima venda sao dois selos desde o lote 05, e nao mais
+    // uma frase unida por ponto.
+    expect(screen.getByTestId("creator-ultimo-clique").textContent).toBe(
+      "Último clique: há 3 dias",
+    );
+    expect(screen.getByTestId("creator-ultima-venda").textContent).toBe(
+      "Última venda: há 5 dias",
+    );
   });
 
   it("delta aparece quando os eventos ja existiam no inicio do periodo anterior", () => {
