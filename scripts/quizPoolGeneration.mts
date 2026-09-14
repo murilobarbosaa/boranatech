@@ -20,6 +20,10 @@ import {
 } from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { conferirCodigo, type Executor } from "./verifyQuizPoolByExecution.mts";
+import {
+  capabilityOf,
+  LANGUAGE_CAPABILITIES,
+} from "./languageCapabilities.mts";
 
 export const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 export const MAX_PER_FONTE = 3;
@@ -415,7 +419,9 @@ export function buildCodeRules(codeLanguages: string[]): string {
     // Em Python a regra geral "sem import" contradizia a excecao de import da
     // lista, e o modelo passou a omitir o import de modulo permitido
     // (python-int-13 do Lote 06d). A regra de js e ts fica igual.
-    ...(codeLanguages.includes("python")
+    ...(codeLanguages.some(
+      (lang) => capabilityOf(lang).importRule === "stdlib-allowlist",
+    )
       ? [
           "- Trecho autocontido: nada de arquivo (open, leitura ou escrita), rede, entrada do usuario, aleatoriedade, data ou hora; so a linguagem e os modulos da lista abaixo.",
           `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo. Se o trecho usa um modulo da lista, o import aparece no proprio trecho (json.dumps sem import json lanca NameError). JSON sempre sobre texto, com json.dumps e json.loads; json.dump e json.load pedem arquivo e sao proibidos.`,
@@ -519,7 +525,10 @@ const DASH_RE = /\u2014|\u2013/;
 // so exporta roda em silencio e so faz sentido com um importador, e foi a
 // cerca de export de modulos.esm que manteve a folha como material no 04d,
 // com o modelo escrevendo import em todas as cinco tentativas da secao.
-export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
+// Derivada de LANGUAGE_CAPABILITIES: toda linguagem que tem regra de import.
+export const IMPORT_FREE_LANGUAGES = Object.keys(LANGUAGE_CAPABILITIES).filter(
+  (lang) => LANGUAGE_CAPABILITIES[lang].importRule !== "nao-se-aplica",
+);
 // Em Python, import da biblioteca padrao e legitimo num trecho autocontido,
 // e a regra unica de "sem import" (Lote 05) proibia a palavra. Lista fechada
 // de modulos deterministas e sem ambiente: fora dela ficam random, datetime,
@@ -570,9 +579,11 @@ export function externalDependency(
   const palavra = EXTERNAL_WORD_RE.exec(code);
   if (palavra) return `usa ${palavra[1]}; o trecho precisa rodar sozinho`;
   if (RELATIVE_IMPORT_RE.test(code)) return "importa modulo relativo";
-  const python = codeLanguages.includes("python");
+  const allowlist = codeLanguages.some(
+    (lang) => capabilityOf(lang).importRule === "stdlib-allowlist",
+  );
   for (const linha of code.split("\n")) {
-    if (!python) {
+    if (!allowlist) {
       if (/\bimport\b/.test(linha)) {
         return "usa import; em js e ts o trecho nao importa nada";
       }

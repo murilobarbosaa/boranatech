@@ -38,20 +38,19 @@ import {
   type QuizQuestion,
 } from "../shared/roadmapQuiz/types";
 
+import { capabilityOf, type Runner } from "./languageCapabilities.mts";
+
 const TIMEOUT_MS = 10000;
 const ALTERNATIVAS: QuizAlternativaId[] = ["a", "b", "c", "d"];
 
-export interface Runner {
-  command: string;
-  ext: string;
-}
+export type { Runner };
 
 // ---------- puros ----------
 
+// Runner lido de LANGUAGE_CAPABILITIES: null quando a linguagem nao executa
+// aqui; linguagem fora do mapa lanca, porque e erro de configuracao.
 export function runnerFor(linguagem: string): Runner | null {
-  if (linguagem === "js") return { command: "node", ext: ".mjs" };
-  if (linguagem === "python") return { command: "python3", ext: ".py" };
-  return null;
+  return capabilityOf(linguagem).runner;
 }
 
 // Quebras normalizadas para \n, espacos das pontas de cada linha e do todo
