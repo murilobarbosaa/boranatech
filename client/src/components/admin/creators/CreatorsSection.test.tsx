@@ -53,7 +53,9 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
 }));
 
 import { AdminApiError } from "@/lib/adminApi";
+import { limparChavesDeSecao } from "@/components/admin/tasks/taskViewState";
 import { CreatorsSection } from "./CreatorsSection";
+import { CHAVES_DA_ABA_CREATORS } from "./creatorsUrlKeys";
 
 const UUID_A = "3f2b8c1e-7a4d-4e2b-9c1a-5d6e7f8a9b0c";
 const UUID_B = "8d1e2f3a-4b5c-4d6e-8f7a-9b0c1d2e3f4a";
@@ -395,5 +397,49 @@ describe("painel de um creator", () => {
     expect(await screen.findByTestId("creators-link-invalido")).toBeTruthy();
     expect(await screen.findByTestId("creators-quadro")).toBeTruthy();
     expect(chamadas().some((p) => p.includes("/creators/lixo"))).toBe(false);
+  });
+});
+
+describe("paridade com limparChavesDeSecao", () => {
+  it("toda chave que a aba escreve na URL sai ao trocar de aba, e so ela", async () => {
+    // Dirige a aba de verdade (pilulas e clique na linha) e le a URL que ela
+    // produziu, em vez de confiar na lista: uma chave nova escrita pela aba e
+    // esquecida na lista deixa este teste vermelho.
+    rotear();
+    const { hook, history } = memoryLocation({
+      path: "/admin?section=creators&window=30d",
+      record: true,
+    });
+    render(
+      <Router hook={hook}>
+        <CreatorsSection />
+      </Router>,
+    );
+    await screen.findByTestId("creators-quadro");
+
+    fireEvent.click(
+      within(
+        screen.getByRole("radiogroup", { name: "Status da concessão" }),
+      ).getByRole("radio", { name: "Revogados" }),
+    );
+    await screen.findByTestId("creators-quadro");
+    fireEvent.click(
+      within(
+        screen.getByRole("radiogroup", { name: "Tipo de creator" }),
+      ).getByRole("radio", { name: "Afiliados" }),
+    );
+    fireEvent.click(await screen.findByTestId(`creators-linha-${UUID_A}`));
+    await screen.findByTestId("view-mock");
+
+    const caminhos = history ?? [];
+    const ultimo = caminhos[caminhos.length - 1] ?? "";
+    const search = ultimo.slice(ultimo.indexOf("?"));
+
+    const escritas: string[] = [];
+    new URLSearchParams(search).forEach((_valor, chave) => {
+      if (chave !== "section" && chave !== "window") escritas.push(chave);
+    });
+    expect(escritas.sort()).toEqual([...CHAVES_DA_ABA_CREATORS].sort());
+    expect(limparChavesDeSecao(search)).toBe("?section=creators&window=30d");
   });
 });

@@ -1,6 +1,7 @@
 import { EMPTY_FILTERS, type GroupBy, type TaskFilters } from "./taskFilters";
 import type { DueFilter, OrigemFilter } from "./taskFilters";
 import type { TaskPriority, TaskType } from "./types";
+import { CHAVES_DA_ABA_CREATORS } from "@/components/admin/creators/creatorsUrlKeys";
 
 // Estado da tela (busca, filtros, agrupamento, visao, arquivadas) na query
 // string, convivendo com `?section=` e `?task=`.
@@ -165,8 +166,9 @@ export const CHAVES_DA_ABA_TAREFAS = [
 export function limparChavesDeSecao(search: string): string {
   const params = new URLSearchParams(search);
   for (const chave of CHAVES_DA_ABA_TAREFAS) params.delete(chave);
-  // Filtros e creator aberto da aba Creators (lidos em CreatorsSection.tsx).
-  for (const chave of ["status", "kind", "creator"]) params.delete(chave);
+  // Filtros e creator aberto da aba Creators. A lista mora em
+  // creatorsUrlKeys.ts, a mesma que CreatorsSection usa para ler e escrever.
+  for (const chave of CHAVES_DA_ABA_CREATORS) params.delete(chave);
   const query = params.toString();
   return query ? `?${query}` : "";
 }

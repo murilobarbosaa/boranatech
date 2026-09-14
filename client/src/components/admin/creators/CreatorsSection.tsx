@@ -25,6 +25,8 @@ import {
   type CreatorDashboardJanela,
 } from "@shared/creatorDashboard";
 
+import { CHAVES_DA_URL_DE_CREATORS as CHAVE } from "./creatorsUrlKeys";
+
 // ABA CREATORS DO ADMIN: resumo, quadro paginado e o painel de um creator.
 //
 // A URL guarda os filtros (`status`, `kind`) e o creator aberto (`creator`),
@@ -573,15 +575,15 @@ export function CreatorsSection() {
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(search);
 
-  const statusDaUrl = params.get("status");
-  const kindDaUrl = params.get("kind");
+  const statusDaUrl = params.get(CHAVE.status);
+  const kindDaUrl = params.get(CHAVE.kind);
   const status: CreatorBoardStatus = isCreatorBoardStatus(statusDaUrl)
     ? statusDaUrl
     : "active";
   const kind: CreatorBoardKind = isCreatorBoardKind(kindDaUrl)
     ? kindDaUrl
     : "all";
-  const creatorDaUrl = params.get("creator");
+  const creatorDaUrl = params.get(CHAVE.creator);
   const creatorAberto =
     creatorDaUrl !== null && isUuid(creatorDaUrl) ? creatorDaUrl : null;
   const creatorInvalido = creatorDaUrl !== null && creatorAberto === null;
@@ -624,7 +626,7 @@ export function CreatorsSection() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => trocarParametro("creator", null)}
+              onClick={() => trocarParametro(CHAVE.creator, null)}
               className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
               {/* TODO(Ana) */}
@@ -653,14 +655,14 @@ export function CreatorsSection() {
               rotulo="Status da concessão"
               opcoes={OPCOES_DE_STATUS}
               valor={status}
-              onChange={(valor) => trocarParametro("status", valor)}
+              onChange={(valor) => trocarParametro(CHAVE.status, valor)}
             />
             <Pilulas
               // TODO(Ana)
               rotulo="Tipo de creator"
               opcoes={OPCOES_DE_KIND}
               valor={kind}
-              onChange={(valor) => trocarParametro("kind", valor)}
+              onChange={(valor) => trocarParametro(CHAVE.kind, valor)}
             />
           </div>
           <BlocoBoundary
@@ -674,7 +676,7 @@ export function CreatorsSection() {
               onPage={(proxima) =>
                 setPagina({ chave: chaveDoFiltro, page: proxima })
               }
-              onAbrir={(userId) => trocarParametro("creator", userId)}
+              onAbrir={(userId) => trocarParametro(CHAVE.creator, userId)}
             />
           </BlocoBoundary>
         </div>
