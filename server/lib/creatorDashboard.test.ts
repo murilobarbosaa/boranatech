@@ -180,7 +180,6 @@ const EVENTOS = [
 ];
 
 const INICIO_7D = "2026-09-14T03:00:00.000Z";
-const FIM = "2026-09-21T03:00:00.000Z";
 const INICIO_ANTERIOR_7D = "2026-09-07T03:00:00.000Z";
 
 const SERIE_7D: LinhaSerie[] = [
