@@ -136,6 +136,46 @@ for (const tabela of TABELAS_PENDENTES) {
   if (cols) COLUNAS_POR_TABELA.set(tabela, cols);
 }
 
+/**
+ * Tabelas RENOMEADAS por migration ainda não refletida nos tipos.
+ *
+ * O nome novo herda as colunas que os tipos conhecem sob o nome velho, e o nome
+ * velho SAI do mapa: um `.from("influencers")` esquecido no código depois do
+ * rename precisa quebrar aqui, como quebraria no banco, e não passar calado por
+ * estar nos tipos antigos. Coluna acrescentada pela mesma migration entra por
+ * `COLUNAS_PENDENTES`, conferida contra o `ADD COLUMN`.
+ *
+ * Conferida, não confiada: a entrada só vale se alguma migration do repositório
+ * declarar o `RENAME TO` daquele par. Esvaziar esta lista é o normal depois de
+ * aplicar a migration e rodar `pnpm db:types`.
+ */
+export const TABELAS_RENOMEADAS_PENDENTES: Array<{ de: string; para: string }> =
+  [
+    // 20260913120000_creators_and_creator_events.sql
+    { de: "influencers", para: "creators" },
+  ];
+
+export function renameDeclaradoEmMigration(de: string, para: string): boolean {
+  const dir = resolve(process.cwd(), "supabase/migrations");
+  const re = new RegExp(
+    `ALTER TABLE\\s+(?:IF EXISTS\\s+)?(?:ONLY\\s+)?(?:public\\.)?"?${de}"?\\s+RENAME TO\\s+"?${para}"?`,
+    "i",
+  );
+  for (const arquivo of readdirSync(dir)) {
+    if (!arquivo.endsWith(".sql")) continue;
+    if (re.test(readFileSync(resolve(dir, arquivo), "utf8"))) return true;
+  }
+  return false;
+}
+
+for (const { de, para } of TABELAS_RENOMEADAS_PENDENTES) {
+  const cols = COLUNAS_POR_TABELA.get(de);
+  if (!cols || COLUNAS_POR_TABELA.has(para)) continue;
+  if (!renameDeclaradoEmMigration(de, para)) continue;
+  COLUNAS_POR_TABELA.set(para, cols);
+  COLUNAS_POR_TABELA.delete(de);
+}
+
 /** Colunas de relacionamento que o PostgREST aceita no select e não são colunas. */
 const EMBEDS_CONHECIDOS = new Set(["plans"]);
 
@@ -190,6 +230,10 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
+  // Declarada em `20260913120000_creators_and_creator_events.sql`, a mesma que
+  // renomeia influencers para creators (ver TABELAS_RENOMEADAS_PENDENTES). A
+  // migration e de aplicacao manual pela Ana.
+  { tabela: "creators", coluna: "kind" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.

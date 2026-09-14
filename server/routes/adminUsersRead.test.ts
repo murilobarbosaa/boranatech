@@ -203,7 +203,12 @@ describe("GET /users: enriquecimento chega na resposta", () => {
           },
         ],
       },
-      influencers: { rows: [{ user_id: "influ" }, { user_id: "ambos" }] },
+      creators: {
+        rows: [
+          { user_id: "influ", kind: "influencer" },
+          { user_id: "ambos", kind: "influencer" },
+        ],
+      },
     });
 
     const r = await chamarAdmin("GET", "/users");
@@ -241,13 +246,13 @@ describe("GET /users: enriquecimento chega na resposta", () => {
     montar({
       profiles: { rows: linhas, count: 50 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
 
     await chamarAdmin("GET", "/users");
 
     expect(estado.double.de("subscriptions")).toHaveLength(1);
-    expect(estado.double.de("influencers")).toHaveLength(1);
+    expect(estado.double.de("creators")).toHaveLength(1);
   });
 
   it("falha do enriquecimento vira erro, não lista com todo mundo como não-Pro", async () => {
@@ -265,19 +270,27 @@ describe("GET /users: enriquecimento chega na resposta", () => {
         count: 1,
       },
       subscriptions: { error: { message: "timeout" } },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
 
     const r = await chamarAdmin("GET", "/users");
     expect(r.status).toBeGreaterThanOrEqual(400);
   });
 
-  it("os 5 filtros consultam o que devem", async () => {
-    for (const filtro of ["all", "pro", "not_pro", "influencers", "ativo"]) {
+  it("os 7 filtros consultam o que devem", async () => {
+    for (const filtro of [
+      "all",
+      "pro",
+      "not_pro",
+      "influencers",
+      "afiliados",
+      "creators",
+      "ativo",
+    ]) {
       montar({
         profiles: { rows: [], count: 0 },
         subscriptions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
       });
       const r = await chamarAdmin(
         "GET",
@@ -310,7 +323,7 @@ describe("GET /users: enriquecimento chega na resposta", () => {
     montar({
       profiles: { rows: [], count: 0 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
     await chamarAdmin("GET", "/users");
     expect(estado.double.de("profiles")).toHaveLength(0);
@@ -348,7 +361,7 @@ describe("GET /users: area e total pago", () => {
       // O enriquecimento de Pro roda em toda chamada e nao e o objeto destes
       // testes: entra vazio para nao virar ruido, e quem precisar sobrescreve.
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       ...over,
     });
   }
@@ -415,7 +428,7 @@ describe("GET /users: area e total pago", () => {
         count: 3,
       },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
 
     const r = await chamarAdmin("GET", "/users?filter=ativo");
@@ -450,7 +463,7 @@ describe("GET /users: area e total pago", () => {
         count: 1,
       },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
 
     const r = await chamarAdmin("GET", "/users");
@@ -469,7 +482,7 @@ describe("GET /users: area e total pago", () => {
       {
         profiles: { rows: [], count: 0 },
         subscriptions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         admin_refunds: { rows: [] },
         finance_transactions: { rows: [] },
       },
@@ -521,7 +534,7 @@ describe("GET /users: area e total pago", () => {
         count: 2,
       },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
 
     const r = await chamarAdmin("GET", "/users?search=ferreira");
@@ -544,7 +557,7 @@ describe("GET /users: area e total pago", () => {
     montar({
       profiles: { rows: [], count: 0 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
     await chamarAdmin("GET", "/users");
     expect(estado.double.rpcCalls.at(-1)?.args.p_search).toBeNull();
@@ -630,7 +643,7 @@ describe("GET /users: area e total pago", () => {
     montar({
       profiles: { rows: linhas, count: linhas.length },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       admin_refunds: { rows: [] },
     });
@@ -686,7 +699,7 @@ describe("GET /users/:id", () => {
         subscriptions: { rows: [] },
         subscription_cancellations: { rows: [] },
         finance_transactions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
       },
       {
         getUserById: async () => ({
@@ -718,13 +731,14 @@ describe("GET /users/:id", () => {
         subscriptions: { rows: [] },
         subscription_cancellations: { rows: [] },
         finance_transactions: { rows: [] },
-        influencers: {
+        creators: {
           rows: [
             {
               id: "i1",
               granted_at: "2026-01-01",
               granted_by: "admin-1",
               note: null,
+              kind: "influencer",
             },
           ],
         },
@@ -779,7 +793,7 @@ describe("GET /users/:id", () => {
           rows: [{ user_id: UID, id: "p1", email: "a@x", name: "A" }],
         },
         subscriptions: { rows: [PENDENTE, ATIVA] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },
@@ -800,7 +814,7 @@ describe("GET /users/:id", () => {
         count: 1,
       },
       subscriptions: { rows: [PENDENTE, ATIVA] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
     const lista = await chamarAdmin("GET", "/users");
     const linha = lista.body.data.items.find((i: any) => i.user_id === UID);
@@ -849,7 +863,7 @@ describe("GET /users/:id", () => {
             },
           ],
         },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },
@@ -1033,7 +1047,7 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
         subscriptions: { rows: [] },
         subscription_cancellations: { rows: [] },
         finance_transactions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
       },
       {
         getUserById: async () => ({
@@ -1049,7 +1063,7 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
       "subscriptions",
       "subscription_cancellations",
       "finance_transactions",
-      "influencers",
+      "creators",
     ]) {
       expect(filtrosDe(tabela), tabela).toContain("eq:user_id");
     }
@@ -1092,7 +1106,7 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
     const double = criarSupabaseDouble({
       profiles: { rows: [], count: 0 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
     });
     estado.double = double;
     await chamarAdmin("GET", "/users");
@@ -1137,7 +1151,7 @@ describe("boleto pendente no detalhe (Partes 3 e 4)", () => {
           },
         ],
       },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       subscription_cancellations: { rows: [] },
     };
@@ -1196,7 +1210,7 @@ describe("boleto pendente no detalhe (Partes 3 e 4)", () => {
       {
         profiles: { rows: [PERFIL_MIN] },
         subscriptions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },
@@ -1293,7 +1307,7 @@ describe("histórico de assinaturas no detalhe (Parte 5)", () => {
             }),
           ],
         },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },
@@ -1324,7 +1338,7 @@ describe("histórico de assinaturas no detalhe (Parte 5)", () => {
         subscriptions: {
           rows: [linha({ status: "active", current_period_end: FUTURO })],
         },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },
@@ -1339,7 +1353,7 @@ describe("histórico de assinaturas no detalhe (Parte 5)", () => {
       {
         profiles: { rows: [PERFIL_MIN] },
         subscriptions: { rows: [] },
-        influencers: { rows: [] },
+        creators: { rows: [] },
         finance_transactions: { rows: [] },
         subscription_cancellations: { rows: [] },
       },

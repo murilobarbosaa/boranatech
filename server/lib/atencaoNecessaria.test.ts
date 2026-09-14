@@ -25,14 +25,14 @@ const supaSpy = vi.hoisted(() => ({
   orfaos: [] as unknown[],
   aiLogs: [] as unknown[],
   despesas: [] as unknown[],
-  influencers: [] as unknown[],
+  creators: [] as unknown[],
   perfis: [] as unknown[],
   chamadasDeProfiles: 0,
   cancelamentos: [] as unknown[],
   erroSubscriptions: null as unknown,
   erroOrfaos: null as unknown,
   erroDespesas: null as unknown,
-  erroInfluencers: null as unknown,
+  erroCreators: null as unknown,
 }));
 
 vi.mock("./stripeClient", () => ({
@@ -89,14 +89,14 @@ vi.mock("./supabaseAdmin", () => {
         error: null,
       });
     };
-    // `is` encerra a cadeia em DUAS tabelas diferentes (orfaos e influencers),
+    // `is` encerra a cadeia em DUAS tabelas diferentes (orfaos e creators),
     // entao ele resolve pelo nome da tabela em vez de assumir uma so.
     q.is = () => {
-      if (tabela === "influencers") {
+      if (tabela === "creators") {
         return Promise.resolve(
-          supaSpy.erroInfluencers
-            ? { data: null, error: supaSpy.erroInfluencers }
-            : { data: supaSpy.influencers, error: null },
+          supaSpy.erroCreators
+            ? { data: null, error: supaSpy.erroCreators }
+            : { data: supaSpy.creators, error: null },
         );
       }
       return Promise.resolve(
@@ -178,14 +178,14 @@ beforeEach(() => {
   supaSpy.orfaos = [];
   supaSpy.aiLogs = [];
   supaSpy.despesas = [{ id: "despesa-1" }];
-  supaSpy.influencers = [];
+  supaSpy.creators = [];
   supaSpy.perfis = [];
   supaSpy.cancelamentos = [];
   supaSpy.chamadasDeProfiles = 0;
   supaSpy.erroSubscriptions = null;
   supaSpy.erroOrfaos = null;
   supaSpy.erroDespesas = null;
-  supaSpy.erroInfluencers = null;
+  supaSpy.erroCreators = null;
 });
 
 describe("assinaturas manuais vencendo", () => {
@@ -683,7 +683,7 @@ describe("influencer que virou assinante", () => {
   const ASSINANTE = "user-both";
 
   it("influencer COM assinatura vigente vira item, com o e-mail no detalhe", async () => {
-    supaSpy.influencers = [{ user_id: ASSINANTE }];
+    supaSpy.creators = [{ user_id: ASSINANTE, kind: "influencer" }];
     supaSpy.subscriptions = [
       sub({ id: "row-both", user_id: ASSINANTE, status: "active" }),
     ];
@@ -699,7 +699,7 @@ describe("influencer que virou assinante", () => {
   });
 
   it("CONTROLE NEGATIVO: influencer SEM assinatura não vira item", async () => {
-    supaSpy.influencers = [{ user_id: "so-influencer" }];
+    supaSpy.creators = [{ user_id: "so-influencer", kind: "influencer" }];
     supaSpy.subscriptions = [];
 
     const p = await montar();
@@ -709,15 +709,15 @@ describe("influencer que virou assinante", () => {
   });
 
   it("CONTROLE NEGATIVO: assinante SEM concessão não vira item", async () => {
-    // A lista de influencers NÃO é vazia de propósito, e é outra pessoa.
+    // A lista de creators NÃO é vazia de propósito, e é outra pessoa.
     //
-    // A primeira versão deste teste zerava `influencers`, e assim ele passava
+    // A primeira versão deste teste zerava `creators`, e assim ele passava
     // pelo motivo errado: o guard `idsInfluencer.size > 0` encerra o bloco
     // antes de o cruzamento acontecer, então o AND nunca era exercitado. Uma
     // mutação que apagava a checagem de pertinência sobreviveu, e foi ela que
     // apontou o furo. Com um influencer presente e um assinante DIFERENTE, a
     // única coisa que segura o falso positivo é o AND.
-    supaSpy.influencers = [{ user_id: "so-influencer" }];
+    supaSpy.creators = [{ user_id: "so-influencer", kind: "influencer" }];
     supaSpy.subscriptions = [sub({ user_id: "so-pagante", status: "active" })];
     supaSpy.perfis = [{ user_id: "so-pagante", email: "pagante@exemplo.com" }];
 
@@ -728,7 +728,7 @@ describe("influencer que virou assinante", () => {
   });
 
   it("e-mail ausente vira estado NOMEADO, nunca string vazia", async () => {
-    supaSpy.influencers = [{ user_id: ASSINANTE }];
+    supaSpy.creators = [{ user_id: ASSINANTE, kind: "influencer" }];
     supaSpy.subscriptions = [
       sub({ id: "row-both", user_id: ASSINANTE, status: "active" }),
     ];
@@ -840,7 +840,7 @@ describe("identidade da pessoa nos itens", () => {
       sub({ id: "r2", cancel_at_period_end: true, user_id: "u-2" }),
       sub({ id: "r3", status: "active", user_id: "u-3" }),
     ];
-    supaSpy.influencers = [{ user_id: "u-3" }];
+    supaSpy.creators = [{ user_id: "u-3", kind: "influencer" }];
     supaSpy.perfis = [
       { user_id: "u-1", email: "um@exemplo.com" },
       { user_id: "u-2", email: "dois@exemplo.com" },

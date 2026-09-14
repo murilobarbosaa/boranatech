@@ -142,9 +142,10 @@ type SubscriptionData = {
   nonRenewal?: { effectiveAt?: string | null } | null;
   pendingBoleto?: PendingBoleto | null;
   pendingCharge?: PendingCharge | null;
-  // Origem do acesso Pro (aditivo, do GET /subscription): 'influencer' e Pro
-  // de parceria sem assinatura; a UI rotula honesto e nao oferece cancelar.
-  accessSource?: "subscription" | "influencer" | "admin" | null;
+  // Origem do acesso Pro (aditivo, do GET /subscription): 'influencer' e
+  // 'afiliado' sao Pro de parceria (concessao de creator) sem assinatura; a UI
+  // rotula honesto e nao oferece cancelar.
+  accessSource?: "subscription" | "influencer" | "afiliado" | "admin" | null;
 };
 
 type CancelReasonCode =
@@ -955,7 +956,9 @@ export default function Perfil() {
     !!subscriptionData?.status && subscriptionData.status !== "free";
   const proWithoutSubscription = isPro && !hasRealSubscription;
   const isInfluencerAccess =
-    proWithoutSubscription && subscriptionData?.accessSource === "influencer";
+    proWithoutSubscription &&
+    (subscriptionData?.accessSource === "influencer" ||
+      subscriptionData?.accessSource === "afiliado");
   // Badge honesto por caso: ADMIN se admin, PARCEIRO se o acesso vem de
   // concessao de influencer, CORTESIA nos demais Pro-sem-assinatura; senao o
   // status real da assinatura.

@@ -152,7 +152,7 @@ const PERFIL_BASE = {
 
 /**
  * Duas tabelas ganham resposta VAZIA por padrão: `admin_refunds`, lida por toda
- * rota de devolução para juntar a segunda fonte do extrato, e `influencers`,
+ * rota de devolução para juntar a segunda fonte do extrato, e `creators`,
  * lida para saber se o Pro sobrevive à revogação. As duas são consultadas em
  * TODO caminho, inclusive nos que não têm nada a ver com elas, e obrigar cada
  * teste a declarar "não tenho nenhuma" seria ruído sem asserção.
@@ -167,7 +167,7 @@ function montar(
   authAdmin: Record<string, unknown> = {},
 ) {
   estado.double = criarSupabaseDouble(
-    { admin_refunds: { rows: [] }, influencers: { rows: [] }, ...respostas },
+    { admin_refunds: { rows: [] }, creators: { rows: [] }, ...respostas },
     authAdmin,
   );
 }
@@ -528,7 +528,7 @@ describe("POST /users/:id/email", () => {
 describe("POST /users/:id/influencer", () => {
   it("concede: audita, insere e invalida o cache de Pro", async () => {
     montar({
-      influencers: { rows: [] },
+      creators: { rows: [] },
       content_audit_logs: { rows: [{}] },
     });
 
@@ -539,9 +539,9 @@ describe("POST /users/:id/influencer", () => {
     expect(r.status).toBe(201);
     const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
     expect(ops).toEqual([
-      "select influencers",
+      "select creators",
       "insert content_audit_logs",
-      "insert influencers",
+      "insert creators",
     ]);
     expect(estado.double.de("content_audit_logs")[0].payload!.action).toBe(
       "grant",
@@ -552,7 +552,7 @@ describe("POST /users/:id/influencer", () => {
 
   it("quem já é influencer não ganha segunda linha nem segunda auditoria", async () => {
     montar({
-      influencers: {
+      creators: {
         rows: [{ id: "i1", granted_at: "2026-01-01", note: null }],
       },
     });
@@ -566,7 +566,7 @@ describe("POST /users/:id/influencer", () => {
 
   it("falha do audit aborta a concessão", async () => {
     montar({
-      influencers: { rows: [] },
+      creators: { rows: [] },
       content_audit_logs: { error: { message: "check" } },
     });
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -576,7 +576,7 @@ describe("POST /users/:id/influencer", () => {
     expect(r.status).toBe(500);
     expect(r.body.error.code).toBe("audit_failed");
     expect(
-      estado.double.de("influencers").filter((c) => c.op === "insert"),
+      estado.double.de("creators").filter((c) => c.op === "insert"),
     ).toHaveLength(0);
     expect(estado.invalidateProCache).not.toHaveBeenCalled();
   });
@@ -585,7 +585,7 @@ describe("POST /users/:id/influencer", () => {
 describe("POST /users/:id/influencer/revoke", () => {
   it("revoga: audita antes, atualiza e invalida o cache", async () => {
     montar({
-      influencers: {
+      creators: {
         rows: [
           { id: "i1", granted_at: "2026-01-01", granted_by: "a", note: null },
         ],
@@ -598,15 +598,15 @@ describe("POST /users/:id/influencer/revoke", () => {
     expect(r.status).toBe(200);
     const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
     expect(ops).toEqual([
-      "select influencers",
+      "select creators",
       "insert content_audit_logs",
-      "update influencers",
+      "update creators",
     ]);
     expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
   });
 
   it("revogar quem não é influencer ativo vira 404 próprio", async () => {
-    montar({ influencers: { rows: [] } });
+    montar({ creators: { rows: [] } });
     const r = await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
     expect(r.status).toBe(404);
     expect(r.body.error.code).toBe("influencer_not_active");
@@ -727,7 +727,7 @@ describe("nenhum UPDATE sai sem filtro de escopo", () => {
 
   it("revogar influencer filtra pela concessão E por revoked_at nulo", async () => {
     montar({
-      influencers: {
+      creators: {
         rows: [
           { id: "i1", granted_at: "2026-01-01", granted_by: "a", note: null },
         ],
@@ -737,9 +737,7 @@ describe("nenhum UPDATE sai sem filtro de escopo", () => {
 
     await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
 
-    const update = estado.double
-      .de("influencers")
-      .find((c) => c.op === "update")!;
+    const update = estado.double.de("creators").find((c) => c.op === "update")!;
     expect(
       update.filtros.some((f) => f.coluna === "id" && f.valor === "i1"),
     ).toBe(true);
@@ -750,13 +748,11 @@ describe("nenhum UPDATE sai sem filtro de escopo", () => {
   });
 
   it("a concessão de influencer grava o ator, não um id qualquer", async () => {
-    montar({ influencers: { rows: [] }, content_audit_logs: { rows: [{}] } });
+    montar({ creators: { rows: [] }, content_audit_logs: { rows: [{}] } });
 
     await chamarAdmin("POST", `/users/${UID}/influencer`, { note: "x" });
 
-    const insert = estado.double
-      .de("influencers")
-      .find((c) => c.op === "insert")!;
+    const insert = estado.double.de("creators").find((c) => c.op === "insert")!;
     expect(insert.payload).toMatchObject({
       user_id: UID,
       granted_by: "admin-1",
@@ -2001,7 +1997,7 @@ describe("a revogação faz is_user_pro NEGAR", () => {
     // Ortogonal por construção: is_user_pro tem um segundo ramo que não olha
     // assinatura nenhuma. Revogar a assinatura de quem tem concessão não remove
     // o acesso, e a tela precisa dizer isso ou o admin acha que falhou.
-    montarRevogacao({ influencers: { rows: [{ id: "inf-1" }] } });
+    montarRevogacao({ creators: { rows: [{ id: "inf-1" }] } });
 
     const r = await reembolsarTudo();
 
@@ -2011,7 +2007,7 @@ describe("a revogação faz is_user_pro NEGAR", () => {
     });
     // E a concessão em si fica INTOCADA.
     expect(
-      estado.double.de("influencers").filter((c) => c.op === "update"),
+      estado.double.de("creators").filter((c) => c.op === "update"),
     ).toHaveLength(0);
   });
 
@@ -2433,7 +2429,7 @@ describe("POST /users/:id/external-refunds", () => {
   });
 
   it("INFLUENCER continua Pro e a resposta avisa", async () => {
-    montarRegistro({ influencers: { rows: [{ id: "inf-1" }] } });
+    montarRegistro({ creators: { rows: [{ id: "inf-1" }] } });
     const r = await registrar();
     expect(r.body.data.access).toMatchObject({
       revoked: true,
@@ -2746,7 +2742,7 @@ describe("POST /users/:id/subscription/revoke", () => {
   });
 
   it("INFLUENCER continua Pro, e a resposta avisa", async () => {
-    montarRevoke({ influencers: { rows: [{ id: "inf-1" }] } });
+    montarRevoke({ creators: { rows: [{ id: "inf-1" }] } });
 
     const r = await revogar();
 
@@ -2755,7 +2751,7 @@ describe("POST /users/:id/subscription/revoke", () => {
       still_pro_via_influencer: true,
     });
     expect(
-      estado.double.de("influencers").filter((c) => c.op === "update"),
+      estado.double.de("creators").filter((c) => c.op === "update"),
     ).toHaveLength(0);
   });
 

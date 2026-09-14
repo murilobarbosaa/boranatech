@@ -141,6 +141,14 @@ const PRO_BADGES: Record<string, { label: string; className: string }> = {
     label: "Pro + Influencer",
     className: "border-violet-800 bg-violet-200 text-violet-950",
   },
+  afiliado: {
+    label: "Afiliado",
+    className: "border-violet-800 bg-violet-100 text-violet-900",
+  },
+  both_afiliado: {
+    label: "Pro + Afiliado",
+    className: "border-violet-800 bg-violet-200 text-violet-950",
+  },
 };
 
 const SEM_PRO_BADGE = {

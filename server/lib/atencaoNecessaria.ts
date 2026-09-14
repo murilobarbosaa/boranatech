@@ -9,6 +9,7 @@ import {
   monthlyEquivalentCents,
   VENCENDO_JANELA_DIAS,
 } from "./billingMetrics";
+import { creatorKindOf, type CreatorKind } from "./creatorKind";
 import { coletarTudo } from "./paginate";
 import { resolvePlanPriceCents } from "./planPrice";
 import { getStripe } from "./stripeClient";
@@ -496,7 +497,7 @@ export async function montarPainelDeAtencao(
     motivoCodigo?: string;
   };
   const pendentesDeAssinatura: PendenteDeAssinatura[] = [];
-  const pontesDeInfluencer: string[] = [];
+  const pontesDeCreator: Array<{ userId: string; kind: CreatorKind }> = [];
   const idsParaEmail = new Set<string>();
 
   // ------------------------------------------------------------------
@@ -826,28 +827,36 @@ export async function montarPainelDeAtencao(
   }
 
   // ------------------------------------------------------------------
-  // 8: influencer que TAMBEM tem assinatura paga vigente
+  // 8: creator (influencer ou afiliado) que TAMBEM tem assinatura paga vigente
   //
   // A ponte do boleto cumpriu o papel: a concessao existia para dar Pro a quem
   // ainda nao conseguia pagar, e agora essa pessoa paga. Revogar a concessao NAO
   // tira o acesso, porque `is_user_pro` e um OR e a assinatura segura sozinha.
+  // Vale para os dois kinds, porque os dois concedem Pro do mesmo jeito.
   //
   // Item de ARRUMACAO, nao de risco: severidade "atencao", e o valor fica de
   // fora de proposito. Somar o plano dessa gente em "receita em risco" seria
   // errado nos dois sentidos: a receita nao esta em risco nenhum, e a concessao
   // nao vale dinheiro.
+  //
+  // O `tipo`, a `chave` e o nome da fonte ("influencers") ficam como estavam:
+  // o client e o que ja foi gravado os conhecem por esses valores.
   // ------------------------------------------------------------------
   try {
     const { data: grants, error: erroGrants } = await supabaseAdmin
-      .from("influencers")
-      .select("user_id")
+      .from("creators")
+      .select("user_id, kind")
       .is("revoked_at", null);
     if (erroGrants) throw erroGrants;
-    const idsInfluencer = new Set(
-      ((grants ?? []) as Array<{ user_id: string }>).map((g) => g.user_id),
-    );
+    const kindPorCreator = new Map<string, CreatorKind>();
+    for (const g of (grants ?? []) as Array<{
+      user_id: string;
+      kind: string | null;
+    }>) {
+      kindPorCreator.set(g.user_id, creatorKindOf(g.kind));
+    }
 
-    if (idsInfluencer.size > 0) {
+    if (kindPorCreator.size > 0) {
       // MESMO criterio de assinatura vigente que `userSegments.ts` usa para
       // `payingActive`: status pagante e periodo nao vencido. Divergir dele aqui
       // faria o painel discordar do card de acesso Pro sobre a mesma pessoa.
@@ -870,7 +879,7 @@ export async function montarPainelDeAtencao(
         status: string | null;
         current_period_end: string | null;
       }>) {
-        if (!idsInfluencer.has(linha.user_id)) continue;
+        if (!kindPorCreator.has(linha.user_id)) continue;
         const periodoOk =
           !linha.current_period_end ||
           new Date(linha.current_period_end).getTime() > agora.getTime();
@@ -880,13 +889,15 @@ export async function montarPainelDeAtencao(
       // So COLETA aqui; o item nasce no bloco 9, junto dos de assinatura, para
       // que os e-mails de todos saiam de uma consulta unica.
       for (const userId of Array.from(comAssinatura)) {
-        pontesDeInfluencer.push(userId);
+        const kind = kindPorCreator.get(userId);
+        if (!kind) continue;
+        pontesDeCreator.push({ userId, kind });
         idsParaEmail.add(userId);
       }
     }
   } catch (err) {
     console.warn(
-      "[atencao] falha ao cruzar influencers com assinaturas:",
+      "[atencao] falha ao cruzar creators com assinaturas:",
       err instanceof Error ? err.message : String(err),
     );
     fontesIndisponiveis.push("influencers");
@@ -994,13 +1005,17 @@ export async function montarPainelDeAtencao(
     });
   }
 
-  for (const userId of pontesDeInfluencer) {
+  for (const { userId, kind } of pontesDeCreator) {
+    const rotulo = kind === "afiliado" ? "afiliado" : "influencer";
     itens.push({
       tipo: "influencer_com_assinatura",
       chave: `influencer_pagante:${userId}`,
       severidade: "atencao",
-      titulo: "Influencer que virou assinante",
-      detalhe: `${emailDe(userId)} tem concessão de influencer ativa E assinatura paga vigente. Revogar a concessão não tira o Pro, que fica de pé pela assinatura.`,
+      titulo:
+        kind === "afiliado"
+          ? "Afiliado que virou assinante"
+          : "Influencer que virou assinante",
+      detalhe: `${emailDe(userId)} tem concessão de ${rotulo} ativa E assinatura paga vigente. Revogar a concessão não tira o Pro, que fica de pé pela assinatura.`,
       url: "",
       destinoInterno: ADMIN_USUARIOS,
     });

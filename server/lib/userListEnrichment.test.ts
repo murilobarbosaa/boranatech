@@ -8,6 +8,12 @@ import {
   tallyProSources,
   type SubscriptionRow,
 } from "./userListEnrichment";
+import type { CreatorKind } from "./creatorKind";
+
+/** Concessoes ativas de kind influencer, no formato que buildEnrichmentIndex le. */
+function influencers(...ids: string[]): Map<string, CreatorKind> {
+  return new Map(ids.map((id) => [id, "influencer" as const]));
+}
 
 /**
  * Enriquecimento da lista de usuarios do admin (is_pro, pro_source, plan_code,
@@ -148,7 +154,7 @@ describe("buildEnrichmentIndex", () => {
           current_period_end: "2030-01-01T00:00:00Z",
         }),
       ],
-      new Set(),
+      new Map(),
       AGORA,
     );
     expect(index.get("u1")).toMatchObject({
@@ -156,7 +162,7 @@ describe("buildEnrichmentIndex", () => {
       current_period_end: "2030-01-01T00:00:00Z",
     });
     // Influencer sem assinatura: os dois nulos, nunca ausentes.
-    const soInfluencer = buildEnrichmentIndex([], new Set(["u9"]), AGORA);
+    const soInfluencer = buildEnrichmentIndex([], influencers("u9"), AGORA);
     expect(soInfluencer.get("u9")).toMatchObject({
       renewal_type: null,
       current_period_end: null,
@@ -164,7 +170,7 @@ describe("buildEnrichmentIndex", () => {
   });
 
   it("Pro por assinatura: pro_source subscription, com plano e status", () => {
-    const index = buildEnrichmentIndex([sub()], new Set(), AGORA);
+    const index = buildEnrichmentIndex([sub()], new Map(), AGORA);
     expect(index.get("u1")).toMatchObject({
       is_pro: true,
       pro_source: "subscription",
@@ -176,7 +182,7 @@ describe("buildEnrichmentIndex", () => {
   it("Pro por influencer SEM assinatura: is_pro true e plano nulo", () => {
     // Este e o caso que uma lista ingenua marca como "nao Pro". Sao 24 pessoas
     // em producao hoje.
-    const index = buildEnrichmentIndex([], new Set(["u9"]), AGORA);
+    const index = buildEnrichmentIndex([], influencers("u9"), AGORA);
     expect(index.get("u9")).toMatchObject({
       is_pro: true,
       pro_source: "influencer",
@@ -189,7 +195,7 @@ describe("buildEnrichmentIndex", () => {
     // Ortogonais por design: cancelar a assinatura NAO tira o Pro de quem tem
     // concessao de influencer. Se a lista dissesse so "subscription", a Fatia 6
     // cancelaria e ninguem entenderia por que a pessoa continua Pro.
-    const index = buildEnrichmentIndex([sub()], new Set(["u1"]), AGORA);
+    const index = buildEnrichmentIndex([sub()], influencers("u1"), AGORA);
     expect(index.get("u1")?.pro_source).toBe("both");
     expect(index.get("u1")?.is_pro).toBe(true);
   });
@@ -197,7 +203,7 @@ describe("buildEnrichmentIndex", () => {
   it("assinatura cancelada e sem influencer: nao Pro, mas mostra o status", () => {
     const index = buildEnrichmentIndex(
       [sub({ status: "canceled" })],
-      new Set(),
+      new Map(),
       AGORA,
     );
     expect(index.get("u1")).toMatchObject({
@@ -209,7 +215,7 @@ describe("buildEnrichmentIndex", () => {
   });
 
   it("usuario sem nada nao entra no indice", () => {
-    const index = buildEnrichmentIndex([], new Set(), AGORA);
+    const index = buildEnrichmentIndex([], new Map(), AGORA);
     expect(index.has("u1")).toBe(false);
   });
 
@@ -219,7 +225,7 @@ describe("buildEnrichmentIndex", () => {
         sub({ status: "canceled", created_at: "2025-01-01T00:00:00Z" }),
         sub({ current_period_end: "2027-01-01T00:00:00Z" }),
       ],
-      new Set(),
+      new Map(),
       AGORA,
     );
     expect(index.size).toBe(1);
@@ -232,32 +238,38 @@ describe("fetchUserListEnrichment: custo fixo, sem N+1", () => {
     const bySubscription = vi.fn(
       async (_ids: string[]) => [] as SubscriptionRow[],
     );
-    const byInfluencer = vi.fn(async (_ids: string[]) => [] as string[]);
+    const byCreator = vi.fn(
+      async (_ids: string[]) =>
+        [] as Array<{ user_id: string; kind: CreatorKind }>,
+    );
     const ids = Array.from({ length: 50 }, (_, i) => `u${i}`);
 
-    await fetchUserListEnrichment(ids, { bySubscription, byInfluencer }, AGORA);
+    await fetchUserListEnrichment(ids, { bySubscription, byCreator }, AGORA);
 
     expect(bySubscription).toHaveBeenCalledTimes(1);
-    expect(byInfluencer).toHaveBeenCalledTimes(1);
+    expect(byCreator).toHaveBeenCalledTimes(1);
     // E cada uma recebeu a PAGINA inteira de uma vez, nao um id por chamada.
     expect(bySubscription.mock.calls[0][0]).toHaveLength(50);
-    expect(byInfluencer.mock.calls[0][0]).toHaveLength(50);
+    expect(byCreator.mock.calls[0][0]).toHaveLength(50);
   });
 
   it("lista vazia nao consulta nada", async () => {
     const bySubscription = vi.fn(
       async (_ids: string[]) => [] as SubscriptionRow[],
     );
-    const byInfluencer = vi.fn(async (_ids: string[]) => [] as string[]);
+    const byCreator = vi.fn(
+      async (_ids: string[]) =>
+        [] as Array<{ user_id: string; kind: CreatorKind }>,
+    );
 
     const index = await fetchUserListEnrichment(
       [],
-      { bySubscription, byInfluencer },
+      { bySubscription, byCreator },
       AGORA,
     );
 
     expect(bySubscription).not.toHaveBeenCalled();
-    expect(byInfluencer).not.toHaveBeenCalled();
+    expect(byCreator).not.toHaveBeenCalled();
     expect(index.size).toBe(0);
   });
 
@@ -266,7 +278,7 @@ describe("fetchUserListEnrichment: custo fixo, sem N+1", () => {
       ["u1", "u9"],
       {
         bySubscription: async () => [sub()],
-        byInfluencer: async () => ["u9"],
+        byCreator: async () => [{ user_id: "u9", kind: "influencer" as const }],
       },
       AGORA,
     );
@@ -296,13 +308,14 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
     // por concessão, e a tela mostrava só o primeiro.
     const index = buildEnrichmentIndex(
       [assinatura({ user_id: "a" }), assinatura({ user_id: "b" })],
-      new Set(["c", "d", "e"]),
+      influencers("c", "d", "e"),
       AGORA,
     );
 
     expect(tallyProSources(index)).toEqual({
       bySubscription: 2,
       byInfluencer: 3,
+      byAfiliado: 0,
       both: 0,
       total: 5,
     });
@@ -313,7 +326,7 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
     // para 2 pessoas.
     const index = buildEnrichmentIndex(
       [assinatura({ user_id: "a" }), assinatura({ user_id: "b" })],
-      new Set(["b"]),
+      influencers("b"),
       AGORA,
     );
 
@@ -321,6 +334,7 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
     expect(tally).toEqual({
       bySubscription: 2,
       byInfluencer: 1,
+      byAfiliado: 0,
       both: 1,
       total: 2,
     });
@@ -337,13 +351,14 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
           current_period_end: "2026-01-01T00:00:00Z",
         }),
       ],
-      new Set(),
+      new Map(),
       AGORA,
     );
 
     expect(tallyProSources(index)).toEqual({
       bySubscription: 0,
       byInfluencer: 0,
+      byAfiliado: 0,
       both: 0,
       total: 0,
     });
@@ -353,6 +368,7 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
     expect(tallyProSources(new Map())).toEqual({
       bySubscription: 0,
       byInfluencer: 0,
+      byAfiliado: 0,
       both: 0,
       total: 0,
     });

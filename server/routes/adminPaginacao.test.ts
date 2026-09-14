@@ -1004,7 +1004,7 @@ describe("GET /overview", () => {
     montar({
       profiles: { rows: [], count: 100 },
       subscriptions: { rows: [assinatura()] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
@@ -1160,7 +1160,7 @@ describe("GET /overview", () => {
   });
 
   it("acesso Pro traz os dois ramos separados", async () => {
-    base({ influencers: { rows: [{ user_id: "u9" }] } });
+    base({ creators: { rows: [{ user_id: "u9", kind: "influencer" }] } });
     const r = await chamarAdmin("GET", "/overview");
     expect(r.body.data.cards.acessoPro).toMatchObject({
       bySubscription: 1,

@@ -119,7 +119,7 @@ function base(over: Record<string, RespostaTabela> = {}) {
     {
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 40 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },

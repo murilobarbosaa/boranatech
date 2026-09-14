@@ -346,7 +346,9 @@ type OverviewData = {
     acessoPro: {
       bySubscription: number;
       byInfluencer: number;
-      /** Interseção dos dois ramos. `bySubscription` e `byInfluencer` a INCLUEM. */
+      /** Opcional: backend anterior à concessão de afiliado não envia. */
+      byAfiliado?: number;
+      /** Interseção da assinatura com QUALQUER concessão. `bySubscription`, `byInfluencer` e `byAfiliado` a INCLUEM. */
       both: number;
       /** União deduplicada. É este o headline: somar as parcelas conta `both` duas vezes. */
       total: number;
@@ -6140,7 +6142,10 @@ function ContentAdminSection() {
                   exatamente o que esta ali. Nao inventamos um numero (era o que
                   `total ?? 0` faria); dizemos que ele nao veio.
                 */}
-                {!loading && !loadError && total === null && items.length > 0 ? (
+                {!loading &&
+                !loadError &&
+                total === null &&
+                items.length > 0 ? (
                   <div className="border-b-2 border-slate-900 bg-slate-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
                     Mostrando {items.length} registros. O total no banco não foi
                     informado, então esta lista pode não ser tudo. Use a busca
@@ -7238,10 +7243,11 @@ export default function Admin() {
         label: "Assinantes Pro",
         value: formatCount(c.acessoPro.bySubscription),
         detail: [
-          // CONCESSÃO PURA: `byInfluencer` inclui quem também paga, e essas
-          // pessoas já estão no headline. Subtrair `both` é o que faz a linha
-          // dizer "+N" de verdade, sem recontar ninguém.
-          `+${formatCount(Math.max(c.acessoPro.byInfluencer - c.acessoPro.both, 0))} só por concessão`,
+          // CONCESSÃO PURA: `byInfluencer` e `byAfiliado` incluem quem também
+          // paga, e essas pessoas já estão no headline. Subtrair `both` (que é
+          // a interseção com QUALQUER concessão) é o que faz a linha dizer
+          // "+N" de verdade, sem recontar ninguém.
+          `+${formatCount(Math.max(c.acessoPro.byInfluencer + (c.acessoPro.byAfiliado ?? 0) - c.acessoPro.both, 0))} só por concessão`,
           `${formatCount(c.acessoPro.total)} com acesso no total`,
           // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
           // de propósito. Somá-lo ao número de pagantes faria o card divergir do

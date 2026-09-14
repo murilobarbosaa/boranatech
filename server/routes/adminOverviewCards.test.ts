@@ -139,7 +139,7 @@ function base(over: Record<string, RespostaTabela> = {}) {
       // enxerga qual card leu de onde.
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 40 },
       subscriptions: { rows: [assinatura()] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
@@ -390,7 +390,12 @@ describe("card Assinantes Pro (D3)", () => {
           assinatura({ id: "b", user_id: "u2" }),
         ],
       },
-      influencers: { rows: [{ user_id: "u1" }, { user_id: "u3" }] },
+      creators: {
+        rows: [
+          { user_id: "u1", kind: "influencer" },
+          { user_id: "u3", kind: "influencer" },
+        ],
+      },
     });
 
     const r = await chamarAdmin("GET", "/overview?window=30");

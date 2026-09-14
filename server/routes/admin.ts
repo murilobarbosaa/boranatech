@@ -66,6 +66,7 @@ import {
   type ProSourceTally,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
+import { creatorKindOf, type CreatorKind } from "../lib/creatorKind";
 import {
   totaisPagosPorUsuario,
   type DeclaracaoDeDevolucao,
@@ -536,22 +537,25 @@ async function contarProPorOrigem(): Promise<ProSourceTally> {
     assinaturas.push(row);
   }
 
-  const influencers = new Set<string>();
-  for await (const row of paginateRange<{ user_id: string | null }>(
+  const creators = new Map<string, CreatorKind>();
+  for await (const row of paginateRange<{
+    user_id: string | null;
+    kind: string | null;
+  }>(
     (from, to) =>
       supabaseAdmin
-        .from("influencers")
-        .select("user_id")
+        .from("creators")
+        .select("user_id, kind")
         .is("revoked_at", null)
         .order("id", { ascending: true })
         .range(from, to),
-    { errorLabel: "pro tally influencers" },
+    { errorLabel: "pro tally creators" },
   )) {
-    if (row.user_id) influencers.add(row.user_id);
+    if (row.user_id) creators.set(row.user_id, creatorKindOf(row.kind));
   }
 
   return tallyProSources(
-    buildEnrichmentIndex(assinaturas, influencers, new Date()),
+    buildEnrichmentIndex(assinaturas, creators, new Date()),
   );
 }
 
@@ -1395,6 +1399,7 @@ router.get("/overview", async (req, res, next) => {
             acessoPro: {
               bySubscription: proTally.bySubscription,
               byInfluencer: proTally.byInfluencer,
+              byAfiliado: proTally.byAfiliado,
               both: proTally.both,
               total: proTally.total,
             },
@@ -3010,7 +3015,10 @@ router.get("/fiscal-invoices", async (req, res, next) => {
 
     const status = String(req.query.status ?? "");
     const precisaRevisao = req.query.precisa_revisao === "true";
-    const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 100);
+    const limit = Math.min(
+      parseInt(String(req.query.limit ?? "50"), 10) || 50,
+      100,
+    );
     const offset = parseInt(String(req.query.offset ?? "0"), 10) || 0;
 
     let query = supabaseAdmin
@@ -3227,6 +3235,8 @@ router.get("/users", async (req, res, next) => {
       filterRaw === "pro" ||
       filterRaw === "not_pro" ||
       filterRaw === "influencers" ||
+      filterRaw === "afiliados" ||
+      filterRaw === "creators" ||
       filterRaw === "ativo"
         ? filterRaw
         : "all";
@@ -3292,39 +3302,46 @@ router.get("/users", async (req, res, next) => {
       // (`= any('{}')` e falso); lista vazia em `not_pro` nao filtra nada
       // (`not false`). Os dois espelham o comportamento anterior.
       excluirIds = filter === "not_pro";
-    } else if (filter === "influencers") {
-      // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
+    } else if (
+      filter === "influencers" ||
+      filter === "creators" ||
+      filter === "afiliados"
+    ) {
+      // Creator = concessao ATIVA (revoked_at null; o indice unico parcial
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
       // PAGINADO pelo mesmo motivo do filtro Pro: o conjunto E o filtro.
-      const { data: infRows, error: infError } = await coletarTagueado<{
+      //
+      // `influencers` devolve os DOIS kinds, igual a `creators`: e o valor que o
+      // chip atual do client manda, e ate o lote da tela ele e o unico filtro de
+      // concessao que existe na interface. `afiliados` restringe ao kind.
+      const { data: creatorRows, error: creatorError } = await coletarTagueado<{
         user_id: string | null;
-      }>(
-        (from, to) =>
-          supabaseAdmin
-            .from("influencers")
-            .select("user_id")
-            .is("revoked_at", null)
-            .order("id", { ascending: true })
-            .range(from, to),
-        "users influencer filter",
-      );
-      if (infError)
+      }>((from, to) => {
+        const ativos = supabaseAdmin
+          .from("creators")
+          .select("user_id")
+          .is("revoked_at", null);
+        return (filter === "afiliados" ? ativos.eq("kind", "afiliado") : ativos)
+          .order("id", { ascending: true })
+          .range(from, to);
+      }, "users creator filter");
+      if (creatorError)
         return next(
           dbError(
-            "users influencer filter",
-            infError,
+            "users creator filter",
+            creatorError,
             "Erro ao buscar usuários.",
           ),
         );
-      const influencerIds = Array.from(
+      const creatorIds = Array.from(
         new Set(
-          (infRows || [])
+          (creatorRows || [])
             .map((row) => row.user_id)
             .filter((id): id is string => Boolean(id)),
         ),
       );
       // Lista vazia -> zero linhas, exatamente o esperado.
-      idsFiltro = influencerIds;
+      idsFiltro = creatorIds;
     }
 
     // UMA ida ao banco para a pagina inteira, contagem inclusa.
@@ -3390,17 +3407,20 @@ router.get("/users", async (req, res, next) => {
           }
           return (subs || []) as SubscriptionRow[];
         },
-        byInfluencer: async (ids) => {
-          const { data: infs, error: infsError } = await supabaseAdmin
-            .from("influencers")
-            .select("user_id")
+        byCreator: async (ids) => {
+          const { data: creators, error: creatorsError } = await supabaseAdmin
+            .from("creators")
+            .select("user_id, kind")
             .is("revoked_at", null)
             .in("user_id", ids);
-          if (infsError) {
-            listError = infsError.message;
+          if (creatorsError) {
+            listError = creatorsError.message;
             return [];
           }
-          return (infs || []).map((row) => row.user_id);
+          return (creators || []).map((row) => ({
+            user_id: row.user_id as string,
+            kind: creatorKindOf(row.kind),
+          }));
         },
       },
       new Date(),
@@ -3580,11 +3600,11 @@ router.get("/users/:id", async (req, res, next) => {
         .from("finance_transactions")
         .select("type, gross_cents")
         .eq("user_id", uid),
-      // Concessao de influencer ATIVA (revoked_at null); o indice unico parcial
+      // Concessao de creator ATIVA (revoked_at null); o indice unico parcial
       // garante no maximo uma.
       supabaseAdmin
-        .from("influencers")
-        .select("id, granted_at, granted_by, note")
+        .from("creators")
+        .select("id, granted_at, granted_by, note, kind")
         .eq("user_id", uid)
         .is("revoked_at", null)
         .maybeSingle(),
@@ -3663,7 +3683,12 @@ router.get("/users/:id", async (req, res, next) => {
         : "inactive";
 
     // Nome/email de quem concedeu, para o modal mostrar "concedido por".
+    //
+    // A chave da resposta continua `influencer` neste lote, com o `kind`
+    // dentro: e o nome que o bundle em execucao le. Renomear a chave e
+    // expand/contract, e fica para o lote que troca a tela.
     let influencer: {
+      kind: CreatorKind;
       granted_at: string | null;
       note: string | null;
       granted_by_name: string | null;
@@ -3684,6 +3709,7 @@ router.get("/users/:id", async (req, res, next) => {
           ),
         );
       influencer = {
+        kind: creatorKindOf(influencerResult.data.kind),
         granted_at: influencerResult.data.granted_at ?? null,
         note: influencerResult.data.note ?? null,
         granted_by_name: granter?.name ?? null,
@@ -3777,7 +3803,10 @@ router.get("/users/:id", async (req, res, next) => {
         )
       : false;
     const proPorInfluencer = influencer !== null;
-    const proSource = resolveProSource(assinaturaDaPro, proPorInfluencer);
+    const proSource = resolveProSource(
+      assinaturaDaPro,
+      influencer?.kind ?? null,
+    );
 
     const { cpf, avatar_url, avatar_mode, avatar_moderation_status, ...rest } =
       data;
@@ -3910,7 +3939,7 @@ router.post("/users/:id/influencer", async (req, res, next) => {
     const note = typeof noteRaw === "string" ? noteRaw.trim() : "";
 
     const { data: existing, error: existingError } = await supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .select("id, granted_at, note")
       .eq("user_id", uid)
       .is("revoked_at", null)
@@ -3950,13 +3979,11 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       );
     }
 
-    const { error: insertError } = await supabaseAdmin
-      .from("influencers")
-      .insert({
-        user_id: uid,
-        granted_by: req.user!.id,
-        note: note || null,
-      });
+    const { error: insertError } = await supabaseAdmin.from("creators").insert({
+      user_id: uid,
+      granted_by: req.user!.id,
+      note: note || null,
+    });
     if (insertError) {
       // 23505 = corrida com outra concessao simultanea: o estado final e o
       // desejado (uma concessao ativa), responde como idempotencia.
@@ -3997,7 +4024,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     }
 
     const { data: active, error: activeError } = await supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .select("id, granted_at, granted_by, note")
       .eq("user_id", uid)
       .is("revoked_at", null)
@@ -4049,7 +4076,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .update({
         revoked_at: new Date().toISOString(),
         revoked_by: req.user!.id,
@@ -4095,10 +4122,14 @@ async function lerDeclaracoesDeDevolucao(
   return { ok: true, linhas: (data || []) as DeclaredRefund[] };
 }
 
-/** Concessão de influencer ativa. Ortogonal à assinatura: revogar uma não toca a outra. */
+/**
+ * Concessão de creator ativa, de QUALQUER kind. Ortogonal à assinatura: revogar
+ * uma não toca a outra. O nome e o campo `still_pro_via_influencer` da resposta
+ * ficam como estão neste lote (contrato lido pelo bundle em execução).
+ */
 async function temInfluencerAtivo(uid: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
-    .from("influencers")
+    .from("creators")
     .select("id")
     .eq("user_id", uid)
     .is("revoked_at", null)
@@ -5793,7 +5824,7 @@ router.post("/users/:id/email", async (req, res, next) => {
 // afirmada por teste contra a de /api/me.
 //
 // Nao invalida o cache de status Pro: nenhum destes campos entra no
-// is_user_pro (que olha subscriptions e influencers). Se um dia entrar, a
+// is_user_pro (que olha subscriptions e creators). Se um dia entrar, a
 // invalidacao vai aqui.
 router.patch("/users/:id", async (req, res, next) => {
   try {
