@@ -351,6 +351,7 @@ export async function repairPool(input: {
         material.leaves.map((leaf) => leaf.id),
         1,
         gate.codeQuota > 0 ? 1 : 0,
+        roadmap.codeLanguages ?? [],
       );
       const jsonSchema = toOpenAIStrictSchema(schema);
       let atual = original;

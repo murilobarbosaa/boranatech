@@ -32,8 +32,11 @@ export interface LanguageCapability {
   importRule: ImportRule;
 }
 
-// saidaEsperadaAplicavel e true em todas por ora: e o contrato que a validacao
-// aplica hoje a toda pergunta de erro.
+// saidaEsperadaAplicavel: false em html, css e dockerfile, que nao tem saida de
+// terminal (um erro de HTML e uma tag que nao fecha, nao um stdout diferente).
+// bash MANTEM: comando de Git tem saida real e previsivel ("Already up to
+// date."), e mesmo sem execucao o campo e a unica declaracao explicita da
+// intencao, que e o que a revisao humana compara com a correta.
 export const LANGUAGE_CAPABILITIES: Record<string, LanguageCapability> = {
   js: {
     runner: { command: "node", ext: ".mjs" },
@@ -58,17 +61,17 @@ export const LANGUAGE_CAPABILITIES: Record<string, LanguageCapability> = {
   },
   html: {
     runner: null,
-    saidaEsperadaAplicavel: true,
+    saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
   },
   css: {
     runner: null,
-    saidaEsperadaAplicavel: true,
+    saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
   },
   dockerfile: {
     runner: null,
-    saidaEsperadaAplicavel: true,
+    saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
   },
 };
@@ -86,6 +89,15 @@ export function capabilityOf(linguagem: string): LanguageCapability {
     );
   }
   return capacidade;
+}
+
+// saidaEsperadaAplicavel tolerante a linguagem fora do mapa (devolve true, o
+// contrato antigo): a validacao da pool ja reporta a linguagem desconhecida
+// como problema proprio, e esta leitura nao pode lancar no meio dela.
+export function saidaEsperadaAplicavelEm(linguagem: string): boolean {
+  return Object.prototype.hasOwnProperty.call(LANGUAGE_CAPABILITIES, linguagem)
+    ? LANGUAGE_CAPABILITIES[linguagem].saidaEsperadaAplicavel
+    : true;
 }
 
 // Aviso de trechos que a verificacao por execucao NAO cobre. Texto unico para

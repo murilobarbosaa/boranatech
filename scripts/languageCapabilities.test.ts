@@ -40,3 +40,14 @@ describe("LANGUAGE_CAPABILITIES: capacidade por linguagem num lugar so", () => {
     );
   });
 });
+
+describe("saidaEsperadaAplicavel por linguagem", () => {
+  it("so nao se aplica onde nao ha saida de terminal; bash mantem", () => {
+    ["js", "ts", "python", "bash"].forEach((lang) =>
+      expect(capabilityOf(lang).saidaEsperadaAplicavel).toBe(true),
+    );
+    ["html", "css", "dockerfile"].forEach((lang) =>
+      expect(capabilityOf(lang).saidaEsperadaAplicavel).toBe(false),
+    );
+  });
+});

@@ -1417,3 +1417,89 @@ describe("noRunnerWarnings: trechos que a execucao nao cobre", () => {
     ).toEqual([]);
   });
 });
+
+describe("saidaEsperada condicionada: schema, regra e prompt", () => {
+  const ids = ["basico.variaveis", "basico.tipos"];
+  const resposta = (linguagem: string, saidaEsperada?: string) => ({
+    questions: [
+      {
+        pergunta: "Qual e o defeito deste codigo?",
+        alternativas: {
+          a: "Falta fechar a tag",
+          b: "Nada",
+          c: "Aspas",
+          d: "Ponto",
+        },
+        correta: "a",
+        explicacao: "A tag p nao fecha.",
+        fonte: "basico.variaveis",
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      },
+    ],
+  });
+
+  it("schema de html aceita erro sem saidaEsperada", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["html"]).safeParse(resposta("html"))
+        .success,
+    ).toBe(true);
+  });
+
+  it("schema de js continua exigindo saidaEsperada e o JSON dele nao muda", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["js"]).safeParse(resposta("js")).success,
+    ).toBe(false);
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["js"])),
+      ),
+    ).toBe(
+      JSON.stringify(toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1))),
+    );
+  });
+
+  it("schema strict de html nao pede saidaEsperada", () => {
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["html"])),
+      ),
+    ).not.toContain("saidaEsperada");
+  });
+
+  it("regra de codigo: html sem campo passa, html vazio viola, js sem campo viola", () => {
+    const erroEm = (linguagem: string, saidaEsperada?: string) =>
+      gerada({
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      });
+    const deSaida = (v: string[]) =>
+      v.filter((l) => l.includes("saidaEsperada"));
+    expect(deSaida(codeRuleViolations([erroEm("html")], ["html"]))).toEqual([]);
+    expect(
+      deSaida(codeRuleViolations([erroEm("html", " ")], ["html"])).some((l) =>
+        l.includes("vazia"),
+      ),
+    ).toBe(true);
+    expect(deSaida(codeRuleViolations([erroEm("js")], ["js"]))).toHaveLength(1);
+  });
+
+  it("prompt de html explica que erro nao traz saidaEsperada; o de js fica igual", () => {
+    const html = buildCodeRules(["html"]);
+    expect(html).not.toContain("- erro traz codigo.saidaEsperada");
+    expect(html).toContain("erro sem saidaEsperada");
+    expect(buildCodeRules(["js"])).toContain(
+      "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo",
+    );
+  });
+});

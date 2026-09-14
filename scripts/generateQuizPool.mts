@@ -159,6 +159,7 @@ async function generateSection(
     section.leaves.map((leaf) => leaf.id),
     quota,
     codeQuota,
+    roadmap.codeLanguages ?? [],
   );
   const jsonSchema = toOpenAIStrictSchema(schema);
   const systemPrompt = systemPromptFor(roadmap, codeQuota);
@@ -469,6 +470,7 @@ if (dryRun) {
           sections[i].leaves.map((leaf) => leaf.id),
           quotas[i],
           codeQuota,
+          roadmap.codeLanguages ?? [],
         );
         lines.push(
           `### SCHEMA ${nivel} / ${sections[i].title}`,
