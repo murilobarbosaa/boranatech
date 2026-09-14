@@ -3,8 +3,10 @@ import { isPrerender } from "./prerender";
 /**
  * MODO ENTRADA-ESTATICA.
  *
- * As 131 rotas publicas chegam como HTML pre-renderizado, e o React monta por
- * cima com `createRoot`. Quando isso acontece a pessoa JA esta vendo o conteudo:
+ * As rotas publicas pre-renderizadas (129: as do sitemap menos /areas e
+ * /noticias, que chegam pelo shell com #root vazio) chegam como HTML pronto, e
+ * o React monta por cima com `createRoot`. Quando isso acontece a pessoa JA esta
+ * vendo o conteudo:
  * rodar de novo a animacao de entrada (opacity 0 -> 1, y 20 -> 0) e o flicker.
  * Neste modo cada entrada renderiza direto no estado final (`initial={false}` no
  * framer), e o proprio prerender captura esse estado, sem `opacity: 0` inline.

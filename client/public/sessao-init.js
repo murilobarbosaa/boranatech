@@ -18,6 +18,14 @@
   gera e trava os dois juntos. O host nao esta disponivel aqui, entao a busca e
   pela forma, e o $ deixa de fora o code-verifier do PKCE. A classe e
   CLASSE_SESSAO_PERSISTIDA, no mesmo arquivo.
+
+  Criterio DIFERENTE do de persistedSession.ts, de proposito: aqui vale qualquer
+  chave com a forma sb-*-auth-token, la so a chave exata do projeto atual. A
+  regex cobre a chave exata, entao quem o Header vivo trata como logado sempre
+  sai marcado aqui. O contrario nao vale: uma chave orfa (outro projeto Supabase
+  na mesma origem, ou um ref antigo) marca o <html> sem sessao, e o efeito e so o
+  espaco vazio no lugar dos links ate o React montar, quando o Header vivo mostra
+  o "Entrar".
 */
 (function () {
   try {

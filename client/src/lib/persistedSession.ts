@@ -28,6 +28,11 @@ export function chaveDaSessaoSupabase(url: string | undefined): string | null {
  * antes do CSS e do bundle. Com ela o index.css esconde os links de visitante que
  * o prerender marcou com `data-auth-estatico` (ver Header). Vale so ate o React
  * montar: dali em diante quem decide e o Header vivo, e o App tira a classe.
+ *
+ * O sessao-init.js decide por um criterio MAIS AMPLO que `temSessaoPersistida`:
+ * qualquer chave `sb-*-auth-token`, e nao so a deste projeto. Quem esta logado
+ * aqui sempre sai marcado la; uma chave orfa marca sem sessao, e o custo e so o
+ * espaco vazio no lugar dos links ate o React montar.
  */
 export const CLASSE_SESSAO_PERSISTIDA = "bnt-sessao-persistida";
 
