@@ -165,6 +165,8 @@ export const CHAVES_DA_ABA_TAREFAS = [
 export function limparChavesDeSecao(search: string): string {
   const params = new URLSearchParams(search);
   for (const chave of CHAVES_DA_ABA_TAREFAS) params.delete(chave);
+  // Filtros e creator aberto da aba Creators (lidos em CreatorsSection.tsx).
+  for (const chave of ["status", "kind", "creator"]) params.delete(chave);
   const query = params.toString();
   return query ? `?${query}` : "";
 }

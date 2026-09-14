@@ -184,6 +184,15 @@ describe("chaves de escopo de secao", () => {
     }
   });
 
+  it("leva embora os filtros e o creator aberto da aba Creators", () => {
+    // Sem isto, sair de Creators com um painel aberto e voltar reabria o
+    // painel e o filtro antigos sem ninguem pedir.
+    const limpo = limparChavesDeSecao(
+      "?section=creators&status=revoked&kind=afiliado&creator=3f2b8c1e-7a4d-4e2b-9c1a-5d6e7f8a9b0c&window=30d",
+    );
+    expect(limpo).toBe("?section=creators&window=30d");
+  });
+
   it("search vazia continua vazia, sem '?' solto", () => {
     expect(limparChavesDeSecao("")).toBe("");
     expect(limparChavesDeSecao("?board=bugs")).toBe("");
