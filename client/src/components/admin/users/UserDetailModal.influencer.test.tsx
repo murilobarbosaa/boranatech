@@ -365,3 +365,98 @@ describe("o botao de revogar nomeia o tipo da concessao", () => {
     ).toBeTruthy();
   });
 });
+
+describe("os toasts de conceder e revogar nomeiam o tipo", () => {
+  // Rejeicao que NAO e Error: e o unico caminho em que a tela escreve a frase
+  // de erro dela, em vez de repassar a mensagem do servidor.
+  function rejeitarSemError(trecho: string) {
+    const base = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) =>
+      path.includes(trecho) ? Promise.reject("falhou") : base?.(path, init),
+    );
+  }
+
+  async function revogar(nome: string) {
+    fireEvent.click(
+      within(secaoDeStatus()).getByRole("button", {
+        name: `Revogar acesso de ${nome}`,
+      }),
+    );
+    fireEvent.click(
+      within(secaoDeStatus()).getByRole("button", {
+        name: `Confirmar revogação de ${nome}`,
+      }),
+    );
+  }
+
+  it("revogar AFILIADO: o toast de sucesso diz Afiliado", async () => {
+    rotear(
+      detalhe({ influencer: { ...INFLUENCER, kind: "afiliado" }, is_pro: true }),
+    );
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    await revogar("afiliado");
+
+    await waitFor(() =>
+      expect(toastSpy.acao).toHaveBeenCalledWith({
+        message:
+          "Afiliado revogado. Se houver assinatura ativa, o Pro continua por ela.",
+      }),
+    );
+  });
+
+  it("revogar SEM kind: o toast diz Creator, e nao inventa um tipo", async () => {
+    const { kind: _semKind, ...semKind } = INFLUENCER;
+    rotear(detalhe({ influencer: semKind, is_pro: true }));
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    await revogar("creator");
+
+    await waitFor(() =>
+      expect(toastSpy.acao).toHaveBeenCalledWith({
+        message:
+          "Creator revogado. Se houver assinatura ativa, o Pro continua por ela.",
+      }),
+    );
+  });
+
+  it("falha ao revogar AFILIADO: o erro da tela diz afiliado", async () => {
+    rotear(
+      detalhe({ influencer: { ...INFLUENCER, kind: "afiliado" }, is_pro: true }),
+    );
+    rejeitarSemError("/influencer/revoke");
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    await revogar("afiliado");
+
+    await waitFor(() =>
+      expect(toastSpy.erro).toHaveBeenCalledWith(
+        "Erro ao revogar acesso de afiliado.",
+      ),
+    );
+    expect(toastSpy.acao).not.toHaveBeenCalled();
+  });
+
+  it("falha ao conceder AFILIADO: o erro da tela diz afiliado", async () => {
+    rotear(detalhe());
+    rejeitarSemError("/influencer");
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    fireEvent.click(
+      within(rodape()).getByRole("button", { name: "Tornar creator" }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Afiliado" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conceder" }));
+
+    await waitFor(() =>
+      expect(toastSpy.erro).toHaveBeenCalledWith(
+        "Erro ao conceder acesso de afiliado.",
+      ),
+    );
+    expect(toastSpy.acao).not.toHaveBeenCalled();
+  });
+});

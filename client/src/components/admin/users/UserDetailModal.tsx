@@ -486,7 +486,8 @@ export function UserDetailModal({
       showErrorToast(
         err instanceof Error
           ? err.message
-          : "Erro ao conceder acesso de influencer.",
+          : // TODO(Ana)
+            `Erro ao conceder acesso de ${nomeDaConcessao(grantKind)}.`,
       );
     } finally {
       setInfluencerBusy(false);
@@ -495,6 +496,9 @@ export function UserDetailModal({
 
   async function handleRevokeInfluencer() {
     if (influencerBusy) return;
+    // Lido ANTES da chamada: o refetch do detalhe depois dela ja nao traz a
+    // concessao, e o toast precisa dizer qual tipo caiu.
+    const kindRevogado = detail?.influencer?.kind;
     setInfluencerBusy(true);
     try {
       await adminFetch(`/users/${userId}/influencer/revoke`, {
@@ -503,14 +507,15 @@ export function UserDetailModal({
       setRevokeConfirm(false);
       setDetailVersion((version) => version + 1);
       showActionToast({
-        message:
-          "Influencer revogado. Se houver assinatura ativa, o Pro continua por ela.",
+        // TODO(Ana)
+        message: `${rotuloDoKind(kindRevogado)} revogado. Se houver assinatura ativa, o Pro continua por ela.`,
       });
     } catch (err) {
       showErrorToast(
         err instanceof Error
           ? err.message
-          : "Erro ao revogar acesso de influencer.",
+          : // TODO(Ana)
+            `Erro ao revogar acesso de ${nomeDaConcessao(kindRevogado)}.`,
       );
     } finally {
       setInfluencerBusy(false);
