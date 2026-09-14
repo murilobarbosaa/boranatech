@@ -35,8 +35,14 @@ const NOME_DA_CONCESSAO: Record<string, string> = {
  * servidor (`still_pro_via_influencer`) diz que ha concessao, mas nao qual, e
  * chamar de "influencer" quem e afiliado seria a frase errada com cara de
  * certa.
+ *
+ * A busca e por chave PROPRIA do mapa: um kind como "toString" devolveria a
+ * funcao do prototipo, e ela iria parar no meio da frase.
  */
 export function nomeDaConcessao(kind: string | null | undefined): string {
+  if (kind && Object.prototype.hasOwnProperty.call(NOME_DA_CONCESSAO, kind)) {
+    return NOME_DA_CONCESSAO[kind];
+  }
   // TODO(Ana)
-  return (kind ? NOME_DA_CONCESSAO[kind] : undefined) ?? "creator";
+  return "creator";
 }
