@@ -1,5 +1,5 @@
 // Confere por EXECUCAO as perguntas de codigo de um pool de trilha:
-//   pnpm verify:quiz-pool <slug>
+//   pnpm verify:quiz-pool <slug> [--tabela-revisao]
 // saida: roda o trecho e compara o stdout com a alternativa correta; acusa
 //   tambem alternativa errada igual ao stdout (duas respostas certas).
 // completar: a correta na lacuna roda sem lancar; cada errada na lacuna e
@@ -26,6 +26,9 @@
 // timeout. Trecho de trilha e codigo didatico curto e o portao real continua
 // sendo a revisao humana da pool; cwd e env fecham o acidente que aconteceu
 // no Lote 06, em que um trecho gravou um arquivo na raiz do repositorio.
+//
+// --tabela-revisao: depois do relatorio, imprime a tabela da revisao humana
+// (tabelaRevisao), uma linha por pergunta de codigo.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -331,10 +334,33 @@ export function relatorioVerificacao(linhas: Linha[]): string[] {
   return out;
 }
 
+// Resumo da alternativa correta para a tabela de revisao: uma linha so
+// (quebras e espacos repetidos viram um espaco) e no maximo 60 caracteres,
+// cortado com "..." quando passa.
+export function resumoCorreta(texto: string): string {
+  const linha = texto.replace(/\s+/g, " ").trim();
+  return linha.length <= 60 ? linha : `${linha.slice(0, 57)}...`;
+}
+
+// Tabela da revisao humana obrigatoria (Lote 07, licao do 2c do Lote 06g:
+// 4 de 8 perguntas de erro de Python aprovadas pelo portao estavam
+// semanticamente erradas, e so a leitura lado a lado pegou). Uma linha por
+// pergunta de codigo, nenhuma para conceito: id | tipo | linguagem |
+// executado ou nao-executado | resumo da correta. "executado" vem da
+// capacidade da linguagem (tem runner), a mesma leitura que decide o SEM
+// RUNNER do relatorio; linguagem fora do mapa lanca, como em runnerFor.
+export function tabelaRevisao(questions: QuizQuestion[]): string[] {
+  return questions.filter(isCodeQuestion).map((question) => {
+    const linguagem = question.codigo?.linguagem ?? "";
+    const execucao = runnerFor(linguagem) ? "executado" : "nao-executado";
+    return `${question.id} | ${question.tipo ?? ""} | ${linguagem} | ${execucao} | ${resumoCorreta(question.alternativas[question.correta])}`;
+  });
+}
+
 async function main() {
   const slug = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
   if (!slug) {
-    console.error("Uso: pnpm verify:quiz-pool <slug>");
+    console.error("Uso: pnpm verify:quiz-pool <slug> [--tabela-revisao]");
     process.exit(1);
   }
   const { roadmapQuizPools } = await import("../server/data/roadmapQuizzes");
@@ -374,6 +400,12 @@ async function main() {
     linhas.push(conferir(question, executar));
   }
   for (const linha of relatorioVerificacao(linhas)) console.log(linha);
+  if (process.argv.includes("--tabela-revisao")) {
+    console.log(
+      "\ntabela de revisao humana (id | tipo | linguagem | execucao | correta):",
+    );
+    for (const linha of tabelaRevisao(pool.questions)) console.log(linha);
+  }
   if (linhas.some((l) => l.veredito === "CORRIGIR")) process.exit(1);
 }
 
