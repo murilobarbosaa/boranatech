@@ -22,7 +22,8 @@ export type DominioY = {
  * `truncado` obriga a tela a avisar. Eixo truncado sem aviso é a forma clássica
  * de exagerar tendência, e é a única coisa que este arquivo existe para impedir.
  *
- * Medido na série de hoje: MRR vai de R$ 467,40 a R$ 1.706,80, variação de 73%
+ * Medido na série legada: valor mensal de catálogo vai de R$ 467,40 a
+ * R$ 1.706,80, variação de 73%
  * do máximo, então o eixo começa em ZERO e não há nada a avisar. A regra só
  * entra em ação quando a base amadurecer e o crescimento relativo diminuir.
  */
@@ -55,7 +56,7 @@ export type Tendencia = {
 };
 
 /**
- * "Está subindo ou parou de subir?", para uma série de NÍVEL (MRR, ativos).
+ * "Está subindo ou parou de subir?", para uma série de NÍVEL (catálogo, ativos).
  *
  * Compara o primeiro ponto medido com o último. Pontos sem medição ficam de
  * fora: comparar contra um buraco daria uma variação contra nada.

@@ -304,7 +304,9 @@ describe("hierarquia 3 + 4 dos cards da Visao", () => {
     // Os outros dois principais, para "3 cards" nao ser compativel com "tres
     // cards quaisquer".
     expect(principais.some((t) => t.includes("Usuários totais"))).toBe(true);
-    expect(principais.some((t) => t.includes("Receita no período"))).toBe(true);
+    expect(
+      principais.some((t) => t.includes("Caixa registrado por moeda")),
+    ).toBe(true);
   });
 
   it("payload sem `cards` mantem 3 + 4 e nao inventa um card de outro assunto", async () => {
@@ -439,10 +441,12 @@ describe("alinhamento dos cards da Visao", () => {
       expect(screen.getByTestId("cards-principais")).toBeTruthy(),
     );
 
-    const semRodape = wrappersDeCard().filter((card) =>
-      /Assinantes Pro|Receita em risco/.test(card.textContent || ""),
-    );
-    expect(semRodape).toHaveLength(2);
+    const semRodape = [
+      "Assinantes Pro",
+      "Caixa registrado por moeda",
+      "Acessos em atenção",
+    ].map((label) => screen.getByText(label).closest("button, article")!);
+    expect(semRodape).toHaveLength(3);
     for (const card of semRodape) {
       expect(
         card.querySelector(".mt-auto"),

@@ -21,6 +21,14 @@ import {
   getFinanceSummary,
   getFinanceTimeseries,
 } from "../lib/financeMetrics";
+import {
+  getHonestFinanceDashboard,
+  resolveHonestFinancePeriod,
+} from "../lib/honestFinance";
+import {
+  ADMIN_FINANCE_CONTRACT_VERSION,
+  parseAdminFinanceContract,
+} from "../../shared/adminFinance";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   contarAtividadeAgora,
@@ -40,10 +48,7 @@ import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
-import {
-  listarCreatorsDoQuadro,
-  resumoDoQuadro,
-} from "../lib/creatorBoard";
+import { listarCreatorsDoQuadro, resumoDoQuadro } from "../lib/creatorBoard";
 import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
@@ -6803,6 +6808,32 @@ function expenseRowFromInput(
 
 router.get("/finance/summary", async (req, res, next) => {
   try {
+    // Contrato opt-in e versionado. Chamadores ADM-001/002 sem `contract`
+    // continuam recebendo exatamente o payload legado abaixo. O painel honesto
+    // nunca cai silenciosamente nesse payload: versão ausente/desconhecida é
+    // recusada pelo parser compartilhado no servidor e no cliente.
+    if (req.query.contract === "honest-v1") {
+      const period = resolveHonestFinancePeriod(
+        req.query as Record<string, unknown>,
+      );
+      const cacheKey =
+        `admincache:finance:honest:v${ADMIN_FINANCE_CONTRACT_VERSION}` +
+        `:from=${period.from}&to=${period.toExclusive}`;
+      const cached = await getOrCompute(
+        cacheKey,
+        FINANCE_CACHE_TTL_S,
+        async () =>
+          parseAdminFinanceContract(
+            await getHonestFinanceDashboard({ period }),
+          ),
+        { refresh: wantsFresh(req.query as Record<string, unknown>) },
+      );
+      // Valida também cache hit. Cache incompatível falha explicitamente e
+      // nunca é reinterpretado como zero/lista vazia ou payload legado.
+      res.json({ data: parseAdminFinanceContract(cached) });
+      return;
+    }
+
     const now = new Date();
     const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const from = parseDateParam(req.query.from, defFrom);
@@ -6858,19 +6889,59 @@ router.get("/finance/transactions", async (req, res, next) => {
         { count: "exact" },
       )
       .order("occurred_at", { ascending: false })
-      .range(rangeFrom, rangeTo);
+      .order("id", { ascending: false });
 
     const typeFilter = typeof req.query.type === "string" ? req.query.type : "";
     if (typeFilter) query = query.eq("type", typeFilter);
+    const currencyFilter =
+      typeof req.query.currency === "string"
+        ? req.query.currency.trim().toUpperCase()
+        : "";
+    if (currencyFilter && !/^[A-Z]{3}$/.test(currencyFilter)) {
+      throw createError(400, "invalid_currency", "Moeda inválida.");
+    }
+    if (currencyFilter) query = query.ilike("currency", currencyFilter);
+    if (typeof req.query.from === "string") {
+      const from = new Date(req.query.from);
+      if (Number.isNaN(from.getTime())) {
+        throw createError(400, "invalid_from", "Início do período inválido.");
+      }
+      query = query.gte("occurred_at", from.toISOString());
+    }
+    if (typeof req.query.toExclusive === "string") {
+      const toExclusive = new Date(req.query.toExclusive);
+      if (Number.isNaN(toExclusive.getTime())) {
+        throw createError(400, "invalid_to", "Fim do período inválido.");
+      }
+      query = query.lt("occurred_at", toExclusive.toISOString());
+    }
 
-    const { data, count, error } = await query;
+    const { data, count, error } = await query.range(rangeFrom, rangeTo);
     if (error)
       return next(
         dbError("finance transactions", error, "Erro ao buscar transações."),
       );
+    if (!Array.isArray(data) || !Number.isSafeInteger(count) || count! < 0) {
+      throw createError(
+        500,
+        "finance_transactions_contract_error",
+        "O extrato financeiro retornou uma contagem incompatível.",
+      );
+    }
+    const ids = data.map((row) => row.id);
+    if (
+      ids.some((id) => typeof id !== "string") ||
+      new Set(ids).size !== ids.length
+    ) {
+      throw createError(
+        500,
+        "finance_transactions_duplicate_row",
+        "O extrato financeiro retornou linhas repetidas.",
+      );
+    }
 
     res.json({
-      data: { rows: data ?? [], total: count ?? 0, page, pageSize },
+      data: { rows: data, total: count, page, pageSize },
     });
   } catch (err) {
     next(err);
