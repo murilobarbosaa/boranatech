@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   conferirCodigo,
   erroDoStderr,
+  excecaoObservada,
   type Execucao,
   fillGap,
   makeExecutor,
@@ -206,5 +207,78 @@ describe("isolamento do executor", () => {
     const r = executar("nome = input()\nprint(nome)");
     expect(r.status).not.toBe(0);
     expect(r.timeout).toBe(false);
+  });
+});
+
+describe("excecaoObservada: o que a execucao de uma pergunta de erro viu", () => {
+  const alternativas = { a: "1", b: "2", c: "3", d: "4" };
+  const erroPy = {
+    tipo: "erro" as const,
+    codigo: {
+      linguagem: "python",
+      trecho: "x = 1\ny = (x malformado)\nprint(y)",
+      saidaEsperada: "1",
+    },
+    alternativas,
+    correta: "a" as const,
+  };
+
+  it("stub: SyntaxError com a linha do traceback do python", () => {
+    const r = excecaoObservada(erroPy, () => ({
+      status: 1,
+      stdout: "",
+      erro: "SyntaxError: invalid syntax",
+      timeout: false,
+      stderr:
+        '  File "/tmp/x/q0.py", line 2\n    y = (x malformado)\n         ^\nSyntaxError: invalid syntax',
+    }));
+    expect(r).toBe("SyntaxError: invalid syntax (linha 2)");
+  });
+
+  it("pergunta de saida nao produz linha e nem executa", () => {
+    const r = excecaoObservada(
+      {
+        tipo: "saida",
+        codigo: { linguagem: "python", trecho: "print(1)" },
+      },
+      () => {
+        throw new Error("nao devia executar");
+      },
+    );
+    expect(r).toBeNull();
+  });
+
+  it("erro que roda limpo diz isso, com o stdout", () => {
+    const r = excecaoObservada(erroPy, () => ({
+      status: 0,
+      stdout: "3\n",
+      erro: "",
+      timeout: false,
+    }));
+    expect(r).toBe('roda limpo, stdout="3"');
+  });
+
+  it("execucao real em python: SyntaxError e a linha 2", () => {
+    const runner = runnerFor("python");
+    if (!runner) throw new Error("runner de python ausente");
+    const r = excecaoObservada(erroPy, makeExecutor(runner));
+    expect(r).toMatch(/^SyntaxError: .* \(linha 2\)$/);
+  });
+
+  it("execucao real em node: ReferenceError e a linha 2", () => {
+    const runner = runnerFor("js");
+    if (!runner) throw new Error("runner de js ausente");
+    const r = excecaoObservada(
+      {
+        tipo: "erro",
+        codigo: {
+          linguagem: "js",
+          trecho: "const a = 1;\nconsole.log(b);",
+          saidaEsperada: "1",
+        },
+      },
+      makeExecutor(runner),
+    );
+    expect(r).toBe("ReferenceError: b is not defined (linha 2)");
   });
 });
