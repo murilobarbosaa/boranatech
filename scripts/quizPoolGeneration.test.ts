@@ -19,6 +19,7 @@ import {
   missingCodeCount,
   MAX_QUOTA_PER_SECTION,
   normalizeGeneratedQuestion,
+  noRunnerWarnings,
   poolGateViolations,
   type SectionMaterial,
   sectionQuotaWarnings,
@@ -1352,5 +1353,67 @@ describe("folhas elegiveis para codigo", () => {
         ),
       ),
     ).toBe(true);
+  });
+});
+
+describe("noRunnerWarnings: trechos que a execucao nao cobre", () => {
+  const codigo = (id: string, linguagem: string): QuizQuestion => ({
+    id,
+    nivel: "iniciante",
+    pergunta: "O que acontece?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    tipo: "saida",
+    codigo: { linguagem, trecho: "echo 1" },
+    alternativasCodigo: true,
+  });
+  const conceito: QuizQuestion = {
+    id: "git-ini-09",
+    nivel: "iniciante",
+    pergunta: "O que e um commit?",
+    alternativas: {
+      a: "Um retrato",
+      b: "Um branch",
+      c: "Um remoto",
+      d: "Um merge",
+    },
+    correta: "a",
+    explicacao: "Guarda o estado.",
+    fonte: "basico.variaveis",
+  };
+
+  it("conta por linguagem sem runner e diz que a revisao humana e obrigatoria", () => {
+    expect(
+      noRunnerWarnings([
+        codigo("git-ini-01", "bash"),
+        codigo("git-ini-02", "bash"),
+        codigo("py-ini-01", "python"),
+        conceito,
+      ]),
+    ).toEqual([
+      "2 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
+    ]);
+  });
+
+  it("pool so com linguagem que executa nao avisa nada", () => {
+    expect(noRunnerWarnings([codigo("py-ini-01", "python"), conceito])).toEqual(
+      [],
+    );
+  });
+
+  it("execViolations pula o trecho sem runner em vez de inventar veredito", () => {
+    const executarPor = (linguagem: string) =>
+      linguagem === "js"
+        ? () => ({ status: 0, stdout: "", erro: "", timeout: false })
+        : null;
+    expect(
+      execViolations(
+        [toGeneratedQuestion(codigo("git-ini-01", "bash"))],
+        ["bash"],
+        executarPor,
+      ),
+    ).toEqual([]);
   });
 });

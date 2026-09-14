@@ -9,6 +9,7 @@ import {
   fillGap,
   makeExecutor,
   normalizeStdout,
+  relatorioVerificacao,
   runnerFor,
   stdoutMatches,
 } from "./verifyQuizPoolByExecution.mts";
@@ -294,5 +295,45 @@ describe("excecaoObservada: o que a execucao de uma pergunta de erro viu", () =>
       makeExecutor(runner),
     );
     expect(r).toBe("ReferenceError: b is not defined (linha 2)");
+  });
+});
+
+describe("relatorioVerificacao: o verificador diz o que fez e o que nao fez", () => {
+  const linhas = [
+    {
+      id: "git-ini-01",
+      tipo: "saida",
+      fonte: "git.status",
+      linguagem: "bash",
+      resultado: "linguagem bash",
+      veredito: "SEM RUNNER" as const,
+    },
+    {
+      id: "python-ini-09",
+      tipo: "erro",
+      fonte: "valores.conversao",
+      linguagem: "python",
+      resultado: "lanca: ValueError",
+      veredito: "OK" as const,
+      observado: "ValueError: could not convert (linha 2)",
+    },
+  ];
+
+  it("pergunta sem runner sai marcada nao-executado, sem linha observado", () => {
+    const saida = relatorioVerificacao(linhas);
+    expect(saida).toContain("git-ini-01  saida  nao-executado");
+    expect(
+      saida.some((l) => l.startsWith("git-ini-01  saida  observado")),
+    ).toBe(false);
+    expect(saida).toContain(
+      "python-ini-09  erro  observado: ValueError: could not convert (linha 2)",
+    );
+  });
+
+  it("o resumo traz a contagem de nao executados com o aviso de revisao humana", () => {
+    const saida = relatorioVerificacao(linhas);
+    expect(saida).toContain(
+      "[aviso] 1 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
+    );
   });
 });

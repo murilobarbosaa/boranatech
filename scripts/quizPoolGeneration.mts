@@ -21,6 +21,7 @@ import {
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { conferirCodigo, type Executor } from "./verifyQuizPoolByExecution.mts";
 import {
+  avisoSemRunner,
   capabilityOf,
   LANGUAGE_CAPABILITIES,
 } from "./languageCapabilities.mts";
@@ -957,6 +958,23 @@ export function poolGateViolations(
       ? execViolations(geradas, codeLanguages, executarPor, rotuloPorId)
       : []),
   ];
+}
+
+// Trechos que a execucao nao cobre, por linguagem sem runner. Canal de AVISO,
+// separado de execViolations (que ja pula esses trechos e segue devolvendo so
+// violacoes, porque o retry, o portao e o reparo dependem dessa forma): nunca
+// bloqueia, e existe para a pool dizer em voz alta o que ninguem executou.
+export function noRunnerWarnings(questions: QuizQuestion[]): string[] {
+  const porLinguagem = new Map<string, number>();
+  questions.forEach((question) => {
+    if (!isCodeQuestion(question) || !question.codigo) return;
+    const linguagem = question.codigo.linguagem;
+    if (capabilityOf(linguagem).runner) return;
+    porLinguagem.set(linguagem, (porLinguagem.get(linguagem) ?? 0) + 1);
+  });
+  return Array.from(porLinguagem.entries()).map(([linguagem, trechos]) =>
+    avisoSemRunner(linguagem, trechos),
+  );
 }
 
 // Cota de codigo por nivel: quantas perguntas de codigo o laco PREVIU (soma

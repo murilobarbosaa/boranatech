@@ -87,3 +87,12 @@ export function capabilityOf(linguagem: string): LanguageCapability {
   }
   return capacidade;
 }
+
+// Aviso de trechos que a verificacao por execucao NAO cobre. Texto unico para
+// o portao do gerador e para o verify:quiz-pool dizerem a mesma coisa. Licao
+// do Lote 06g: o instrumento diz o que fez e o que nao fez; fingir cobertura e
+// a classe de defeito que a tabela do 2c pegou (4 de 8 perguntas de erro de
+// Python aprovadas pelo portao estavam semanticamente erradas).
+export function avisoSemRunner(linguagem: string, trechos: number): string {
+  return `${trechos} trechos de ${linguagem} sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria`;
+}

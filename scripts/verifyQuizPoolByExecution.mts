@@ -38,7 +38,11 @@ import {
   type QuizQuestion,
 } from "../shared/roadmapQuiz/types";
 
-import { capabilityOf, type Runner } from "./languageCapabilities.mts";
+import {
+  avisoSemRunner,
+  capabilityOf,
+  type Runner,
+} from "./languageCapabilities.mts";
 
 const TIMEOUT_MS = 10000;
 const ALTERNATIVAS: QuizAlternativaId[] = ["a", "b", "c", "d"];
@@ -273,10 +277,11 @@ export function excecaoObservada(
 
 type Veredito = Conferencia["veredito"] | "SEM RUNNER";
 
-interface Linha {
+export interface Linha {
   id: string;
   tipo: string;
   fonte: string;
+  linguagem: string;
   resultado: string;
   veredito: Veredito;
   // So em pergunta de erro: ver excecaoObservada.
@@ -288,9 +293,42 @@ function conferir(question: QuizQuestion, executar: Executor): Linha {
     id: question.id,
     tipo: question.tipo ?? "",
     fonte: question.fonte,
+    linguagem: question.codigo?.linguagem ?? "",
     ...conferirCodigo(question, executar),
     observado: excecaoObservada(question, executar),
   };
+}
+
+// Saida do verify:quiz-pool, pura para o teste ler. O instrumento diz o que
+// fez e o que NAO fez: pergunta de linguagem sem runner sai marcada
+// nao-executado no lugar da linha observado, e o resumo repete, por
+// linguagem, o aviso de revisao humana obrigatoria. Para trilha que executa
+// tudo (js, python), as linhas sao as de sempre.
+export function relatorioVerificacao(linhas: Linha[]): string[] {
+  const out: string[] = [];
+  for (const l of linhas) {
+    out.push(
+      `${l.id} | ${l.tipo} | ${l.fonte} | ${l.resultado} | ${l.veredito}`,
+    );
+    if (l.veredito === "SEM RUNNER") {
+      out.push(`${l.id}  ${l.tipo}  nao-executado`);
+    } else if (l.observado) {
+      out.push(`${l.id}  ${l.tipo}  observado: ${l.observado}`);
+    }
+  }
+  const conta = (v: Veredito) => linhas.filter((l) => l.veredito === v).length;
+  out.push(
+    `\nperguntas de codigo: ${linhas.length} | CORRIGIR: ${conta("CORRIGIR")} | LER: ${conta("LER")}${conta("SEM RUNNER") ? ` | SEM RUNNER: ${conta("SEM RUNNER")}` : ""}`,
+  );
+  const semRunner = new Map<string, number>();
+  linhas.forEach((l) => {
+    if (l.veredito !== "SEM RUNNER") return;
+    semRunner.set(l.linguagem, (semRunner.get(l.linguagem) ?? 0) + 1);
+  });
+  semRunner.forEach((trechos, linguagem) =>
+    out.push(`[aviso] ${avisoSemRunner(linguagem, trechos)}`),
+  );
+  return out;
 }
 
 async function main() {
@@ -322,6 +360,7 @@ async function main() {
         id: question.id,
         tipo: question.tipo ?? "",
         fonte: question.fonte,
+        linguagem,
         resultado: `linguagem ${linguagem}`,
         veredito: "SEM RUNNER",
       });
@@ -334,19 +373,8 @@ async function main() {
     }
     linhas.push(conferir(question, executar));
   }
-  for (const l of linhas) {
-    console.log(
-      `${l.id} | ${l.tipo} | ${l.fonte} | ${l.resultado} | ${l.veredito}`,
-    );
-    if (l.observado) {
-      console.log(`${l.id}  ${l.tipo}  observado: ${l.observado}`);
-    }
-  }
-  const conta = (v: Veredito) => linhas.filter((l) => l.veredito === v).length;
-  console.log(
-    `\nperguntas de codigo: ${linhas.length} | CORRIGIR: ${conta("CORRIGIR")} | LER: ${conta("LER")}${conta("SEM RUNNER") ? ` | SEM RUNNER: ${conta("SEM RUNNER")}` : ""}`,
-  );
-  if (conta("CORRIGIR") > 0) process.exit(1);
+  for (const linha of relatorioVerificacao(linhas)) console.log(linha);
+  if (linhas.some((l) => l.veredito === "CORRIGIR")) process.exit(1);
 }
 
 if (
