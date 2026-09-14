@@ -401,7 +401,7 @@ const pool: QuizPool = {
         "d": "[ 1, 2 ]\n[ 1, 2, 3, 4 ]"
       },
       "correta": "b",
-      "explicacao": "O código usa o spread operator para adicionar 4 ao final do array original, resultando em `[1, 2, 3, 4]`.",
+      "explicacao": "O spread copia os itens de lista para um array novo e acrescenta o 4 no fim. lista continua [ 1, 2, 3 ] e novaLista é [ 1, 2, 3, 4 ], cada um impresso numa linha.",
       "fonte": "estruturas.destructuring",
       "tipo": "saida",
       "codigo": {
