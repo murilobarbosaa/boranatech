@@ -39,6 +39,7 @@ import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
+import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { withRedisOpTimeout } from "../lib/redisOpTimeout";
@@ -4067,8 +4068,10 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       );
     }
 
-    // Efeito imediato: derruba o cache Redis do status Pro (TTL 60s).
+    // Efeito imediato: derruba o cache Redis do status Pro e o do status de
+    // creator (os dois com TTL 60s).
     await invalidateProStatusCache(uid);
+    await invalidateCreatorStatusCache(uid);
     res.status(201).json({ data: { granted: true } });
   } catch (err) {
     next(err);
@@ -4162,6 +4165,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
       );
 
     await invalidateProStatusCache(uid);
+    await invalidateCreatorStatusCache(uid);
     res.json({ data: { revoked: true } });
   } catch (err) {
     next(err);
