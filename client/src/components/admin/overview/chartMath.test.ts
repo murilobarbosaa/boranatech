@@ -10,7 +10,7 @@ import {
 
 describe("dominioDoEixoY", () => {
   it("começa em zero quando a variação é grande: nada a esconder", () => {
-    // A série real de MRR hoje: 467,40 a 1.706,80. Variação de 73% do máximo.
+    // A série legada de catálogo: 467,40 a 1.706,80. Variação de 73% do máximo.
     const d = dominioDoEixoY([467.4, 900, 1706.8]);
     expect(d.min).toBe(0);
     expect(d.truncado).toBe(false);

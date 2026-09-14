@@ -20,12 +20,10 @@ import {
 import { ChartFrame } from "./ChartFrame";
 import type { OverviewWindow } from "./OverviewPeriod";
 
-// MRR E ASSINANTES ATIVOS, dia a dia, de `subscription_snapshots`.
+// VALOR MENSAL DE CATALOGO E ACESSOS ATIVOS, dia a dia, dos snapshots legados.
 //
-// A PERGUNTA: a receita recorrente está subindo, e ela sobe junto com o número
-// de assinantes ou descolou? As duas linhas juntas respondem as duas: descolar
-// significa que o ticket médio mudou, e é a única leitura que um número sozinho
-// não dá.
+// O valor usa preco vigente de catalogo e estado de acesso; nao e receita nem
+// obrigacao contratual. O nome honesto precisa acompanhar a serie inteira.
 //
 // A LINHA QUEBRA NO BURACO. Dia sem snapshot volta com `missing: true` e
 // métricas nulas, e `connectNulls={false}` faz o Recharts INTERROMPER o traço.
@@ -108,8 +106,8 @@ export function SubscriptionChart({
 
   return (
     <ChartFrame
-      titulo="Receita recorrente e assinantes"
-      pergunta="A receita está subindo, e junto com a base?"
+      titulo="Valor mensal de catálogo e acessos ativos"
+      pergunta="Como o preço vigente mensalizado acompanha os acessos?"
       testId="grafico-assinaturas"
       erro={erro}
       vazio={data !== null && pontos.length === 0}
@@ -129,7 +127,11 @@ export function SubscriptionChart({
             // continua inteira. A alternativa (rolagem horizontal) esconderia
             // metade da série atrás de um gesto que ninguém faz num painel.
             interval={intervaloDeRotulos(linhas.length, 6)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
+            tick={{
+              fontSize: 11,
+              fontWeight: 700,
+              fill: "var(--muted-foreground)",
+            }}
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
           />
@@ -137,7 +139,11 @@ export function SubscriptionChart({
             yAxisId="mrr"
             domain={[dominio.min, "auto"]}
             tickFormatter={(v: number) => brl.format(v)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--color-violet-600)" }}
+            tick={{
+              fontSize: 11,
+              fontWeight: 700,
+              fill: "var(--color-violet-600)",
+            }}
             tickLine={false}
             axisLine={false}
             width={72}
@@ -154,8 +160,8 @@ export function SubscriptionChart({
           />
           <Tooltip
             formatter={(valor, nome) =>
-              nome === "MRR"
-                ? [brl.format(Number(valor)), "MRR"]
+              nome === "Valor mensal de catálogo"
+                ? [brl.format(Number(valor)), "Valor mensal de catálogo"]
                 : [String(valor), "Assinantes ativos"]
             }
             labelFormatter={(rotulo: string) => `Dia ${rotulo}`}
@@ -172,7 +178,7 @@ export function SubscriptionChart({
             yAxisId="mrr"
             type="monotone"
             dataKey="mrr"
-            name="MRR"
+            name="Valor mensal de catálogo"
             stroke="var(--color-violet-600)"
             strokeWidth={3}
             dot={false}
@@ -248,7 +254,7 @@ function rodapeDeSnapshots(
   if (eixoTruncado) {
     // OBRIGATÓRIO quando o eixo não começa em zero: sem esta frase, o gráfico
     // exagera a inclinação e ninguém tem como saber.
-    avisos.push("O eixo de MRR não começa em zero.");
+    avisos.push("O eixo de valor de catálogo não começa em zero.");
   }
   if (data.truncated) {
     avisos.push("Série cortada no limite de pontos: exibindo o período final.");
