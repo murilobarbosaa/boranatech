@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
+const adminRoleDb = vi.hoisted(() => ({
+  result: {
+    data: [] as Array<{ role: unknown }> | null,
+    error: null as unknown,
+  },
+}));
+
 /**
  * GUARDA DE AUTORIZAÇÃO das rotas do admin.
  *
@@ -50,7 +57,14 @@ vi.mock("../lib/env", () => ({
 }));
 vi.mock("../lib/supabaseAdmin", () => ({
   supabaseAdmin: {
-    from: () => ({}),
+    from: (table: string) => {
+      if (table !== "admin_roles") return {};
+      const chain = {
+        select: () => chain,
+        eq: async () => adminRoleDb.result,
+      };
+      return chain;
+    },
     auth: { admin: {} },
     rpc: async () => ({}),
   },
@@ -306,11 +320,7 @@ describe("as guardas em si recusam quem não deve passar", () => {
   });
 
   it("token de NÃO-admin: requireAdmin devolve 403", async () => {
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
-      data: false,
-      error: null,
-    });
+    adminRoleDb.result = { data: [], error: null };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
       status: 403,
@@ -319,21 +329,14 @@ describe("as guardas em si recusam quem não deve passar", () => {
   });
 
   it("token de admin: requireAdmin deixa passar", async () => {
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
-      data: true,
-      error: null,
-    });
+    adminRoleDb.result = { data: [{ role: "editor" }], error: null };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({});
   });
 
-  it("erro na RPC de admin vira 403, nunca liberação", async () => {
+  it("erro na leitura de admin_roles vira 403, nunca liberação", async () => {
     // Fail-closed: falha de infra não pode virar acesso.
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => {
-      throw new Error("banco fora do ar");
-    };
+    adminRoleDb.result = { data: null, error: new Error("banco fora do ar") };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
       status: 403,
