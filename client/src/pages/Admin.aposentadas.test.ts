@@ -21,6 +21,13 @@ import {
  * nao regrediu o precedente.
  */
 
+describe("aba creators", () => {
+  it("?section=creators abre a aba, e ela esta na navegacao", () => {
+    expect(sectionFromSearch("?section=creators")).toBe("creators");
+    expect(adminNavItems.map((item) => item.href)).toContain("#creators");
+  });
+});
+
 describe("secoes aposentadas", () => {
   it("?section=bugs vai para o quadro BUG, nao para a visao geral", () => {
     expect(redirecionamentoDeSecao("?section=bugs")).toBe(
