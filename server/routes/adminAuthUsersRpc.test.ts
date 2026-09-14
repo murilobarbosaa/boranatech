@@ -314,8 +314,10 @@ describe("fetchAuthTimes: pagina e PROVA o total", () => {
     expect(err).toBeInstanceOf(Error);
     expect((err as { context?: Record<string, unknown> }).context).toEqual({
       op: "admin_auth_times",
-      obtido: 1,
-      esperado: null,
+      count: null,
+      from: 0,
+      pageSize: 1000,
+      motivo: "contagem_invalida",
     });
   });
 
