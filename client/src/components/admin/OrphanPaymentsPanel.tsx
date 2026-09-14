@@ -3,6 +3,7 @@ import { AlertTriangle, ExternalLink } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 
 import { adminFetch } from "@/lib/adminApi";
+import { formatarCentavos } from "@/lib/formatarCentavos";
 import { isUuid } from "@shared/adminAttention";
 
 /**
@@ -46,14 +47,6 @@ export const NOTA_MIN_CHARS = 20;
  */
 export function notaSuficiente(texto: string): boolean {
   return texto.trim().length >= NOTA_MIN_CHARS;
-}
-
-export function formatarCentavos(cents: number | null): string {
-  if (cents === null) return "valor não registrado";
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 /**

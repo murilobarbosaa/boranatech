@@ -26,9 +26,9 @@ vi.mock("@/lib/adminApi", () => ({
   adminFetch: adminSpy.adminFetch,
 }));
 
+import { formatarCentavos } from "@/lib/formatarCentavos";
 import {
   esperaDesde,
-  formatarCentavos,
   linkDaSessao,
   notaSuficiente,
   NOTA_MIN_CHARS,

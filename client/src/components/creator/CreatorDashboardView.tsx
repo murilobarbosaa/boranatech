@@ -12,7 +12,7 @@ import {
 
 import UserAvatar from "@/components/UserAvatar";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
-import { formatarCentavos } from "@/components/admin/OrphanPaymentsPanel";
+import { formatarCentavos } from "@/lib/formatarCentavos";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import {
   intervaloDeRotulos,
