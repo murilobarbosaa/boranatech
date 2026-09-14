@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useCreator } from "@/hooks/useCreator";
 import { temSessaoPersistida } from "@/lib/persistedSession";
 import { isPrerender } from "@/lib/prerender";
 import Logo from "@/components/Logo";
@@ -785,6 +786,10 @@ export default function Header() {
     user,
   } = useAuth();
   const { isAdmin } = useAdmin();
+  const creator = useCreator();
+  // So com resposta afirmativa do servidor. `loading` e `error` escondem o
+  // botao, e erro nunca e lido como "nao e creator" (ver useCreator).
+  const isCreator = creator.status === "ready" && creator.kind !== null;
   const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName =
     profile?.name ||
@@ -918,6 +923,17 @@ export default function Header() {
                     Admin
                   </Link>
                 ) : null}
+                {isCreator ? (
+                  <Link
+                    href="/creator"
+                    data-testid="header-creator"
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-50 px-3 py-2 text-sm font-black text-sky-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:bg-sky-100 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {/* TODO(Ana) */}
+                    Creator
+                  </Link>
+                ) : null}
                 {!isPro && !subscriptionLoading ? (
                   <Link
                     href="/planos"
@@ -1030,6 +1046,18 @@ export default function Header() {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
+                  </Link>
+                ) : null}
+                {isCreator ? (
+                  <Link
+                    href="/creator"
+                    onClick={closeMobileDrawer}
+                    data-testid="header-creator-mobile"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-50 px-3 py-2 text-xs font-black text-sky-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {/* TODO(Ana) */}
+                    Creator
                   </Link>
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
