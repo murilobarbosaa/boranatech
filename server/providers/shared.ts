@@ -119,27 +119,30 @@ export async function recordAffiliateConversion(params: {
           "[webhook/stripe] Falha ao contar conversao de afiliado:",
           conversionError,
         );
-        return;
       }
 
       // EVENTO de venda ao lado do contador, e SO depois de ele ter somado:
       // a serie por dia do painel precisa bater com `sales` e `revenue_cents`.
-      // Valor ausente ja saiu la em cima sem escrever nada, entao nao chega
-      // aqui. A comissao e a MESMA conta do SQL (round sobre o percentual
-      // corrente); percentual ilegivel grava null, nunca um numero inventado.
-      const percentual = Number(affiliate.commission_percent);
-      await recordCreatorEvent({
-        eventType: "sale",
-        affiliateId: affiliate.id,
-        userId,
-        subscriptionId: params.subscriptionId ?? null,
-        planId: params.planId ?? null,
-        paymentMethod: params.paymentMethod ?? null,
-        revenueCents,
-        commissionCents: Number.isFinite(percentual)
-          ? Math.round((revenueCents * percentual) / 100)
-          : null,
-      });
+      // Erro do RPC nao grava evento e nao muda mais nada: a funcao segue ate
+      // o fim exatamente como seguia antes do evento existir. Valor ausente ja
+      // saiu la em cima sem escrever nada, entao nao chega aqui. A comissao e a
+      // MESMA conta do SQL (round sobre o percentual corrente); percentual
+      // ilegivel grava null, nunca um numero inventado.
+      if (!conversionError) {
+        const percentual = Number(affiliate.commission_percent);
+        await recordCreatorEvent({
+          eventType: "sale",
+          affiliateId: affiliate.id,
+          userId,
+          subscriptionId: params.subscriptionId ?? null,
+          planId: params.planId ?? null,
+          paymentMethod: params.paymentMethod ?? null,
+          revenueCents,
+          commissionCents: Number.isFinite(percentual)
+            ? Math.round((revenueCents * percentual) / 100)
+            : null,
+        });
+      }
     }
   } catch (affiliateError) {
     console.error(

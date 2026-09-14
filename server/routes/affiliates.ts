@@ -18,6 +18,17 @@ function textoDoEvento(valor: unknown): string | null {
   return valor.slice(0, TETO_CAMPO_EVENTO);
 }
 
+// Caminho da pagina do clique: SO caminho relativo ao site, comecando com "/"
+// e sem espaco em branco. Qualquer outra coisa (URL absoluta, texto livre)
+// vira null: o campo e da query string publica e nao pode virar deposito de
+// URL arbitraria. Mesmo teto dos outros campos.
+const CAMINHO_DO_EVENTO = /^\/\S*$/;
+
+function caminhoDoEvento(valor: unknown): string | null {
+  if (typeof valor !== "string" || !CAMINHO_DO_EVENTO.test(valor)) return null;
+  return valor.slice(0, TETO_CAMPO_EVENTO);
+}
+
 // O IP NUNCA vai em claro para creator_events. Sem o sal configurado, o hash
 // seria reversivel por forca bruta (o espaco de IPv4 e pequeno), entao a
 // ausencia de CREATOR_EVENTS_SALT grava null em vez de um hash fraco.
@@ -145,7 +156,7 @@ router.post("/:code/click", async (req, res) => {
               // corpo: um corpo JSON num POST entre origens dispararia
               // preflight de CORS. O Referer nao serve para isso, porque entre
               // origens o navegador so envia a origem.
-              path: textoDoEvento(req.query.path),
+              path: caminhoDoEvento(req.query.path),
             },
           });
         }

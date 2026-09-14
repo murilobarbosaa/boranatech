@@ -99,6 +99,7 @@ const HASH_DO_IP_DE_TESTE =
  */
 async function clicar(
   codigo: string,
+  pathCodificado = "%2Fplanos",
 ): Promise<{ status: number; body: unknown }> {
   await pronto;
   const porta = (servidor.address() as AddressInfo).port;
@@ -108,7 +109,7 @@ async function clicar(
         host: "127.0.0.1",
         port: porta,
         method: "POST",
-        path: `/api/affiliates/${codigo}/click?path=%2Fplanos`,
+        path: `/api/affiliates/${codigo}/click?path=${pathCodificado}`,
         headers: {
           "User-Agent": "Mozilla/5.0 teste",
           Referer: "https://boranatech.com.br/planos?ref=BORA10",
@@ -218,5 +219,25 @@ describe("Redis indisponivel", () => {
     // endossado: e o comportamento que ja existia antes do evento.
     expect(cliquesContados()).toHaveLength(2);
     expect(estado.eventos).toHaveLength(2);
+  });
+});
+
+describe("path do evento: so caminho relativo ao site", () => {
+  const pathDoEvento = () =>
+    (estado.eventos[0].metadata as Record<string, unknown>).path;
+
+  it("?path=/planos grava /planos", async () => {
+    await clicar("BORA10", "%2Fplanos");
+
+    expect(estado.eventos).toHaveLength(1);
+    expect(pathDoEvento()).toBe("/planos");
+  });
+
+  it("?path=https://x grava path null, e o clique conta igual", async () => {
+    await clicar("BORA10", "https%3A%2F%2Fx");
+
+    expect(cliquesContados()).toHaveLength(1);
+    expect(estado.eventos).toHaveLength(1);
+    expect(pathDoEvento()).toBeNull();
   });
 });
