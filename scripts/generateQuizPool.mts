@@ -50,6 +50,7 @@ import {
   noRunnerWarnings,
   overusedFontes,
   poolGateViolations,
+  poolRuleWarnings,
   type SectionMaterial,
   sectionQuotaWarnings,
   sectionQuotas,
@@ -537,6 +538,12 @@ if (repairPath) {
   for (const aviso of noRunnerWarnings(reparo.questions)) {
     console.log(`[portao] [aviso] ${aviso}`);
   }
+  for (const aviso of poolRuleWarnings(
+    reparo.questions,
+    roadmap.codeLanguages ?? [],
+  )) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
   console.log(
     `[repair] tokens: ${reparo.uso.prompt_tokens} in / ${reparo.uso.completion_tokens} out; custo estimado USD ${custoDe(reparo.uso).toFixed(4)}${reparo.estourouOrcamento ? ` (parou no teto de USD ${REPAIR_BUDGET_USD})` : ""}`,
   );
@@ -732,6 +739,9 @@ for (const aviso of codeQuotaWarnings(questions, gateSections)) {
 // Linguagem sem runner: aviso, nunca bloqueio. A revisao humana cobre o que
 // a maquina nao executou (ver noRunnerWarnings e avisoSemRunner).
 for (const aviso of noRunnerWarnings(questions)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+for (const aviso of poolRuleWarnings(questions, roadmap.codeLanguages ?? [])) {
   console.log(`[portao] [aviso] ${aviso}`);
 }
 if (problems.length > 0 || violacoes.length > 0) {

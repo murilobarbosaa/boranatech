@@ -30,6 +30,12 @@ export interface LanguageCapability {
    * no trecho (um Dockerfile comeca com FROM, um script bash chama comandos).
    */
   importRule: ImportRule;
+  /**
+   * Saida de ferramenta (bash, dockerfile): texto de terminal real parece
+   * frase ("Already up to date."), entao a regra de alternativa escrita como
+   * frase vira aviso para a revisao humana em vez de reprovar a correta.
+   */
+  saidaDeFerramenta: boolean;
 }
 
 // saidaEsperadaAplicavel: false em html, css e dockerfile, que nao tem saida de
@@ -42,37 +48,44 @@ export const LANGUAGE_CAPABILITIES: Record<string, LanguageCapability> = {
     runner: { command: "node", ext: ".mjs" },
     saidaEsperadaAplicavel: true,
     importRule: "forbidden",
+    saidaDeFerramenta: false,
   },
   // Sem runner: o node nao executa TypeScript sem transpilar.
   ts: {
     runner: null,
     saidaEsperadaAplicavel: true,
     importRule: "forbidden",
+    saidaDeFerramenta: false,
   },
   python: {
     runner: { command: "python3", ext: ".py" },
     saidaEsperadaAplicavel: true,
     importRule: "stdlib-allowlist",
+    saidaDeFerramenta: false,
   },
   bash: {
     runner: null,
     saidaEsperadaAplicavel: true,
     importRule: "nao-se-aplica",
+    saidaDeFerramenta: true,
   },
   html: {
     runner: null,
     saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
+    saidaDeFerramenta: false,
   },
   css: {
     runner: null,
     saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
+    saidaDeFerramenta: false,
   },
   dockerfile: {
     runner: null,
     saidaEsperadaAplicavel: false,
     importRule: "nao-se-aplica",
+    saidaDeFerramenta: true,
   },
 };
 
@@ -98,6 +111,14 @@ export function saidaEsperadaAplicavelEm(linguagem: string): boolean {
   return Object.prototype.hasOwnProperty.call(LANGUAGE_CAPABILITIES, linguagem)
     ? LANGUAGE_CAPABILITIES[linguagem].saidaEsperadaAplicavel
     : true;
+}
+
+// saidaDeFerramenta tolerante a linguagem fora do mapa (devolve false: a regra
+// de frase continua reprovando, o contrato antigo).
+export function saidaDeFerramentaEm(linguagem: string): boolean {
+  return Object.prototype.hasOwnProperty.call(LANGUAGE_CAPABILITIES, linguagem)
+    ? LANGUAGE_CAPABILITIES[linguagem].saidaDeFerramenta
+    : false;
 }
 
 // Aviso de trechos que a verificacao por execucao NAO cobre. Texto unico para

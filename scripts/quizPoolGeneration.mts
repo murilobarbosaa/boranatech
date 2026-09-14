@@ -24,6 +24,7 @@ import {
   avisoSemRunner,
   capabilityOf,
   LANGUAGE_CAPABILITIES,
+  saidaDeFerramentaEm,
   saidaEsperadaAplicavelEm,
 } from "./languageCapabilities.mts";
 
@@ -778,7 +779,10 @@ export function codeRuleViolations(
       if (!question.alternativasCodigo) {
         out.push(`${rotulo}: saida exige alternativasCodigo true`);
       }
-      if (alternativas.some((alt) => FRASE_RE.test(alt.trim()))) {
+      if (
+        !saidaDeFerramentaEm(codigo.linguagem) &&
+        alternativas.some((alt) => FRASE_RE.test(alt.trim()))
+      ) {
         out.push(
           `${rotulo}: alternativa de saida escrita como frase (tem que ser a saida crua)`,
         );
@@ -805,12 +809,54 @@ export function codeRuleViolations(
           out.push(
             `${rotulo}: erro exige codigo.saidaEsperada (stdout cru que o codigo deveria produzir)`,
           );
-        } else if (FRASE_RE.test(saidaEsperada.trim())) {
+        } else if (
+          !saidaDeFerramentaEm(codigo.linguagem) &&
+          FRASE_RE.test(saidaEsperada.trim())
+        ) {
           out.push(
             `${rotulo}: saidaEsperada escrita como frase (tem que ser a saida crua)`,
           );
         }
       }
+    }
+  });
+  return out;
+}
+
+// Avisos de forma que NAO reprovam. Em linguagem de saida de ferramenta (bash,
+// dockerfile) texto de terminal real parece frase ("Already up to date."), e
+// FRASE_RE reprovaria a alternativa correta; ali a regra vira aviso e a
+// revisao humana obrigatoria da trilha decide. Em js, python, html e css a
+// regra continua reprovando em codeRuleViolations. Canal separado para o retry
+// nao pedir ao modelo que troque saida real por outra.
+export function codeRuleWarnings(
+  questions: GeneratedQuestion[],
+  codeLanguages: string[],
+  rotuloDe: Rotulo = rotuloPorPosicao,
+): string[] {
+  const out: string[] = [];
+  questions.forEach((question, index) => {
+    const codigo = question.codigo ?? null;
+    if (!codigo || !isCodeQuestion({ tipo: question.tipo })) return;
+    if (!codeLanguages.includes(codigo.linguagem)) return;
+    if (!saidaDeFerramentaEm(codigo.linguagem)) return;
+    const frases =
+      question.tipo === "saida"
+        ? Object.values(question.alternativas).filter((alt) =>
+            FRASE_RE.test(alt.trim()),
+          )
+        : [];
+    if (
+      question.tipo === "erro" &&
+      codigo.saidaEsperada &&
+      FRASE_RE.test(codigo.saidaEsperada.trim())
+    ) {
+      frases.push(codigo.saidaEsperada);
+    }
+    if (frases.length > 0) {
+      out.push(
+        `${rotuloDe(question, index)}: parece frase (${frases.map((f) => JSON.stringify(f)).join(", ")}); em ${codigo.linguagem} pode ser saida real de terminal, revisao humana confirma`,
+      );
     }
   });
   return out;
@@ -1021,6 +1067,18 @@ export function noRunnerWarnings(questions: QuizQuestion[]): string[] {
   });
   return Array.from(porLinguagem.entries()).map(([linguagem, trechos]) =>
     avisoSemRunner(linguagem, trechos),
+  );
+}
+
+// codeRuleWarnings na pool montada, rotulado pelo id, para o portao.
+export function poolRuleWarnings(
+  questions: QuizQuestion[],
+  codeLanguages: string[],
+): string[] {
+  return codeRuleWarnings(
+    questions.map(toGeneratedQuestion),
+    codeLanguages,
+    (question, index) => `${questions[index].id} (fonte ${question.fonte})`,
   );
 }
 

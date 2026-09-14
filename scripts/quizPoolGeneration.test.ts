@@ -10,6 +10,7 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeRuleWarnings,
   codeQuotaWarnings,
   codeTypeViolations,
   dependsOnExternal,
@@ -1501,5 +1502,53 @@ describe("saidaEsperada condicionada: schema, regra e prompt", () => {
     expect(buildCodeRules(["js"])).toContain(
       "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo",
     );
+  });
+});
+
+describe("FRASE_RE vira aviso em linguagem de saida de ferramenta", () => {
+  const saidaEm = (linguagem: string, alternativa: string) =>
+    gerada({
+      tipo: "saida",
+      codigo: { linguagem, trecho: "git pull" },
+      alternativas: {
+        a: alternativa,
+        b: "error: failed",
+        c: "fatal: no",
+        d: "Merge made",
+      },
+      alternativasCodigo: true,
+    });
+  const erroEm = (linguagem: string, saidaEsperada: string) =>
+    gerada({
+      tipo: "erro",
+      codigo: { linguagem, trecho: "git pul", saidaEsperada },
+      alternativasCodigo: false,
+    });
+  const deFrase = (v: string[]) => v.filter((l) => l.includes("frase"));
+
+  it("bash: saida de terminal com ponto final nao reprova, vira aviso", () => {
+    const q = saidaEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    const avisos = codeRuleWarnings([q], ["bash"]);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("revisao humana");
+  });
+
+  it("bash: saidaEsperada que parece frase tambem vira aviso", () => {
+    const q = erroEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    expect(codeRuleWarnings([q], ["bash"])).toHaveLength(1);
+  });
+
+  it("html continua reprovando alternativa de saida em prosa", () => {
+    const q = saidaEm("html", "O titulo aparece em negrito.");
+    expect(deFrase(codeRuleViolations([q], ["html"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["html"])).toEqual([]);
+  });
+
+  it("js continua reprovando e nao avisa nada", () => {
+    const q = saidaEm("js", "O codigo imprime 50.");
+    expect(deFrase(codeRuleViolations([q], ["js"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["js"])).toEqual([]);
   });
 });

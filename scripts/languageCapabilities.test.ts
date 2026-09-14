@@ -51,3 +51,14 @@ describe("saidaEsperadaAplicavel por linguagem", () => {
     );
   });
 });
+
+describe("saidaDeFerramenta por linguagem", () => {
+  it("so bash e dockerfile tem saida de ferramenta", () => {
+    ["bash", "dockerfile"].forEach((lang) =>
+      expect(capabilityOf(lang).saidaDeFerramenta).toBe(true),
+    );
+    ["js", "ts", "python", "html", "css"].forEach((lang) =>
+      expect(capabilityOf(lang).saidaDeFerramenta).toBe(false),
+    );
+  });
+});
