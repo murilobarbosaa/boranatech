@@ -36,7 +36,7 @@ import {
 } from "./OrphanPaymentsPanel";
 
 const LINHA = {
-  id: "11111111-2222-3333-4444-555555555555",
+  id: "11111111-2222-4333-8444-555555555555",
   stripe_session_id: "cs_live_abc",
   customer_email: "pessoa@exemplo.com",
   plan_id: "pro_monthly",
@@ -93,10 +93,55 @@ function botaoConfirmar(): HTMLButtonElement {
 
 beforeEach(() => {
   adminSpy.adminFetch.mockReset();
+  window.history.replaceState(null, "", "/admin?section=financeiro");
 });
 
 afterEach(() => {
   cleanup();
+});
+
+describe("deep link somente leitura do órfão", () => {
+  it("destaca a linha exata e limpa apenas os parâmetros contextuais", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/admin?section=financeiro&window=30d&panel=orphans&orphan=${LINHA.id}`,
+    );
+    comLista();
+    await montar();
+    const row = await screen.findByTestId("orfao-linha");
+    expect(row.getAttribute("data-focused")).toBe("true");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Limpar foco" }));
+    expect(window.location.search).toContain("window=30d");
+    expect(window.location.search).not.toContain("orphan=");
+    expect(window.location.search).not.toContain("panel=");
+  });
+
+  it("mantém a lista útil para UUID inválido ou caso já resolvido", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/admin?section=financeiro&panel=orphans&orphan=invalido",
+    );
+    comLista();
+    const { unmount } = await montar();
+    expect(await screen.findByTestId("orphan-context-error")).toBeTruthy();
+    expect(await screen.findByTestId("orfao-linha")).toBeTruthy();
+    unmount();
+
+    window.history.replaceState(
+      null,
+      "",
+      "/admin?section=financeiro&panel=orphans&orphan=99999999-9999-4999-8999-999999999999",
+    );
+    comLista();
+    await montar();
+    expect(
+      (await screen.findByTestId("orphan-context-error")).textContent,
+    ).toContain("não está aberto");
+    expect(await screen.findByTestId("orfao-linha")).toBeTruthy();
+  });
 });
 
 describe("regras puras", () => {

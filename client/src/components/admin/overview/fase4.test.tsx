@@ -37,7 +37,9 @@ import { FunnelDigest, legendaDoPasso } from "./FunnelDigest";
 import { MetricSparkline } from "./MetricSparkline";
 import {
   CostVsRevenueChart,
-  ProConversionsChart,
+  hasOverviewPaymentsContract,
+  isRegisteredPaymentsData,
+  RegisteredPaymentsChart,
   serieDe,
 } from "./SeriesCharts";
 import { ToolUsagePanel } from "./ToolUsagePanel";
@@ -132,21 +134,26 @@ describe("FunnelDigest", () => {
         taxaSobreAnterior: null,
       },
       {
-        chave: "pro",
-        rotulo: "Assinaram Pro",
+        chave: "pagamento",
+        rotulo: "Com pagamento registrado após o cadastro",
         valor: 91,
         taxaSobreAnterior: 1.893,
       },
       {
-        chave: "engajamento",
-        rotulo: "Assinantes que já usaram alguma ferramenta",
+        chave: "uso_ia",
+        rotulo: "Com IA iniciada após o pagamento e status success na consulta",
         valor: 81,
         taxaSobreAnterior: 89.011,
       },
     ],
-    destaque: "pro",
-    anterior: { cadastro: 619, pro: 25, proComUso: 20 },
-    motivoSemDelta: "coortes_de_maturidade_diferente",
+    destaque: "pagamento",
+    anterior: null,
+    motivoSemDelta: "janelas_de_observacao_nao_equivalentes",
+    limiteTemporalDosInicios: "2026-08-14T23:59:59.999Z",
+    consultaIniciadaEm: "2026-08-15T12:00:00.000Z",
+    consultaConcluidaEm: "2026-08-15T12:00:01.000Z",
+    semanticaUso: "inicio_apos_pagamento_status_success_na_consulta",
+    cadastrosComMenosDe7Dias: 12,
   };
 
   it("mostra taxas adjacentes e destaca o passo que o servidor apontou", () => {
@@ -155,7 +162,7 @@ describe("FunnelDigest", () => {
     expect(passos).toHaveLength(3);
     expect(
       passos
-        .find((p) => p.getAttribute("data-chave") === "pro")
+        .find((p) => p.getAttribute("data-chave") === "pagamento")
         ?.getAttribute("data-destaque"),
     ).toBe("sim");
     expect(screen.getByText("1,9%")).toBeTruthy();
@@ -167,16 +174,19 @@ describe("FunnelDigest", () => {
       screen
         .getAllByTestId("funil-passo")
         .map((p) => p.getAttribute("data-chave")),
-    ).toEqual(["cadastro", "pro", "engajamento"]);
+    ).toEqual(["cadastro", "pagamento", "uso_ia"]);
   });
 
-  it("a 3ª etapa é rotulada como ENGAJAMENTO, não como conversão", () => {
+  it("a 3ª etapa identifica IA pós-pagamento, não uso genérico", () => {
     render(<FunnelDigest data={funil} />);
     const passo = screen
       .getAllByTestId("funil-passo")
-      .find((p) => p.getAttribute("data-chave") === "engajamento")!;
-    expect(passo.textContent).toContain("engajamento pós-compra");
-    expect(passo.textContent).not.toContain("conversão em receita");
+      .find((p) => p.getAttribute("data-chave") === "uso_ia")!;
+    expect(passo.textContent).toContain("status na consulta");
+    expect(passo.textContent).not.toContain("alguma ferramenta");
+    expect(
+      screen.getByText(/momento em que uma execução virou success/i),
+    ).toBeTruthy();
   });
 
   it("CONTROLE NEGATIVO: chave desconhecida não derruba o bloco, só fica sem legenda", () => {
@@ -189,7 +199,12 @@ describe("FunnelDigest", () => {
         data={{
           ...funil,
           passos: [
-            { chave: "inedito", rotulo: "Novo", valor: 3, taxaSobreAnterior: 5 },
+            {
+              chave: "inedito",
+              rotulo: "Novo",
+              valor: 3,
+              taxaSobreAnterior: 5,
+            },
           ],
         }}
       />,
@@ -210,8 +225,7 @@ describe("FunnelDigest", () => {
     render(<FunnelDigest data={funil} />);
     const nota = screen.getByTestId("funil-sem-delta");
     expect(nota.textContent).toContain("coortes");
-    // As contagens anteriores aparecem como INFORMAÇÃO, não como percentual.
-    expect(nota.textContent).toContain("619");
+    expect(nota.textContent).toContain("janelas");
     expect(nota.textContent).not.toContain("%");
   });
 
@@ -241,49 +255,220 @@ describe("serieDe", () => {
 });
 
 describe("gráficos novos", () => {
+  const dias = [
+    { date: "2026-08-13", partial: false },
+    { date: "2026-08-14", partial: true },
+  ];
+  const serie = (chave: string, rotulo: string, values: number[]) => ({
+    chave,
+    rotulo,
+    pontos: dias.map((dia, index) => ({ ...dia, value: values[index] })),
+    total: values.reduce((sum, value) => sum + value, 0),
+  });
   const series = [
+    serie("cadastros", "Cadastros", [1, 2]),
+    serie("receitaBrutaCents", "Receita bruta", [29900, 59800]),
+    serie("custoIaUsd", "Custo de IA", [0.1, 0.2]),
+    serie("chamadasSemCustoMedido", "Sem custo", [0, 1]),
     {
-      chave: "conversoesPro",
-      rotulo: "Conversões Pro",
-      pontos: [
-        { date: "2026-08-13", value: 2, partial: false },
-        { date: "2026-08-14", value: 3, partial: true },
-      ],
-      total: 5,
+      ...serie("mrrCents", "MRR", [1000, 1000]),
+      tipo: "estoque",
+      total: 1000,
     },
     {
-      chave: "receitaBrutaCents",
-      rotulo: "Receita bruta",
-      pontos: [
-        { date: "2026-08-13", value: 29900, partial: false },
-        { date: "2026-08-14", value: 59800, partial: true },
-      ],
-      total: 89700,
-    },
-    {
-      chave: "custoIaUsd",
-      rotulo: "Custo de IA",
-      pontos: [
-        { date: "2026-08-13", value: 0.1, partial: false },
-        { date: "2026-08-14", value: 0.2, partial: true },
-      ],
-      total: 0.3,
+      ...serie("assinantesAtivos", "Assinantes", [2, 2]),
+      tipo: "estoque",
+      total: 2,
     },
   ];
+  const paymentSeries = [
+    serie("primeiroPagamentoObservado", "Primeiro pagamento observado", [2, 1]),
+    serie("pagamentosPosteriores", "Pagamentos posteriores", [1, 0]),
+    serie("pagamentosSemClassificacao", "Sem pessoa identificada", [0, 1]),
+    serie("pagamentosOrdemIncerta", "Ordem histórica incerta", [0, 0]),
+  ];
 
-  it("conversões Pro escrevem a DEFINIÇÃO na tela", () => {
-    // Sem a definição, "conversão" é uma palavra que cada leitor preenche de um
-    // jeito, e o número deixa de ser verificável.
-    render(<ProConversionsChart series={series} />);
-    const bloco = screen.getByTestId("grafico-conversoes-pro");
+  const pagamentos = {
+    series: paymentSeries,
+    pagamentosUtilizaveisNoPeriodo: 5,
+    pessoasIdentificadas: 4,
+    semPessoaNoPeriodo: 1,
+    ordemHistoricaIncertaNoPeriodo: 0,
+    identidadesConflitantesNoHistorico: 1,
+    identidadesConflitantesComDataCandidataNoPeriodo: 1,
+    porMeio: [{ rotulo: "Não identificado", pagamentos: 5 }],
+    porProvider: [{ provider: "stripe", pagamentos: 5 }],
+    cobertura: {
+      calculadoAte: "2026-08-14T15:00:00Z",
+      consultaIniciadaEm: "2026-08-14T15:01:00Z",
+      consultaConcluidaEm: "2026-08-14T15:01:01Z",
+      leituraLocal: "paginacao_verificada_sem_snapshot" as const,
+      consistenciaFotografia: "nao_garantida" as const,
+      historicoIntegral: "nao_verificavel" as const,
+      pagamentosSemUsuario: 0,
+      pagamentosSemMeio: 5,
+      excluidos: { identidadeAusente: 0, dataInvalida: 0 },
+    },
+    ressalvaHistorica:
+      "Primeiro observado no histórico local não comprova o primeiro da vida.",
+  };
+
+  const funil = {
+    passos: [
+      {
+        chave: "cadastro",
+        rotulo: "Cadastros",
+        valor: 4,
+        taxaSobreAnterior: null,
+      },
+      {
+        chave: "pagamento",
+        rotulo: "Pagamentos",
+        valor: 2,
+        taxaSobreAnterior: 50,
+      },
+      { chave: "uso_ia", rotulo: "IA", valor: 1, taxaSobreAnterior: 50 },
+    ],
+    destaque: "pagamento",
+    anterior: null,
+    motivoSemDelta: "janelas_de_observacao_nao_equivalentes",
+    limiteTemporalDosInicios: "2026-08-14T15:00:00Z",
+    consultaIniciadaEm: "2026-08-14T15:01:00Z",
+    consultaConcluidaEm: "2026-08-14T15:01:01Z",
+    semanticaUso: "inicio_apos_pagamento_status_success_na_consulta",
+    cadastrosComMenosDe7Dias: 1,
+  };
+  const payloadValido = {
+    contractVersion: 3,
+    series,
+    pagamentos,
+    funil,
+    ferramentas: [],
+    windowLabel: "13 a 14 ago",
+    tz: "America/Sao_Paulo",
+  };
+
+  it("recusa backend antigo ou payload v2/v3 incompleto", () => {
+    expect(hasOverviewPaymentsContract({ series: [], funil: {} })).toBe(false);
+    expect(
+      hasOverviewPaymentsContract({
+        contractVersion: 2,
+        series: [],
+        pagamentos: { series: [] },
+        funil: { passos: [] },
+      }),
+    ).toBe(false);
+    expect(
+      hasOverviewPaymentsContract({
+        contractVersion: 3,
+        series: [],
+        pagamentos: { series: [] },
+        funil: { passos: [] },
+      }),
+    ).toBe(false);
+    expect(hasOverviewPaymentsContract(payloadValido)).toBe(true);
+  });
+
+  it("recusa séries desalinhadas, datas e números inválidos", () => {
+    const desalinhado = structuredClone(payloadValido);
+    desalinhado.pagamentos.series[1].pontos[1].date = "2026-08-15";
+    expect(hasOverviewPaymentsContract(desalinhado)).toBe(false);
+    const negativo = structuredClone(payloadValido);
+    negativo.pagamentos.pagamentosUtilizaveisNoPeriodo = -1;
+    expect(hasOverviewPaymentsContract(negativo)).toBe(false);
+    const invalido = structuredClone(payloadValido);
+    invalido.pagamentos.series[0].pontos[0].date = "2026-13-99";
+    expect(() => hasOverviewPaymentsContract(invalido)).not.toThrow();
+    expect(hasOverviewPaymentsContract(invalido)).toBe(false);
+  });
+
+  it.each(["identidadeAusente", "dataInvalida"] as const)(
+    "recusa exclusão obrigatória ausente: %s",
+    (field) => {
+      const incompleto = structuredClone(payloadValido);
+      delete (
+        incompleto.pagamentos.cobertura.excluidos as Record<string, number>
+      )[field];
+      const other =
+        field === "identidadeAusente" ? "dataInvalida" : "identidadeAusente";
+      incompleto.pagamentos.cobertura.excluidos[other] = 1;
+
+      expect(isRegisteredPaymentsData(incompleto.pagamentos)).toBe(false);
+      expect(hasOverviewPaymentsContract(incompleto)).toBe(false);
+      expect(() =>
+        render(
+          <RegisteredPaymentsChart
+            pagamentos={incompleto.pagamentos as never}
+          />,
+        ),
+      ).not.toThrow();
+      expect(
+        screen
+          .getByTestId("grafico-pagamentos-registrados")
+          .getAttribute("data-estado"),
+      ).toBe("erro");
+    },
+  );
+
+  it("recusa objeto de exclusões vazio sem convertê-lo em zeros", () => {
+    const incompleto = structuredClone(payloadValido);
+    incompleto.pagamentos.cobertura.excluidos = {} as never;
+    expect(isRegisteredPaymentsData(incompleto.pagamentos)).toBe(false);
+    expect(hasOverviewPaymentsContract(incompleto)).toBe(false);
+  });
+
+  it("recusa null em fluxo e preserva null legítimo em estoque", () => {
+    const receitaNula = structuredClone(payloadValido);
+    const receita = receitaNula.series.find(
+      (item) => item.chave === "receitaBrutaCents",
+    )!;
+    (receita as { total: number | null }).total = null;
+    (receita.pontos[0] as { value: number | null }).value = null;
+    expect(hasOverviewPaymentsContract(receitaNula)).toBe(false);
+
+    const estoqueNulo = structuredClone(payloadValido);
+    const mrr = estoqueNulo.series.find((item) => item.chave === "mrrCents")!;
+    (mrr as { total: number | null }).total = null;
+    for (const point of mrr.pontos) {
+      (point as { value: number | null }).value = null;
+    }
+    expect(hasOverviewPaymentsContract(estoqueNulo)).toBe(true);
+    expect(hasOverviewPaymentsContract(payloadValido)).toBe(true);
+    expect(
+      payloadValido.series.find((item) => item.chave === "custoIaUsd")
+        ?.pontos[0].value,
+    ).toBe(0.1);
+  });
+
+  it("pagamentos registrados expõem unidades e ressalva histórica", () => {
+    render(<RegisteredPaymentsChart pagamentos={pagamentos} />);
+    const bloco = screen.getByTestId("grafico-pagamentos-registrados");
     expect(bloco.getAttribute("data-estado")).toBe("ok");
-    expect(bloco.textContent).toContain("primeira assinatura");
+    expect(bloco.textContent).toContain("5 pagamentos");
+    expect(bloco.textContent).toContain("4 pessoas identificadas");
+    expect(bloco.textContent).toContain("não comprova");
+    expect(bloco.textContent).toContain("sem fotografia transacional");
+    expect(screen.getByTestId("legenda-pagamentos").children).toHaveLength(4);
+    expect(bloco.textContent).not.toContain("Conversões Pro");
+  });
+
+  it("entrada presente mas incompatível produz erro controlado", () => {
+    expect(() =>
+      render(<RegisteredPaymentsChart pagamentos={{ series: [] } as never} />),
+    ).not.toThrow();
+    expect(
+      screen
+        .getByTestId("grafico-pagamentos-registrados")
+        .getAttribute("data-estado"),
+    ).toBe("erro");
   });
 
   it("sem série, o gráfico fica VAZIO declarado (não quebra)", () => {
-    render(<ProConversionsChart series={undefined} />);
+    render(<RegisteredPaymentsChart pagamentos={undefined} />);
     expect(
-      screen.getByTestId("grafico-conversoes-pro").getAttribute("data-estado"),
+      screen
+        .getByTestId("grafico-pagamentos-registrados")
+        .getAttribute("data-estado"),
     ).toBe("vazio");
   });
 
@@ -522,7 +707,8 @@ describe("FunnelDigest: como ler", () => {
     // delas). O que este teste protege é a copy ser estática: nada de texto
     // gerado por heurística ou por modelo neste painel.
     const texto = screen.getByTestId("funil-como-ler").textContent ?? "";
-    expect(texto).toContain("sobre a etapa ACIMA dela");
-    expect(texto).toContain("menor dessas taxas");
+    expect(texto).toContain("sobre a etapa acima");
+    expect(texto).toContain("execução de IA");
+    expect(texto).toContain("status success durante a consulta");
   });
 });

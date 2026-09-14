@@ -82,6 +82,7 @@ import {
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashboard";
 import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
+import { clearAttentionContext } from "@/components/admin/adminContext";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
@@ -96,14 +97,17 @@ import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
 import { detalheDeReceitaPorProvider } from "@/components/admin/overview/receitaPorProviderCopy";
 import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
+import { useAttentionData } from "@/components/admin/overview/useAttentionData";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import { FunnelDigest } from "@/components/admin/overview/FunnelDigest";
 import { MetricSparkline } from "@/components/admin/overview/MetricSparkline";
 import {
   CostVsRevenueChart,
-  ProConversionsChart,
+  hasOverviewPaymentsContract,
+  RegisteredPaymentsChart,
   serieDe,
+  type RegisteredPaymentsData,
 } from "@/components/admin/overview/SeriesCharts";
 import { ToolUsagePanel } from "@/components/admin/overview/ToolUsagePanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -414,6 +418,7 @@ type OverviewData = {
 
 /** O que GET /admin/overview-series devolve. Ver server/lib/overviewSeries.ts. */
 type SeriesData = {
+  contractVersion: 3;
   series: Array<{
     chave: string;
     rotulo: string;
@@ -422,6 +427,7 @@ type SeriesData = {
     pontos: Array<{ date: string; value: number | null; partial: boolean }>;
     total: number | null;
   }>;
+  pagamentos: RegisteredPaymentsData;
   funil: {
     passos: Array<{
       chave: string;
@@ -430,8 +436,13 @@ type SeriesData = {
       taxaSobreAnterior: number | null;
     }>;
     destaque: string | null;
-    anterior: { cadastro: number; pro: number; proComUso: number } | null;
+    anterior: null;
     motivoSemDelta: string;
+    limiteTemporalDosInicios: string;
+    consultaIniciadaEm: string;
+    consultaConcluidaEm: string;
+    semanticaUso: string;
+    cadastrosComMenosDe7Dias: number;
   };
   ferramentas: Array<{
     tool: string;
@@ -441,21 +452,6 @@ type SeriesData = {
   }>;
   windowLabel: string;
   tz: string;
-};
-
-/** O que GET /admin/attention devolve. Ver server/lib/atencaoNecessaria.ts. */
-type AttentionData = {
-  itens: Array<{
-    tipo: string;
-    chave: string;
-    severidade: "critico" | "atencao";
-    titulo: string;
-    detalhe: string;
-    valorCents?: number;
-    url: string;
-  }>;
-  fontesIndisponiveis: string[];
-  janelaDias: number;
 };
 
 // De /dashboard sobrou o registro de auditoria. Os contadores foram podados na
@@ -6474,7 +6470,7 @@ export default function Admin() {
       // UMA secao so (filtros, quadro e tarefa da aba de Tarefas). A lista mora
       // em taskViewState, junto de onde essas chaves sao lidas e escritas: uma
       // copia aqui divergiria no primeiro filtro novo, e em silencio.
-      const params = new URLSearchParams(
+      const params = clearAttentionContext(
         limparChavesDeSecao(window.location.search),
       );
       params.set("section", section);
@@ -6495,9 +6491,12 @@ export default function Admin() {
   const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
   const [seriesLoading, setSeriesLoading] = useState(true);
   const [seriesError, setSeriesError] = useState<string | null>(null);
-  const [attention, setAttention] = useState<AttentionData | null>(null);
-  const [attentionLoading, setAttentionLoading] = useState(true);
-  const [attentionError, setAttentionError] = useState<string | null>(null);
+  const {
+    data: attention,
+    loading: attentionLoading,
+    error: attentionError,
+    refresh: refreshAttention,
+  } = useAttentionData(activeSection === "visao-geral");
 
   const overviewWindow = parseOverviewWindow(
     new URLSearchParams(search).get("window"),
@@ -6579,9 +6578,14 @@ export default function Admin() {
     let cancelled = false;
     setSeriesLoading(true);
     setSeriesError(null);
-    adminFetch(`/overview-series?window=${overviewWindow}`)
+    adminFetch(`/overview-series?window=${overviewWindow}&contract=3`)
       .then((json) => {
         if (cancelled) return;
+        if (!hasOverviewPaymentsContract(json.data)) {
+          throw new Error(
+            "Contrato de pagamentos incompatível. Atualize a página após a conclusão do deploy.",
+          );
+        }
         setSeriesData(json.data as SeriesData);
       })
       .catch((err: unknown) => {
@@ -6605,32 +6609,6 @@ export default function Admin() {
   // tem janela propria declarada pelo servidor (`janelaDias`). Fazer trocar de 7
   // para 30 refazer esta chamada mudaria o rotulo sem mudar o conteudo, que e a
   // mesma armadilha do funil.
-  useEffect(() => {
-    let cancelled = false;
-    setAttentionLoading(true);
-    setAttentionError(null);
-    adminFetch("/attention")
-      .then((json) => {
-        if (cancelled) return;
-        setAttention(json.data as AttentionData);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        // Falha vira ESTADO de erro. Um painel vazio aqui diria "tudo em ordem"
-        // sobre uma medicao que nao aconteceu.
-        setAttention(null);
-        setAttentionError(
-          err instanceof Error ? err.message : "Erro ao carregar.",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setAttentionLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
@@ -7871,13 +7849,8 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
-              {/* FUNIL DIGERIDO substitui o `PaidFunnel`.
-                  O bloco antigo vinha do PostHog e mostrava contagens; este vem
-                  de tabelas locais e mostra TAXAS entre etapas adjacentes, que e
-                  a pergunta ("onde vaza?"). As etapas sao verificaveis no banco:
-                  cadastro (profiles) -> ativacao (ai_usage_logs) -> Pro
-                  (subscriptions). Nao comeca em visitantes porque nao existe
-                  fonte local de visitante. */}
+              {/* Funil de coorte local: cadastro -> pagamento registrado -> uso
+                  de IA success cujo registro começou depois do pagamento. */}
               <div className="grid gap-6">
                 <BlocoBoundary nome="Funil principal">
                   <FunnelDigest
@@ -7894,9 +7867,9 @@ export default function Admin() {
 
               {/* GRAFICOS NOVOS da Fase 4, no mesmo frame dos dois de cima. */}
               <div className="grid gap-6 xl:grid-cols-2">
-                <BlocoBoundary nome="Conversões Pro por dia">
-                  <ProConversionsChart
-                    series={seriesData?.series}
+                <BlocoBoundary nome="Pagamentos registrados por dia">
+                  <RegisteredPaymentsChart
+                    pagamentos={seriesData?.pagamentos}
                     erro={seriesError}
                     carregando={seriesLoading}
                   />
@@ -7954,6 +7927,7 @@ export default function Admin() {
                     data={attention}
                     loading={attentionLoading}
                     error={attentionError}
+                    onRefresh={() => void refreshAttention()}
                   />
                 </BlocoBoundary>
               </div>
