@@ -37,6 +37,7 @@ import {
   RefreshCcw,
   Send,
   ShieldCheck,
+  Sparkles,
   SquareKanban,
   Star,
   Tag,
@@ -84,6 +85,7 @@ import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashbo
 import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
 import { clearAttentionContext } from "@/components/admin/adminContext";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
+import { CreatorsSection } from "@/components/admin/creators/CreatorsSection";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
 import { SignupChart } from "@/components/admin/overview/SignupChart";
@@ -316,6 +318,7 @@ type AdminSectionId =
   | "financeiro"
   | "ia"
   | "afiliados"
+  | "creators"
   | "emails"
   | "notificacoes"
   | "vagas"
@@ -894,6 +897,12 @@ export const adminNavItems: AdminNavItem[] = [
     href: "#afiliados",
     label: "Afiliados",
     icon: <Handshake className="h-4 w-4" />,
+  },
+  {
+    href: "#creators",
+    // TODO(Ana)
+    label: "Creators",
+    icon: <Sparkles className="h-4 w-4" />,
   },
   {
     href: "#emails",
@@ -7979,6 +7988,21 @@ export default function Admin() {
               <BlocoBoundary nome="Lista de usuários">
                 <UsersDashboard />
               </BlocoBoundary>
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "creators" ? (
+            <AdminSection
+              id="creators"
+              // TODO(Ana)
+              eyebrow="influencers e afiliados"
+              icon={<Sparkles className="h-4 w-4" />}
+              // TODO(Ana)
+              title="Creators"
+              // TODO(Ana)
+              subtitle="Quem tem concessão de creator, os códigos de cada um e os números de cliques, vendas e comissão."
+            >
+              <CreatorsSection />
             </AdminSection>
           ) : null}
 
