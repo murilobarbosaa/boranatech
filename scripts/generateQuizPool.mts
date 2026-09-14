@@ -62,6 +62,9 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
+// Destino do despejo de pool reprovada: fora do worktree de proposito, para
+// nunca virar arquivo nao rastreado nem entrar num commit por engano.
+const REJECTED_DIR = "/tmp";
 
 const AI_MAX_ATTEMPTS = 5;
 const AI_BACKOFF_MS = [400, 800, 800, 800];
@@ -520,6 +523,32 @@ for (const nivel of NIVEIS) {
   usageTotal.completion_tokens += usageLevel.completion_tokens;
 }
 
+// Conteudo do arquivo da pool. Serializador UNICO: o arquivo final e o
+// despejo da pool reprovada saem daqui, entao o despejo copiado para
+// server/data/roadmapQuizzes/ e byte a byte o que a geracao escreveria.
+function poolFileContent(pool: QuizPool): string {
+  return `// GENERATED FILE. Gerado por scripts/generateQuizPool.mts
+// (pnpm gen:quiz-pool ${pool.slug}). SERVER-ONLY: este arquivo contem o GABARITO;
+// NUNCA importar, direta ou indiretamente, de client/src (o client recebe as
+// perguntas sem gabarito via API). Ids sao estaveis: regenerar com --force
+// troca os ids e invalida tentativas registradas. Ver README.md desta pasta.
+// TODO(Ana): revisao editorial completa deste pool (perguntas, alternativas
+// e explicacoes de todos os niveis).
+import type { QuizPool } from "../../../shared/roadmapQuiz/types";
+
+const pool: QuizPool = ${JSON.stringify(pool, null, 2)};
+
+export default pool;
+`;
+}
+
+function custoLinha(): string {
+  const cost =
+    (usageTotal.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
+    (usageTotal.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
+  return `tokens: ${usageTotal.prompt_tokens} in / ${usageTotal.completion_tokens} out; custo estimado USD ${cost.toFixed(4)}`;
+}
+
 const pool: QuizPool = { slug, questions };
 const problems = validateQuizPool(pool, slug, roadmap);
 // Portao final com a bateria completa do retry (poolGateViolations): o laco
@@ -540,33 +569,47 @@ if (problems.length > 0 || violacoes.length > 0) {
   for (const violacao of violacoes) {
     console.error(`[generateQuizPool] ${violacao}`);
   }
-  console.error("[generateQuizPool] pool invalido, nada foi salvo.");
+  // Despejo da pool reprovada. O conteudo gerado custa dinheiro e tempo, e
+  // reprovar nao pode significar perder tudo: com o arquivo no formato final
+  // e a lista de violacoes por id, a correcao a mao mantendo os ids substitui
+  // uma nova geracao (foi o que funcionou no Lote 04e, 12 perguntas).
+  const rejeitada = path.join(REJECTED_DIR, `${slug}-rejeitada.ts`);
+  const listaViolacoes = path.join(
+    REJECTED_DIR,
+    `${slug}-rejeitada-violacoes.txt`,
+  );
+  // Os problemas de validateQuizPool vem como "pool <slug>, pergunta <id>:";
+  // tirar o prefixo deixa o id no inicio da linha. Problema da pool inteira
+  // (contagem por nivel, cobertura de secao) nao tem id e fica como veio.
+  const prefixoPergunta = `pool ${slug}, pergunta `;
+  writeFileSync(rejeitada, poolFileContent(pool));
+  writeFileSync(
+    listaViolacoes,
+    [
+      ...problems.map((problem) =>
+        problem.startsWith(prefixoPergunta)
+          ? problem.slice(prefixoPergunta.length)
+          : problem,
+      ),
+      ...violacoes,
+    ].join("\n") + "\n",
+  );
+  console.error(`[generateQuizPool] ${custoLinha()}`);
+  console.error(
+    `[generateQuizPool] pool invalido, nada foi salvo em ${path.relative(ROOT, outFile)}.`,
+  );
+  console.error(`[generateQuizPool] pool reprovada: ${rejeitada}`);
+  console.error(`[generateQuizPool] violacoes por id: ${listaViolacoes}`);
+  console.error(
+    `[generateQuizPool] O caminho e corrigir a mao mantendo os ids: copiar a pool reprovada para ${path.relative(ROOT, outFile)}, editar so as perguntas listadas e conferir com pnpm verify:quiz-pool ${slug}. Gerar de novo troca o conteudo inteiro e custa outra rodada.`,
+  );
   process.exit(1);
 }
 
-const fileContent = `// GENERATED FILE. Gerado por scripts/generateQuizPool.mts
-// (pnpm gen:quiz-pool ${slug}). SERVER-ONLY: este arquivo contem o GABARITO;
-// NUNCA importar, direta ou indiretamente, de client/src (o client recebe as
-// perguntas sem gabarito via API). Ids sao estaveis: regenerar com --force
-// troca os ids e invalida tentativas registradas. Ver README.md desta pasta.
-// TODO(Ana): revisao editorial completa deste pool (perguntas, alternativas
-// e explicacoes de todos os niveis).
-import type { QuizPool } from "../../../shared/roadmapQuiz/types";
-
-const pool: QuizPool = ${JSON.stringify(pool, null, 2)};
-
-export default pool;
-`;
-
 mkdirSync(QUIZ_DIR, { recursive: true });
-writeFileSync(outFile, fileContent);
+writeFileSync(outFile, poolFileContent(pool));
 
-const cost =
-  (usageTotal.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
-  (usageTotal.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
 console.log(
   `[generateQuizPool] ${questions.length} perguntas -> ${path.relative(process.cwd(), outFile)}`,
 );
-console.log(
-  `[generateQuizPool] tokens: ${usageTotal.prompt_tokens} in / ${usageTotal.completion_tokens} out; custo estimado USD ${cost.toFixed(4)}`,
-);
+console.log(`[generateQuizPool] ${custoLinha()}`);
