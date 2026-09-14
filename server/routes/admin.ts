@@ -66,7 +66,11 @@ import {
   type ProSourceTally,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
-import { creatorKindOf, type CreatorKind } from "../lib/creatorKind";
+import {
+  creatorKindOf,
+  isCreatorKind,
+  type CreatorKind,
+} from "../lib/creatorKind";
 import {
   totaisPagosPorUsuario,
   type DeclaracaoDeDevolucao,
@@ -340,6 +344,9 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "notes",
     "commission_due_cents",
     "commission_paid_cents",
+    // Dono do codigo (20260913120000). Validado em validarDonoDoAfiliado
+    // antes de chegar ao banco.
+    "user_id",
   ],
   // times_redeemed fica de fora de proposito: e contador do webhook
   // (increment_coupon_redemption), somente leitura no admin.
@@ -2692,6 +2699,38 @@ router.get("/content/:type/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * Dono do codigo de afiliado (`affiliates.user_id`, migration 20260913120000).
+ *
+ * `null` desvincula. Qualquer outro valor precisa ser o `user_id` de um perfil
+ * que existe: a FK aponta para auth.users, e sem esta checagem um uuid
+ * inventado chegaria ao banco e voltaria como 23503, que esta rota transforma
+ * num 500 generico, em vez de um 400 que diz o que houve. Valor que nem e uuid
+ * nao pode ser dono de nada, entao recebe o mesmo 400.
+ */
+async function validarDonoDoAfiliado(valor: unknown): Promise<AppError | null> {
+  if (valor === null) return null;
+  const naoEncontrado = createError(
+    400,
+    "user_not_found",
+    // TODO(Ana)
+    "Usuário dono do código não encontrado.",
+  );
+  if (typeof valor !== "string" || !UUID_RE.test(valor)) return naoEncontrado;
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", valor)
+    .maybeSingle();
+  if (error)
+    return dbError(
+      "affiliate owner lookup",
+      error,
+      "Erro ao validar o dono do código.",
+    );
+  return data ? null : naoEncontrado;
+}
+
 router.post("/content/:type", async (req, res, next) => {
   try {
     const { type } = req.params;
@@ -2705,6 +2744,11 @@ router.post("/content/:type", async (req, res, next) => {
       req.body as Record<string, unknown>,
       allowedFields,
     );
+
+    if (type === "affiliates" && "user_id" in payload) {
+      const erroDono = await validarDonoDoAfiliado(payload.user_id);
+      if (erroDono) return next(erroDono);
+    }
 
     const { data, error } = await supabaseAdmin
       .from(tabelaDe(type))
@@ -2756,6 +2800,11 @@ router.patch("/content/:type/:id", async (req, res, next) => {
       allowedFields,
     );
     delete updates.slug;
+
+    if (type === "affiliates" && "user_id" in updates) {
+      const erroDono = await validarDonoDoAfiliado(updates.user_id);
+      if (erroDono) return next(erroDono);
+    }
 
     if (Object.keys(updates).length === 0)
       return next(
@@ -3935,8 +3984,23 @@ router.post("/users/:id/influencer", async (req, res, next) => {
         ),
       );
     }
-    const noteRaw = (req.body as { note?: unknown } | undefined)?.note;
+    const body = req.body as { note?: unknown; kind?: unknown } | undefined;
+    const noteRaw = body?.note;
     const note = typeof noteRaw === "string" ? noteRaw.trim() : "";
+    // kind OBRIGATORIO e sem default: um default aqui faria um client que
+    // esqueceu o campo conceder influencer sem ninguem decidir. O caminho
+    // continua /influencer neste lote; o lote da tela renomeia junto.
+    const kind = body?.kind;
+    if (!isCreatorKind(kind)) {
+      return next(
+        createError(
+          400,
+          "invalid_creator_kind",
+          // TODO(Ana)
+          "Tipo de creator inválido. Use influencer ou afiliado.",
+        ),
+      );
+    }
 
     const { data: existing, error: existingError } = await supabaseAdmin
       .from("creators")
@@ -3961,11 +4025,14 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       .insert({
         actor_user_id: req.user!.id,
         action: "grant",
+        // resource_type continua "influencer_access" para os dois kinds neste
+        // lote (o historico ja gravado e o client o conhecem por esse nome). O
+        // kind vai no after_json: content_audit_logs nao tem coluna `details`.
         resource_type: "influencer_access",
         resource_id: uid,
         resource_slug: null,
         before_json: null,
-        after_json: { note: note || null },
+        after_json: { note: note || null, kind },
       });
     if (auditError) {
       console.error("[admin] influencer grant audit failed:", auditError);
@@ -3983,6 +4050,7 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       user_id: uid,
       granted_by: req.user!.id,
       note: note || null,
+      kind,
     });
     if (insertError) {
       // 23505 = corrida com outra concessao simultanea: o estado final e o
@@ -4025,7 +4093,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     const { data: active, error: activeError } = await supabaseAdmin
       .from("creators")
-      .select("id, granted_at, granted_by, note")
+      .select("id, granted_at, granted_by, note, kind")
       .eq("user_id", uid)
       .is("revoked_at", null)
       .maybeSingle();
@@ -4060,6 +4128,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
           granted_at: active.granted_at,
           granted_by: active.granted_by,
           note: active.note,
+          kind: active.kind,
         },
         after_json: null,
       });
@@ -6980,7 +7049,62 @@ router.get("/affiliates-stats", async (_req, res, next) => {
         dbError("affiliates", error, "Erro ao buscar afiliados."),
       );
 
-    res.json({ data: data || [] });
+    // DONO DO CODIGO (affiliates.user_id). affiliates aponta para auth.users,
+    // nao para profiles, entao o join implicito do PostgREST nao alcanca o
+    // nome: e uma segunda consulta, de custo fixo, so com os ids que existem.
+    // Falha aqui derruba a rota, pelo mesmo criterio da consulta acima: um
+    // dono sem nome na tela seria lido como codigo sem dono.
+    const linhas = data || [];
+    const donos = Array.from(
+      new Set(
+        linhas
+          .map((linha) => linha.user_id)
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    );
+    const perfilPorDono = new Map<
+      string,
+      { name: string | null; email: string | null }
+    >();
+    if (donos.length > 0) {
+      const { data: perfis, error: perfisError } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, name, email")
+        .in("user_id", donos);
+      if (perfisError)
+        return next(
+          // TODO(Ana)
+          dbError(
+            "affiliates owners",
+            perfisError,
+            "Erro ao buscar afiliados.",
+          ),
+        );
+      for (const perfil of (perfis ?? []) as Array<{
+        user_id: string;
+        name: string | null;
+        email: string | null;
+      }>) {
+        perfilPorDono.set(perfil.user_id, {
+          name: perfil.name ?? null,
+          email: perfil.email ?? null,
+        });
+      }
+    }
+
+    res.json({
+      data: linhas.map((linha) => {
+        // `?? null`: antes da migration a coluna nao existe e o `*` nao a traz.
+        const dono = typeof linha.user_id === "string" ? linha.user_id : null;
+        const perfil = dono ? perfilPorDono.get(dono) : undefined;
+        return {
+          ...linha,
+          user_id: dono,
+          owner_name: perfil?.name ?? null,
+          owner_email: perfil?.email ?? null,
+        };
+      }),
+    });
   } catch (err) {
     next(err);
   }

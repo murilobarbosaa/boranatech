@@ -462,7 +462,8 @@ export function UserDetailModal({
     try {
       await adminFetch(`/users/${userId}/influencer`, {
         method: "POST",
-        body: JSON.stringify({ note: grantNote.trim() }),
+        // O botao ainda so concede influencer; o de afiliado vem com a tela.
+        body: JSON.stringify({ note: grantNote.trim(), kind: "influencer" }),
       });
       setGrantOpen(false);
       setGrantNote("");

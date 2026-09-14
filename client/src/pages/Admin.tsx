@@ -254,6 +254,10 @@ type AffiliateRecord = {
   commission_due_cents: number;
   commission_paid_cents: number;
   notes?: string | null;
+  /** Dono do código (affiliates.user_id). Opcional: backend anterior não envia. */
+  user_id?: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
 };
 
 type AffiliateEditForm = {

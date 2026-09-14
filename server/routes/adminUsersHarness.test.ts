@@ -234,6 +234,7 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   // renomeia influencers para creators (ver TABELAS_RENOMEADAS_PENDENTES). A
   // migration e de aplicacao manual pela Ana.
   { tabela: "creators", coluna: "kind" },
+  { tabela: "affiliates", coluna: "user_id" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.

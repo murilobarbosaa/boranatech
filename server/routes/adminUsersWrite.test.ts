@@ -534,6 +534,7 @@ describe("POST /users/:id/influencer", () => {
 
     const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
       note: "parceria",
+      kind: "influencer",
     });
 
     expect(r.status).toBe(201);
@@ -557,7 +558,9 @@ describe("POST /users/:id/influencer", () => {
       },
     });
 
-    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {});
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      kind: "influencer",
+    });
 
     expect(r.status).toBe(200);
     expect(r.body.data).toEqual({ granted: false, already_active: true });
@@ -571,7 +574,9 @@ describe("POST /users/:id/influencer", () => {
     });
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {});
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      kind: "influencer",
+    });
 
     expect(r.status).toBe(500);
     expect(r.body.error.code).toBe("audit_failed");
@@ -750,7 +755,10 @@ describe("nenhum UPDATE sai sem filtro de escopo", () => {
   it("a concessão de influencer grava o ator, não um id qualquer", async () => {
     montar({ creators: { rows: [] }, content_audit_logs: { rows: [{}] } });
 
-    await chamarAdmin("POST", `/users/${UID}/influencer`, { note: "x" });
+    await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      note: "x",
+      kind: "influencer",
+    });
 
     const insert = estado.double.de("creators").find((c) => c.op === "insert")!;
     expect(insert.payload).toMatchObject({
