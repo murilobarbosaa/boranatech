@@ -31,6 +31,7 @@ import { techWriter } from "./tech-writer";
 import { erp } from "./erp";
 import { javascript } from "./javascript";
 import { python } from "./python";
+import { git } from "./git";
 
 export {
   frontend,
@@ -97,4 +98,5 @@ export const roadmapsV2: RoadmapV2[] = [
   erp,
   javascript,
   python,
+  git,
 ];

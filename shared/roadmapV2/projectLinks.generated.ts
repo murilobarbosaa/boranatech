@@ -154,6 +154,10 @@ export const projectTrailLinks: Record<
     {
       "slug": "python",
       "nodeId": "projeto.cli"
+    },
+    {
+      "slug": "git",
+      "nodeId": "projeto.cli"
     }
   ]
 };
