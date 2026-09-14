@@ -9,6 +9,7 @@ import {
 import type { Gender } from "../../shared/gender";
 import { getProBenefitLabels } from "../../shared/proFeatures";
 import { env } from "./env";
+import { formatarVencimentoPix } from "./pixVencimento";
 
 const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 
@@ -584,6 +585,94 @@ export async function sendRenewalReminderEmail(
     subject: title,
     html: layout(theme, title, body),
   });
+}
+
+function formatarReais(cents: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(cents / 100);
+}
+
+// Lembrete de Pix criado e nao pago. UM template com duas variantes, pelo mesmo
+// motivo do lembrete de renovacao: a estrutura e a mesma (valor, prazo, botao,
+// fatura) e so muda o que o prazo pede, "aberto" ou "vence hoje".
+export async function sendPixPendingReminderEmail(
+  to: string,
+  name: string,
+  data: {
+    variant: "aberto" | "vence_hoje";
+    planName: string;
+    amountCents: number;
+    dueDate: string;
+    payUrl: string;
+    invoiceUrl: string | null;
+  },
+): Promise<void> {
+  const safeName = escapeHtml(name);
+  const safePlan = escapeHtml(data.planName);
+  // Valor da COBRANCA, nunca o do plano: com cupom os dois divergem.
+  const safeValor = escapeHtml(formatarReais(data.amountCents));
+  const vencimento = formatarVencimentoPix(data.dueDate);
+  if (!vencimento) {
+    // Data ilegivel e defeito de quem enfileirou. O e-mail sai sem ela em vez
+    // de nao sair: valor, botao e fatura sao o que a pessoa precisa, e sem a
+    // data a frase fica menos precisa, nunca errada. Lancar faria o BullMQ
+    // repetir tres vezes um erro deterministico e o lembrete nao sairia.
+    console.error(
+      `[email] pix_pending_reminder com dueDate ilegivel: ${JSON.stringify(data.dueDate)}`,
+    );
+  }
+  const safeData = vencimento ? escapeHtml(vencimento) : null;
+  const theme = NEUTRAL_THEME;
+  const venceHoje = data.variant === "vence_hoje";
+
+  // TODO(Ana): assunto, titulo, corpo e rotulos do lembrete de Pix pendente.
+  const subject = venceHoje
+    ? "Seu Pix vence hoje"
+    : "Falta pagar seu Pix do Bora na Tech Pro";
+  const title = venceHoje
+    ? "Hoje é o último dia do seu Pix"
+    : "Seu Pix está esperando";
+  const abertura = venceHoje
+    ? `Olá, ${safeName}. O seu Pix de ${safeValor} para o Pro ${safePlan} vence hoje${safeData ? `, ${safeData}` : ""}. Depois disso o código perde a validade e será preciso gerar outro.`
+    : `Olá, ${safeName}. Você gerou um Pix de ${safeValor} para o Pro ${safePlan}, e ele ainda não foi pago.${safeData ? ` O código vale até ${safeData}.` : ""}`;
+  const body = `
+    ${paragraph(abertura)}
+    ${venceHoje ? "" : paragraph("O acesso é liberado assim que o pagamento cai, o que costuma levar poucos segundos.")}
+    ${button("Pagar agora", escapeHtml(data.payUrl), theme)}
+    ${
+      data.invoiceUrl
+        ? paragraph(
+            `Prefere pagar direto na fatura? <a href="${escapeHtml(data.invoiceUrl)}" style="color:${theme.accent};">Abra a fatura no Asaas</a>.`,
+          )
+        : ""
+    }
+    ${paragraph("Se você já pagou, pode ignorar este e-mail.")}
+  `;
+
+  // CONFERE O RETORNO, ao contrario dos transacionais vizinhos. O cron marca o
+  // estagio no banco depois do enqueue; se um erro do Resend (que vem no campo
+  // `error`, sem throw) completasse o job como sucesso, o lembrete nunca sairia
+  // e nunca mais seria tentado. Lancando, o BullMQ usa o `attempts: 3`. Mesmo
+  // tratamento de `sendCampaignEmail`.
+  const resultado = await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject,
+    html: layout(theme, title, body),
+  });
+  if (!resultado) {
+    console.warn(
+      "[email] RESEND_API_KEY ausente. Lembrete de Pix pendente nao enviado.",
+    );
+    return;
+  }
+  if (resultado.error) {
+    throw new Error(
+      resultado.error.message || "Erro do Resend ao enviar o lembrete de Pix.",
+    );
+  }
 }
 
 // DIA ZERO: o periodo venceu e o acesso ja caiu. Um e-mail, uma vez, dizendo

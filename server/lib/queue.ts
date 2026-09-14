@@ -15,6 +15,7 @@ import {
   sendNewsletterConfirmEmail,
   sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
+  sendPixPendingReminderEmail,
   sendProUpgradeEmail,
   sendRenewalReminderEmail,
   sendWaitlistConfirmationEmail,
@@ -44,6 +45,17 @@ export type EmailJobData =
       planName: string;
       priceLabel: string;
       renewUrl: string;
+    } & Recipient)
+  | ({
+      type: "pix_pending_reminder";
+      variant: "aberto" | "vence_hoje";
+      planName: string;
+      /** Valor da COBRANCA, nao do plano. */
+      amountCents: number;
+      /** `YYYY-MM-DD`, como o Asaas manda. */
+      dueDate: string;
+      payUrl: string;
+      invoiceUrl: string | null;
     } & Recipient)
   | ({ type: "waitlist_confirmation" } & Recipient)
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
@@ -84,6 +96,9 @@ const EMAIL_CRITICALITY: Record<EmailJobData["type"], "critical" | "standard"> =
     // Critico pelo mesmo motivo: e o unico aviso de que o acesso caiu, com o
     // link para voltar.
     access_ended: "critical",
+    // Critico: a cobranca vence em dois dias e o lembrete e a ultima chance de
+    // a pessoa pagar o que ja pediu. Com o Redis fora, sai direto.
+    pix_pending_reminder: "critical",
     waitlist_confirmation: "standard",
     newsletter_confirm: "standard",
     newsletter_welcome: "standard",
@@ -163,6 +178,16 @@ async function sendDirect(data: EmailJobData) {
         planName: data.planName,
         priceLabel: data.priceLabel,
         renewUrl: data.renewUrl,
+      });
+      break;
+    case "pix_pending_reminder":
+      await sendPixPendingReminderEmail(data.to, data.name, {
+        variant: data.variant,
+        planName: data.planName,
+        amountCents: data.amountCents,
+        dueDate: data.dueDate,
+        payUrl: data.payUrl,
+        invoiceUrl: data.invoiceUrl,
       });
       break;
     case "waitlist_confirmation":
@@ -252,7 +277,18 @@ export function createEmailWorker() {
   return worker;
 }
 
-export async function enqueueEmail(data: EmailJobData) {
+/**
+ * `opcoes.jobId`, quando presente, vai para o `add` do BullMQ, que ignora um
+ * segundo job com o mesmo id enquanto o primeiro estiver retido. Serve ao cron
+ * do lembrete de Pix, que marca o estagio no banco DEPOIS do enqueue: com um id
+ * deterministico por estagio, uma marcacao que falhe entre duas execucoes nao
+ * vira dois e-mails. Sem `jobId` a chamada ao `add` e a mesma de sempre, e o
+ * caminho sem fila (`sendDirect`) o ignora, porque ali nao ha job a repetir.
+ */
+export async function enqueueEmail(
+  data: EmailJobData,
+  opcoes?: { jobId?: string },
+): Promise<void> {
   if (!emailQueue) {
     // Redis nao configurado (sem fila): nao existe job pra completar depois,
     // entao nao ha duplicata possivel e o envio direto e o unico caminho. So os
@@ -278,7 +314,9 @@ export async function enqueueEmail(data: EmailJobData) {
   // Timeout do add (Redis lento) ou rejeicao propagam pro chamador; enviar
   // direto duplicaria (o add preso completa depois) e furaria o limiter.
   await withRedisOpTimeout(
-    emailQueue.add(data.type, data),
+    opcoes?.jobId
+      ? emailQueue.add(data.type, data, { jobId: opcoes.jobId })
+      : emailQueue.add(data.type, data),
     `email:${data.type}`,
   );
 }

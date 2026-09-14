@@ -190,6 +190,15 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
+  // Declaradas em `20260912120000_add_pix_reminder_columns_to_subscriptions.sql`
+  // e gravadas por `createCheckout` (server/providers/asaas.ts) num update
+  // best-effort. A migration e de aplicacao manual pela Ana e o codigo sobe
+  // antes dela, entao os tipos ainda nao as conhecem.
+  { tabela: "subscriptions", coluna: "pix_due_date" },
+  { tabela: "subscriptions", coluna: "pix_invoice_url" },
+  // Mesma migration. Escrita pelo cron do lembrete de Pix pendente
+  // (`rodarLembretesPix`, server/routes/cron.ts) ao marcar o estagio enviado.
+  { tabela: "subscriptions", coluna: "pix_reminders_sent" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
