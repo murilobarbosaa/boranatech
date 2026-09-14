@@ -4,6 +4,7 @@ import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
 import { z } from "zod";
 import App from "./App";
+import { iniciarModoEntradaEstatica } from "./lib/entradaEstatica";
 import { registerPreloadErrorGuard } from "./lib/preloadErrorGuard";
 import { initClientSentry } from "./lib/sentry";
 import "./fonts.css";
@@ -41,7 +42,13 @@ try {
   // localStorage indisponivel; ignora.
 }
 
-createRoot(document.getElementById("root")!).render(
+// Modo entrada-estatica: lido ANTES do createRoot, enquanto `#root` ainda tem os
+// filhos do HTML pre-renderizado. Depois do render eles viram a arvore do React e
+// a informacao se perde. Ver lib/entradaEstatica.ts.
+const root = document.getElementById("root")!;
+iniciarModoEntradaEstatica(root);
+
+createRoot(root).render(
   <HelmetProvider>
     <App />
   </HelmetProvider>,

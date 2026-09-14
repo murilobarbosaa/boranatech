@@ -14,6 +14,7 @@ import SecaoDecorada, {
   VIEWPORT_ENTRADA,
   type OrbSpec,
 } from "../SecaoDecorada";
+import { entrada } from "@/lib/entradaEstatica";
 
 /**
  * Dois orbs suaves, em base clara.
@@ -82,7 +83,7 @@ export default function ProQuemE() {
       <div className="relative z-10 mx-auto max-w-6xl px-4">
         <div className="text-center">
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 20 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.5 }}
@@ -99,7 +100,7 @@ export default function ProQuemE() {
             </SectionLabel>
           </motion.div>
           <motion.h2
-            initial={reduce ? false : { opacity: 0, y: 20 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -111,7 +112,7 @@ export default function ProQuemE() {
             TI.
           </motion.h2>
           <motion.p
-            initial={reduce ? false : { opacity: 0, y: 20 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -128,7 +129,7 @@ export default function ProQuemE() {
             return (
               <motion.div
                 key={persona.title}
-                initial={reduce ? false : { opacity: 0, y: 20 }}
+                initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={VIEWPORT_ENTRADA}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -154,7 +155,7 @@ export default function ProQuemE() {
         </div>
 
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5 }}
@@ -183,7 +184,7 @@ export default function ProQuemE() {
         </motion.div>
 
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5 }}

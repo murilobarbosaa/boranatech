@@ -26,6 +26,8 @@ import * as Sentry from "@sentry/react";
 import posthog from "posthog-js";
 import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
+import { entrada } from "@/lib/entradaEstatica";
+import { isPrerender } from "@/lib/prerender";
 
 // =========================================
 // DADOS
@@ -640,8 +642,12 @@ export default function Hero() {
   // número que ainda vai animar.
   const badgeRef = useRef<HTMLDivElement>(null);
 
-  // Alterna o highlight do headline a cada 3s.
+  // Alterna o highlight do headline a cada 3s. No prerender NAO: o setInterval
+  // rodava dentro do puppeteer e o HTML capturava a frase trocada no meio da
+  // animacao (indice 1, com opacity 0), e sem JS o destaque saia vazio. La a
+  // frase fica na primeira; na carga real a alternancia segue como sempre.
   useEffect(() => {
+    if (isPrerender()) return;
     const interval = window.setInterval(() => {
       setCurrentHighlight((prev) => (prev + 1) % HIGHLIGHTS.length);
     }, 3000);
@@ -736,7 +742,7 @@ export default function Hero() {
         {/* 1) Badge social com triângulo de tooltip de mapa abaixo. */}
         <motion.div
           ref={badgeRef}
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
           className="relative inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 shadow-[3px_3px_0_var(--bnt-shadow)]"
@@ -784,7 +790,7 @@ export default function Hero() {
 
         {/* 2) Eyebrow */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
           className="font-display mt-6 text-xs font-black uppercase tracking-[0.2em] text-violet-700 md:text-sm"
@@ -797,7 +803,7 @@ export default function Hero() {
             não vaze atrás do MapBackground ou de outras camadas. */}
         <motion.h1
           id="hero-headline"
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.6 }}
           className="font-display mx-auto mt-4 max-w-4xl font-black leading-tight text-slate-950 md:text-balance"
@@ -809,7 +815,7 @@ export default function Hero() {
               aria-hidden="true"
               className="absolute inset-0 -z-10 -rotate-1 rounded-md border-2 border-slate-950 bg-amber-300 shadow-[3px_3px_0_var(--bnt-shadow)]"
             />
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={entrada(true)}>
               <motion.span
                 key={currentHighlight}
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
@@ -826,7 +832,7 @@ export default function Hero() {
 
         {/* 4) Subtítulo */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.0, duration: 0.5 }}
           className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg"
@@ -837,7 +843,7 @@ export default function Hero() {
 
         {/* 5) CTAs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.5 }}
           className="mt-8 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4"
@@ -861,7 +867,7 @@ export default function Hero() {
 
         {/* 6) Grid de áreas: stagger interno + pulse no ponto colorido. */}
         <motion.ul
-          initial="hidden"
+          initial={entrada("hidden")}
           animate="show"
           variants={{
             hidden: { opacity: 0 },

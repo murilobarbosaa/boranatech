@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import { LEVEL_QUESTION_COUNT } from "@/lib/quizMeta";
 import { dictionaryTermsCount, roadmapsCount } from "@/lib/countsGenerated";
+import { entrada } from "@/lib/entradaEstatica";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -126,7 +127,7 @@ function StatBlock({
   return (
     <motion.div
       ref={cardRef}
-      initial={{ opacity: 0, y: 30 }}
+      initial={entrada({ opacity: 0, y: 30 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, delay: index * 0.15 }}
@@ -265,7 +266,7 @@ export default function Numeros() {
       <div className="relative z-10 mx-auto max-w-7xl px-4">
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -275,7 +276,7 @@ export default function Numeros() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -299,7 +300,7 @@ export default function Numeros() {
         </div>
 
         <motion.p
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, delay: 0.8 }}

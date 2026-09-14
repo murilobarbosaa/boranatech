@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 
 import AgentWidget from "@/components/agent/AgentWidget";
+import { isPrerender } from "@/lib/prerender";
 import Acesso from "@/pages/Acesso";
 
 function isAcessoPath() {
@@ -12,11 +13,6 @@ const RECOVERY_PATHS = ["/recuperar-senha", "/redefinir-senha"];
 
 function isRecoveryPath() {
   return RECOVERY_PATHS.includes(window.location.pathname);
-}
-
-// Prerender (puppeteer headless, navigator.webdriver === true): app sem widget.
-function isPrerender() {
-  return typeof navigator !== "undefined" && navigator.webdriver === true;
 }
 
 // Waitlist APOSENTADA (o site ja lancou): o portao NUNCA mais renderiza a landing.

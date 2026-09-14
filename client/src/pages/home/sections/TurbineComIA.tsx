@@ -10,6 +10,7 @@ import {
   Github,
 } from "lucide-react";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { entrada } from "@/lib/entradaEstatica";
 
 type Message = {
   id: number;
@@ -75,7 +76,7 @@ export default function TurbineComIA() {
       <div className="relative z-10 mx-auto max-w-5xl px-4">
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -85,7 +86,7 @@ export default function TurbineComIA() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -108,7 +109,7 @@ export default function TurbineComIA() {
         <ConversationMockup />
 
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -130,7 +131,7 @@ export default function TurbineComIA() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={entrada({ opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.6, delay: 0.5 }}
@@ -235,7 +236,7 @@ function ConversationMockup() {
   return (
     <motion.div
       ref={containerRef}
-      initial={{ opacity: 0, y: 30 }}
+      initial={entrada({ opacity: 0, y: 30 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, delay: 0.3 }}
@@ -313,7 +314,7 @@ function ChatMessage({ message }: { message: Message }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      initial={entrada({ opacity: 0, y: 10, scale: 0.95 })}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={`flex gap-3 ${isAI ? "" : "flex-row-reverse"}`}
@@ -346,7 +347,7 @@ function ChatMessage({ message }: { message: Message }) {
 function TypingIndicator() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={entrada({ opacity: 0, y: 10 })}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2 }}
@@ -392,7 +393,7 @@ function ToolListItem({
 
   return (
     <motion.li
-      initial={{ opacity: 0, x: -20 }}
+      initial={entrada({ opacity: 0, x: -20 })}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}

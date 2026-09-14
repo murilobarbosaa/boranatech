@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { entrada } from "@/lib/entradaEstatica";
 
 // =========================================
 // TIPAGEM
@@ -136,7 +137,7 @@ const NODES: MapNode[] = [
 function CollapsedContent({ node }: { node: MapNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={entrada({ opacity: 0 })}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
@@ -176,7 +177,7 @@ function CollapsedContent({ node }: { node: MapNode }) {
 function PreviewContent({ node }: { node: MapNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={entrada({ opacity: 0 })}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       // pequeno delay deixa a largura crescer antes do texto aparecer,
@@ -212,7 +213,7 @@ function PreviewContent({ node }: { node: MapNode }) {
 function OpenContent({ node }: { node: MapNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={entrada({ opacity: 0 })}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       // delay maior que o preview pra esperar a largura crescer mais
@@ -320,7 +321,7 @@ function Panel({
   return (
     <motion.div
       // entrada inicial em cascata
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       onMouseEnter={onMouseEnter}
@@ -364,7 +365,7 @@ function PanelMobile({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -395,7 +396,7 @@ function PanelMobile({
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
+            initial={entrada({ height: 0, opacity: 0 })}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4 }}
@@ -579,7 +580,7 @@ export default function Mapa() {
       <div className="relative z-10 mx-auto max-w-7xl px-4">
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -589,7 +590,7 @@ export default function Mapa() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -607,7 +608,7 @@ export default function Mapa() {
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -650,7 +651,7 @@ export default function Mapa() {
         </div>
 
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.5, delay: 0.5 }}
