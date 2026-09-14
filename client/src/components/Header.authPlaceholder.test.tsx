@@ -28,6 +28,11 @@ vi.mock("@/contexts/SubscriptionContext", () => ({
   useSubscription: () => ({ isPro: false, loading: false }),
 }));
 vi.mock("@/hooks/useAdmin", () => ({ useAdmin: () => ({ isAdmin: false }) }));
+// Mesmo motivo do useAdmin acima: este teste e sobre o bloco de auth, e o hook
+// real faria a chamada de rede do status de creator nos casos com usuario.
+vi.mock("@/hooks/useCreator", () => ({
+  useCreator: () => ({ status: "ready", kind: null }),
+}));
 vi.mock("@/components/Logo", () => ({ default: () => null }));
 vi.mock("@/components/ThemeToggle", () => ({ default: () => null }));
 vi.mock("@/components/onboarding/BotaoGuiaDaPagina", () => ({
