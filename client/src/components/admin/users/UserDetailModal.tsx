@@ -39,6 +39,7 @@ import { RevokeAccessDialog } from "./RevokeAccessDialog";
 import { UserSiteLife, type VidaNoSite } from "./UserSiteLife";
 import { ExternalRefundDialog } from "./ExternalRefundDialog";
 import { RefundDialog } from "./RefundDialog";
+import { nomeDaConcessao } from "./creatorConcessao";
 import { useProfileEdit } from "./useProfileEdit";
 import {
   AlertDialog,
@@ -784,7 +785,7 @@ export function UserDetailModal({
                                 {/* TODO(Ana) */}
                                 {influencerBusy
                                   ? "Revogando..."
-                                  : "Confirmar revogação de influencer"}
+                                  : `Confirmar revogação de ${nomeDaConcessao(detail.influencer.kind)}`}
                               </button>
                               <button
                                 type="button"
@@ -802,7 +803,7 @@ export function UserDetailModal({
                               className={INFLUENCER_REVOKE_BUTTON}
                             >
                               {/* TODO(Ana) */}
-                              Revogar acesso de influencer
+                              {`Revogar acesso de ${nomeDaConcessao(detail.influencer.kind)}`}
                             </button>
                           )}
                         </div>

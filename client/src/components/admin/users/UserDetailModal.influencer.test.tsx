@@ -36,7 +36,10 @@ vi.mock("@/lib/notify", () => ({
 
 import { UserDetailModal } from "./UserDetailModal";
 
+// `kind` vem no detalhe desde o lote 01, e o botao de revogar nomeia o tipo a
+// partir dele. Os casos sem kind e de afiliado estao no fim do arquivo.
 const INFLUENCER = {
+  kind: "influencer",
   granted_at: "2026-05-02T12:00:00Z",
   granted_by_name: "Ana Moura",
   granted_by_email: "ana@exemplo.com",
@@ -257,7 +260,7 @@ describe("revogar influencer mora na secao de status", () => {
     ).toBeTruthy();
     expect(screen.queryByTestId("influencer-status")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: /Revogar acesso de influencer/i }),
+      screen.queryByRole("button", { name: /Revogar acesso de/i }),
     ).toBeNull();
   });
 
@@ -298,5 +301,67 @@ describe("revogar influencer mora na secao de status", () => {
 
     liberar({ data: {} });
     await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+  });
+});
+
+describe("o botao de revogar nomeia o tipo da concessao", () => {
+  it("AFILIADO: revogar e confirmar dizem afiliado, e nada diz influencer", async () => {
+    rotear(
+      detalhe({ influencer: { ...INFLUENCER, kind: "afiliado" }, is_pro: true }),
+    );
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    fireEvent.click(
+      within(secaoDeStatus()).getByRole("button", {
+        name: "Revogar acesso de afiliado",
+      }),
+    );
+    expect(
+      within(secaoDeStatus()).getByRole("button", {
+        name: "Confirmar revogação de afiliado",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(secaoDeStatus()).queryByRole("button", { name: /influencer/i }),
+    ).toBeNull();
+  });
+
+  it("SEM kind: diz creator, e nao inventa um tipo", async () => {
+    const { kind: _semKind, ...semKind } = INFLUENCER;
+    rotear(detalhe({ influencer: semKind, is_pro: true }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    fireEvent.click(
+      within(secaoDeStatus()).getByRole("button", {
+        name: "Revogar acesso de creator",
+      }),
+    );
+    expect(
+      within(secaoDeStatus()).getByRole("button", {
+        name: "Confirmar revogação de creator",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("kind DESCONHECIDO tambem cai em creator", async () => {
+    rotear(
+      detalhe({
+        influencer: { ...INFLUENCER, kind: "embaixador" },
+        is_pro: true,
+      }),
+    );
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      within(secaoDeStatus()).getByRole("button", {
+        name: "Revogar acesso de creator",
+      }),
+    ).toBeTruthy();
   });
 });
