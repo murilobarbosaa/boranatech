@@ -30,6 +30,19 @@ class ResizeObserverStub {
 }
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
+// Reporter dublado como no BlocoBoundary.test.tsx: a chegada ao Sentry do
+// bloco quebrado e afirmada, nao inferida da tela de erro.
+const capturado = vi.hoisted(() => ({ escopos: [] as unknown[] }));
+vi.mock("@sentry/react", () => ({
+  captureException: (
+    _erro: unknown,
+    ctx?: { tags?: Record<string, unknown> },
+  ) => {
+    capturado.escopos.push(ctx?.tags?.escopo);
+    return "evt_1234567890";
+  },
+}));
+
 vi.mock("@/components/UserAvatar", () => ({
   default: () => <span data-testid="avatar" />,
 }));
@@ -171,9 +184,9 @@ describe("CreatorDashboardView: totais", () => {
     expect(valorDoTile("creator-tile-cliques")).toBe("140");
     expect(valorDoTile("creator-tile-vendas")).toBe("3");
     expect(valorDoTile("creator-tile-conversao")).toBe("2,14%");
-    expect(valorDoTile("creator-tile-receita")).toBe("R$ 62,79");
-    expect(valorDoTile("creator-tile-a-receber")).toBe("R$ 18,84");
-    expect(valorDoTile("creator-tile-paga")).toBe("R$ 0,00");
+    expect(valorDoTile("creator-tile-receita")).toBe("R$\u00a062,79");
+    expect(valorDoTile("creator-tile-a-receber")).toBe("R$\u00a018,84");
+    expect(valorDoTile("creator-tile-paga")).toBe("R$\u00a00,00");
   });
 
   it("conversao null mostra o texto, nunca 0%", () => {
@@ -229,9 +242,7 @@ describe("CreatorDashboardView: serie e delta", () => {
       "Eventos desde 10/09/2026",
     );
     expect(
-      screen.getByText(
-        "Último clique: há 3 dias · Última venda: há 5 dias",
-      ),
+      screen.getByText("Último clique: há 3 dias · Última venda: há 5 dias"),
     ).toBeTruthy();
   });
 
@@ -317,9 +328,9 @@ describe("CreatorDashboardView: visao admin e visao creator", () => {
     expect(screen.getByTestId("creator-email").textContent).toBe(
       "ana@exemplo.com",
     );
-    expect(
-      screen.getByTestId("creator-codigo-notas-ANA30").textContent,
-    ).toBe("contrato assinado");
+    expect(screen.getByTestId("creator-codigo-notas-ANA30").textContent).toBe(
+      "contrato assinado",
+    );
     expect(screen.getByTestId("creator-revogado").textContent).toBe(
       "Revogado em 19/09/2026",
     );
@@ -330,5 +341,35 @@ describe("CreatorDashboardView: visao admin e visao creator", () => {
     expect(screen.queryByTestId("creator-email")).toBeNull();
     expect(screen.queryByTestId("creator-codigo-notas-ANA30")).toBeNull();
     expect(screen.queryByTestId("creator-revogado")).toBeNull();
+  });
+});
+
+describe("CreatorDashboardView: contencao por bloco", () => {
+  it("a serie quebrada vira cartao de erro e os outros dois blocos continuam", () => {
+    // O React registra no console o erro que o boundary capturou; o que se
+    // afirma e a tela e o reporte, nao o log.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    capturado.escopos.length = 0;
+    const p = painelBase();
+    // Payload degradado de verdade: a serie some do objeto (backend antigo ou
+    // resposta truncada), e o bloco quebra ao ler o tamanho dela.
+    const eventosSemSerie: Record<string, unknown> = { ...p.eventos };
+    delete eventosSemSerie.serie;
+    const quebrado = {
+      ...p,
+      eventos: eventosSemSerie,
+    } as unknown as CreatorDashboard;
+
+    desenhar(quebrado);
+
+    const cartoes = screen.getAllByTestId("bloco-quebrado");
+    expect(cartoes).toHaveLength(1);
+    expect(cartoes[0].getAttribute("data-bloco")).toBe(
+      "Cliques e vendas por dia",
+    );
+    expect(valorDoTile("creator-tile-cliques")).toBe("140");
+    expect(screen.getByTestId("creator-codigo-ANA30")).toBeTruthy();
+    expect(screen.getByTestId("creator-codigo-ANAYT")).toBeTruthy();
+    expect(capturado.escopos).toEqual(["admin-bloco:Cliques e vendas por dia"]);
   });
 });

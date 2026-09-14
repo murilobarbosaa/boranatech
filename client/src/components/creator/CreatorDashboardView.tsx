@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 import UserAvatar from "@/components/UserAvatar";
+import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { formatarCentavos } from "@/components/admin/OrphanPaymentsPanel";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import {
@@ -45,12 +46,11 @@ import type {
 
 type Visao = "creator" | "admin";
 
-const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> =
-  {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  };
+const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 
 // TODO(Ana)
 const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
@@ -306,7 +306,11 @@ function Serie({
     valor: string;
   }> = [
     // TODO(Ana)
-    { chave: "clicks", rotulo: "Cliques", valor: inteiro(eventos.periodo.clicks) },
+    {
+      chave: "clicks",
+      rotulo: "Cliques",
+      valor: inteiro(eventos.periodo.clicks),
+    },
     {
       chave: "checkouts",
       // TODO(Ana)
@@ -499,110 +503,125 @@ export function CreatorDashboardView({
           </p>
           <p className="mt-1 text-sm font-bold text-slate-600">
             {/* TODO(Ana) */}O time da Bora na Tech vai vincular o código à sua
-            conta e avisar você. Assim que isso acontecer, seus números
-            aparecem aqui.
+            conta e avisar você. Assim que isso acontecer, seus números aparecem
+            aqui.
           </p>
         </section>
       ) : (
         <>
-          <section aria-labelledby="creator-totais-titulo">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Seus números"
+          >
+            <section aria-labelledby="creator-totais-titulo">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3
+                  id="creator-totais-titulo"
+                  className="font-display text-lg font-black text-slate-950"
+                >
+                  {/* TODO(Ana) */}
+                  Seus números
+                </h3>
+                <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                  {/* TODO(Ana) */}
+                  Desde o início
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+                <CreatorMetricTile
+                  testId="creator-tile-cliques"
+                  // TODO(Ana)
+                  rotulo="Cliques"
+                  valor={inteiro(totais.clicks)}
+                />
+                <CreatorMetricTile
+                  testId="creator-tile-vendas"
+                  // TODO(Ana)
+                  rotulo="Vendas"
+                  valor={inteiro(totais.sales)}
+                />
+                <CreatorMetricTile
+                  testId="creator-tile-conversao"
+                  // TODO(Ana)
+                  rotulo="Conversão"
+                  valor={
+                    totais.conversao_pct === null
+                      ? // TODO(Ana)
+                        "sem cliques ainda"
+                      : percentual(totais.conversao_pct)
+                  }
+                />
+                <CreatorMetricTile
+                  testId="creator-tile-receita"
+                  // TODO(Ana)
+                  rotulo="Receita gerada"
+                  valor={formatarCentavos(totais.revenue_cents)}
+                />
+                <CreatorMetricTile
+                  testId="creator-tile-a-receber"
+                  // TODO(Ana)
+                  rotulo="Comissão a receber"
+                  valor={formatarCentavos(totais.commission_due_cents)}
+                />
+                <CreatorMetricTile
+                  testId="creator-tile-paga"
+                  // TODO(Ana)
+                  rotulo="Comissão paga"
+                  valor={formatarCentavos(totais.commission_paid_cents)}
+                />
+              </div>
+            </section>
+          </BlocoBoundary>
+
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Seus links"
+          >
+            <section aria-labelledby="creator-links-titulo">
               <h3
-                id="creator-totais-titulo"
+                id="creator-links-titulo"
                 className="font-display text-lg font-black text-slate-950"
               >
                 {/* TODO(Ana) */}
-                Seus números
+                Seus links
               </h3>
-              <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                {/* TODO(Ana) */}
-                Desde o início
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-              <CreatorMetricTile
-                testId="creator-tile-cliques"
-                // TODO(Ana)
-                rotulo="Cliques"
-                valor={inteiro(totais.clicks)}
-              />
-              <CreatorMetricTile
-                testId="creator-tile-vendas"
-                // TODO(Ana)
-                rotulo="Vendas"
-                valor={inteiro(totais.sales)}
-              />
-              <CreatorMetricTile
-                testId="creator-tile-conversao"
-                // TODO(Ana)
-                rotulo="Conversão"
-                valor={
-                  totais.conversao_pct === null
-                    ? // TODO(Ana)
-                      "sem cliques ainda"
-                    : percentual(totais.conversao_pct)
-                }
-              />
-              <CreatorMetricTile
-                testId="creator-tile-receita"
-                // TODO(Ana)
-                rotulo="Receita gerada"
-                valor={formatarCentavos(totais.revenue_cents)}
-              />
-              <CreatorMetricTile
-                testId="creator-tile-a-receber"
-                // TODO(Ana)
-                rotulo="Comissão a receber"
-                valor={formatarCentavos(totais.commission_due_cents)}
-              />
-              <CreatorMetricTile
-                testId="creator-tile-paga"
-                // TODO(Ana)
-                rotulo="Comissão paga"
-                valor={formatarCentavos(totais.commission_paid_cents)}
-              />
-            </div>
-          </section>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {codigos.map((codigo) => (
+                  <CartaoDoCodigo
+                    key={codigo.id}
+                    codigo={codigo}
+                    visao={visao}
+                  />
+                ))}
+              </div>
+            </section>
+          </BlocoBoundary>
 
-          <section aria-labelledby="creator-links-titulo">
-            <h3
-              id="creator-links-titulo"
-              className="font-display text-lg font-black text-slate-950"
-            >
-              {/* TODO(Ana) */}
-              Seus links
-            </h3>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {codigos.map((codigo) => (
-                <CartaoDoCodigo
-                  key={codigo.id}
-                  codigo={codigo}
-                  visao={visao}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="creator-serie-titulo"
-            className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Cliques e vendas por dia"
           >
-            <h3
-              id="creator-serie-titulo"
-              className="font-display text-lg font-black text-slate-950"
+            <section
+              aria-labelledby="creator-serie-titulo"
+              className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
             >
-              {/* TODO(Ana) */}
-              Cliques e vendas por dia
-            </h3>
-            <div className="mt-3">
-              <Serie
-                painel={painel}
-                janela={janela}
-                onJanelaChange={onJanelaChange}
-                agoraMs={agoraMs}
-              />
-            </div>
-          </section>
+              <h3
+                id="creator-serie-titulo"
+                className="font-display text-lg font-black text-slate-950"
+              >
+                {/* TODO(Ana) */}
+                Cliques e vendas por dia
+              </h3>
+              <div className="mt-3">
+                <Serie
+                  painel={painel}
+                  janela={janela}
+                  onJanelaChange={onJanelaChange}
+                  agoraMs={agoraMs}
+                />
+              </div>
+            </section>
+          </BlocoBoundary>
         </>
       )}
     </div>
