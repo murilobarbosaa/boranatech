@@ -5,6 +5,7 @@ import posthog from "posthog-js";
 import { z } from "zod";
 import App from "./App";
 import { iniciarModoEntradaEstatica } from "./lib/entradaEstatica";
+import { registrarPreferenciaDeMovimento } from "./lib/preferenciaDeMovimento";
 import { registerPreloadErrorGuard } from "./lib/preloadErrorGuard";
 import { initClientSentry } from "./lib/sentry";
 import "./fonts.css";
@@ -32,6 +33,8 @@ posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
   api_host: import.meta.env.VITE_POSTHOG_HOST,
   defaults: "2026-01-30",
 });
+// Super property `reduced_motion` em todo evento. Ver lib/preferenciaDeMovimento.ts.
+registrarPreferenciaDeMovimento(posthog);
 
 // Limpeza da flag legada bnt_signup_completed: era gravada no signup e lida por
 // engano como "onboarding concluido", expulsando o recem-cadastrado. Nao e mais
