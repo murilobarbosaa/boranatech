@@ -143,7 +143,14 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // as duas partem de bases distintas. O valor abaixo foi MEDIDO no router
 // mesclado por `rotasDeclaradas().length`, que devolveu 64, e o teste de
 // posicao acima, que e o que autoriza subir o numero, esta verde para todas.
-const EXPECTED_ROUTE_COUNT = 64;
+//
+// 64 -> 67 em 2026-09-14 (creators, lote 02), com `GET /admin/creators`,
+// `GET /admin/creators/resumo` e `GET /admin/creators/:userId`. Valor MEDIDO
+// por `rotasDeclaradas().length`, nao somado. As tres sao declaradas depois da
+// revogacao de influencer, portanto abaixo dos dois `router.use` do topo, e os
+// testes de posicao acima conferem isso. `/creators/:userId` expoe e-mail e
+// notas internas: estar atras das duas guardas e o requisito, nao detalhe.
+const EXPECTED_ROUTE_COUNT = 67;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

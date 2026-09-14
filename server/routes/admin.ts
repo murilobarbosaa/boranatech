@@ -40,6 +40,18 @@ import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
+import {
+  listarCreatorsDoQuadro,
+  resumoDoQuadro,
+} from "../lib/creatorBoard";
+import {
+  montarPainelDoCreator,
+  parseJanelaDoPainel,
+} from "../lib/creatorDashboard";
+import {
+  isCreatorBoardKind,
+  isCreatorBoardStatus,
+} from "../../shared/creatorDashboard";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { withRedisOpTimeout } from "../lib/redisOpTimeout";
@@ -4169,6 +4181,110 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     res.json({ data: { revoked: true } });
   } catch (err) {
     next(err);
+  }
+});
+
+// QUADRO DE CREATORS (lote 02). Leitura pura; as agregacoes moram no banco
+// (server/lib/creatorBoard.ts). `/creators/resumo` e declarada ANTES de
+// `/creators/:userId`: na ordem inversa, "resumo" casaria como userId e
+// responderia 400 de uuid invalido.
+router.get("/creators", async (req, res, next) => {
+  try {
+    const status = req.query.status ?? "active";
+    const kind = req.query.kind ?? "all";
+    // Filtro invalido e 400, nunca o padrao em silencio: o admin que pediu
+    // "revogados" e recebeu "ativos" leria a lista errada.
+    if (!isCreatorBoardStatus(status)) {
+      return next(
+        createError(
+          400,
+          "invalid_status",
+          // TODO(Ana)
+          "Status inválido. Use active, revoked ou all.",
+        ),
+      );
+    }
+    if (!isCreatorBoardKind(kind)) {
+      return next(
+        createError(
+          400,
+          "invalid_creator_kind",
+          // TODO(Ana)
+          "Tipo de creator inválido. Use influencer, afiliado ou all.",
+        ),
+      );
+    }
+    const { page, pageSize } = parsePageParams(
+      req.query as Record<string, unknown>,
+    );
+
+    let pagina;
+    try {
+      pagina = await listarCreatorsDoQuadro({ status, kind, page, pageSize });
+    } catch (err) {
+      return next(
+        // TODO(Ana)
+        dbError("creators board", err, "Erro ao buscar creators."),
+      );
+    }
+    res.json({ data: pagina });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/creators/resumo", async (_req, res, next) => {
+  try {
+    const resumo = await resumoDoQuadro();
+    res.json({ data: resumo });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creators resumo", err, "Erro ao buscar o resumo de creators."),
+    );
+  }
+});
+
+// Painel de qualquer creator, na visao admin: o mesmo montador do
+// /api/creator/me, mais e-mail, notas internas e granted_by. Abre tambem o de
+// quem ja foi revogado (com revoked_at preenchido); 404 so para quem nunca
+// teve concessao.
+router.get("/creators/:userId", async (req, res, next) => {
+  const uid = req.params.userId;
+  if (!UUID_RE.test(uid)) {
+    return next(
+      createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+    );
+  }
+  const janela = parseJanelaDoPainel(req.query.janela);
+  if (!janela) {
+    return next(
+      createError(
+        400,
+        "invalid_janela",
+        // TODO(Ana)
+        "Janela inválida. Use 7d, 30d, 90d ou all.",
+      ),
+    );
+  }
+  try {
+    const resultado = await montarPainelDoCreator(uid, janela, "admin");
+    if (!resultado.ok) {
+      return next(
+        createError(
+          404,
+          "creator_not_found",
+          // TODO(Ana)
+          "Este usuário nunca teve acesso de creator.",
+        ),
+      );
+    }
+    res.json({ data: resultado.painel });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creator painel", err, "Erro ao carregar o painel do creator."),
+    );
   }
 });
 

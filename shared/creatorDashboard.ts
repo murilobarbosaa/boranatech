@@ -27,6 +27,78 @@ export function linkDoCodigo(code: string): string {
   return `${CREATOR_REF_LINK_BASE}${encodeURIComponent(code)}`;
 }
 
+// ---------------------------------------------------------------------------
+// QUADRO DO ADMIN (GET /api/admin/creators e /creators/resumo)
+// ---------------------------------------------------------------------------
+
+export const CREATOR_BOARD_STATUS = ["active", "revoked", "all"] as const;
+export type CreatorBoardStatus = (typeof CREATOR_BOARD_STATUS)[number];
+
+export function isCreatorBoardStatus(
+  valor: unknown,
+): valor is CreatorBoardStatus {
+  return (
+    typeof valor === "string" &&
+    (CREATOR_BOARD_STATUS as readonly string[]).includes(valor)
+  );
+}
+
+export const CREATOR_BOARD_KINDS = ["influencer", "afiliado", "all"] as const;
+export type CreatorBoardKind = (typeof CREATOR_BOARD_KINDS)[number];
+
+export function isCreatorBoardKind(valor: unknown): valor is CreatorBoardKind {
+  return (
+    typeof valor === "string" &&
+    (CREATOR_BOARD_KINDS as readonly string[]).includes(valor)
+  );
+}
+
+/** Uma linha do quadro: a concessao MAIS RECENTE da pessoa e a soma dos codigos. */
+export type CreatorBoardItem = {
+  user_id: string;
+  kind: "influencer" | "afiliado";
+  granted_at: string;
+  revoked_at: string | null;
+  name: string | null;
+  email: string | null;
+  handle: string | null;
+  avatar_url: string | null;
+  codigos_count: number;
+  codigos: Array<{ code: string; status: string }>;
+  /** Soma dos CONTADORES dos codigos do creator. */
+  totais: {
+    clicks: number;
+    sales: number;
+    revenue_cents: number;
+    commission_due_cents: number;
+    commission_paid_cents: number;
+  };
+  /** Ultimo evento de qualquer tipo entre os codigos; null sem evento. */
+  ultimo_evento_at: string | null;
+};
+
+/** Mesmo formato das outras listas paginadas do admin: total no corpo. */
+export type CreatorBoardPage = {
+  rows: CreatorBoardItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type CreatorBoardResumo = {
+  creators_ativos: { influencer: number; afiliado: number };
+  /** Vinculados = com dono (affiliates.user_id preenchido). */
+  codigos: { vinculados: number; sem_dono: number };
+  /** Pelos EVENTOS, dos codigos vinculados, desde o inicio de `desde`. */
+  eventos_30d: { desde: string; clicks: number; sales: number };
+  /** Pelos CONTADORES dos codigos vinculados. */
+  commission_due_cents: number;
+};
+
+// ---------------------------------------------------------------------------
+// PAINEL (GET /api/creator/me e /api/admin/creators/:userId)
+// ---------------------------------------------------------------------------
+
 /** Somas de eventos num intervalo (de `creator_events`, nunca dos contadores). */
 export type CreatorEventosSomas = {
   clicks: number;

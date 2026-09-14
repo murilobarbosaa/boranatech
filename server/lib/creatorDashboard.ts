@@ -10,7 +10,11 @@ import type {
   CreatorDashboardSerieDia,
   CreatorEventosSomas,
 } from "../../shared/creatorDashboard";
-import { linkDoCodigo } from "../../shared/creatorDashboard";
+import {
+  CREATOR_DASHBOARD_JANELA_PADRAO,
+  isCreatorDashboardJanela,
+  linkDoCodigo,
+} from "../../shared/creatorDashboard";
 import { creatorKindOf } from "./creatorKind";
 import type { PaginatedPageComContagem } from "./paginate";
 import { coletarTudoProvandoTotal } from "./paginate";
@@ -88,6 +92,19 @@ const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> =
     "90d": 90,
   };
 
+/**
+ * `?janela=` da query. Ausente: o padrao (30d). Qualquer outra coisa que nao
+ * seja uma das quatro, inclusive o parametro repetido (que o Express entrega
+ * como array): null, e a rota responde 400. Nunca cai no padrao em silencio,
+ * porque o client que pediu 90d e recebeu 30d leria o numero errado.
+ */
+export function parseJanelaDoPainel(
+  valor: unknown,
+): CreatorDashboardJanela | null {
+  if (valor === undefined) return CREATOR_DASHBOARD_JANELA_PADRAO;
+  return isCreatorDashboardJanela(valor) ? valor : null;
+}
+
 export function resolverJanelaDoPainel(
   janela: CreatorDashboardJanela,
   agora: Date = new Date(),
@@ -134,9 +151,9 @@ export function resolverJanelaDoPainel(
 // informacao).
 // ---------------------------------------------------------------------------
 
-type Linha = Record<string, unknown>;
+export type Linha = Record<string, unknown>;
 
-function numeroDe(valor: unknown, campo: string): number {
+export function numeroDe(valor: unknown, campo: string): number {
   if (typeof valor === "number" && Number.isFinite(valor)) return valor;
   // bigint pode chegar como texto, conforme a configuracao do PostgREST.
   if (typeof valor === "string" && /^-?\d+(\.\d+)?$/.test(valor)) {
@@ -147,14 +164,14 @@ function numeroDe(valor: unknown, campo: string): number {
   );
 }
 
-function textoDe(valor: unknown, campo: string): string {
+export function textoDe(valor: unknown, campo: string): string {
   if (typeof valor === "string") return valor;
   throw new Error(
     `[creatorDashboard] ${campo} nao textual: ${JSON.stringify(valor)}`,
   );
 }
 
-function textoOuNull(valor: unknown, campo: string): string | null {
+export function textoOuNull(valor: unknown, campo: string): string | null {
   if (valor === null || valor === undefined) return null;
   return textoDe(valor, campo);
 }

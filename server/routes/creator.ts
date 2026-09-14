@@ -1,8 +1,16 @@
 import { Router } from "express";
 
+import {
+  montarPainelDoCreator,
+  parseJanelaDoPainel,
+} from "../lib/creatorDashboard";
+import { montarDbError } from "../lib/dbError";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { resolverCreatorKind } from "../middleware/requireCreator";
+import {
+  requireCreator,
+  resolverCreatorKind,
+} from "../middleware/requireCreator";
 
 const router = Router();
 
@@ -27,6 +35,52 @@ router.get("/status", async (req, res, next) => {
         // TODO(Ana)
         "Não foi possível verificar seu acesso de creator agora.",
         { cause: err, context: { op: "creator status" } },
+      ),
+    );
+  }
+});
+
+// Painel do proprio creator. requireCreator aqui, e nao no router inteiro,
+// porque /status acima responde para qualquer usuario autenticado.
+router.get("/me", requireCreator, async (req, res, next) => {
+  const janela = parseJanelaDoPainel(req.query.janela);
+  if (!janela) {
+    return next(
+      createError(
+        400,
+        "invalid_janela",
+        // TODO(Ana)
+        "Janela inválida. Use 7d, 30d, 90d ou all.",
+      ),
+    );
+  }
+  try {
+    const resultado = await montarPainelDoCreator(
+      req.user!.id,
+      janela,
+      "creator",
+    );
+    // A guarda acabou de confirmar a concessao; chegar aqui sem ela e revogacao
+    // entre a guarda e a leitura (ou cache de ate 60s). O painel nao abre.
+    if (!resultado.ok) {
+      return next(
+        createError(
+          403,
+          "not_creator",
+          // TODO(Ana)
+          "Acesso de creator necessário.",
+        ),
+      );
+    }
+    res.json({ data: resultado.painel });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "painel do creator",
+        err,
+        // TODO(Ana)
+        "Erro ao carregar o painel.",
       ),
     );
   }
