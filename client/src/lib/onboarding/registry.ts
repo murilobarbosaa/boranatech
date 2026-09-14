@@ -33,7 +33,7 @@ export type RouteOnboarding =
   | { type: "sem-onboarding"; motivo: string }
   /**
    * Ainda nao portado. Vira 'onboarding' ou 'sem-onboarding' quando alguem
-   * decidir. A classificacao PROPOSTA para as 26 de hoje esta em
+   * decidir. A classificacao PROPOSTA para as 27 de hoje esta em
    * `docs/onboarding-rotas-pendentes.md`, amarrada a este arquivo por
    * `rotasPendentes.test.ts`: classificar uma de verdade obriga a tirar ela do
    * doc no mesmo commit.
@@ -60,11 +60,13 @@ const FLUXO = (detalhe: string): RouteOnboarding => ({
 export const NON_ROUTE_KEYS = ["/acesso"] as const;
 
 /**
- * Numero de <Route> declarados em App.tsx: 95 com `path` + 1 catch-all sem
+ * Numero de <Route> declarados em App.tsx: 96 com `path` + 1 catch-all sem
  * `path` (a chave "*" aqui embaixo). Mesmo contrato de EXPECTED_TABLE_COUNT:
  * mudar este numero e ato deliberado, no commit que cria ou remove a rota.
+ * 96 -> 97 com `/creator` (painel de creator, lote 03), MEDIDO pelo proprio
+ * `registry.exaustivo.test.ts`, que leu 97 no App.tsx.
  */
-export const EXPECTED_APP_ROUTE_COUNT = 96;
+export const EXPECTED_APP_ROUTE_COUNT = 97;
 
 export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
   "/": {
@@ -72,6 +74,9 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     load: () => import("./steps/home"),
   },
   "/creators": { type: "pendente" },
+  // Painel de creator (lote 03). Pendente e nao sem-onboarding: ter ou nao guia
+  // num painel restrito a creators e decisao de produto que o lote nao tomou.
+  "/creator": { type: "pendente" },
   "/areas": {
     type: "onboarding",
     load: () => import("./steps/areas"),

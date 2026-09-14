@@ -40,6 +40,7 @@ const Comunidades = lazyWithRetry(() => import("@/pages/Comunidades"));
 const Sobre = lazyWithRetry(() => import("@/pages/Sobre"));
 const Conquistas = lazyWithRetry(() => import("@/pages/conquistas/Conquistas"));
 const Creators = lazyWithRetry(() => import("@/pages/Creators"));
+const Creator = lazyWithRetry(() => import("@/pages/Creator"));
 const CurriculoAnalisar = lazyWithRetry(
   () => import("@/pages/CurriculoAnalisar"),
 );
@@ -140,6 +141,13 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/creators" component={Creators} />
+        <Route path="/creator">
+          {() => (
+            <RequireAuth>
+              <Creator />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/areas" component={Areas} />
         <Route path="/areas/:parent/:subarea">
           {() => (
