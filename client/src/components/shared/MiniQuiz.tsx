@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, RotateCcw } from "lucide-react";
+import { entrada } from "@/lib/entradaEstatica";
 
 export interface MiniQuizOpcao {
   rotulo: string;
@@ -144,7 +145,7 @@ export default function MiniQuiz({
           <AnimatePresence mode="wait">
             <motion.div
               key={perguntaAtual.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={entrada({ opacity: 0, y: 12 })}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.2 }}
@@ -169,7 +170,7 @@ export default function MiniQuiz({
         </div>
       ) : alternativas !== undefined ? (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={entrada({ opacity: 0, y: 12 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
@@ -290,7 +291,7 @@ export default function MiniQuiz({
         </motion.div>
       ) : (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={entrada({ opacity: 0, y: 12 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >

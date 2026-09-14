@@ -124,6 +124,7 @@ import {
   headlineFinalDe,
   normalizarHeadlineManual,
 } from "@shared/linkedin/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("sky");
 
@@ -563,7 +564,7 @@ function Reveal({
   const reduce = useReducedMotion() ?? false;
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 14 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.35, delay }}
@@ -1332,7 +1333,7 @@ export default function LinkedinAnalisar() {
               scan fica vazio. */}
           <motion.div
             ref={stageTopRef}
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10 scroll-mt-24"
@@ -2004,9 +2005,9 @@ export default function LinkedinAnalisar() {
 
                     {/* Spotlight fora das colunas: a ponte nota -> acao. */}
                     <motion.div
-                      initial={
-                        reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
-                      }
+                      initial={entrada(
+                        reduce ? false : { opacity: 0, y: 16, scale: 0.98 },
+                      )}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={
                         reduce

@@ -2,6 +2,7 @@ import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { slugify } from "@/lib/slugify";
+import { entrada } from "@/lib/entradaEstatica";
 
 type LogoItem = {
   name: string;
@@ -136,7 +137,7 @@ export default function LogoLoop() {
 
       <div className="relative z-10">
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}

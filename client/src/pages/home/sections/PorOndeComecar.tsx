@@ -13,6 +13,7 @@ import {
   LEVEL_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
 } from "@/lib/quizMeta";
+import { entrada } from "@/lib/entradaEstatica";
 
 // =========================================
 // SEÇÃO PRINCIPAL
@@ -28,7 +29,7 @@ export default function PorOndeComecar() {
         {/* Header */}
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -38,7 +39,7 @@ export default function PorOndeComecar() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -50,7 +51,7 @@ export default function PorOndeComecar() {
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -62,7 +63,7 @@ export default function PorOndeComecar() {
 
         {/* CARD GIGANTE DE DESTAQUE: Quiz */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={entrada({ opacity: 0, y: 30 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6, delay: 0.4 }}
@@ -130,7 +131,7 @@ export default function PorOndeComecar() {
 
         {/* Divisor "OU SE VOCÊ JÁ SABE..." */}
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, delay: 0.6 }}
@@ -192,7 +193,7 @@ function SecondaryCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5, delay }}

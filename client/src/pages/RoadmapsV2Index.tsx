@@ -35,6 +35,7 @@ import {
   getCertificateStatuses,
   type CertificateStatus,
 } from "@/services/certificateService";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Selo da vitrine. So "certificada" e "concluida" ganham marca (ambas exigem
 // quiz aprovado no server). "em_progresso" nao tem selo proprio: a listagem
@@ -364,7 +365,7 @@ export default function RoadmapsV2Index() {
         />
         <div className="relative z-10 mx-auto max-w-[1180px] px-5 pb-20 pt-8">
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
@@ -424,7 +425,7 @@ export default function RoadmapsV2Index() {
                 return (
                   <motion.div
                     key={r.slug}
-                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    initial={entrada(reduce ? false : { opacity: 0, y: 12 })}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
                       duration: 0.35,
@@ -493,7 +494,7 @@ export default function RoadmapsV2Index() {
 
           <div className="mt-14">
             <motion.div
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.4, ease: "easeOut" }}
@@ -517,7 +518,7 @@ export default function RoadmapsV2Index() {
                   return (
                     <motion.div
                       key={r.slug}
-                      initial={reduce ? false : { opacity: 0, y: 12 }}
+                      initial={entrada(reduce ? false : { opacity: 0, y: 12 })}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
                         duration: 0.35,

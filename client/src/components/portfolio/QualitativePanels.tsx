@@ -12,6 +12,7 @@ import CopyButton from "@/components/shared/CopyButton";
 import { getPageAccentUi, type PageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import type { GithubMelhoria, Prioridade } from "@shared/github/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Default violet (o comportamento de sempre do analisador de GitHub). Os tres
 // paineis aceitam um accent opt-in (ex.: sky no analisador de LinkedIn); sem
@@ -213,7 +214,9 @@ export function Improvements({
                 </h4>
                 {done ? (
                   <motion.span
-                    initial={reduce ? false : { scale: 1.6, opacity: 0 }}
+                    initial={entrada(
+                      reduce ? false : { scale: 1.6, opacity: 0 },
+                    )}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={
                       reduce

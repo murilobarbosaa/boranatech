@@ -6,6 +6,7 @@ import type { FxRate } from "@/services/careerPlanService";
 import TrailStationCard from "./TrailStationCard";
 import { useTrailScroll } from "./useTrailScroll";
 import type { TrailStationVM } from "./types";
+import { entrada } from "@/lib/entradaEstatica";
 
 interface CareerTrailProps {
   stations: TrailStationVM[];
@@ -214,7 +215,7 @@ export default function CareerTrail({
                   ? "w-[min(72vw,340px)] lg:w-[400px]"
                   : "w-[min(82vw,340px)] lg:w-[360px]",
               )}
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.35,

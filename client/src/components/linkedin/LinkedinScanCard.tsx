@@ -6,6 +6,7 @@ import {
   LINKEDIN_LEVEL_LABELS,
   type LinkedinLevel,
 } from "@shared/linkedin/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 // TODO(Ana): revisar os rotulos do scan. Eles descrevem o pipeline REAL do
 // analisador de LinkedIn (o texto do PDF ja foi extraido e parseado no
@@ -82,7 +83,7 @@ export default function LinkedinScanCard({
           <AnimatePresence mode="wait">
             <motion.p
               key={step}
-              initial={{ opacity: 0 }}
+              initial={entrada({ opacity: 0 })}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}

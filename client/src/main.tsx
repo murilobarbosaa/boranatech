@@ -4,6 +4,8 @@ import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
 import { z } from "zod";
 import App from "./App";
+import { iniciarModoEntradaEstatica } from "./lib/entradaEstatica";
+import { registrarPreferenciaDeMovimento } from "./lib/preferenciaDeMovimento";
 import { registerPreloadErrorGuard } from "./lib/preloadErrorGuard";
 import { initClientSentry } from "./lib/sentry";
 import "./fonts.css";
@@ -31,6 +33,8 @@ posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
   api_host: import.meta.env.VITE_POSTHOG_HOST,
   defaults: "2026-01-30",
 });
+// Super property `reduced_motion` em todo evento. Ver lib/preferenciaDeMovimento.ts.
+registrarPreferenciaDeMovimento(posthog);
 
 // Limpeza da flag legada bnt_signup_completed: era gravada no signup e lida por
 // engano como "onboarding concluido", expulsando o recem-cadastrado. Nao e mais
@@ -41,7 +45,13 @@ try {
   // localStorage indisponivel; ignora.
 }
 
-createRoot(document.getElementById("root")!).render(
+// Modo entrada-estatica: lido ANTES do createRoot, enquanto `#root` ainda tem os
+// filhos do HTML pre-renderizado. Depois do render eles viram a arvore do React e
+// a informacao se perde. Ver lib/entradaEstatica.ts.
+const root = document.getElementById("root")!;
+iniciarModoEntradaEstatica(root);
+
+createRoot(root).render(
   <HelmetProvider>
     <App />
   </HelmetProvider>,

@@ -16,6 +16,10 @@
          bundle, e e arquivo externo (nao inline) porque o script-src do CSP nao
          tem 'unsafe-inline'. Ver client/public/theme-init.js. -->
     <script src="/theme-init.js"></script>
+    <!-- Esconde o "Entrar" do HTML pre-renderizado para quem tem sessao, ate o
+         React montar. Externo pelo mesmo motivo do theme-init.js. Ver
+         client/public/sessao-init.js. -->
+    <script src="/sessao-init.js"></script>
     <title>Bora na Tech? · Sua bússola para começar na tecnologia</title>
     <meta
       name="description"

@@ -9,6 +9,7 @@ import type { AiChatMessage } from "@/lib/aiClient";
 import { callAiChatStream, callAiStructured } from "@/lib/aiClient";
 import { cn } from "@/lib/utils";
 import type { Curriculo } from "@shared/curriculo/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 const MARKER = "[[CURRICULO_READY]]";
 const PARTIAL_MARKER_HEAD = "[[";
@@ -394,7 +395,7 @@ export default function CurriculoChatPanel({
                   return (
                     <motion.div
                       key={i}
-                      initial={reduce ? false : { opacity: 0, y: 4 }}
+                      initial={entrada(reduce ? false : { opacity: 0, y: 4 })}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
                       className={cn(
@@ -432,7 +433,7 @@ export default function CurriculoChatPanel({
                 return (
                   <motion.div
                     key={i}
-                    initial={reduce ? false : { opacity: 0, y: 4 }}
+                    initial={entrada(reduce ? false : { opacity: 0, y: 4 })}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className={cn(
