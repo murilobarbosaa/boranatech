@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { praVoceCursos, praVoceNoticia } from "@/lib/homeData.generated";
 import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 type Evento = import("@/services/eventosService").Evento;
 
@@ -554,6 +555,7 @@ function NuvemSvg({
 // =========================================
 
 function BackgroundDecoration() {
+  const reduzirMovimento = useReducedMotion();
   return (
     <>
       {/* Pattern de pontinhos sky sutis */}
@@ -585,11 +587,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(125, 211, 252, 0.25) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
-        animate={{
-          x: [0, -40, 30, 0],
-          y: [0, 30, -20, 0],
-          opacity: [0.4, 0.6, 0.4, 0.4],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, -40, 30, 0],
+            y: [0, 30, -20, 0],
+            opacity: [0.4, 0.6, 0.4, 0.4],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 20,
           repeat: Infinity,
@@ -610,11 +615,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(252, 211, 77, 0.2) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
-        animate={{
-          x: [0, 30, -20, 0],
-          y: [0, -20, 30, 0],
-          opacity: [0.3, 0.5, 0.3, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 30, -20, 0],
+            y: [0, -20, 30, 0],
+            opacity: [0.3, 0.5, 0.3, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 24,
           repeat: Infinity,

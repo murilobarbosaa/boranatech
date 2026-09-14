@@ -60,7 +60,24 @@ export function entradaEstatica(): boolean {
  * que ja devolva `false`.
  */
 export function entrada<T>(inicial: T): T | false {
-  return entradaEstatica() ? false : inicial;
+  return entradaEstatica() || prefereMenosMovimento() ? false : inicial;
+}
+
+/**
+ * `prefers-reduced-motion: reduce`, lido na hora. A entrada so importa na
+ * montagem, entao ler ali ja acompanha a preferencia de cada elemento; sem
+ * `matchMedia` (jsdom, navegador antigo) conta como sem preferencia.
+ */
+function prefereMenosMovimento(): boolean {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function __reiniciarModoEntradaEstaticaParaTeste(): void {

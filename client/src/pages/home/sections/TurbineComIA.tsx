@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 type Message = {
   id: number;
@@ -345,6 +346,7 @@ function ChatMessage({ message }: { message: Message }) {
 }
 
 function TypingIndicator() {
+  const reduzirMovimento = useReducedMotion();
   return (
     <motion.div
       initial={entrada({ opacity: 0, y: 10 })}
@@ -359,17 +361,26 @@ function TypingIndicator() {
       <div className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-950 bg-violet-50 px-4 py-3 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <motion.span
           className="h-2 w-2 rounded-full bg-violet-600"
-          animate={{ opacity: [0.3, 1, 0.3] }}
+          animate={movimentoContinuo(
+            { opacity: [0.3, 1, 0.3] },
+            reduzirMovimento,
+          )}
           transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
         />
         <motion.span
           className="h-2 w-2 rounded-full bg-violet-600"
-          animate={{ opacity: [0.3, 1, 0.3] }}
+          animate={movimentoContinuo(
+            { opacity: [0.3, 1, 0.3] },
+            reduzirMovimento,
+          )}
           transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
         />
         <motion.span
           className="h-2 w-2 rounded-full bg-violet-600"
-          animate={{ opacity: [0.3, 1, 0.3] }}
+          animate={movimentoContinuo(
+            { opacity: [0.3, 1, 0.3] },
+            reduzirMovimento,
+          )}
           transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
         />
       </div>
@@ -467,6 +478,7 @@ function BackgroundDecoration() {
 }
 
 function WhiteSparkles() {
+  const reduzirMovimento = useReducedMotion();
   const sparkles = [
     { top: "12%", left: "18%", size: 6, delay: 0 },
     { top: "8%", left: "65%", size: 5, delay: 1.2 },
@@ -498,10 +510,13 @@ function WhiteSparkles() {
             height: s.size,
             boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.5}px rgba(255, 184, 0, 0.7), 0 0 ${s.size}px ${s.size * 0.5}px rgba(255, 255, 255, 0.9)`,
           }}
-          animate={{
-            opacity: [0, 1, 0],
-            scale: [0.4, 1.3, 0.4],
-          }}
+          animate={movimentoContinuo(
+            {
+              opacity: [0, 1, 0],
+              scale: [0.4, 1.3, 0.4],
+            },
+            reduzirMovimento,
+          )}
           transition={{
             duration: 2.5,
             repeat: Infinity,

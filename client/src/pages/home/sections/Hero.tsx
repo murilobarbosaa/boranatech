@@ -28,6 +28,7 @@ import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
 import { entrada } from "@/lib/entradaEstatica";
 import { isPrerender } from "@/lib/prerender";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 // =========================================
 // DADOS
@@ -289,6 +290,7 @@ function AnimatedCounter({
 // =========================================
 
 function MapBackground({ sectionRef }: MapBackgroundProps) {
+  const reduzirMovimento = useReducedMotion();
   const nodeRefs = useRef<Record<NodeKey, HTMLDivElement | null>>({
     N: null,
     L: null,
@@ -502,10 +504,13 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
                 data-dot
                 className="rounded-full"
                 style={{ width: 12, height: 12, backgroundColor: color }}
-                animate={{
-                  scale: [1, 2, 1],
-                  opacity: [0.7, 0.2, 0.7],
-                }}
+                animate={movimentoContinuo(
+                  {
+                    scale: [1, 2, 1],
+                    opacity: [0.7, 0.2, 0.7],
+                  },
+                  reduzirMovimento,
+                )}
                 transition={{
                   duration: 2,
                   repeat: Infinity,
@@ -630,6 +635,7 @@ function captureStatsCounterIssue(
 }
 
 export default function Hero() {
+  const reduzirMovimento = useReducedMotion();
   const [currentHighlight, setCurrentHighlight] = useState(0);
   // null = sem número confiável (primeira visita sem cache, backend sem lkg, ou
   // valor degradado <= 0). Nunca usamos default hardcoded nem exibimos 0; o
@@ -646,13 +652,19 @@ export default function Hero() {
   // rodava dentro do puppeteer e o HTML capturava a frase trocada no meio da
   // animacao (indice 1, com opacity 0), e sem JS o destaque saia vazio. La a
   // frase fica na primeira; na carga real a alternancia segue como sempre.
+  // Sob reduced motion a frase e ESTATICA (decisao de produto): volta para a
+  // primeira e o interval nao liga. A dependencia acompanha a preferencia ao vivo.
   useEffect(() => {
     if (isPrerender()) return;
+    if (reduzirMovimento) {
+      setCurrentHighlight(0);
+      return;
+    }
     const interval = window.setInterval(() => {
       setCurrentHighlight((prev) => (prev + 1) % HIGHLIGHTS.length);
     }, 3000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [reduzirMovimento]);
 
   useEffect(() => {
     let cancelled = false;
@@ -904,10 +916,13 @@ export default function Hero() {
                   <motion.div
                     className="absolute right-3 top-3 rounded-full"
                     style={{ width: 8, height: 8, backgroundColor: color }}
-                    animate={{
-                      scale: [1, 1.5, 1],
-                      opacity: [0.7, 0.3, 0.7],
-                    }}
+                    animate={movimentoContinuo(
+                      {
+                        scale: [1, 1.5, 1],
+                        opacity: [0.7, 0.3, 0.7],
+                      },
+                      reduzirMovimento,
+                    )}
                     transition={{ duration: 2, repeat: Infinity }}
                     aria-hidden="true"
                   />

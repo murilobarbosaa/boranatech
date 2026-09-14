@@ -10,6 +10,7 @@ import {
 import { LEVEL_QUESTION_COUNT } from "@/lib/quizMeta";
 import { dictionaryTermsCount, roadmapsCount } from "@/lib/countsGenerated";
 import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -172,6 +173,7 @@ function StatBlock({
 // =========================================
 
 function BackgroundDecoration() {
+  const reduzirMovimento = useReducedMotion();
   return (
     <>
       {/* Blob amber topo esquerdo */}
@@ -186,11 +188,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
-        animate={{
-          x: [0, 60, -30, 0],
-          y: [0, 40, -20, 0],
-          opacity: [0.4, 0.6, 0.5, 0.4],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 60, -30, 0],
+            y: [0, 40, -20, 0],
+            opacity: [0.4, 0.6, 0.5, 0.4],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 20,
           repeat: Infinity,
@@ -211,11 +216,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
-        animate={{
-          x: [0, -40, 30, 0],
-          y: [0, 50, -30, 0],
-          opacity: [0.3, 0.5, 0.4, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, -40, 30, 0],
+            y: [0, 50, -30, 0],
+            opacity: [0.3, 0.5, 0.4, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 24,
           repeat: Infinity,
@@ -237,11 +245,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 60%)",
           filter: "blur(70px)",
         }}
-        animate={{
-          x: [0, 50, -50, 0],
-          y: [0, -30, 40, 0],
-          opacity: [0.3, 0.5, 0.3, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 50, -50, 0],
+            y: [0, -30, 40, 0],
+            opacity: [0.3, 0.5, 0.3, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 26,
           repeat: Infinity,

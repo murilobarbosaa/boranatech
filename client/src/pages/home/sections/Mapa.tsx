@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 // =========================================
 // TIPAGEM
@@ -135,6 +136,7 @@ const NODES: MapNode[] = [
 // =========================================
 
 function CollapsedContent({ node }: { node: MapNode }) {
+  const reduzirMovimento = useReducedMotion();
   return (
     <motion.div
       initial={entrada({ opacity: 0 })}
@@ -166,7 +168,10 @@ function CollapsedContent({ node }: { node: MapNode }) {
 
       <motion.div
         className={`h-3 w-3 rounded-full ${node.colors.dot}`}
-        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+        animate={movimentoContinuo(
+          { scale: [1, 1.4, 1], opacity: [1, 0.7, 1] },
+          reduzirMovimento,
+        )}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         aria-hidden="true"
       />
@@ -211,6 +216,7 @@ function PreviewContent({ node }: { node: MapNode }) {
 }
 
 function OpenContent({ node }: { node: MapNode }) {
+  const reduzirMovimento = useReducedMotion();
   return (
     <motion.div
       initial={entrada({ opacity: 0 })}
@@ -228,7 +234,10 @@ function OpenContent({ node }: { node: MapNode }) {
         </span>
         <motion.div
           className={`mt-2 h-3 w-3 rounded-full ${node.colors.dot}`}
-          animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+          animate={movimentoContinuo(
+            { scale: [1, 1.4, 1], opacity: [1, 0.7, 1] },
+            reduzirMovimento,
+          )}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden="true"
         />
@@ -363,6 +372,7 @@ function PanelMobile({
   onClick: () => void;
   index: number;
 }) {
+  const reduzirMovimento = useReducedMotion();
   return (
     <motion.div
       initial={entrada({ opacity: 0, y: 20 })}
@@ -387,7 +397,10 @@ function PanelMobile({
         </div>
         <motion.div
           className={`h-3 w-3 rounded-full ${node.colors.dot}`}
-          animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+          animate={movimentoContinuo(
+            { scale: [1, 1.4, 1], opacity: [1, 0.7, 1] },
+            reduzirMovimento,
+          )}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden="true"
         />
