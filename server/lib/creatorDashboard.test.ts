@@ -747,3 +747,85 @@ describe("montarPainelDoCreator: erro lanca, nunca vira zero", () => {
     ).rejects.toThrow('event_type desconhecido: "impression"');
   });
 });
+
+describe("montarPainelDoCreator: vendas reconstruidas antes do marco de cliques", () => {
+  // O backfill de 2026-09 grava vendas anteriores a creator_events. O cenario
+  // tipico: venda em julho (reconstruida) e o primeiro clique so em setembro.
+  const VENDA_DE_JULHO = {
+    affiliate_id: "a1",
+    event_type: "sale",
+    occurred_at: "2026-07-10T15:00:00Z",
+  };
+  const CLIQUE_DE_SETEMBRO = {
+    affiliate_id: "a1",
+    event_type: "click",
+    occurred_at: "2026-09-15T12:00:00Z",
+  };
+
+  it("dois marcos: vendas desde julho, cliques so desde setembro", async () => {
+    montarPadrao({
+      creator_events: respostaQueFiltra([VENDA_DE_JULHO, CLIQUE_DE_SETEMBRO]),
+    });
+    const { eventos } = await painelOk("7d", "creator");
+    expect(eventos.sales_since).toBe("2026-07-10T15:00:00Z");
+    expect(eventos.clicks_since).toBe("2026-09-15T12:00:00Z");
+    expect(eventos.events_since).toBe("2026-09-15T12:00:00Z");
+  });
+
+  it("all: a serie comeca na venda de julho, e o banco recebe esse inicio", async () => {
+    montarPadrao({
+      creator_events: respostaQueFiltra([VENDA_DE_JULHO, CLIQUE_DE_SETEMBRO]),
+    });
+    estado.rpc.porInicio = new Map([
+      [
+        "2026-07-10T15:00:00Z",
+        [
+          {
+            dia: "2026-07-10",
+            event_type: "sale",
+            quantidade: 1,
+            revenue_cents: 2242,
+            commission_cents: 224,
+          },
+          {
+            dia: "2026-09-15",
+            event_type: "click",
+            quantidade: 3,
+            revenue_cents: 0,
+            commission_cents: 0,
+          },
+        ],
+      ],
+    ]);
+    const { eventos } = await painelOk("all", "creator");
+    expect(argsDistintos().map((a) => a.p_from)).toEqual([
+      "2026-07-10T15:00:00Z",
+    ]);
+    // 22 dias de julho (10 a 31), 31 de agosto e 20 de setembro.
+    expect(eventos.serie).toHaveLength(73);
+    expect(eventos.serie[0]).toEqual({
+      dia: "2026-07-10",
+      ...ZERO,
+      sales: 1,
+      revenue_cents: 2242,
+      commission_cents: 224,
+    });
+    expect(eventos.serie[67]).toEqual({ dia: "2026-09-15", ...ZERO, clicks: 3 });
+    expect(eventos.periodo).toEqual({
+      clicks: 3,
+      checkouts: 0,
+      sales: 1,
+      revenue_cents: 2242,
+      commission_cents: 224,
+    });
+  });
+
+  it("so vendas, nenhum clique: marco de cliques null, e a serie existe", async () => {
+    montarPadrao({ creator_events: respostaQueFiltra([VENDA_DE_JULHO]) });
+    const { eventos } = await painelOk("7d", "creator");
+    expect(eventos.clicks_since).toBeNull();
+    expect(eventos.events_since).toBeNull();
+    expect(eventos.sales_since).toBe("2026-07-10T15:00:00Z");
+    expect(eventos.serie).toHaveLength(7);
+  });
+});

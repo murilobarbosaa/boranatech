@@ -48,7 +48,11 @@ vi.mock("@/components/UserAvatar", () => ({
 }));
 
 import type { CreatorDashboard } from "@shared/creatorDashboard";
-import { CreatorDashboardView, deltaPermitido } from "./CreatorDashboardView";
+import {
+  CreatorDashboardView,
+  deltaPermitido,
+  serieParaGrafico,
+} from "./CreatorDashboardView";
 
 const ZERO = {
   clicks: 0,
@@ -477,5 +481,112 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     expect(
       screen.getByTestId("creator-codigo-ANA30").parentElement?.className,
     ).not.toContain("md:grid-cols-2");
+  });
+});
+
+describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques", () => {
+  // O backfill de 2026-09 reconstruiu vendas anteriores a creator_events. A
+  // serie passa a comecar nelas, e os dias sem medicao de clique precisam
+  // aparecer como AUSENCIA (null), nao como zero clique.
+  it("serieParaGrafico: cliques antes do marco viram null; vendas ficam", () => {
+    const serie = [
+      {
+        dia: "2026-09-14",
+        ...ZERO,
+        sales: 1,
+        revenue_cents: 2242,
+        commission_cents: 224,
+      },
+      { dia: "2026-09-15", ...ZERO },
+      { dia: "2026-09-16", ...ZERO, clicks: 3 },
+    ];
+    expect(serieParaGrafico(serie, "2026-09-16T12:00:00Z")).toEqual([
+      {
+        dia: "2026-09-14",
+        ...ZERO,
+        clicks: null,
+        sales: 1,
+        revenue_cents: 2242,
+        commission_cents: 224,
+      },
+      { dia: "2026-09-15", ...ZERO, clicks: null },
+      { dia: "2026-09-16", ...ZERO, clicks: 3 },
+    ]);
+  });
+
+  it("serieParaGrafico: o marco conta pelo dia de Brasilia, nao pelo de UTC", () => {
+    // 2026-09-16 02:30 UTC ainda e 15/09 23:30 em Brasilia: o dia 15 ja e
+    // medido, e o zero dele e zero de verdade.
+    const serie = [
+      { dia: "2026-09-14", ...ZERO },
+      { dia: "2026-09-15", ...ZERO },
+    ];
+    expect(
+      serieParaGrafico(serie, "2026-09-16T02:30:00Z").map((d) => d.clicks),
+    ).toEqual([null, 0]);
+  });
+
+  it("serieParaGrafico: sem marco de cliques, todo dia fica null", () => {
+    const serie = [
+      { dia: "2026-09-19", ...ZERO, sales: 1 },
+      { dia: "2026-09-20", ...ZERO },
+    ];
+    expect(serieParaGrafico(serie, null).map((d) => d.clicks)).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it("dois selos com as datas de cada marco, e cliques ausentes antes do marco", () => {
+    const p = painelBase();
+    p.eventos.sales_since = "2026-07-10T15:00:00Z";
+    p.eventos.clicks_since = "2026-09-16T12:00:00Z";
+    p.eventos.events_since = "2026-09-16T12:00:00Z";
+    desenhar(p);
+    expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
+      "Cliques desde 16/09/2026",
+    );
+    expect(screen.getByTestId("creator-vendas-desde").textContent).toBe(
+      "Vendas desde 10/07/2026",
+    );
+    // A serie da fixture vai de 14/09 a 20/09: 14 e 15 sao antes do marco.
+    expect(
+      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+    ).toBe("2");
+  });
+
+  it("so vendas: sem selo de cliques, e todo clique do grafico ausente", () => {
+    const p = painelBase();
+    p.eventos.clicks_since = null;
+    p.eventos.events_since = null;
+    p.eventos.sales_since = "2026-07-10T15:00:00Z";
+    desenhar(p);
+    expect(screen.queryByTestId("creator-sem-eventos")).toBeNull();
+    expect(screen.queryByTestId("creator-cliques-desde")).toBeNull();
+    expect(screen.getByTestId("creator-vendas-desde").textContent).toBe(
+      "Vendas desde 10/07/2026",
+    );
+    expect(
+      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+    ).toBe("7");
+  });
+
+  it("JANELA DE DEPLOY: o backend anterior, sem os marcos novos, ainda desenha a serie", () => {
+    // A Vercel sobe antes do Railway. Por 1 a 3 minutos o front novo recebe o
+    // payload antigo, que so tem `events_since`: o marco de cliques cai para
+    // ele e o selo de vendas simplesmente nao aparece.
+    const p = painelBase();
+    const eventosAntigos: Record<string, unknown> = { ...p.eventos };
+    delete eventosAntigos.clicks_since;
+    delete eventosAntigos.sales_since;
+    const antigo = { ...p, eventos: eventosAntigos } as unknown as CreatorDashboard;
+    desenhar(antigo);
+    expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
+      "Cliques desde 10/09/2026",
+    );
+    expect(screen.queryByTestId("creator-vendas-desde")).toBeNull();
+    expect(
+      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+    ).toBe("0");
   });
 });
