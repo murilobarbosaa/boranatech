@@ -47,6 +47,7 @@ import type {
   CreatorDashboard,
   CreatorDashboardCodigo,
   CreatorDashboardJanela,
+  CreatorDashboardSerieDia,
   CreatorEventosSomas,
 } from "@shared/creatorDashboard";
 
@@ -57,8 +58,10 @@ import type {
 // e-mail, notas e revogacao, que o servidor nem envia na visao creator.
 //
 // DUAS FONTES, NUNCA NA MESMA FRASE: os tiles de "Desde o inicio" vem de
-// `totais` (contadores); a serie, o periodo e o delta vem de `eventos`, que
-// existem desde `events_since`, e a tela diz essa data ao lado da serie.
+// `totais` (contadores); a serie, o periodo e o delta vem de `eventos`, e cada
+// tipo vale desde o proprio marco (`clicks_since`, `sales_since`), que a tela
+// mostra em dois selos ao lado da serie. Antes de `clicks_since` o grafico
+// desenha cliques como AUSENTES (null no dado), e nao zero: nao havia medicao.
 //
 // SERIE CURTA: com 1 ou 2 dias o grafico vira barras. Uma linha com um ponto so
 // fica um ponto solto no meio do vazio, e a leitura some; barras dizem o valor
@@ -132,20 +135,24 @@ function percentual(valor: number): string {
 }
 
 /**
- * O delta contra o periodo anterior so e honesto quando os eventos ja existiam
+ * O delta contra o periodo anterior so e honesto quando a MEDICAO ja existia
  * no comeco daquele periodo. Antes disso a soma anterior e zero por falta de
  * medicao, e um "+400%" contra ela seria mentira com cara de numero.
+ *
+ * `medidoDesde` e o marco de CLIQUES, e nao o de vendas: o periodo soma
+ * cliques, checkouts e vendas juntos, e cliques e checkouts so existem desde o
+ * lote 01. Venda reconstruida antes disso nao torna o delta de cliques honesto.
  *
  * Inicio do periodo anterior = inicio da janela menos o tamanho dela, em dias
  * civis de Brasilia, a mesma aritmetica do servidor (shared/brasiliaDay).
  */
 export function deltaPermitido(
-  eventsSince: string | null,
+  medidoDesde: string | null,
   periodoAnterior: CreatorEventosSomas | null,
   janela: CreatorDashboardJanela,
   agoraMs: number,
 ): boolean {
-  if (janela === "all" || periodoAnterior === null || !eventsSince) {
+  if (janela === "all" || periodoAnterior === null || !medidoDesde) {
     return false;
   }
   const hoje = diaBrasilia(new Date(agoraMs).toISOString());
@@ -153,7 +160,7 @@ export function deltaPermitido(
   const dias = DIAS_DA_JANELA[janela];
   const primeiroDia = somarDiaCivil(hoje, -(dias - 1));
   const inicioAnterior = inicioDoDiaBrasilia(somarDiaCivil(primeiroDia, -dias));
-  return Date.parse(eventsSince) < Date.parse(inicioAnterior);
+  return Date.parse(medidoDesde) < Date.parse(inicioAnterior);
 }
 
 function TituloDeSecao({
@@ -337,14 +344,34 @@ function SeletorDeJanela({
   );
 }
 
-function Grafico({
-  serie,
-}: {
-  serie: CreatorDashboard["eventos"]["serie"];
-}) {
-  const curta = serie.length < DIAS_MINIMOS_PARA_LINHA;
-  const temVendas = serie.some((dia) => dia.sales > 0);
-  const muitosDias = serie.length > 31;
+/** Um dia do grafico: o da serie, com cliques null onde nao havia medicao. */
+export type PontoDoGrafico = Omit<CreatorDashboardSerieDia, "clicks"> & {
+  clicks: number | null;
+};
+
+/**
+ * Dias ANTERIORES ao marco de cliques viram `clicks: null`. O servidor manda 0
+ * nesses dias (a serie comeca no primeiro evento de qualquer tipo, e com o
+ * backfill de vendas isso pode ser meses antes do primeiro clique), e um 0
+ * desenhado diria "ninguem clicou" onde a verdade e "nao se media". Null o
+ * recharts desenha como ausencia: sem barra, e um vao na linha. Sem marco
+ * nenhum (nenhum clique gravado), todos os dias ficam null. Vendas nao mudam.
+ */
+export function serieParaGrafico(
+  serie: CreatorDashboardSerieDia[],
+  clicksSince: string | null,
+): PontoDoGrafico[] {
+  const diaDoMarco = diaBrasilia(clicksSince);
+  return serie.map((dia) => ({
+    ...dia,
+    clicks: diaDoMarco !== null && dia.dia >= diaDoMarco ? dia.clicks : null,
+  }));
+}
+
+function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
+  const curta = dados.length < DIAS_MINIMOS_PARA_LINHA;
+  const temVendas = dados.some((dia) => dia.sales > 0);
+  const muitosDias = dados.length > 31;
 
   return (
     <div className="overflow-x-auto">
@@ -352,11 +379,12 @@ function Grafico({
         data-testid="creator-grafico"
         data-forma={curta ? "barras" : "linha"}
         data-eixo-vendas={!curta && temVendas ? "sim" : "nao"}
+        data-cliques-ausentes={dados.filter((dia) => dia.clicks === null).length}
         className={`h-72 ${muitosDias ? "min-w-[40rem] sm:min-w-0" : ""}`}
       >
         <ResponsiveContainer width="100%" height="100%">
           {curta ? (
-            <BarChart data={serie} margin={MARGEM_DO_GRAFICO}>
+            <BarChart data={dados} margin={MARGEM_DO_GRAFICO}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
@@ -402,7 +430,7 @@ function Grafico({
               />
             </BarChart>
           ) : (
-            <ComposedChart data={serie} margin={MARGEM_DO_GRAFICO}>
+            <ComposedChart data={dados} margin={MARGEM_DO_GRAFICO}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
@@ -411,7 +439,7 @@ function Grafico({
               <XAxis
                 dataKey="dia"
                 tickFormatter={rotuloDeDia}
-                interval={intervaloDeRotulos(serie.length, 6)}
+                interval={intervaloDeRotulos(dados.length, 6)}
                 tick={EIXO}
                 tickLine={false}
                 axisLine={{ stroke: "var(--border)" }}
@@ -488,7 +516,7 @@ function Serie({
 }) {
   const { eventos } = painel;
 
-  if (eventos.events_since === null) {
+  if (eventos.serie.length === 0) {
     return (
       <div
         data-testid="creator-sem-eventos"
@@ -501,8 +529,14 @@ function Serie({
     );
   }
 
+  // JANELA DE DEPLOY: o backend anterior ao lote 06b so manda `events_since`
+  // (primeiro evento de qualquer tipo). O front novo cai para ele como marco de
+  // cliques e simplesmente nao mostra o selo de vendas.
+  const clicksSince = eventos.clicks_since ?? eventos.events_since ?? null;
+  const salesSince = eventos.sales_since ?? null;
+
   const comDelta = deltaPermitido(
-    eventos.events_since,
+    clicksSince,
     eventos.periodo_anterior,
     janela,
     agoraMs,
@@ -540,14 +574,25 @@ function Serie({
     <div data-testid="creator-serie" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SeletorDeJanela janela={janela} onChange={onJanelaChange} />
-        <span data-testid="creator-eventos-desde" className={SELO_NEUTRO}>
-          <CalendarDays aria-hidden="true" className={ICONE} />
-          {/* TODO(Ana) */}
-          {`Eventos desde ${dataCurta(eventos.events_since)}`}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {clicksSince ? (
+            <span data-testid="creator-cliques-desde" className={SELO_NEUTRO}>
+              <CalendarDays aria-hidden="true" className={ICONE} />
+              {/* TODO(Ana) */}
+              {`Cliques desde ${dataCurta(clicksSince)}`}
+            </span>
+          ) : null}
+          {salesSince ? (
+            <span data-testid="creator-vendas-desde" className={SELO_NEUTRO}>
+              <CalendarDays aria-hidden="true" className={ICONE} />
+              {/* TODO(Ana) */}
+              {`Vendas desde ${dataCurta(salesSince)}`}
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      <Grafico serie={eventos.serie} />
+      <Grafico dados={serieParaGrafico(eventos.serie, clicksSince)} />
 
       <dl
         data-testid="creator-periodo"

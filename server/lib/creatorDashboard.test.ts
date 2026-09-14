@@ -461,9 +461,12 @@ describe("montarPainelDoCreator: eventos", () => {
     ]);
   });
 
-  it("events_since, ultimo clique e ultima venda vem das tres consultas certas", async () => {
+  it("marcos, ultimo clique e ultima venda vem das cinco consultas certas", async () => {
     montarPadrao();
     const { eventos } = await painelOk("7d", "creator");
+    expect(eventos.clicks_since).toBe("2026-09-10T12:00:00Z");
+    expect(eventos.sales_since).toBe("2026-09-15T18:00:00Z");
+    // Alias por um lote: igual ao marco de cliques.
     expect(eventos.events_since).toBe("2026-09-10T12:00:00Z");
     expect(eventos.ultimo_click_at).toBe("2026-09-18T01:30:00Z");
     expect(eventos.ultima_venda_at).toBe("2026-09-15T18:00:00Z");
@@ -474,6 +477,20 @@ describe("montarPainelDoCreator: eventos", () => {
     expect(filtrosPorLeitura).toEqual([
       [
         [{ tipo: "in", coluna: "affiliate_id", valor: ["a1", "b1"] }],
+        [{ coluna: "occurred_at", ascending: true }],
+      ],
+      [
+        [
+          { tipo: "in", coluna: "affiliate_id", valor: ["a1", "b1"] },
+          { tipo: "eq", coluna: "event_type", valor: "click" },
+        ],
+        [{ coluna: "occurred_at", ascending: true }],
+      ],
+      [
+        [
+          { tipo: "in", coluna: "affiliate_id", valor: ["a1", "b1"] },
+          { tipo: "eq", coluna: "event_type", valor: "sale" },
+        ],
         [{ coluna: "occurred_at", ascending: true }],
       ],
       [

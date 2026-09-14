@@ -106,6 +106,8 @@ function painelBase(): CreatorDashboard {
       },
     ],
     eventos: {
+      clicks_since: "2026-09-10T12:00:00Z",
+      sales_since: "2026-09-15T18:00:00Z",
       events_since: "2026-09-10T12:00:00Z",
       serie: [
         { dia: "2026-09-14", ...ZERO },
@@ -238,8 +240,13 @@ describe("CreatorDashboardView: serie e delta", () => {
   it("serie com eventos: grafico, data de inicio e ultimo clique relativo", () => {
     desenhar(painelBase());
     expect(screen.getByTestId("creator-grafico")).toBeTruthy();
-    expect(screen.getByTestId("creator-eventos-desde").textContent).toBe(
-      "Eventos desde 10/09/2026",
+    // Um selo por marco desde o lote 06b: cliques e vendas valem desde datas
+    // diferentes.
+    expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
+      "Cliques desde 10/09/2026",
+    );
+    expect(screen.getByTestId("creator-vendas-desde").textContent).toBe(
+      "Vendas desde 15/09/2026",
     );
     // Ultimo clique e ultima venda sao dois selos desde o lote 05, e nao mais
     // uma frase unida por ponto.
@@ -251,18 +258,18 @@ describe("CreatorDashboardView: serie e delta", () => {
     );
   });
 
-  it("delta aparece quando os eventos ja existiam no inicio do periodo anterior", () => {
+  it("delta aparece quando os cliques ja eram medidos no inicio do periodo anterior", () => {
     const p = painelBase();
-    p.eventos.events_since = "2026-09-01T12:00:00Z";
+    p.eventos.clicks_since = "2026-09-01T12:00:00Z";
     desenhar(p);
     expect(screen.getByTestId("creator-delta-clicks").textContent).toBe(
       "+75,0% vs período anterior",
     );
   });
 
-  it("sem delta quando os eventos comecaram depois do inicio do periodo anterior", () => {
+  it("sem delta quando os cliques comecaram depois do inicio do periodo anterior", () => {
     const p = painelBase();
-    p.eventos.events_since = "2026-09-10T12:00:00Z";
+    p.eventos.clicks_since = "2026-09-10T12:00:00Z";
     desenhar(p);
     expect(screen.queryByTestId("creator-delta-clicks")).toBeNull();
     expect(screen.getByTestId("creator-periodo").textContent).not.toContain(
@@ -313,6 +320,8 @@ describe("CreatorDashboardView: estados sem dado", () => {
     const p = painelBase();
     p.eventos = {
       ...p.eventos,
+      clicks_since: null,
+      sales_since: null,
       events_since: null,
       serie: [],
       ultimo_click_at: null,

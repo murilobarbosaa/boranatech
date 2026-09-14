@@ -33,8 +33,10 @@ import { supabaseAdmin } from "./supabaseAdmin";
  *   - `totais` e os numeros por codigo vem dos CONTADORES de `affiliates`, a
  *     fonte de verdade desde o inicio;
  *   - `eventos` (serie por dia, periodo, ultimo clique e ultima venda) vem de
- *     `creator_events`, que so existem desde 2026-09-14. O campo
- *     `events_since` diz ao client a partir de quando a serie vale.
+ *     `creator_events`. Cliques existem desde 2026-09-14; vendas, desde a
+ *     primeira venda com codigo, porque as anteriores a tabela foram
+ *     reconstruidas (migration 20260915100000). Por isso ha dois marcos,
+ *     `clicks_since` e `sales_since`, e nao um so.
  *
  * CUSTO FIXO: o numero de consultas nao depende de quantos codigos ou eventos o
  * creator tem (nunca N+1). A serie vem agregada do banco
@@ -398,15 +400,25 @@ async function ultimoEvento(
   return linha ? textoDe(linha.occurred_at, "occurred_at") : null;
 }
 
-async function primeiroEvento(ids: string[]): Promise<string | null> {
-  const { data, error } = await supabaseAdmin
+/**
+ * Primeiro evento dos codigos: de qualquer tipo (`tipo` null, o inicio da serie)
+ * ou de um tipo so (o marco daquele tipo).
+ */
+async function primeiroEvento(
+  ids: string[],
+  tipo: "click" | "sale" | null,
+): Promise<string | null> {
+  const base = supabaseAdmin
     .from("creator_events")
     .select("occurred_at")
-    .in("affiliate_id", ids)
+    .in("affiliate_id", ids);
+  const { data, error } = await (tipo ? base.eq("event_type", tipo) : base)
     .order("occurred_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (error) throw falhaDeLeitura("events_since", error);
+  if (error) {
+    throw falhaDeLeitura(tipo ? `primeiro ${tipo}` : "inicio da serie", error);
+  }
   const linha: Linha | null = data;
   return linha ? textoDe(linha.occurred_at, "occurred_at") : null;
 }
@@ -478,17 +490,27 @@ export async function montarPainelDoCreator(
     totaisBase.commission_paid_cents += c.commission_paid_cents;
   }
 
-  // 4, 5 e 6. Eventos. Sem codigo nao ha evento possivel, e `.in` com lista
-  // vazia nao e consulta que valha a ida ao banco.
+  // 4 a 8. Eventos. Sem codigo nao ha evento possivel, e `.in` com lista vazia
+  // nao e consulta que valha a ida ao banco.
+  //
+  // O INICIO DA SERIE e o primeiro evento de QUALQUER tipo, e nao o menor dos
+  // dois marcos: um checkout anterior ao primeiro clique e a primeira venda
+  // ficaria fora da serie e do periodo em "all". Os marcos por tipo sao o que
+  // o client usa para dizer desde quando cada serie vale.
   let eventsSince: string | null = null;
+  let clicksSince: string | null = null;
+  let salesSince: string | null = null;
   let ultimoClickAt: string | null = null;
   let ultimaVendaAt: string | null = null;
   if (ids.length > 0) {
-    [eventsSince, ultimoClickAt, ultimaVendaAt] = await Promise.all([
-      primeiroEvento(ids),
-      ultimoEvento(ids, "click"),
-      ultimoEvento(ids, "sale"),
-    ]);
+    [eventsSince, clicksSince, salesSince, ultimoClickAt, ultimaVendaAt] =
+      await Promise.all([
+        primeiroEvento(ids, null),
+        primeiroEvento(ids, "click"),
+        primeiroEvento(ids, "sale"),
+        ultimoEvento(ids, "click"),
+        ultimoEvento(ids, "sale"),
+      ]);
   }
 
   let serie: CreatorDashboardSerieDia[] = [];
@@ -559,7 +581,10 @@ export async function montarPainelDoCreator(
     },
     codigos,
     eventos: {
-      events_since: eventsSince,
+      clicks_since: clicksSince,
+      sales_since: salesSince,
+      // Alias de clicks_since por um lote (ver shared/creatorDashboard.ts).
+      events_since: clicksSince,
       serie,
       periodo,
       periodo_anterior: periodoAnterior,

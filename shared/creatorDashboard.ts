@@ -156,21 +156,40 @@ export type CreatorDashboard = {
     conversao_pct: number | null;
   };
   codigos: CreatorDashboardCodigo[];
-  /** De creator_events, e so a partir de `events_since`. */
+  /** De creator_events. Cada tipo de evento vale a partir do proprio marco. */
   eventos: {
-    /** Instante do primeiro evento gravado para estes codigos, ou null. */
+    /**
+     * Instante do primeiro CLIQUE gravado para estes codigos, ou null. Clique so
+     * e registrado desde o lote 01 (2026-09-14): antes deste marco a serie de
+     * cliques e AUSENCIA de medicao, e nao zero.
+     */
+    clicks_since: string | null;
+    /**
+     * Instante da primeira VENDA gravada, ou null. Vendas anteriores ao lote 01
+     * foram reconstruidas das assinaturas pagas (migration 20260915100000), entao
+     * este marco pode ser anterior a `clicks_since`.
+     */
+    sales_since: string | null;
+    /**
+     * @deprecated Alias de `clicks_since`, mantido por um lote para o bundle em
+     * cache que ainda le este nome (expand/contract). Remover a partir de
+     * 2026-09-22.
+     */
     events_since: string | null;
     /**
-     * Um item por dia civil de Brasilia, do inicio da janela (ou de
-     * `events_since`, o que vier depois) ate hoje, com zeros nos dias sem
-     * evento. Vazia quando `events_since` e null.
+     * Um item por dia civil de Brasilia, do inicio da janela (ou do primeiro
+     * evento de qualquer tipo, o que vier depois) ate hoje, com zeros nos dias
+     * sem evento. Vazia quando nao ha evento nenhum. Os dias anteriores a
+     * `clicks_since` trazem `clicks: 0` aqui; e o client que os desenha como
+     * ausentes.
      */
     serie: CreatorDashboardSerieDia[];
     periodo: CreatorEventosSomas;
     /**
      * Mesmo numero de dias civis imediatamente antes da janela; null so em
-     * "all". Um periodo anterior a `events_since` soma zero: cabe ao client
-     * comparar com `events_since` antes de exibir o delta.
+     * "all". Um periodo anterior a `clicks_since` soma zero de clique por falta
+     * de medicao: cabe ao client comparar com `clicks_since` antes de exibir o
+     * delta.
      */
     periodo_anterior: CreatorEventosSomas | null;
     ultimo_click_at: string | null;

@@ -89,6 +89,8 @@ const PAINEL: CreatorDashboard = {
   },
   codigos: [],
   eventos: {
+    clicks_since: null,
+    sales_since: null,
     events_since: null,
     serie: [],
     periodo: {
