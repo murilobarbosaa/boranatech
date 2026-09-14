@@ -26,7 +26,9 @@ router.use(requireAuth);
 router.get("/status", async (req, res, next) => {
   try {
     const kind = await resolverCreatorKind(req.user!.id);
-    res.json({ kind });
+    // Envelope `data` como o resto da API (/me e as rotas do admin): o client
+    // do lote 03 le todas as respostas de sucesso do mesmo jeito.
+    res.json({ data: { kind } });
   } catch (err) {
     return next(
       createError(

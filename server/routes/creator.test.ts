@@ -264,7 +264,7 @@ describe("requireCreator: cache de 60s", () => {
 });
 
 describe("GET /api/creator/status", () => {
-  it('afiliado ativo: 200 {kind: "afiliado"}', async () => {
+  it('afiliado ativo: 200 {data: {kind: "afiliado"}}', async () => {
     montar({
       creators: respostaQueFiltra([
         { user_id: UID, kind: "afiliado", revoked_at: null },
@@ -273,15 +273,15 @@ describe("GET /api/creator/status", () => {
     estado.usuario = USUARIO;
     const r = await chamar("GET", "/status");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ kind: "afiliado" });
+    expect(r.body).toEqual({ data: { kind: "afiliado" } });
   });
 
-  it("quem nao e creator: 200 {kind: null}", async () => {
+  it("quem nao e creator: 200 {data: {kind: null}}", async () => {
     montar({ creators: respostaQueFiltra([]) });
     estado.usuario = USUARIO;
     const r = await chamar("GET", "/status");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ kind: null });
+    expect(r.body).toEqual({ data: { kind: null } });
   });
 
   it("erro de consulta: 503 creator_status_unavailable, nunca kind null", async () => {
@@ -291,7 +291,7 @@ describe("GET /api/creator/status", () => {
     const r = await chamar("GET", "/status");
     expect(r.status).toBe(503);
     expect(r.body.error.code).toBe("creator_status_unavailable");
-    expect("kind" in r.body).toBe(false);
+    expect(r.body.data).toBeUndefined();
   });
 
   it("sem usuario: 401", async () => {
