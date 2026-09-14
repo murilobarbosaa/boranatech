@@ -112,6 +112,20 @@ const CREATE_TABLE_RE =
 // falso positivo e ninguem confia mais nele.
 const DROP_TABLE_RE =
   /drop\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+// "alter table [if exists] [only] public.<velho> rename to <novo>": a tabela
+// muda de nome e continua existindo. Sem isto, a 20260913120000 (influencers
+// vira creators) deixaria `influencers` no conjunto declarado, e o guard
+// acusaria como AUSENTE uma tabela que existe com outro nome, enquanto
+// `creators`, que nenhum `create table` declara, ficaria fora da verificacao.
+// So casa rename da TABELA: `rename column` e `rename constraint` tem outra
+// palavra entre `rename` e `to`, e nao entram.
+const RENAME_TABLE_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?\s+rename\s+to\s+"?([a-z0-9_]+)"?/gi;
+// Deteccao ampla do mesmo rename, para o guard de cobertura: um rename que o
+// regex especifico nao le (outro schema, nome sem schema) derruba o script em
+// vez de deixar a tabela velha viva no conjunto.
+const ANY_RENAME_TABLE_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?[^\s;]+\s+rename\s+to\s/gi;
 // Deteccao ampla, so para conferir COBERTURA do parser: pega qualquer
 // "create ... table" e compara com o que o regex especifico conseguiu ler.
 const ANY_CREATE_TABLE_RE =
@@ -235,7 +249,12 @@ const naoReconhecidasOutras: string[] = [];
 // foi medido no estado mesclado (ver o relatorio do Lote C2-REV2).
 // 85 desde 20260906120000_create_project_submissions.sql. Numero MEDIDO com
 // `pnpm check:migrations --declared`, nao somado.
-const EXPECTED_TABLE_COUNT = 85;
+// 86 desde 20260913120000_creators_and_creator_events.sql, MEDIDO com
+// `--declared`: cria creator_events. A mesma migration renomeia influencers para
+// creators, e o rename NAO muda o total (sai um nome, entra outro); quem garante
+// isso e o RENAME_TABLE_RE, sem o qual o conjunto teria as duas e acusaria
+// influencers como ausente no banco.
+const EXPECTED_TABLE_COUNT = 86;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -254,7 +273,10 @@ const EXPECTED_TABLE_COUNT = 85;
 // depois do merge. Valor abaixo medido, nao somado.
 // 85 desde 20260906120000_create_project_submissions.sql, medido com
 // `--declared` no mesmo commit da migration.
-const EXPECTED_RLS_COUNT = 85;
+// 86 desde 20260913120000_creators_and_creator_events.sql, medido com
+// `--declared`: creator_events declara RLS. A marca de RLS de influencers MUDA
+// de nome junto com a tabela (creators), e por isso nao conta duas vezes.
+const EXPECTED_RLS_COUNT = 86;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -438,36 +460,68 @@ for (const file of readdirSync(migrationsDir)
   // terminava com x REMOVIDO do conjunto declarado. Foi assim que
   // `email_campaign_record_result` apareceu como "existe no banco e ninguem
   // declara": ela e declarada, o parser e que desfazia a declaracao.
+  // RENAME entra na MESMA sequencia de origem que create e drop: e um drop do
+  // nome velho seguido de um create do novo, no ponto do arquivo em que
+  // acontece. `exigirDeclarada` e para o conjunto de TABELAS: renomear uma
+  // tabela que nenhuma migration anterior declarou e drift, e vira item nao
+  // reconhecido (aborta), em vez de o nome novo entrar em silencio. Para o
+  // conjunto de RLS o rename so MOVE a marca, se ela existir.
   const aplicarEmOrdem = (
     conjunto: Set<string>,
     criar: RegExp,
     dropar: RegExp,
     aoCriar?: (nome: string, indice: number) => void,
+    renomear?: { re: RegExp; exigirDeclarada: boolean },
   ) => {
-    const eventos = [
+    type Evento = {
+      pos: number;
+      nome: string;
+      novo: string;
+      tipo: "criar" | "dropar" | "renomear";
+    };
+    const eventos: Evento[] = [
       ...[...sql.matchAll(criar)].map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
+        novo: "",
         tipo: "criar" as const,
       })),
       ...[...sql.matchAll(dropar)].map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
+        novo: "",
         tipo: "dropar" as const,
+      })),
+      ...(renomear ? [...sql.matchAll(renomear.re)] : []).map((m) => ({
+        pos: m.index ?? 0,
+        nome: m[1].toLowerCase(),
+        novo: m[2].toLowerCase(),
+        tipo: "renomear" as const,
       })),
     ].sort((a, b) => a.pos - b.pos);
     for (const e of eventos) {
       if (e.tipo === "criar") {
         conjunto.add(e.nome);
         aoCriar?.(e.nome, e.pos);
-      } else {
+      } else if (e.tipo === "dropar") {
         conjunto.delete(e.nome);
+      } else if (conjunto.has(e.nome)) {
+        conjunto.delete(e.nome);
+        conjunto.add(e.novo);
+      } else if (renomear?.exigirDeclarada) {
+        naoReconhecidas.push(
+          `${file}: rename de public.${e.nome} para ${e.novo}, mas nenhuma migration anterior declara public.${e.nome}`,
+        );
       }
     }
   };
 
   const reconhecidas = [...sql.matchAll(CREATE_TABLE_RE)];
-  aplicarEmOrdem(declared, CREATE_TABLE_RE, DROP_TABLE_RE);
+  const renomeiosLidos = [...sql.matchAll(RENAME_TABLE_RE)];
+  aplicarEmOrdem(declared, CREATE_TABLE_RE, DROP_TABLE_RE, undefined, {
+    re: RENAME_TABLE_RE,
+    exigirDeclarada: true,
+  });
   // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
   const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
   const nomesFuncao = new Set<string>();
@@ -489,7 +543,10 @@ for (const file of readdirSync(migrationsDir)
     }
   }
   const rlsLidas = [...sql.matchAll(ENABLE_RLS_RE)];
-  aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE);
+  aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE, undefined, {
+    re: RENAME_TABLE_RE,
+    exigirDeclarada: false,
+  });
   conferirCoberturaSimples(
     rlsLidas.length,
     sql,
@@ -528,6 +585,11 @@ for (const file of readdirSync(migrationsDir)
   conferirCobertura(fnLidas, ANY_CREATE_FUNCTION_RE, "create function");
   conferirCobertura(polLidas, ANY_CREATE_POLICY_RE, "create policy");
   conferirCobertura(idxLidos, ANY_CREATE_INDEX_RE, "create index");
+  conferirCobertura(
+    renomeiosLidos,
+    ANY_RENAME_TABLE_RE,
+    "alter table ... rename to",
+  );
 
   // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
   const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
@@ -811,6 +873,25 @@ const ASSERCOES: AssercaoComportamental[] = [
         "roadmap-intake-chat",
       ]),
   },
+  {
+    // 20260913120000_creators_and_creator_events.sql faz `create or replace`
+    // de is_user_pro para ler public.creators, e a verificacao por nome nao
+    // enxerga isso. O que se afirma e o que distingue os dois corpos DEPOIS do
+    // rename: o corpo antigo le public.influencers, que deixou de existir, e
+    // passa a FALHAR em toda chamada (inclusive a de um uuid qualquer), o que
+    // aparece aqui como "sem veredito". O corpo novo responde false para um
+    // uuid sem assinatura e sem concessao. Pega a migration aplicada pela
+    // metade (rename sem o replace), que derrubaria o Pro de todo mundo.
+    // STABLE e so leitura: chamar contra producao nao escreve nada.
+    funcao: "is_user_pro",
+    args: { p_user_id: "00000000-0000-0000-0000-000000000000" },
+    descricao:
+      "le public.creators e nega Pro a um uuid sem assinatura e sem concessao",
+    verificar: (resultado) =>
+      resultado === false
+        ? null
+        : `esperava false, veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
+  },
 ];
 
 async function chamarRpc(
@@ -938,6 +1019,9 @@ const COLUNAS_ESPERADAS: Record<string, string[]> = {
     // 20260804140000_add_precisa_revisao_to_fiscal_invoices.sql
     "precisa_revisao",
   ],
+  // 20260913120000_creators_and_creator_events.sql
+  creators: ["kind"],
+  affiliates: ["user_id"],
 };
 
 /**

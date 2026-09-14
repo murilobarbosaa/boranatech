@@ -1779,12 +1779,15 @@ function auditsDe(action: string) {
  *
  * O parser LANÇA quando não acha, em vez de devolver conjunto vazio, que faria
  * toda asserção abaixo passar sobre nada.
+ *
+ * O arquivo lido é o do corpo VIGENTE da função: desde 20260913120000 (a que
+ * renomeia influencers para creators) é ela, e não mais a 20260716130100.
  */
 function statusesQueDaoProNaMigration(): Set<string> {
   const sql = readFileSync(
     resolve(
       process.cwd(),
-      "supabase/migrations/20260716130100_add_influencer_to_is_user_pro.sql",
+      "supabase/migrations/20260913120000_creators_and_creator_events.sql",
     ),
     "utf8",
   );
