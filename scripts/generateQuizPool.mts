@@ -171,6 +171,9 @@ async function generateSection(
   // resposta limpa com concentracao residual vale mais que uma concentrada
   // certa com trecho fora da regra (a validacao final reprovaria a segunda).
   let bestClean: GeneratedQuestion[] | null = null;
+  // O que ficou pendente na resposta guardada em bestValid, por classe, para
+  // o fallback dizer o motivo real em vez de supor concentracao.
+  let pendenciasBestValid: string[] = [];
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
       const userPrompt = buildUserPrompt(
@@ -208,23 +211,43 @@ async function generateSection(
         validation.data.questions,
         codeQuota,
       );
-      const violacoes =
+      // As tres classes de violacao de codigo em separado, para o fallback
+      // nomear a que ficou pendente; `violacoes` junta as tres na ordem de
+      // sempre, entao a nota de rebalanceamento do retry nao muda.
+      const regra =
         codeQuota > 0
-          ? [
-              ...codeRuleViolations(
-                validation.data.questions,
-                roadmap.codeLanguages ?? [],
-              ),
-              ...codeTypeViolations(validation.data.questions, codeQuota),
-              ...(executarPor
-                ? execViolations(
-                    validation.data.questions,
-                    roadmap.codeLanguages ?? [],
-                    executarPor,
-                  )
-                : []),
-            ]
+          ? codeRuleViolations(
+              validation.data.questions,
+              roadmap.codeLanguages ?? [],
+            )
           : [];
+      const variedade =
+        codeQuota > 0
+          ? codeTypeViolations(validation.data.questions, codeQuota)
+          : [];
+      const execucao =
+        codeQuota > 0 && executarPor
+          ? execViolations(
+              validation.data.questions,
+              roadmap.codeLanguages ?? [],
+              executarPor,
+            )
+          : [];
+      const violacoes = [...regra, ...variedade, ...execucao];
+      pendenciasBestValid = [
+        ...(excedidos.length > 0
+          ? [
+              `concentracao: passos acima de ${MAX_PER_FONTE} perguntas (${excedidos.join(", ")})`,
+            ]
+          : []),
+        ...(faltamCodigo > 0
+          ? [`cota de codigo: faltam ${faltamCodigo} de ${codeQuota}`]
+          : []),
+        ...regra.map((violacao) => `regra de codigo: ${violacao}`),
+        // codeTypeViolations ja devolve cada linha com o prefixo "variedade:".
+        ...variedade,
+        ...execucao.map((violacao) => `execucao: ${violacao}`),
+      ];
       if (violacoes.length === 0) {
         bestClean = validation.data.questions;
       }
@@ -297,8 +320,11 @@ async function generateSection(
   }
   if (bestValid) {
     console.warn(
-      `[generateQuizPool] ${label}: aceitando com concentracao residual apos ${AI_MAX_ATTEMPTS} tentativas (secao fina, distribuicao ideal inatingivel).`,
+      `[generateQuizPool] ${label}: aceitando a ultima resposta valida no schema apos ${AI_MAX_ATTEMPTS} tentativas, com ${pendenciasBestValid.length} pendencia(s); o portao final da pool confere de novo:`,
     );
+    for (const pendencia of pendenciasBestValid) {
+      console.warn(`[generateQuizPool]     - ${pendencia}`);
+    }
     return bestValid;
   }
   throw lastError instanceof Error
