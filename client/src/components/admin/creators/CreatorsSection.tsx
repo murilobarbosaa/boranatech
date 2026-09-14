@@ -8,6 +8,7 @@ import { relativeTime } from "@/components/admin/tasks/relativeTime";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorMetricTile } from "@/components/creator/CreatorMetricTile";
 import { AdminApiError, adminFetch } from "@/lib/adminApi";
+import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { formatarCentavos } from "@/lib/formatarCentavos";
 import { isUuid } from "@shared/adminAttention";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
@@ -48,18 +49,6 @@ const OPCOES_DE_KIND: Array<{ valor: CreatorBoardKind; rotulo: string }> = [
   { valor: "influencer", rotulo: "Influencers" },
   { valor: "afiliado", rotulo: "Afiliados" },
 ];
-
-// TODO(Ana)
-const ROTULO_DO_KIND: Record<string, string> = {
-  influencer: "Influencer",
-  afiliado: "Afiliado",
-};
-
-/** Kind vem do servidor: resolver com fallback neutro (CLAUDE.md). */
-function rotuloDoKind(kind: string): string {
-  // TODO(Ana)
-  return ROTULO_DO_KIND[kind] ?? "Creator";
-}
 
 function dataCurta(iso: string | null): string {
   const dia = diaBrasilia(iso);

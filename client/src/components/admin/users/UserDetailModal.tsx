@@ -40,6 +40,7 @@ import { UserSiteLife, type VidaNoSite } from "./UserSiteLife";
 import { ExternalRefundDialog } from "./ExternalRefundDialog";
 import { RefundDialog } from "./RefundDialog";
 import { nomeDaConcessao } from "./creatorConcessao";
+import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { useProfileEdit } from "./useProfileEdit";
 import {
   AlertDialog,
@@ -144,18 +145,6 @@ const INFLUENCER_REVOKE_BUTTON =
 
 const INFLUENCER_REVOKE_CONFIRM_BUTTON =
   "w-full rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
-
-// TODO(Ana)
-const ROTULO_DO_KIND: Record<string, string> = {
-  influencer: "Influencer",
-  afiliado: "Afiliado",
-};
-
-/** Kind vem do servidor: resolver com fallback neutro (CLAUDE.md). */
-function rotuloDoKind(kind: string | null | undefined): string {
-  // TODO(Ana)
-  return (kind ? ROTULO_DO_KIND[kind] : undefined) ?? "Creator";
-}
 
 function Section({
   title,

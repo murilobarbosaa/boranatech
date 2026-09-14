@@ -12,6 +12,7 @@ import {
 
 import UserAvatar from "@/components/UserAvatar";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
+import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { formatarCentavos } from "@/lib/formatarCentavos";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import {
@@ -59,18 +60,6 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
   { valor: "90d", rotulo: "90 dias" },
   { valor: "all", rotulo: "Tudo" },
 ];
-
-// TODO(Ana)
-const ROTULO_DO_KIND: Record<string, string> = {
-  influencer: "Influencer",
-  afiliado: "Afiliado",
-};
-
-/** Kind vem do servidor: resolver com fallback neutro (CLAUDE.md). */
-function rotuloDoKind(kind: string): string {
-  // TODO(Ana)
-  return ROTULO_DO_KIND[kind] ?? "Creator";
-}
 
 /** Instante ISO em dd/mm/aaaa, pelo dia civil de Brasilia. */
 function dataCurta(iso: string | null | undefined): string {
