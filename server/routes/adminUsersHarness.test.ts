@@ -230,6 +230,15 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
+  // Declaradas em `20260912120000_add_pix_reminder_columns_to_subscriptions.sql`
+  // e gravadas por `createCheckout` (server/providers/asaas.ts) num update
+  // best-effort. A migration e de aplicacao manual pela Ana e o codigo sobe
+  // antes dela, entao os tipos ainda nao as conhecem.
+  { tabela: "subscriptions", coluna: "pix_due_date" },
+  { tabela: "subscriptions", coluna: "pix_invoice_url" },
+  // Mesma migration. Escrita pelo cron do lembrete de Pix pendente
+  // (`rodarLembretesPix`, server/routes/cron.ts) ao marcar o estagio enviado.
+  { tabela: "subscriptions", coluna: "pix_reminders_sent" },
   // Declarada em `20260913120000_creators_and_creator_events.sql`, a mesma que
   // renomeia influencers para creators (ver TABELAS_RENOMEADAS_PENDENTES). A
   // migration e de aplicacao manual pela Ana.

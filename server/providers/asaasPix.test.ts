@@ -62,6 +62,16 @@ const estado = vi.hoisted(() => ({
   /** Resultado da RPC de activation. */
   activation: null as unknown,
   activationError: null as { code?: string; message: string } | null,
+  /**
+   * Erro que um update em `subscriptions` devolve, decidido pela CARGA. Nulo
+   * (o padrao) mantem o duble como sempre foi: update sem erro nenhum.
+   */
+  falhaUpdateSubscriptions: null as
+    | ((carga: Record<string, unknown>) => {
+        code: string;
+        message: string;
+      } | null)
+    | null,
 }));
 
 vi.mock("../lib/env", () => ({
@@ -169,6 +179,26 @@ vi.mock("../lib/supabaseAdmin", () => {
           filtros: [] as unknown[],
         };
         estado.escritas.push(escrita);
+        if (
+          tabela === "subscriptions" &&
+          op === "update" &&
+          estado.falhaUpdateSubscriptions
+        ) {
+          // So com a falha ligada: devolve o erro que o PostgREST daria para
+          // ESTA carga. Desligada, o caminho abaixo segue identico ao de antes.
+          const erro = estado.falhaUpdateSubscriptions(
+            carga as Record<string, unknown>,
+          );
+          const encadeavel: Record<string, unknown> = {
+            eq: (coluna: string, valor: unknown) => {
+              escrita.filtros.push([coluna, valor]);
+              return encadeavel;
+            },
+            then: (r: (v: unknown) => unknown) =>
+              Promise.resolve({ data: null, error: erro }).then(r),
+          };
+          return encadeavel;
+        }
         if (tabela === "admin_refunds" && op === "update") {
           // Encadeavel proprio: guarda os `eq` desta escrita para o teste
           // conferir QUAL linha o update mira.
@@ -283,6 +313,7 @@ function limpar() {
     },
   ];
   estado.activationError = null;
+  estado.falhaUpdateSubscriptions = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -432,6 +463,121 @@ describe("ordem das escritas: linha local ANTES da cobranca remota", () => {
         (e.carga as Record<string, unknown>).status === "canceled",
     );
     expect(cancelamento).toBeDefined();
+  });
+});
+
+/**
+ * VENCIMENTO E FATURA PERSISTIDOS, sem arriscar a venda.
+ *
+ * O caso que importa e o segundo: entre o deploy do codigo e a aplicacao da
+ * migration, o PostgREST recusa a coluna com PGRST204. Se a gravacao estivesse
+ * no mesmo update da amarracao, o `catch` de `createCheckout` cancelaria a
+ * linha e deixaria uma cobranca viva no Asaas sem linha no banco: a pessoa
+ * pagaria e nao receberia nada.
+ */
+describe("persistencia do vencimento e da fatura da cobranca", () => {
+  beforeEach(() => {
+    limpar();
+    estado.asaasResposta["/payments"] = {
+      id: COBRANCA,
+      invoiceUrl: "https://asaas.test/i/123",
+      dueDate: "2026-09-14",
+    };
+  });
+
+  function updatesDeSubscriptions() {
+    return estado.escritas
+      .filter((e) => e.tabela === "subscriptions" && e.operacao === "update")
+      .map((e) => e.carga as Record<string, unknown>);
+  }
+
+  it("grava vencimento e fatura num update SEPARADO do de amarracao", async () => {
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    // Lista exata: duas chamadas, nesta ordem, e nenhuma com os quatro campos.
+    expect(updatesDeSubscriptions()).toEqual([
+      { provider_subscription_id: COBRANCA, provider_customer_id: "cus_1" },
+      {
+        pix_due_date: "2026-09-14",
+        pix_invoice_url: "https://asaas.test/i/123",
+      },
+    ]);
+  });
+
+  it("coluna ainda inexistente (PGRST204) NAO derruba o checkout nem cancela a linha", async () => {
+    estado.falhaUpdateSubscriptions = (carga) =>
+      "pix_due_date" in carga
+        ? {
+            code: "PGRST204",
+            message:
+              "Could not find the 'pix_due_date' column of 'subscriptions' in the schema cache",
+          }
+        : null;
+
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(r.dueDate).toBe("2026-09-14");
+    // A linha continua `pending`: nenhum update a levou para `canceled`.
+    expect(updatesDeSubscriptions().some((c) => c.status === "canceled")).toBe(
+      false,
+    );
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("row-1"));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(COBRANCA),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("PGRST204"),
+    );
+    // Sem Sentry: na janela de deploy isto dispararia em todo checkout Pix.
+    expect(estado.capturas).toEqual([]);
+  });
+
+  it("amarracao falhando continua cancelando a linha e lancando, como antes", async () => {
+    estado.falhaUpdateSubscriptions = (carga) =>
+      "provider_subscription_id" in carga
+        ? {
+            code: "57014",
+            message: "canceling statement due to statement timeout",
+          }
+        : null;
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ code: "db_error" });
+
+    const updates = updatesDeSubscriptions();
+    expect(updates.some((c) => c.status === "canceled")).toBe(true);
+    expect(updates.some((c) => "pix_due_date" in c)).toBe(false);
+    expect(estado.capturas.map((c) => c.mensagem)).toContain(
+      "asaas_link_cobranca_falhou",
+    );
+  });
+
+  it("dueDate e invoiceUrl ausentes na resposta gravam null, sem quebrar", async () => {
+    estado.asaasResposta["/payments"] = { id: COBRANCA };
+
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(updatesDeSubscriptions()[1]).toEqual({
+      pix_due_date: null,
+      pix_invoice_url: null,
+    });
+  });
+
+  it("renovacao (internalRenewal) grava do mesmo jeito, sem ramo especial", async () => {
+    estado.ativas = [{ id: "sub-viva" }];
+
+    await asaasProvider.createCheckout({
+      ...checkoutInput("pro_annual"),
+      internalRenewal: true,
+    } as Parameters<typeof asaasProvider.createCheckout>[0]);
+
+    expect(updatesDeSubscriptions()[1]).toEqual({
+      pix_due_date: "2026-09-14",
+      pix_invoice_url: "https://asaas.test/i/123",
+    });
   });
 });
 
@@ -2277,6 +2423,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 1290,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [
         {
           status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
@@ -2301,6 +2448,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 3000,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [],
     });
   });
@@ -2315,6 +2463,24 @@ describe("lerPagamento", () => {
     };
     const p = await lerPagamento("pay_x");
     expect(p.dueDate).toBe("2026-09-08");
+  });
+
+  it("invoiceUrl da cobranca vem junto; ausente vira null", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": {
+        status: "PENDING",
+        value: 29.9,
+        invoiceUrl: "https://www.asaas.com/i/abc",
+      },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBe(
+      "https://www.asaas.com/i/abc",
+    );
+
+    estado.asaasResposta = {
+      "/payments/pay_x": { status: "PENDING", value: 29.9 },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBeNull();
   });
 
   it("o id vai ESCAPADO na URL", async () => {

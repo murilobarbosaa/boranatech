@@ -4,6 +4,11 @@ import posthog from "posthog-js";
 import { Spinner } from "@/components/ui/spinner";
 import { PERCEIVED_STALL_MS, useAuth } from "@/contexts/AuthContext";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
+import {
+  consentimentoConfirmadoEmCache,
+  limparConsentimentoConfirmado,
+  marcarConsentimentoConfirmado,
+} from "@/lib/consentCache";
 import { getConsentStatus, recordConsent } from "@/services/consentService";
 
 // Gate de consentimento LGPD. Cobre OAuth e usuarios legados: qualquer sessao
@@ -94,6 +99,10 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   // phase nas deps (o que faria o effect rodar a cada transicao de fase).
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  // Idem para o usuario, lido pelo efeito da escrita confirmada, que so depende
+  // do contador.
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   // Os dois relogios do hold nascem e morrem juntos com a escrita em voo, e por
   // isso vivem no mesmo efeito: separar em dois significaria lembrar de limpar os
@@ -127,11 +136,12 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   // na mesma carga de pagina volte a disparar este efeito.
   useEffect(() => {
     if (consentWriteConfirmed === 0) return;
+    if (userIdRef.current) marcarConsentimentoConfirmado(userIdRef.current);
     setPhase("consented");
   }, [consentWriteConfirmed]);
 
   useEffect(() => {
-    if (!gateActive) return;
+    if (!gateActive || !userId) return;
     // Item 3.4. Escrita de consentimento em voo: NAO consultar o status agora.
     // Consultar aqui e ler antes da escrita, e a resposta seria um `false` que
     // significa "ainda nao chegou", nao "nao consentiu", foi assim que 50 pessoas
@@ -153,6 +163,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
       setPhase("checking");
       return;
     }
+    const uid = userId;
     let cancelled = false;
     setPhase("checking");
     setRetrying(false);
@@ -162,6 +173,10 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
         try {
           const consented = await getConsentStatus();
           if (cancelled) return;
+          // A marca segue o servidor nos dois sentidos: o "sim" acelera a
+          // proxima carga, e o "nao" apaga qualquer marca antiga.
+          if (consented) marcarConsentimentoConfirmado(uid);
+          else limparConsentimentoConfirmado(uid);
           setPhase(consented ? "consented" : "needsConsent");
           captureGateEvent("consent_check", {
             outcome: consented ? "consented" : "needsConsent",
@@ -213,6 +228,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     setSubmitError(false);
     try {
       await recordConsent("consent_gate_checkbox");
+      if (userId) marcarConsentimentoConfirmado(userId);
       setPhase("consented");
       captureGateEvent("consent_accept", { result: "ok" });
     } catch (err) {
@@ -232,169 +248,206 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     }
   }
 
-  if (!gateActive || phase === "consented") {
-    return <>{children}</>;
-  }
+  // FRONTEIRA LGPD DESTE COMPONENTE.
+  //
+  // Os children ficam SEMPRE montados, no mesmo wrapper, e o bloqueio e uma
+  // camada por cima. Antes a fase "checking" trocava a arvore por um spinner: ela
+  // desmontava quando a sessao resolvia e remontava do zero quando o /status
+  // respondia, e isso era o "reload" que quem esta logado via em toda carga. O
+  // wrapper existe tambem quando o gate esta inativo porque trocar o tipo de
+  // elemento nesta posicao remontaria a arvore do mesmo jeito.
+  //
+  // A camada e OPACA e fica acima de todo z-index do app (header, onboarding,
+  // modais do admin), e o wrapper recebe `inert`: quem nunca consentiu nao ve o
+  // conteudo por baixo e nao alcanca nada dele por clique, foco ou teclado. A
+  // garantia e a mesma de quando os children nao eram renderizados.
+  //
+  // O cache so ACELERA quem o servidor JA confirmou (ver lib/consentCache): com a
+  // marca deste usuario, "checking" e "checkFailed" nao bloqueiam, porque falha de
+  // rede nao e "nao". O primeiro "nao" do servidor bloqueia na hora e apaga a
+  // marca, e sem marca o gate continua fail-closed.
+  const confirmadoEmCache = userId
+    ? consentimentoConfirmadoEmCache(userId)
+    : false;
+  const otimista =
+    confirmadoEmCache && (phase === "checking" || phase === "checkFailed");
+  const bloqueado = gateActive && phase !== "consented" && !otimista;
 
-  if (phase === "checking") {
-    // Item 1.8 aplicado a esta tela. O spinner mudo daqui e o mesmo problema do
-    // retorno do OAuth, com outro suporte: silencio por mais de PERCEIVED_STALL_MS
-    // faz a pessoa recarregar, e recarregar no meio do hold mata a escrita que
-    // ainda estava tentando em segundo plano. A mensagem existe para segurar o
-    // reflexo, nao para informar erro: nao ha erro nenhum aqui.
-    //
-    // As duas mensagens sao mutuamente exclusivas por construcao: `retrying` so e
-    // ligado dentro de runCheck, que nem chega a rodar enquanto ha hold.
-    const progresso = holdingForWrite
-      ? holdLooksStalled
-        ? // TODO(Ana): copy da espera pela gravacao do aceite no cadastro.
-          "Registrando seu aceite, só um instante..."
-        : null
-      : retrying
-        ? "Não foi possível verificar. Tentando novamente..."
-        : null;
+  return (
+    <>
+      <div inert={bloqueado}>{children}</div>
+      {bloqueado ? (
+        <div
+          data-testid="consent-gate-camada"
+          className="fixed inset-0 z-[2200] overflow-y-auto bg-[var(--brand-cream)]"
+        >
+          {renderizarFase()}
+        </div>
+      ) : null}
+    </>
+  );
 
+  function renderizarFase() {
+    if (phase === "checking") {
+      // Item 1.8 aplicado a esta tela. O spinner mudo daqui e o mesmo problema do
+      // retorno do OAuth, com outro suporte: silencio por mais de
+      // PERCEIVED_STALL_MS faz a pessoa recarregar, e recarregar no meio do hold
+      // mata a escrita que ainda estava tentando em segundo plano. A mensagem
+      // existe para segurar o reflexo, nao para informar erro.
+      //
+      // As duas mensagens sao mutuamente exclusivas por construcao: `retrying` so
+      // e ligado dentro de runCheck, que nem chega a rodar enquanto ha hold.
+      const progresso = holdingForWrite
+        ? holdLooksStalled
+          ? // TODO(Ana): copy da espera pela gravacao do aceite no cadastro.
+            "Registrando seu aceite, só um instante..."
+          : null
+        : retrying
+          ? "Não foi possível verificar. Tentando novamente..."
+          : null;
+
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--brand-cream)]">
+          <Spinner className="size-8" />
+          {/* Sem role="status" aqui: o proprio Spinner acima ja e a regiao viva
+              (role="status" + aria-label). Duas regioes vivas irmas fazem o leitor
+              de tela anunciar a mesma espera duas vezes. */}
+          {progresso ? (
+            <p className="text-sm font-bold text-slate-600">{progresso}</p>
+          ) : null}
+        </div>
+      );
+    }
+
+    // phase === "checkFailed": nao conseguimos verificar o consentimento. Bloqueia
+    // o acesso (nao libera sem verificacao) mas NAO pede novo aceite: oferece
+    // apenas retry e a saida da conta.
+    if (phase === "checkFailed") {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] p-4">
+          <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
+            {/* TODO(Ana): titulo do estado de falha de verificacao do gate. */}
+            <h2 className="font-display text-xl font-black text-slate-950">
+              Não foi possível verificar sua conta
+            </h2>
+            {/* TODO(Ana): texto do estado de falha de verificacao do gate. */}
+            <p className="mt-2 text-sm text-slate-700">
+              Tivemos um problema para confirmar seus dados. Verifique sua
+              conexão e tente novamente.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCheckNonce((n) => n + 1)}
+              className="btn-brutal-accent mt-6 inline-flex w-full justify-center rounded-full px-5 py-3 font-black"
+            >
+              {/* TODO(Ana): rotulo do botao de tentar novamente no gate. */}
+              Tentar novamente
+            </button>
+            <button
+              type="button"
+              onClick={handleDecline}
+              className="mt-3 block w-full text-center text-sm font-bold text-slate-600 hover:text-slate-900 hover:underline"
+            >
+              {/* TODO(Ana): rotulo do botao de sair no estado de falha do gate. */}
+              Sair da conta
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // phase === "needsConsent": modal bloqueante, sem botao de fechar e sem
+    // clique fora que dispense.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--brand-cream)]">
-        <Spinner className="size-8" />
-        {/* Sem role="status" aqui: o proprio Spinner acima ja e a regiao viva
-            (role="status" + aria-label). Duas regioes vivas irmas fazem o leitor
-            de tela anunciar a mesma espera duas vezes. */}
-        {progresso ? (
-          <p className="text-sm font-bold text-slate-600">{progresso}</p>
-        ) : null}
-      </div>
-    );
-  }
-
-  // phase === "checkFailed": nao conseguimos verificar o consentimento. Bloqueia
-  // o acesso (nao libera sem verificacao) mas NAO pede novo aceite: oferece
-  // apenas retry e a saida da conta.
-  if (phase === "checkFailed") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] p-4">
-        <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
-          {/* TODO(Ana): titulo do estado de falha de verificacao do gate. */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4"
+      >
+        <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]">
+          {/* TODO(Ana): titulo do modal de consentimento obrigatorio. */}
           <h2 className="font-display text-xl font-black text-slate-950">
-            Não foi possível verificar sua conta
+            Antes de continuar
           </h2>
-          {/* TODO(Ana): texto do estado de falha de verificacao do gate. */}
+          {/* TODO(Ana): texto explicativo do consentimento obrigatorio. */}
           <p className="mt-2 text-sm text-slate-700">
-            Tivemos um problema para confirmar seus dados. Verifique sua conexão
-            e tente novamente.
+            Para usar a plataforma, precisamos do seu aceite dos documentos
+            abaixo.
           </p>
+
+          <div className="mt-5 space-y-3">
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+              />
+              {/* TODO(Ana): rotulo da checkbox de Termos de Uso no gate. */}
+              <span>
+                Li e aceito os{" "}
+                <a
+                  href="/termos-de-uso"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-violet-700 underline"
+                >
+                  Termos de Uso
+                </a>
+                .
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+                checked={acceptedPrivacy}
+                onChange={(event) => setAcceptedPrivacy(event.target.checked)}
+              />
+              {/* TODO(Ana): rotulo da checkbox de Politica de Privacidade no gate. */}
+              <span>
+                Li e aceito a{" "}
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-violet-700 underline"
+                >
+                  Política de Privacidade
+                </a>
+                .
+              </span>
+            </label>
+          </div>
+
+          {submitError && (
+            <p role="alert" className="mt-4 text-sm font-bold text-red-700">
+              {/* TODO(Ana): mensagem de erro ao registrar consentimento no gate. */}
+              Não foi possível registrar seu aceite. Tente novamente.
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={() => setCheckNonce((n) => n + 1)}
-            className="btn-brutal-accent mt-6 inline-flex w-full justify-center rounded-full px-5 py-3 font-black"
+            onClick={handleAccept}
+            disabled={!acceptedTerms || !acceptedPrivacy || submitting}
+            className="btn-brutal-accent mt-6 inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {/* TODO(Ana): rotulo do botao de tentar novamente no gate. */}
-            Tentar novamente
+            {/* TODO(Ana): rotulo do botao de aceitar no gate. */}
+            {submitting ? "Processando..." : "Aceitar e continuar"}
           </button>
+
           <button
             type="button"
             onClick={handleDecline}
             className="mt-3 block w-full text-center text-sm font-bold text-slate-600 hover:text-slate-900 hover:underline"
           >
-            {/* TODO(Ana): rotulo do botao de sair no estado de falha do gate. */}
-            Sair da conta
+            {/* TODO(Ana): rotulo do botao de recusar e sair no gate. */}
+            Recusar e sair da conta
           </button>
         </div>
       </div>
     );
   }
-
-  // phase === "needsConsent": modal bloqueante, sem botao de fechar e sem
-  // clique fora que dispense.
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4"
-    >
-      <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]">
-        {/* TODO(Ana): titulo do modal de consentimento obrigatorio. */}
-        <h2 className="font-display text-xl font-black text-slate-950">
-          Antes de continuar
-        </h2>
-        {/* TODO(Ana): texto explicativo do consentimento obrigatorio. */}
-        <p className="mt-2 text-sm text-slate-700">
-          Para usar a plataforma, precisamos do seu aceite dos documentos
-          abaixo.
-        </p>
-
-        <div className="mt-5 space-y-3">
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 flex-shrink-0"
-              checked={acceptedTerms}
-              onChange={(event) => setAcceptedTerms(event.target.checked)}
-            />
-            {/* TODO(Ana): rotulo da checkbox de Termos de Uso no gate. */}
-            <span>
-              Li e aceito os{" "}
-              <a
-                href="/termos-de-uso"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-violet-700 underline"
-              >
-                Termos de Uso
-              </a>
-              .
-            </span>
-          </label>
-
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 flex-shrink-0"
-              checked={acceptedPrivacy}
-              onChange={(event) => setAcceptedPrivacy(event.target.checked)}
-            />
-            {/* TODO(Ana): rotulo da checkbox de Politica de Privacidade no gate. */}
-            <span>
-              Li e aceito a{" "}
-              <a
-                href="/privacidade"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-violet-700 underline"
-              >
-                Política de Privacidade
-              </a>
-              .
-            </span>
-          </label>
-        </div>
-
-        {submitError && (
-          <p role="alert" className="mt-4 text-sm font-bold text-red-700">
-            {/* TODO(Ana): mensagem de erro ao registrar consentimento no gate. */}
-            Não foi possível registrar seu aceite. Tente novamente.
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={handleAccept}
-          disabled={!acceptedTerms || !acceptedPrivacy || submitting}
-          className="btn-brutal-accent mt-6 inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {/* TODO(Ana): rotulo do botao de aceitar no gate. */}
-          {submitting ? "Processando..." : "Aceitar e continuar"}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDecline}
-          className="mt-3 block w-full text-center text-sm font-bold text-slate-600 hover:text-slate-900 hover:underline"
-        >
-          {/* TODO(Ana): rotulo do botao de recusar e sair no gate. */}
-          Recusar e sair da conta
-        </button>
-      </div>
-    </div>
-  );
 }

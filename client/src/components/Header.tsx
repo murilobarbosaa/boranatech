@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { temSessaoPersistida } from "@/lib/persistedSession";
 import Logo from "@/components/Logo";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
@@ -795,6 +796,13 @@ export default function Header() {
   const avatarLoading = Boolean(
     user && !profile && (authLoading || profileStatus === "loading"),
   );
+  // Estado indeterminado ASSIMETRICO. Enquanto o AuthContext carrega, `user` e
+  // null, e sem isto quem ja esta logado via "Entrar" antes do proprio avatar. O
+  // espaco neutro so aparece com sessao persistida no navegador: o visitante sem
+  // sessao, a maioria, continua vendo "Entrar" na hora, sem flicker novo. Lido
+  // uma vez por montagem, e o Header remonta a cada navegacao (ver CLAUDE.md).
+  const [sessaoPersistida] = useState(temSessaoPersistida);
+  const aguardandoSessao = !user && authLoading && sessaoPersistida;
   // Display do proprio avatar: borda Pro rebaixa pra default se o dono nao e Pro.
   const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, isPro);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
@@ -837,7 +845,25 @@ export default function Header() {
                 de sessao. */}
             <ThemeToggle variant="desktop" />
             <BotaoGuiaDaPagina variant="desktop" />
-            {!user ? (
+            {!user && aguardandoSessao ? (
+              <>
+                <span
+                  data-testid="header-auth-aguardando"
+                  aria-hidden="true"
+                  className="invisible rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                >
+                  Entrar
+                </span>
+                <span
+                  data-testid="header-auth-aguardando"
+                  aria-hidden="true"
+                  className="invisible btn-brutal-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black"
+                >
+                  Cadastre-se agora
+                  <Sparkles className="h-4 w-4" />
+                </span>
+              </>
+            ) : !user ? (
               <>
                 <Link
                   href="/login"
@@ -951,7 +977,15 @@ export default function Header() {
           className="min-h-0 flex-1 overflow-y-auto pb-4"
           aria-label="Navegação principal mobile"
         >
-          {!user ? (
+          {!user && aguardandoSessao ? (
+            <span
+              data-testid="header-auth-aguardando"
+              aria-hidden="true"
+              className="invisible mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            >
+              Entrar
+            </span>
+          ) : !user ? (
             <Link
               href="/login"
               onClick={closeMobileDrawer}
