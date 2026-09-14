@@ -89,8 +89,12 @@ function parseColumnsFromTypes(): Map<string, Set<string>> {
  * `pnpm db:types`.
  */
 const TABELAS_PENDENTES: string[] = [
-  // Vazia: a migration 20260730160000 foi aplicada e os tipos regenerados,
-  // então admin_refunds saiu daqui. É o estado normal.
+  // Criada em `20260913120000_creators_and_creator_events.sql`, ja aplicada em
+  // producao, mas `pnpm db:types` nao foi rodado depois, entao os tipos ainda
+  // nao a conhecem. O painel de creator (server/lib/creatorDashboard.ts) le
+  // ultimo clique, ultima venda e o primeiro evento direto dela. Sai daqui
+  // junto com o rename de creators quando os tipos forem regenerados.
+  "creator_events",
 ];
 
 function colunasDeCreateTable(tabela: string): Set<string> | null {
@@ -333,7 +337,7 @@ export type RespostaTabela = {
   count?: number;
 };
 
-type Chamada = {
+export type Chamada = {
   table: string;
   op: "select" | "insert" | "update" | "delete" | "upsert";
   colunas: string[];
@@ -492,7 +496,19 @@ export function simularListagemDeUsuarios(
 }
 
 export function criarSupabaseDouble(
-  respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
+  /**
+   * A forma de funcao recebe a CHAMADA (filtros, ordem, colunas) ja montada, e
+   * e resolvida no momento do await, depois de todos os `.eq`/`.is`/`.in`.
+   * Existe para a rota que faz VARIAS consultas a mesma tabela com filtros
+   * diferentes (o painel de creator le `creator_events` tres vezes: primeiro
+   * evento, ultimo clique, ultima venda): sem ela as tres recebiam as mesmas
+   * linhas, e o teste nao conseguia distinguir uma consulta da outra. Quem
+   * ignora o argumento continua funcionando como antes.
+   */
+  respostas: Record<
+    string,
+    RespostaTabela | ((chamada: Chamada) => RespostaTabela)
+  >,
   authAdmin: Record<string, unknown> = {},
   rpcImpl: (nome: string, args: unknown) => Promise<unknown> = async () => ({
     data: null,
@@ -529,7 +545,7 @@ export function criarSupabaseDouble(
     }
   }
 
-  function resolver(table: string): RespostaTabela {
+  function resolver(table: string, chamada: Chamada): RespostaTabela {
     const r = respostas[table];
     if (r === undefined) {
       throw new Error(
@@ -537,7 +553,7 @@ export function criarSupabaseDouble(
           `Registre a resposta no teste ou corrija a rota.`,
       );
     }
-    return typeof r === "function" ? r() : r;
+    return typeof r === "function" ? r(chamada) : r;
   }
 
   function makeQuery(
@@ -635,7 +651,7 @@ export function criarSupabaseDouble(
     q.limit = () => q;
 
     function resultado() {
-      const r = resolver(table);
+      const r = resolver(table, chamada);
       if (r.error) return { data: null, error: r.error, count: null };
       const todas = r.rows ?? [];
       // O total do count é o do CONJUNTO, não o da página: é assim que o
@@ -706,6 +722,54 @@ export function criarSupabaseDouble(
     chamadas,
     rpcCalls,
     de: (table: string) => chamadas.filter((c) => c.table === table),
+  };
+}
+
+/**
+ * Responder que APLICA os filtros e a ordem da chamada sobre `linhas`.
+ *
+ * Para a rota que consulta a MESMA tabela mais de uma vez com filtros
+ * diferentes (o painel de creator le `creator_events` como primeiro evento,
+ * ultimo clique e ultima venda). Simula so `eq`, `is` e `in`, e a ordem por
+ * coluna com direcao. Qualquer outro filtro LANCA: um responder que ignorasse
+ * um filtro desconhecido devolveria linhas que o banco nao devolveria, e o
+ * teste passaria sobre uma consulta errada.
+ */
+export function respostaQueFiltra(
+  linhas: LinhaQualquer[],
+): (chamada: Chamada) => RespostaTabela {
+  return (chamada) => {
+    const filtradas = linhas.filter((linha) =>
+      chamada.filtros.every((f) => {
+        const valor = linha[f.coluna] ?? null;
+        if (f.tipo === "eq" || f.tipo === "is") return valor === f.valor;
+        if (f.tipo === "in") {
+          return Array.isArray(f.valor) && f.valor.includes(valor);
+        }
+        throw new Error(
+          `[double] respostaQueFiltra nao simula o filtro "${f.tipo}"`,
+        );
+      }),
+    );
+    const ordenadas = [...filtradas].sort((a, b) => {
+      for (const { coluna, ascending } of chamada.ordemDetalhe) {
+        const va = a[coluna] ?? null;
+        const vb = b[coluna] ?? null;
+        if (va === vb) continue;
+        // NULLS LAST na crescente e NULLS FIRST na decrescente, como o Postgres.
+        if (va === null) return ascending ? 1 : -1;
+        if (vb === null) return ascending ? -1 : 1;
+        const cmp =
+          typeof va === "number" && typeof vb === "number"
+            ? va - vb
+            : String(va) < String(vb)
+              ? -1
+              : 1;
+        return ascending ? cmp : -cmp;
+      }
+      return 0;
+    });
+    return { rows: ordenadas };
   };
 }
 

@@ -208,6 +208,31 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
     expect(rotasDeclaradas()).toHaveLength(EXPECTED_ROUTE_COUNT);
   });
 
+  it("as rotas de creators estão todas na lista derivada do router", () => {
+    // As tres do quadro de creators (lote 02). `/creators/:userId` expoe e-mail
+    // e notas internas; o teste de posicao acima e o que prova que ela esta
+    // atras das duas guardas, e este fixa que nenhuma rota de creators sumiu
+    // ou apareceu sem alguem olhar.
+    const deCreators = rotasDeclaradas()
+      .filter((r) => r.caminho.startsWith("/creators"))
+      .map((r) => `${r.metodo} ${r.caminho}`)
+      .sort();
+    expect(deCreators).toEqual([
+      "GET /creators",
+      "GET /creators/:userId",
+      "GET /creators/resumo",
+    ]);
+  });
+
+  it("/creators/resumo é declarada ANTES de /creators/:userId", () => {
+    // Na ordem inversa, "resumo" casaria como :userId e o card do topo do
+    // quadro responderia 400 de uuid invalido.
+    const caminhos = rotasDeclaradas().map((r) => r.caminho);
+    expect(caminhos.indexOf("/creators/resumo")).toBeLessThan(
+      caminhos.indexOf("/creators/:userId"),
+    );
+  });
+
   it("as rotas de usuário estão todas na lista derivada do router", () => {
     const rotas = rotasDeclaradas();
 
