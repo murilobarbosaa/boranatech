@@ -38,6 +38,7 @@ import {
   codeRuleViolations,
   codeTypeViolations,
   execViolations,
+  type GateSection,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
@@ -46,6 +47,7 @@ import {
   NIVEIS,
   normalizeGeneratedQuestion,
   overusedFontes,
+  poolGateViolations,
   type SectionMaterial,
   sectionQuotaWarnings,
   sectionQuotas,
@@ -440,6 +442,7 @@ if (!env.openaiApiKey) {
 
 const usageTotal: Usage = { prompt_tokens: 0, completion_tokens: 0 };
 const questions: QuizQuestion[] = [];
+const gateSections: GateSection[] = [];
 for (const nivel of NIVEIS) {
   const sections = levelSections(roadmap, nivel);
   if (sections.length === 0) {
@@ -491,16 +494,24 @@ for (const nivel of NIVEIS) {
       usageLevel,
       noExec ? null : executarPor,
     );
+    const ids: string[] = [];
     for (const question of generated) {
       seq += 1;
-      questions.push(
-        normalizeGeneratedQuestion(
-          question,
-          `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`,
-          nivel,
-        ),
-      );
+      const id = `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`;
+      ids.push(id);
+      questions.push(normalizeGeneratedQuestion(question, id, nivel));
     }
+    // Cota de codigo da secao pela mesma conta de generateSection (e do
+    // dry-run), para o portao final conferir a variedade no escopo do laco.
+    gateSections.push({
+      label: `${nivel} / ${sections[i].title}`,
+      codeQuota: codeQuotaFor(
+        roadmap,
+        quotas[i],
+        codeLeafIds(sections[i], roadmap.codeLanguages ?? []).length,
+      ),
+      ids,
+    });
   }
   console.log(
     `[generateQuizPool] ${nivel}: ${usageLevel.prompt_tokens} in / ${usageLevel.completion_tokens} out tokens`,
@@ -511,9 +522,23 @@ for (const nivel of NIVEIS) {
 
 const pool: QuizPool = { slug, questions };
 const problems = validateQuizPool(pool, slug, roadmap);
-if (problems.length > 0) {
+// Portao final com a bateria completa do retry (poolGateViolations): o laco
+// aceita resposta ainda violando pelo fallback, entao so a estrutura
+// (validateQuizPool) deixaria passar correta errada por execucao, erro sem
+// defeito e distrator equivalente. Roda mesmo quando a estrutura ja reprovou,
+// para a lista de pendencias sair inteira de uma vez.
+const violacoes = poolGateViolations(
+  questions,
+  gateSections,
+  roadmap.codeLanguages ?? [],
+  noExec ? null : executarPor,
+);
+if (problems.length > 0 || violacoes.length > 0) {
   for (const problem of problems) {
     console.error(`[generateQuizPool] ${problem}`);
+  }
+  for (const violacao of violacoes) {
+    console.error(`[generateQuizPool] ${violacao}`);
   }
   console.error("[generateQuizPool] pool invalido, nada foi salvo.");
   process.exit(1);

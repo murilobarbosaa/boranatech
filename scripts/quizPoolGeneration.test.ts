@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Execucao } from "./verifyQuizPoolByExecution.mts";
 import { toOpenAIStrictSchema } from "../server/lib/openaiStrictSchema";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
+import type { QuizQuestion } from "../shared/roadmapQuiz/types";
 import {
   buildCodeRules,
   buildQuestionSchema,
@@ -16,9 +17,11 @@ import {
   missingCodeCount,
   MAX_QUOTA_PER_SECTION,
   normalizeGeneratedQuestion,
+  poolGateViolations,
   type SectionMaterial,
   sectionQuotaWarnings,
   sectionQuotas,
+  toGeneratedQuestion,
 } from "./quizPoolGeneration.mts";
 
 // Literais escritos a mao. A fixture de trilha e minima: o que importa para o
@@ -976,5 +979,114 @@ describe("buildCodeRules: exemplo de completar na linguagem da trilha", () => {
 
   it("linguagem sem forma propria cai no generico", () => {
     expect(buildCodeRules(["bash"])).toContain("const x = ____;");
+  });
+});
+
+describe("portao final: adaptador e rotulo por id", () => {
+  const completar: QuizQuestion = {
+    id: "python-ini-14",
+    nivel: "iniciante",
+    pergunta: "Qual valor completa a lacuna?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    tipo: "completar",
+    codigo: { linguagem: "python", trecho: "x = ____\nprint(x)" },
+    alternativasCodigo: true,
+  };
+  const conceito: QuizQuestion = {
+    id: "python-ini-13",
+    nivel: "iniciante",
+    pergunta: "O que e uma variavel?",
+    alternativas: { a: "Um nome", b: "Um laco", c: "Um tipo", d: "Um erro" },
+    correta: "a",
+    explicacao: "Guarda um valor.",
+    fonte: "basico.variaveis",
+  };
+  const erro: QuizQuestion = {
+    ...conceito,
+    id: "python-int-02",
+    nivel: "intermediario",
+    tipo: "erro",
+    codigo: { linguagem: "python", trecho: "print(1)", saidaEsperada: "2" },
+  };
+
+  it("adaptador converte pergunta de codigo na GeneratedQuestion equivalente", () => {
+    expect(toGeneratedQuestion(completar)).toEqual({
+      pergunta: "Qual valor completa a lacuna?",
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      correta: "a",
+      explicacao: "Porque sim.",
+      fonte: "basico.variaveis",
+      tipo: "completar",
+      codigo: { linguagem: "python", trecho: "x = ____\nprint(x)" },
+      alternativasCodigo: true,
+    });
+  });
+
+  it("adaptador e normalizeGeneratedQuestion fazem ida e volta", () => {
+    for (const q of [completar, conceito, erro]) {
+      expect(
+        normalizeGeneratedQuestion(toGeneratedQuestion(q), q.id, q.nivel),
+      ).toEqual(q);
+    }
+  });
+
+  it("violacao de regra sai rotulada com o id, nao com o indice", () => {
+    const semLacuna: QuizQuestion = {
+      ...completar,
+      codigo: { linguagem: "python", trecho: "x = 1\nprint(x)" },
+    };
+    const v = poolGateViolations([conceito, semLacuna], [], ["python"], null);
+    expect(v).toContain(
+      "python-ini-14 (fonte basico.variaveis): completar exige exatamente uma lacuna ____ (encontradas 0)",
+    );
+    expect(v.join("\n")).not.toMatch(/pergunta \d+ \(fonte/);
+  });
+
+  it("violacao de execucao sai rotulada com o id", () => {
+    const saida: QuizQuestion = {
+      ...conceito,
+      id: "js-av-07",
+      nivel: "avancado",
+      tipo: "saida",
+      codigo: { linguagem: "js", trecho: "console.log(3);" },
+      alternativas: { a: "2", b: "3", c: "4", d: "5" },
+      alternativasCodigo: true,
+    };
+    const executarPor = (linguagem: string) =>
+      linguagem === "js"
+        ? (): Execucao => ({ status: 0, stdout: "3", erro: "", timeout: false })
+        : null;
+    const v = poolGateViolations([saida], [], ["js"], executarPor);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatch(/^js-av-07 \(fonte basico.variaveis\): obtido="3"/);
+  });
+
+  it("variedade roda por secao, com a cota da secao e o rotulo dela", () => {
+    const erro2: QuizQuestion = { ...erro, id: "python-int-03" };
+    const secoes = [
+      {
+        label: "intermediario / Erros",
+        codeQuota: 2,
+        ids: ["python-int-02", "python-int-03"],
+      },
+    ];
+    const v = poolGateViolations([erro, erro2], secoes, ["python"], null);
+    expect(v).toContain(
+      "intermediario / Erros: variedade: as 2 perguntas de codigo precisam ser de tipos diferentes (vieram 2 de erro)",
+    );
+  });
+
+  it("pool limpa nao acusa nada", () => {
+    expect(
+      poolGateViolations(
+        [conceito, completar],
+        [{ label: "iniciante / X", codeQuota: 1, ids: ["python-ini-14"] }],
+        ["python"],
+        null,
+      ),
+    ).toEqual([]);
   });
 });

@@ -541,6 +541,14 @@ export function dependsOnExternal(
 // e o modelo devolve a mesma resposta, e o fallback aceita.
 const FRASE_RE = /imprime|[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00e7]\.$/i;
 
+// Rotulo de uma pergunta nas mensagens de violacao. No retry o id ainda nao
+// existe, entao o padrao e a posicao na resposta; o portao final da pool
+// passa um rotulo pelo id (poolGateViolations). O padrao e o texto de sempre,
+// entao a nota de rebalanceamento do retry nao muda.
+export type Rotulo = (question: GeneratedQuestion, index: number) => string;
+const rotuloPorPosicao: Rotulo = (question, index) =>
+  `pergunta ${index + 1} (fonte ${question.fonte})`;
+
 // Violacoes das regras de codigo numa resposta do modelo, para o retry de
 // generateSection corrigir ANTES da validacao final: sao as mesmas regras que
 // quizPoolValidation.mts aplica ao trecho, em redacao curta, uma linha por
@@ -549,10 +557,11 @@ const FRASE_RE = /imprime|[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00e7]\.$/i;
 export function codeRuleViolations(
   questions: GeneratedQuestion[],
   codeLanguages: string[],
+  rotuloDe: Rotulo = rotuloPorPosicao,
 ): string[] {
   const out: string[] = [];
   questions.forEach((question, index) => {
-    const rotulo = `pergunta ${index + 1} (fonte ${question.fonte})`;
+    const rotulo = rotuloDe(question, index);
     const ehCodigo = isCodeQuestion({ tipo: question.tipo });
     const codigo = question.codigo ?? null;
     if (ehCodigo && !codigo) {
@@ -722,6 +731,7 @@ export function execViolations(
   questions: GeneratedQuestion[],
   codeLanguages: string[],
   executarPor: (linguagem: string) => Executor | null,
+  rotuloDe: Rotulo = rotuloPorPosicao,
 ): string[] {
   const out: string[] = [];
   questions.forEach((question, index) => {
@@ -739,9 +749,7 @@ export function execViolations(
       executar,
     );
     if (r.veredito === "CORRIGIR") {
-      out.push(
-        `pergunta ${index + 1} (fonte ${question.fonte}): ${r.resultado}`,
-      );
+      out.push(`${rotuloDe(question, index)}: ${r.resultado}`);
     }
   });
   return out;
@@ -785,4 +793,70 @@ export function normalizeGeneratedQuestion(
     },
     ...(raw.alternativasCodigo ? { alternativasCodigo: true as const } : {}),
   };
+}
+
+// Ponte inversa de normalizeGeneratedQuestion: a pergunta ja montada da pool
+// (com id) no shape que as funcoes de violacao leem. Existe para o portao
+// final aplicar as MESMAS funcoes do retry, sem uma segunda copia das regras.
+export function toGeneratedQuestion(question: QuizQuestion): GeneratedQuestion {
+  return {
+    pergunta: question.pergunta,
+    alternativas: question.alternativas,
+    correta: question.correta,
+    explicacao: question.explicacao,
+    fonte: question.fonte,
+    ...(question.tipo !== undefined ? { tipo: question.tipo } : {}),
+    ...(question.codigo ? { codigo: { ...question.codigo } } : {}),
+    ...(question.alternativasCodigo ? { alternativasCodigo: true } : {}),
+  };
+}
+
+// Uma secao como o laco de geracao a produziu: rotulo "<nivel> / <titulo>",
+// a cota de codigo que ela usou e os ids das perguntas que sairam dela.
+export interface GateSection {
+  label: string;
+  codeQuota: number;
+  ids: string[];
+}
+
+// Portao final da pool montada: a bateria inteira do retry (regras de codigo,
+// variedade por secao e execucao), rotulada pelo id. Repete o que o laco ja
+// fez de proposito: o laco tem fallback (bestValid aceita resposta ainda
+// violando), o portao nao. Instrumento de gate nao pode cobrir superficie
+// menor que o instrumento de tentativa; foi assim que a rodada do Lote 06c
+// levou ao portao pergunta com correta errada por execucao sem ninguem
+// acusar. `executarPor` null = sem execucao (--no-exec).
+export function poolGateViolations(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+  codeLanguages: string[],
+  executarPor: ((linguagem: string) => Executor | null) | null,
+): string[] {
+  const geradas = questions.map(toGeneratedQuestion);
+  const rotuloPorId: Rotulo = (question, index) =>
+    `${questions[index].id} (fonte ${question.fonte})`;
+  const porId = new Map(questions.map((question) => [question.id, question]));
+  const variedade = sections.flatMap((section) => {
+    const daSecao = section.ids.map((id) => {
+      const question = porId.get(id);
+      // Id de secao que nao esta na pool e defeito do chamador: abortar em vez
+      // de conferir uma secao menor em silencio.
+      if (!question) {
+        throw new Error(
+          `[poolGateViolations] secao "${section.label}" cita ${id}, ausente da pool.`,
+        );
+      }
+      return toGeneratedQuestion(question);
+    });
+    return codeTypeViolations(daSecao, section.codeQuota).map(
+      (violacao) => `${section.label}: ${violacao}`,
+    );
+  });
+  return [
+    ...codeRuleViolations(geradas, codeLanguages, rotuloPorId),
+    ...variedade,
+    ...(executarPor
+      ? execViolations(geradas, codeLanguages, executarPor, rotuloPorId)
+      : []),
+  ];
 }
