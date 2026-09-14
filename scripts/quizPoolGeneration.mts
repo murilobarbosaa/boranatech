@@ -391,38 +391,63 @@ export function codeQuotaFor(
 // O exemplo de completar sai na linguagem principal da trilha: um exemplo em
 // sintaxe de JavaScript numa trilha de Python contradiz a regra de que o
 // trecho e valido na linguagem (registro do Lote 06).
-// Linguagem sem forma propria aqui (bash, dockerfile) fica SEM exemplo: um
-// exemplo em sintaxe de JavaScript numa trilha de ferramenta ensinaria o erro
-// que o exemplo existe para evitar.
-function completarExemplo(codeLanguages: string[]): string | null {
-  if (codeLanguages[0] === "python") return `x = ${CODE_PLACEHOLDER}`;
-  if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
-    return `const x = ${CODE_PLACEHOLDER};`;
-  }
-  return null;
+// Linguagem sem forma propria aqui (dockerfile) fica SEM exemplo: um exemplo
+// em sintaxe de JavaScript numa trilha de ferramenta ensinaria o erro que o
+// exemplo existe para evitar. Bash (Lote 07b, trilha de Git) ganha comando de
+// Git com o prefixo "$ " da convencao de trecho, e alternativas que sao
+// subcomandos, nao numeros.
+interface ExemploCompletar {
+  trecho: string;
+  alternativas: string;
+  errado: string;
 }
 
-function completarErrado(codeLanguages: string[]): string | null {
-  if (codeLanguages[0] === "python") return "x = 1";
+function completarExemplo(codeLanguages: string[]): ExemploCompletar | null {
+  if (codeLanguages[0] === "python") {
+    return {
+      trecho: `x = ${CODE_PLACEHOLDER}`,
+      alternativas: "1, 2, 3 e 4",
+      errado: "x = 1",
+    };
+  }
+  if (codeLanguages[0] === "bash") {
+    return {
+      trecho: `$ git ${CODE_PLACEHOLDER} -m "ajusta o titulo"`,
+      alternativas: "commit, add, push e status",
+      errado: 'git commit -m "ajusta o titulo"',
+    };
+  }
   if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
-    return "const x = 1;";
+    return {
+      trecho: `const x = ${CODE_PLACEHOLDER};`,
+      alternativas: "1, 2, 3 e 4",
+      errado: "const x = 1;",
+    };
   }
   return null;
 }
 
 // Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
 // 06c e 06d o modelo repetiu o trecho dentro de pergunta em quase toda secao,
-// mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa. So
-// python por enquanto: a pool de js esta publicada e o prompt dela fica byte
-// a byte, mesmo criterio do exemplo de completar.
+// mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa.
+// Python e bash; js fica sem: a pool de js esta publicada e o prompt dela fica
+// byte a byte, mesmo criterio do exemplo de completar.
 function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
-  if (codeLanguages[0] !== "python") return [];
-  return [
-    `- PROIBIDO (codigo no enunciado): pergunta "O que imprime print(len('abc'))?" com codigo.trecho "print(len('abc'))". CERTO: pergunta "O que este codigo imprime?" e o codigo so em codigo.trecho.`,
-  ];
+  if (codeLanguages[0] === "python") {
+    return [
+      `- PROIBIDO (codigo no enunciado): pergunta "O que imprime print(len('abc'))?" com codigo.trecho "print(len('abc'))". CERTO: pergunta "O que este codigo imprime?" e o codigo so em codigo.trecho.`,
+    ];
+  }
+  if (codeLanguages[0] === "bash") {
+    return [
+      `- PROIBIDO (codigo no enunciado): pergunta "O que $ git status imprime num repositorio sem alteracoes?" com codigo.trecho "$ git status". CERTO: pergunta "Num repositorio sem alteracoes, o que este comando imprime?" e o comando so em codigo.trecho.`,
+    ];
+  }
+  return [];
 }
 
 export function buildCodeRules(codeLanguages: string[]): string {
+  const exemplo = completarExemplo(codeLanguages);
   return [
     "Regras adicionais para perguntas de CODIGO (esta trilha tem cota de perguntas de codigo):",
     "- Campo tipo em toda pergunta: conceito, completar, erro ou saida.",
@@ -468,9 +493,9 @@ export function buildCodeRules(codeLanguages: string[]): string {
     // completar obrigatoria com 2 ou mais: nos Lotes 06c e 06d iniciante e
     // avancado sairam sem nenhuma completar nas duas geracoes.
     "- Variedade: em secao com 2 ou mais perguntas de codigo, pelo menos uma e completar (obrigatoria); com 3 ou mais, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
-    ...(completarExemplo(codeLanguages)
+    ...(exemplo
       ? [
-          `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+          `- Exemplo de completar: trecho ${exemplo.trecho} com alternativas ${exemplo.alternativas}. NUNCA ${exemplo.errado} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
         ]
       : []),
   ].join("\n");
