@@ -1,10 +1,16 @@
-import {
-  diaBrasilia,
-  inicioDoDiaBrasilia,
-  somarDiaCivil,
-} from "../../shared/brasiliaDay";
+import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import type { Janela } from "./overviewWindow";
-import { coletarTudo } from "./paginate";
+import { coletarTudo, coletarTudoProvandoTotal } from "./paginate";
+import {
+  classifyRegisteredPayments,
+  instantIsInWindow,
+  OVERVIEW_PAYMENTS_CONTRACT_VERSION,
+  paymentIsInWindow,
+  type FinancePaymentRow,
+  type ObservedPayment,
+  type PaymentCoverage,
+  type PaymentMethodEvidence,
+} from "./registeredPayments";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // SERIES DIARIAS, FUNIL E UNIT ECONOMICS DA VISAO (Fase 4).
@@ -62,7 +68,10 @@ export type SerieNomeada = {
 const DIRECOES: Record<string, Direcao> = {
   cadastros: "up_bom",
   receitaBrutaCents: "up_bom",
-  conversoesPro: "up_bom",
+  primeiroPagamentoObservado: "up_bom",
+  pagamentosPosteriores: "up_bom",
+  pagamentosSemClassificacao: "up_bom",
+  pagamentosOrdemIncerta: "up_bom",
   custoIaUsd: "up_ruim",
   chamadasSemCustoMedido: "up_ruim",
   mrrCents: "up_bom",
@@ -75,8 +84,6 @@ function diasDaJanela(janela: Janela, primeiroFallback: string): string[] {
   const dias: string[] = [];
   for (let d = inicio; d <= janela.ultimoDiaCivil; d = somarDiaCivil(d)) {
     dias.push(d);
-    // Para-quedas: janela absurda nao pode virar laco infinito nem 100k pontos.
-    if (dias.length > 800) break;
   }
   return dias;
 }
@@ -111,7 +118,7 @@ function agrupar(
 // ---------------------------------------------------------------------------
 
 export type PassoDoFunil = {
-  chave: "cadastro" | "pro" | "engajamento";
+  chave: "cadastro" | "pagamento" | "uso_ia";
   rotulo: string;
   valor: number;
   /** Taxa sobre o passo ANTERIOR. `null` no primeiro e quando o denominador e 0. */
@@ -121,140 +128,107 @@ export type PassoDoFunil = {
 /** Contagens de uma coorte, nos tres passos. Mesma forma nas duas janelas. */
 export type ContagemDeCoorte = {
   cadastro: number;
-  pro: number;
-  /** Assinantes que ja usaram alguma ferramenta. Subconjunto de `pro`. */
-  proComUso: number;
+  pagaram: number;
+  /** Início pós-pagamento cujo status encontrado na consulta era success. */
+  iniciaramIaComStatusSuccessNaConsulta: number;
+  cadastrosComMenosDe7Dias: number;
+};
+
+export type AiUsageForFunnel = {
+  user_id: string | null;
+  status: string | null;
+  created_at: string;
 };
 
 /**
- * As tres contagens de uma coorte, a partir dos conjuntos de pertinencia.
- *
- * PURA E EXPORTADA de proposito. O aninhamento do funil (passo 3 subconjunto do
- * passo 2) e uma propriedade que precisa ser AFIRMADA por teste, e ela vive
- * exatamente nesta linha: `proComUso` exige as DUAS pertinencias na mesma
- * pessoa. Deixada dentro do fecho de `computarSeries`, so um teste com I/O
- * mockado a alcancaria, e o controle negativo que importa (assinante sem uso NAO
- * conta no terceiro passo) nao teria onde morar.
+ * Funil de uma coorte de cadastro. `created_at` do uso é o início do registro,
+ * e `status` é o valor encontrado durante a consulta. Uma reserva pode virar
+ * success sem timestamp da transição. Logo a função não data a conclusão.
  */
-export function contarCoorte(
-  pessoas: Array<{ user_id: string }>,
-  pro: Set<string>,
-  usaram: Set<string>,
-): ContagemDeCoorte {
+export function contarCoortePaga(input: {
+  pessoas: Array<{ user_id: string; created_at: string }>;
+  pagamentos: ObservedPayment[];
+  logs: AiUsageForFunnel[];
+  cutoff: string;
+}): ContagemDeCoorte {
+  const cutoffMs = Date.parse(input.cutoff);
+  const profiles = new Map<string, number>();
+  for (const pessoa of input.pessoas) {
+    const created = Date.parse(pessoa.created_at);
+    if (!pessoa.user_id || !Number.isFinite(created) || created > cutoffMs)
+      continue;
+    const existing = profiles.get(pessoa.user_id);
+    if (existing === undefined || created < existing)
+      profiles.set(pessoa.user_id, created);
+  }
+
+  const firstEligibleAfterSignup = new Map<string, number>();
+  for (const payment of input.pagamentos) {
+    if (!payment.userId) continue;
+    const signup = profiles.get(payment.userId);
+    const paid = Date.parse(payment.occurredAt);
+    if (signup === undefined || paid <= signup || paid > cutoffMs) continue;
+    const existing = firstEligibleAfterSignup.get(payment.userId);
+    if (existing === undefined || paid < existing) {
+      firstEligibleAfterSignup.set(payment.userId, paid);
+    }
+  }
+
+  const successfulAfterPayment = new Set<string>();
+  for (const log of input.logs) {
+    if (!log.user_id || log.status !== "success") continue;
+    const paid = firstEligibleAfterSignup.get(log.user_id);
+    const started = Date.parse(log.created_at);
+    if (paid === undefined || !Number.isFinite(started)) continue;
+    if (started > paid && started <= cutoffMs)
+      successfulAfterPayment.add(log.user_id);
+  }
+
   return {
-    cadastro: pessoas.length,
-    pro: pessoas.filter((p) => pro.has(p.user_id)).length,
-    proComUso: pessoas.filter((p) => pro.has(p.user_id) && usaram.has(p.user_id))
-      .length,
+    cadastro: profiles.size,
+    pagaram: firstEligibleAfterSignup.size,
+    iniciaramIaComStatusSuccessNaConsulta: successfulAfterPayment.size,
+    cadastrosComMenosDe7Dias: Array.from(profiles.values()).filter(
+      (created) => cutoffMs - created < 7 * 24 * 60 * 60 * 1000,
+    ).length,
   };
 }
-
-/**
- * CONDICOES PARA O DELTA DO FUNIL VOLTAR A EXISTIR.
- *
- * O delta foi desligado na Fase 4 porque coortes de maturidades diferentes
- * produzem uma queda negativa por construcao. Ele volta quando as duas janelas
- * forem comparaveis, e "comparavel" precisa ser uma condicao VERIFICAVEL, nao um
- * julgamento: ambas as coortes com pelo menos `FUNIL_MIN_CADASTROS` pessoas que
- * ja tiveram `FUNIL_MIN_MATURIDADE_DIAS` para ativar.
- *
- * Os dois numeros vem da medicao de 2026-08-14: com piso de 7 dias, a janela
- * anterior tinha DEZ cadastros, e uma taxa sobre dez pessoas oscila 10 pontos
- * com uma pessoa a mais. Cem e o menor denominador em que um ponto percentual
- * significa alguma coisa. Sao constantes nomeadas de proposito: quando a base
- * crescer, o delta liga sozinho e a mudanca aparece no diff de quem mexer nelas.
- */
-export const FUNIL_MIN_CADASTROS = 100;
-export const FUNIL_MIN_MATURIDADE_DIAS = 7;
 
 export type Funil = {
   passos: PassoDoFunil[];
   /** Chave do passo com a PIOR transicao. `null` quando nao ha transicao medivel. */
   destaque: string | null;
-  /** Contagens da janela anterior, como informacao. NAO viram delta. Ver abaixo. */
-  anterior: ContagemDeCoorte | null;
-  /**
-   * Por que nao ha delta de taxa entre janelas. `null` quando o delta EXISTE.
-   * Nao e ausencia de dado, e recusa de exibir um numero enviesado por
-   * construcao, ver o comentario de `montarFunilDeCoorte`.
-   */
-  motivoSemDelta:
-    | "coortes_de_maturidade_diferente"
-    | "coorte_anterior_pequena"
-    | null;
-  /**
-   * Delta em PONTOS PERCENTUAIS por transicao, quando as coortes sao
-   * comparaveis. `null` enquanto `motivoSemDelta` estiver preenchido.
-   */
-  deltaPp: Record<string, number> | null;
+  anterior: null;
+  motivoSemDelta: "janelas_de_observacao_nao_equivalentes";
+  deltaPp: null;
+  limiteTemporalDosInicios: string;
+  consultaIniciadaEm: string;
+  consultaConcluidaEm: string;
+  semanticaUso: "inicio_apos_pagamento_status_success_na_consulta";
+  cadastrosComMenosDe7Dias: number;
 };
 
 /**
- * O FUNIL E DE COORTE, e o comeco e o CADASTRO.
+ * FUNIL DE COORTE com os tres passos aninhados na mesma pessoa: cadastro na
+ * janela, pagamento elegivel registrado depois do cadastro e registro de IA
+ * iniciado depois desse pagamento, encontrado com status success na consulta.
+ * Nao comeca em visitante porque nao existe fonte local adequada para isso.
  *
- * NAO comeca em visitantes: nao existe fonte local de visitante. A unica que
- * havia era o PostHog, que o proprio funil antigo declarava incompleto
- * (`assinantesSemRastro` existe porque bloqueador de script derruba o rastro), e
- * a regra desta fase e serie de tabela local.
+ * O instante do pagamento vem de finance_transactions.occurred_at. Para IA,
+ * created_at e o inicio do registro: a reserva pode virar success por update
+ * sem timestamp de conclusao. O corte vale para o inicio, não para o momento
+ * desconhecido do success. Aproximar a conclusao inventaria fato.
  *
- * OS PASSOS SAO SUBCONJUNTOS ANINHADOS das MESMAS pessoas: de quem se cadastrou
- * na janela, quantas ja tem linha em `subscriptions`, e destas quantas ja usaram
- * alguma ferramenta de IA. Aninhados de proposito: assim a taxa nunca passa de
- * 100% e "taxa entre passos adjacentes" quer dizer alguma coisa. Um funil de
- * atividade na janela (nao aninhado) permitiria conversao maior que o topo.
- *
- * A ORDEM MUDOU NA RODADA 8 (D20), e a mudanca nao e cosmetica. Ate aqui era
- * cadastro -> ativou -> assinou, que afirma um caminho que os dados nao
- * sustentam: a ativacao nao e pre-requisito da compra, e uma pessoa que assina
- * antes de usar aparecia como perda numa etapa que ela ja tinha passado. A ordem
- * nova responde as duas perguntas que se faz de fato: quanto do cadastro vira
- * receita, e quanto de quem pagou chega a usar o que comprou. O terceiro passo
- * e ENGAJAMENTO POS-COMPRA, nao conversao, e o rotulo diz isso.
- *
- * O ANINHAMENTO NAO PRESSUPOE ORDEM TEMPORAL. `proComUso` e a INTERSECAO de
- * "tem linha em subscriptions" com "tem linha em ai_usage_logs", em qualquer
- * ordem de acontecimento: quem usou o LinkedIn de graca e assinou depois conta
- * igual a quem assinou e so depois usou. Medir "usou DEPOIS de assinar" exigiria
- * comparar `ai_usage_logs.created_at` com `subscriptions.created_at`, e isso
- * responderia outra pergunta (e uma que a base de hoje nao sustenta, porque a
- * maior parte do uso gratuito antecede a compra por construcao do produto).
- *
- * USO = ao menos uma linha em `ai_usage_logs`. Medido em 2026-08-14: 2.347
- * linhas, 175 usuarios distintos, desde 2026-05-09, e ela cobre LinkedIn,
- * curriculo, roadmap, GitHub, entrevista, plano de carreira e o agente. E a
- * unica tabela local que registra "usou o produto" de forma transversal.
- *
- * POR QUE NAO HA DELTA DE TAXA CONTRA A JANELA ANTERIOR, e esta e a parte que
- * diverge do que a fase pediu. As duas coortes tem MATURIDADES diferentes: quem
- * se cadastrou ontem teve um dia para ativar, quem se cadastrou ha 45 dias teve
- * 45. O delta seria negativo por construcao, todo dia, sem nada ter piorado.
- *
- * Medido em 2026-08-14 08:28 UTC, janela de 30 dias:
- *
- *   sem piso de maturidade   atual 4.807 -> 134 -> 76   |  anterior 619 -> 31 -> 25
- *                            ativacao 2,79% vs 5,01%, Pro 56,7% vs 80,6%
- *   com piso de 7 dias       atual 3.940 -> 137 -> 87   |  anterior 10 -> 2 -> 1
- *
- * A primeira compara coortes de maturidade diferente; a segunda deixa o
- * denominador anterior em DEZ pessoas, que e ruido. Nenhuma das duas sustenta um
- * delta, entao o campo nao existe: `motivoSemDelta` diz por que, no mesmo espirito
- * dos `motivo` de `calcularVariacao`. As contagens anteriores voltam como
- * informacao, sem virar percentual comparado.
- *
- * DESTAQUE DETERMINISTICO: a transicao de MENOR TAXA ABSOLUTA. A regra pedida
- * (maior queda contra a janela anterior) depende justamente do delta que nao
- * existe; o desempate previsto virou o criterio principal, e continua sendo uma
- * regra fixa escrita aqui, nao um texto gerado.
+ * Nao ha coorte anterior nem delta: comparar pessoas com tempos de observacao
+ * diferentes criaria tendencia enviesada. `cadastrosComMenosDe7Dias` torna a
+ * exposicao curta visivel sem fingir uma metrica D7. O destaque deterministico
+ * continua sendo a menor taxa adjacente da coorte atual.
  */
 export function montarFunilDeCoorte(
   input: ContagemDeCoorte & {
-    anterior: ContagemDeCoorte | null;
-    /**
-     * Dias que a coorte ANTERIOR ja teve para converter e usar. Quando ausente,
-     * o delta nao liga: sem saber a maturidade nao da para afirmar que as
-     * janelas sao comparaveis.
-     */
-    maturidadeAnteriorDias?: number;
+    limiteTemporalDosInicios: string;
+    consultaIniciadaEm: string;
+    consultaConcluidaEm: string;
   },
 ): Funil {
   const taxa = (num: number, den: number) =>
@@ -267,20 +241,23 @@ export function montarFunilDeCoorte(
       taxaSobreAnterior: null,
     },
     {
-      chave: "pro",
-      rotulo: "Assinaram Pro",
-      valor: input.pro,
-      taxaSobreAnterior: taxa(input.pro, input.cadastro),
+      chave: "pagamento",
+      rotulo: "Com pagamento registrado após o cadastro",
+      valor: input.pagaram,
+      taxaSobreAnterior: taxa(input.pagaram, input.cadastro),
     },
     {
       // "Engajamento pos-compra", nao conversao: e o unico passo cujo
       // denominador ja pagou, e chama-lo de conversao mandaria otimizar a coisa
       // errada. O que uma taxa baixa aqui diz e que o produto nao esta sendo
       // usado por quem comprou, que e um problema de retencao, nao de funil.
-      chave: "engajamento",
-      rotulo: "Assinantes que já usaram alguma ferramenta",
-      valor: input.proComUso,
-      taxaSobreAnterior: taxa(input.proComUso, input.pro),
+      chave: "uso_ia",
+      rotulo: "Com IA iniciada após o pagamento e status success na consulta",
+      valor: input.iniciaramIaComStatusSuccessNaConsulta,
+      taxaSobreAnterior: taxa(
+        input.iniciaramIaComStatusSuccessNaConsulta,
+        input.pagaram,
+      ),
     },
   ];
 
@@ -295,37 +272,18 @@ export function montarFunilDeCoorte(
           atual.taxaSobreAnterior < pior.taxaSobreAnterior ? atual : pior,
         ).chave;
 
-  // DELTA SO QUANDO AS DUAS COORTES SAO COMPARAVEIS. Ver o bloco acima das
-  // constantes: a condicao e verificavel, nao um julgamento.
-  const ant = input.anterior;
-  const maturidade = input.maturidadeAnteriorDias ?? 0;
-  const comparavel =
-    ant !== null &&
-    ant.cadastro >= FUNIL_MIN_CADASTROS &&
-    input.cadastro >= FUNIL_MIN_CADASTROS &&
-    maturidade >= FUNIL_MIN_MATURIDADE_DIAS;
-
-  let deltaPp: Record<string, number> | null = null;
-  let motivoSemDelta: Funil["motivoSemDelta"] =
-    "coortes_de_maturidade_diferente";
-  if (comparavel) {
-    const taxaAnt = {
-      pro: taxa(ant.pro, ant.cadastro),
-      engajamento: taxa(ant.proComUso, ant.pro),
-    };
-    deltaPp = {};
-    for (const p of comTaxa) {
-      const base = taxaAnt[p.chave as "pro" | "engajamento"];
-      if (base !== null) deltaPp[p.chave] = p.taxaSobreAnterior - base;
-    }
-    motivoSemDelta = null;
-  } else if (ant !== null && ant.cadastro < FUNIL_MIN_CADASTROS) {
-    // Motivo MAIS ESPECIFICO quando o problema e so o tamanho: "maturidade
-    // diferente" mandaria investigar a coisa errada.
-    motivoSemDelta = "coorte_anterior_pequena";
-  }
-
-  return { passos, destaque, anterior: ant, motivoSemDelta, deltaPp };
+  return {
+    passos,
+    destaque,
+    anterior: null,
+    motivoSemDelta: "janelas_de_observacao_nao_equivalentes",
+    deltaPp: null,
+    limiteTemporalDosInicios: input.limiteTemporalDosInicios,
+    consultaIniciadaEm: input.consultaIniciadaEm,
+    consultaConcluidaEm: input.consultaConcluidaEm,
+    semanticaUso: "inicio_apos_pagamento_status_success_na_consulta",
+    cadastrosComMenosDe7Dias: input.cadastrosComMenosDe7Dias,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -404,7 +362,21 @@ export type UsoPorFerramenta = {
 };
 
 export type OverviewSeries = {
+  contractVersion: typeof OVERVIEW_PAYMENTS_CONTRACT_VERSION;
   series: SerieNomeada[];
+  pagamentos: {
+    series: SerieNomeada[];
+    pagamentosUtilizaveisNoPeriodo: number;
+    pessoasIdentificadas: number;
+    semPessoaNoPeriodo: number;
+    ordemHistoricaIncertaNoPeriodo: number;
+    identidadesConflitantesNoHistorico: number;
+    identidadesConflitantesComDataCandidataNoPeriodo: number;
+    porMeio: Array<{ rotulo: string; pagamentos: number }>;
+    porProvider: Array<{ provider: string; pagamentos: number }>;
+    cobertura: PaymentCoverage;
+    ressalvaHistorica: string;
+  };
   funil: Funil;
   ferramentas: UsoPorFerramenta[];
   frescorDoSnapshot: FrescorDoSnapshot;
@@ -422,69 +394,105 @@ export async function montarSeriesDaVisao(
 ): Promise<OverviewSeries> {
   const hoje = janela.ultimoDiaCivil;
   const desdeIso = janela.startIso ?? new Date(0).toISOString();
-  const anteriorInicio = janela.previousStartIso;
-  const anteriorFim = janela.previousEndIso;
+  const consultaIniciadaEm = new Date().toISOString();
 
-  const [perfis, transacoes, assinaturas, logs, snapshots] = await Promise.all([
-    coletarTudo<{ user_id: string; created_at: string }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("profiles")
-          .select("user_id, created_at")
-          .gte("created_at", anteriorInicio ?? desdeIso)
-          .order("user_id", { ascending: true })
-          .range(from, to),
-      "series profiles",
-    ),
-    coletarTudo<{ type: string; gross_cents: number; occurred_at: string }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("finance_transactions")
-          .select("type, gross_cents, occurred_at")
-          .gte("occurred_at", desdeIso)
-          .order("id", { ascending: true })
-          .range(from, to),
-      "series finance",
-    ),
-    coletarTudo<{ user_id: string | null; created_at: string }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("subscriptions")
-          .select("user_id, created_at")
-          .order("id", { ascending: true })
-          .range(from, to),
-      "series subscriptions",
-    ),
-    coletarTudo<{
-      user_id: string | null;
-      tool: string;
-      status: string | null;
-      cost_estimate: string | null;
-      created_at: string;
-    }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("ai_usage_logs")
-          .select("user_id, tool, status, cost_estimate, created_at")
-          .gte("created_at", desdeIso)
-          .order("id", { ascending: true })
-          .range(from, to),
-      "series ai",
-    ),
-    coletarTudo<{
-      snapshot_date: string;
-      mrr_cents: number | null;
-      active_count: number | null;
-    }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("subscription_snapshots")
-          .select("snapshot_date, mrr_cents, active_count")
-          .order("snapshot_date", { ascending: true })
-          .range(from, to),
-      "series snapshots",
-    ),
-  ]);
+  const [perfis, transacoes, evidenciasDeMeio, logs, snapshots] =
+    await Promise.all([
+      coletarTudoProvandoTotal<{ user_id: string; created_at: string }>(
+        (from, to) => {
+          let query = supabaseAdmin
+            .from("profiles")
+            .select("user_id, created_at", { count: "exact" })
+            .lte("created_at", janela.endIso);
+          if (janela.startIso) query = query.gte("created_at", janela.startIso);
+          return query
+            .order("created_at", { ascending: true })
+            .order("user_id", { ascending: true })
+            .range(from, to);
+        },
+        {
+          op: "overview-series profiles",
+          rowKey: (row) => row.user_id,
+        },
+      ),
+      coletarTudoProvandoTotal<FinancePaymentRow>(
+        (from, to) =>
+          supabaseAdmin
+            .from("finance_transactions")
+            .select(
+              "id, provider, provider_transaction_id, stripe_charge_id, type, gross_cents, occurred_at, created_at, user_id, plan_code",
+              { count: "exact" },
+            )
+            .eq("type", "charge")
+            .lte("occurred_at", janela.endIso)
+            .order("occurred_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        {
+          op: "overview-series finance payments",
+          rowKey: (row) => row.id,
+        },
+      ),
+      coletarTudoProvandoTotal<PaymentMethodEvidence & { id: string }>(
+        (from, to) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select("id, provider, provider_subscription_id, payment_method", {
+              count: "exact",
+            })
+            .order("id", { ascending: true })
+            .range(from, to),
+        {
+          op: "overview-series payment method evidence",
+          rowKey: (row) => row.id,
+        },
+      ),
+      coletarTudoProvandoTotal<{
+        id: string;
+        user_id: string | null;
+        tool: string;
+        status: string | null;
+        cost_estimate: string | null;
+        created_at: string;
+      }>(
+        (from, to) =>
+          supabaseAdmin
+            .from("ai_usage_logs")
+            .select("id, user_id, tool, status, cost_estimate, created_at", {
+              count: "exact",
+            })
+            .gte("created_at", desdeIso)
+            .lte("created_at", janela.endIso)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        { op: "overview-series ai", rowKey: (row) => row.id },
+      ),
+      coletarTudo<{
+        snapshot_date: string;
+        mrr_cents: number | null;
+        active_count: number | null;
+      }>(
+        (from, to) =>
+          supabaseAdmin
+            .from("subscription_snapshots")
+            .select("snapshot_date, mrr_cents, active_count")
+            .order("snapshot_date", { ascending: true })
+            .range(from, to),
+        "series snapshots",
+      ),
+    ]);
+  const consultaConcluidaEm = new Date().toISOString();
+
+  const pagamentosClassificados = classifyRegisteredPayments({
+    rows: transacoes,
+    methodEvidence: evidenciasDeMeio,
+    cutoff: janela.endIso,
+    queryInterval: {
+      startedAt: consultaIniciadaEm,
+      completedAt: consultaConcluidaEm,
+    },
+  });
 
   // O PRIMEIRO DIA DA BASE E O MENOR `created_at`, e nao `perfis[0]`.
   //
@@ -506,7 +514,14 @@ export async function montarSeriesDaVisao(
       primeiroPerfil = dia;
     }
   }
-  const dias = diasDaJanela(janela, primeiroPerfil ?? hoje);
+  const primeiroPagamento = pagamentosClassificados.coverage
+    .primeiraOcorrenciaObservada
+    ? diaBrasilia(pagamentosClassificados.coverage.primeiraOcorrenciaObservada)
+    : null;
+  const primeiroFallback = [primeiroPerfil, primeiroPagamento]
+    .filter((dia): dia is string => Boolean(dia))
+    .sort()[0];
+  const dias = diasDaJanela(janela, primeiroFallback ?? hoje);
 
   // --- FLUXOS -------------------------------------------------------------
   //
@@ -515,8 +530,8 @@ export async function montarSeriesDaVisao(
   // dois, entao uma linha com carimbo no FUTURO (relogio torto, backfill,
   // fixture de teste) entrava na serie e ficava fora do funil. Dois criterios
   // para a mesma janela e a divergencia de 182 cadastros em miniatura.
-  const naJanela = (iso: string) =>
-    (!janela.startIso || iso >= janela.startIso) && iso <= janela.endIso;
+  const naJanela = (iso: string | null | undefined) =>
+    instantIsInWindow(iso, janela.startIso, janela.endIso);
 
   const cadastros = agrupar(
     perfis
@@ -525,24 +540,26 @@ export async function montarSeriesDaVisao(
   );
   const receita = agrupar(
     transacoes
-      .filter((t) => t.type === "charge")
-      .map((t) => ({ quando: t.occurred_at, peso: t.gross_cents })),
+      .filter(
+        (t) =>
+          t.type === "charge" &&
+          typeof t.gross_cents === "number" &&
+          Number.isFinite(t.gross_cents) &&
+          naJanela(t.occurred_at ?? ""),
+      )
+      .map((t) => ({ quando: t.occurred_at, peso: Number(t.gross_cents) })),
   );
-  // CONVERSAO PRO: a PRIMEIRA linha de `subscriptions` do usuario, pelo dia
-  // civil de `created_at`. A linha so nasce em pagamento confirmado (cartao via
-  // checkout.session.completed, boleto via async_payment_succeeded), e medido em
-  // 2026-08-14 NENHUM usuario tem mais de uma linha, entao "primeira" e
-  // "unica" hoje, o `Set` existe para o dia em que deixar de ser.
-  const jaContado = new Set<string>();
-  const conversoes = agrupar(
-    assinaturas
-      .filter((s) => {
-        if (!s.user_id || jaContado.has(s.user_id)) return false;
-        jaContado.add(s.user_id);
-        return naJanela(s.created_at);
-      })
-      .map((s) => ({ quando: s.created_at })),
+  const pagamentosNaJanela = pagamentosClassificados.payments.filter((p) =>
+    paymentIsInWindow(p, janela.startIso, janela.endIso),
   );
+  const porClassificacao = (
+    classification: ObservedPayment["classification"],
+  ) =>
+    agrupar(
+      pagamentosNaJanela
+        .filter((p) => p.classification === classification)
+        .map((p) => ({ quando: p.occurredAt })),
+    );
   const custoIa = agrupar(
     logs.map((l) => {
       const c = Number.parseFloat(l.cost_estimate || "0");
@@ -584,7 +601,6 @@ export async function montarSeriesDaVisao(
   const fluxos: Array<[string, string, Map<string, number>]> = [
     ["cadastros", "Cadastros", cadastros],
     ["receitaBrutaCents", "Receita bruta", receita],
-    ["conversoesPro", "Conversões Pro", conversoes],
     ["custoIaUsd", "Custo de IA (US$)", custoIa],
     ["chamadasSemCustoMedido", "Chamadas sem custo medido", semCusto],
   ];
@@ -600,6 +616,42 @@ export async function montarSeriesDaVisao(
       total: somar(pontos),
     };
   });
+
+  const mapasDePagamento: Array<[string, string, Map<string, number>]> = [
+    [
+      "primeiroPagamentoObservado",
+      "Primeiro pagamento observado",
+      porClassificacao("first_observed"),
+    ],
+    [
+      "pagamentosPosteriores",
+      "Pagamentos posteriores",
+      porClassificacao("subsequent_observed"),
+    ],
+    [
+      "pagamentosSemClassificacao",
+      "Sem pessoa identificada",
+      porClassificacao("unclassified"),
+    ],
+    [
+      "pagamentosOrdemIncerta",
+      "Ordem histórica incerta",
+      porClassificacao("order_uncertain"),
+    ],
+  ];
+  const seriesDePagamentos: SerieNomeada[] = mapasDePagamento.map(
+    ([chave, rotulo, mapa]) => {
+      const pontos = montarFluxo(dias, mapa, hoje);
+      return {
+        chave,
+        rotulo,
+        tipo: "fluxo",
+        direcao: DIRECOES[chave] ?? "up_bom",
+        pontos,
+        total: somar(pontos),
+      };
+    },
+  );
 
   for (const [chave, rotulo, campo] of [
     ["mrrCents", "MRR", "mrr_cents"],
@@ -617,36 +669,17 @@ export async function montarSeriesDaVisao(
   }
 
   // --- FUNIL ---------------------------------------------------------------
-  const usuariosAtivados = new Set(
-    logs.map((l) => l.user_id).filter((u): u is string => Boolean(u)),
-  );
-  const usuariosPro = new Set(
-    assinaturas.map((s) => s.user_id).filter((u): u is string => Boolean(u)),
-  );
-  const coorte = (de: string | null, ate: string | null) =>
-    perfis.filter(
-      (p) => (!de || p.created_at >= de) && (!ate || p.created_at <= ate),
-    );
-  // A coorte da janela ATUAL usa exatamente o mesmo `naJanela` das series.
-  const contar = (linhas: typeof perfis) =>
-    contarCoorte(linhas, usuariosPro, usuariosAtivados);
-  const atual = contar(perfis.filter((p) => naJanela(p.created_at)));
-  const anterior =
-    anteriorInicio && anteriorFim
-      ? contar(coorte(anteriorInicio, anteriorFim))
-      : null;
-  // Maturidade da coorte ANTERIOR: dias entre o fim daquela janela e agora. E
-  // quanto tempo a pessoa mais nova daquele grupo ja teve para ativar.
-  const maturidadeAnteriorDias = anteriorFim
-    ? Math.floor(
-        (Date.parse(janela.endIso) - Date.parse(anteriorFim)) /
-          (24 * 60 * 60 * 1000),
-      )
-    : 0;
+  const atual = contarCoortePaga({
+    pessoas: perfis.filter((p) => naJanela(p.created_at)),
+    pagamentos: pagamentosClassificados.payments,
+    logs,
+    cutoff: janela.endIso,
+  });
   const funil = montarFunilDeCoorte({
     ...atual,
-    anterior,
-    maturidadeAnteriorDias,
+    limiteTemporalDosInicios: janela.endIso,
+    consultaIniciadaEm,
+    consultaConcluidaEm,
   });
 
   // --- FERRAMENTAS ---------------------------------------------------------
@@ -669,8 +702,51 @@ export async function montarSeriesDaVisao(
 
   const ultimo = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
 
+  const contarDimensao = <T extends string>(valores: T[]) => {
+    const counts = new Map<T, number>();
+    for (const valor of valores)
+      counts.set(valor, (counts.get(valor) ?? 0) + 1);
+    return Array.from(counts.entries())
+      .map(([rotulo, pagamentos]) => ({ rotulo, pagamentos }))
+      .sort(
+        (a, b) =>
+          b.pagamentos - a.pagamentos || a.rotulo.localeCompare(b.rotulo),
+      );
+  };
+  const porMeio = contarDimensao(pagamentosNaJanela.map((p) => p.method));
+  const porProvider = contarDimensao(
+    pagamentosNaJanela.map((p) => p.provider),
+  ).map(({ rotulo, pagamentos }) => ({ provider: rotulo, pagamentos }));
+  const conflitosComDataCandidataNaJanela =
+    pagamentosClassificados.conflicts.filter((conflict) =>
+      conflict.candidateOccurredAt.some((instant) => naJanela(instant)),
+    ).length;
+
   return {
+    contractVersion: OVERVIEW_PAYMENTS_CONTRACT_VERSION,
     series,
+    pagamentos: {
+      series: seriesDePagamentos,
+      pagamentosUtilizaveisNoPeriodo: pagamentosNaJanela.length,
+      pessoasIdentificadas: new Set(
+        pagamentosNaJanela
+          .map((p) => p.userId)
+          .filter((id): id is string => Boolean(id)),
+      ).size,
+      semPessoaNoPeriodo: pagamentosNaJanela.filter((p) => !p.userId).length,
+      ordemHistoricaIncertaNoPeriodo: pagamentosNaJanela.filter(
+        (p) => p.classification === "order_uncertain",
+      ).length,
+      identidadesConflitantesNoHistorico:
+        pagamentosClassificados.conflicts.length,
+      identidadesConflitantesComDataCandidataNoPeriodo:
+        conflitosComDataCandidataNaJanela,
+      porMeio,
+      porProvider,
+      cobertura: pagamentosClassificados.coverage,
+      ressalvaHistorica:
+        "Primeiro observado no histórico local não comprova que seja o primeiro pagamento da vida da pessoa.",
+    },
     funil,
     ferramentas: Array.from(porFerramenta.values()).sort(
       (a, b) => b.chamadas - a.chamadas,
