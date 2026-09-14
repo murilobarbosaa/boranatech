@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { BntSelect } from "@/components/shared/BntSelect";
+import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 import { AdminApiError, adminFetch } from "@/lib/adminApi";
 import { formatarCentavos } from "@/lib/formatarCentavos";
 import {
@@ -444,6 +445,9 @@ function ConteudoDosCodigos(props: {
               label="Código sem dono"
               // TODO(Ana)
               placeholder="Escolha um código..."
+              // O bloco vive dentro do modal do usuario (z-[2000]); sem isto o
+              // popup abre na camada de pagina (z-[1100]), ATRAS do modal.
+              contentClassName={LAYER_IN_DIALOG}
               value={props.escolhido}
               onValueChange={props.setEscolhido}
               options={semDono.map((c) => ({
