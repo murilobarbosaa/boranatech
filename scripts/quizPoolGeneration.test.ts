@@ -1270,3 +1270,87 @@ describe("codeQuotaWarnings: cota de codigo por nivel no portao", () => {
     ).toEqual([]);
   });
 });
+
+describe("folhas elegiveis para codigo", () => {
+  const saidaPy = (fonte: string) =>
+    gerada({
+      fonte,
+      tipo: "saida",
+      codigo: { linguagem: "python", trecho: "print(1)" },
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      alternativasCodigo: true,
+    });
+
+  it("o prompt restringe o codigo as elegiveis quando alguma folha nao e", () => {
+    const texto = buildUserPrompt(trilha, "iniciante", secao, 5, null, 2, [
+      "basico.variaveis",
+    ]);
+    expect(texto).toContain(
+      "Perguntas de codigo APENAS sobre: basico.variaveis. As demais fontes recebem perguntas de conceito.",
+    );
+  });
+
+  it("com todas as folhas elegiveis a linha nao aparece", () => {
+    const texto = buildUserPrompt(trilha, "iniciante", secao, 5, null, 2, [
+      "basico.variaveis",
+      "basico.tipos",
+    ]);
+    expect(texto).not.toContain("APENAS sobre");
+  });
+
+  it("pergunta de codigo com fonte inelegivel viola, com a nota de troca", () => {
+    const v = codeRuleViolations(
+      [saidaPy("basico.variaveis")],
+      ["python"],
+      undefined,
+      ["basico.tipos"],
+    );
+    expect(v.some((l) => l.includes("troque o tipo para conceito"))).toBe(true);
+  });
+
+  it("sem a lista de elegiveis, e em conceito, nao ha essa violacao", () => {
+    expect(
+      codeRuleViolations([saidaPy("basico.variaveis")], ["python"]).some((l) =>
+        l.includes("troque o tipo"),
+      ),
+    ).toBe(false);
+    expect(
+      codeRuleViolations([gerada()], ["python"], undefined, ["basico.tipos"]),
+    ).toEqual([]);
+  });
+
+  it("o portao acusa a inelegivel pelo id quando a secao traz as elegiveis", () => {
+    const q: QuizQuestion = {
+      id: "python-int-05",
+      nivel: "intermediario",
+      pergunta: "O que este codigo imprime?",
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      correta: "a",
+      explicacao: "Porque sim.",
+      fonte: "basico.variaveis",
+      tipo: "saida",
+      codigo: { linguagem: "python", trecho: "print(1)" },
+      alternativasCodigo: true,
+    };
+    const v = poolGateViolations(
+      [q],
+      [
+        {
+          label: "intermediario / X",
+          codeQuota: 1,
+          ids: ["python-int-05"],
+          eligible: ["basico.tipos"],
+        },
+      ],
+      ["python"],
+      null,
+    );
+    expect(
+      v.some((l) =>
+        l.startsWith(
+          "python-int-05 (fonte basico.variaveis): pergunta de codigo sobre passo sem trecho autocontido",
+        ),
+      ),
+    ).toBe(true);
+  });
+});

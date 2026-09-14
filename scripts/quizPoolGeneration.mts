@@ -452,6 +452,14 @@ export function buildUserPrompt(
       ? [
           `Dessas ${quota}, exatamente ${codeQuota} devem ser de codigo (tipos completar, erro e saida, variando entre os tres) e ${quota - codeQuota} de conceito.`,
           `Baseie as perguntas de codigo nos passos que trazem codigo no material: ${codeLeafIdList.join(", ")}. Perguntas de conceito podem vir de qualquer passo.`,
+          // Restricao explicita so quando alguma folha nao tem cerca
+          // autocontida: nas geracoes do 06 o modelo escreveu codigo sobre
+          // arquivos.with (open) mesmo com a linha acima.
+          ...(codeLeafIdList.length < section.leaves.length
+            ? [
+                `Perguntas de codigo APENAS sobre: ${codeLeafIdList.join(", ")}. As demais fontes recebem perguntas de conceito.`,
+              ]
+            : []),
         ]
       : []),
     "",
@@ -609,10 +617,14 @@ const rotuloPorPosicao: Rotulo = (question, index) =>
 // quizPoolValidation.mts aplica ao trecho, em redacao curta, uma linha por
 // violacao no formato "pergunta N (fonte X): problema". N e a posicao na
 // resposta (1 e a primeira), porque o id so nasce depois.
+// `fontesElegiveis`: folhas com cerca autocontida (codeLeafIds). Quando
+// informada, pergunta de codigo sobre outra folha viola; sem ela, a checagem
+// nao roda (quem chama sem saber a secao nao inventa a lista).
 export function codeRuleViolations(
   questions: GeneratedQuestion[],
   codeLanguages: string[],
   rotuloDe: Rotulo = rotuloPorPosicao,
+  fontesElegiveis?: string[],
 ): string[] {
   const out: string[] = [];
   questions.forEach((question, index) => {
@@ -630,6 +642,11 @@ export function codeRuleViolations(
       return;
     }
     if (!codigo) return;
+    if (fontesElegiveis && !fontesElegiveis.includes(question.fonte)) {
+      out.push(
+        `${rotulo}: pergunta de codigo sobre passo sem trecho autocontido no material; troque o tipo para conceito ou use como fonte um dos passos em "Perguntas de codigo APENAS sobre"`,
+      );
+    }
     const trecho = codigo.trecho ?? "";
     if (trecho.trim().length === 0) {
       out.push(`${rotulo}: trecho vazio`);
@@ -877,6 +894,9 @@ export interface GateSection {
   label: string;
   codeQuota: number;
   ids: string[];
+  // Folhas da secao com cerca autocontida (codeLeafIds). Opcional: sem ela,
+  // o portao nao confere a fonte das perguntas de codigo.
+  eligible?: string[];
 }
 
 // Portao final da pool montada: a bateria inteira do retry (regras de codigo,
@@ -912,8 +932,15 @@ export function poolGateViolations(
       (violacao) => `${section.label}: ${violacao}`,
     );
   });
+  // Uniao das elegiveis: cada fonte pertence a uma unica secao, entao conferir
+  // contra a uniao e o mesmo que conferir secao a secao. So quando TODAS as
+  // secoes trazem a lista; faltando em uma, a checagem nao roda.
+  const elegiveis =
+    sections.length > 0 && sections.every((section) => section.eligible)
+      ? sections.flatMap((section) => section.eligible ?? [])
+      : undefined;
   return [
-    ...codeRuleViolations(geradas, codeLanguages, rotuloPorId),
+    ...codeRuleViolations(geradas, codeLanguages, rotuloPorId, elegiveis),
     ...variedade,
     ...(executarPor
       ? execViolations(geradas, codeLanguages, executarPor, rotuloPorId)

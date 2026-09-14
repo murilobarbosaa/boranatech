@@ -220,6 +220,8 @@ async function generateSection(
           ? codeRuleViolations(
               validation.data.questions,
               roadmap.codeLanguages ?? [],
+              undefined,
+              codeLeaves,
             )
           : [];
       const variedade =
@@ -541,6 +543,7 @@ for (const nivel of NIVEIS) {
         codeLeafIds(sections[i], roadmap.codeLanguages ?? []).length,
       ),
       ids,
+      eligible: codeLeafIds(sections[i], roadmap.codeLanguages ?? []),
     });
   }
   console.log(
