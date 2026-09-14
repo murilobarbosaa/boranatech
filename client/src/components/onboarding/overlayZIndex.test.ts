@@ -63,14 +63,16 @@ describe("empilhamento do overlay de onboarding", () => {
     expect(overlay).toBeGreaterThan(Math.max(...doWidget));
   });
 
-  it("passa por cima do ConsentGate, e isso e deliberado", () => {
+  it("fica ABAIXO da camada do ConsentGate, e isso e deliberado", () => {
     const consent = lerZIndicesTailwind("components/consent/ConsentGate.tsx");
-    // Nao ha como cobrir um header z-1000 e ficar abaixo de um modal z-100.
-    // A ordem contra o consentimento e ESTRUTURAL: o OnboardingHost e filho do
-    // ConsentGate e so renderiza quando ele libera os children, entao os dois
-    // nunca coexistem. Este teste registra a escolha em vez de deixa-la
-    // parecer descuido.
-    expect(Math.max(...consent)).toBe(100);
-    expect(overlay).toBeGreaterThan(100);
+    const doHeader = lerZIndicesTailwind("components/Header.tsx");
+    // Ate o lote Home 02 a ordem era a inversa, e a justificativa era ESTRUTURAL:
+    // o OnboardingHost e filho do ConsentGate e so renderizava quando o gate
+    // liberava os children, entao os dois nunca coexistiam. Desde que o gate
+    // bloqueia SEM desmontar (camada opaca sobre os children montados), eles
+    // coexistem, e o consentimento tem de vir primeiro: a camada fica acima do
+    // header e deste overlay, e o onboarding espera, montado e inerte, por baixo.
+    expect(Math.max(...consent)).toBeGreaterThan(overlay);
+    expect(Math.max(...consent)).toBeGreaterThan(Math.max(...doHeader));
   });
 });
