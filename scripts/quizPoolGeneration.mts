@@ -899,3 +899,47 @@ export function poolGateViolations(
       : []),
   ];
 }
+
+// Cota de codigo por nivel: quantas perguntas de codigo o laco PREVIU (soma
+// das cotas das secoes do nivel) contra quantas a pool tem. Canal de AVISO,
+// separado de poolGateViolations: bloquear obrigaria a autorar codigo a mao
+// em toda secao que esgota tentativas, e o aviso deixa a decisao com quem
+// revisa (no Lote 06d o bestClean aceitou o avancado com 5 de 7 em silencio).
+// O nivel de cada secao vem das perguntas dela; id ausente aborta, como no
+// portao, em vez de conferir uma secao menor.
+export function codeQuotaWarnings(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+): string[] {
+  const porId = new Map(questions.map((question) => [question.id, question]));
+  const porNivel = new Map<QuizNivel, { previstas: number; feitas: number }>();
+  for (const section of sections) {
+    const daSecao = section.ids.map((id) => {
+      const question = porId.get(id);
+      if (!question) {
+        throw new Error(
+          `[codeQuotaWarnings] secao "${section.label}" cita ${id}, ausente da pool.`,
+        );
+      }
+      return question;
+    });
+    if (daSecao.length === 0) continue;
+    const nivel = daSecao[0].nivel;
+    const conta = porNivel.get(nivel) ?? { previstas: 0, feitas: 0 };
+    conta.previstas += section.codeQuota;
+    conta.feitas += daSecao.filter((question) =>
+      isCodeQuestion(question),
+    ).length;
+    porNivel.set(nivel, conta);
+  }
+  const out: string[] = [];
+  for (const nivel of NIVEIS) {
+    const conta = porNivel.get(nivel);
+    if (conta && conta.feitas !== conta.previstas) {
+      out.push(
+        `nivel ${nivel}: ${conta.feitas} perguntas de codigo de ${conta.previstas} previstas`,
+      );
+    }
+  }
+  return out;
+}

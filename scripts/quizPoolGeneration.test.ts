@@ -10,6 +10,7 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeQuotaWarnings,
   codeTypeViolations,
   dependsOnExternal,
   execViolations,
@@ -1181,5 +1182,71 @@ describe("codigo no enunciado: exemplo negativo e nota de correcao", () => {
     expect(linha).toContain(
       "mova o codigo para codigo.trecho e reescreva a pergunta sem ele",
     );
+  });
+});
+
+describe("codeQuotaWarnings: cota de codigo por nivel no portao", () => {
+  const pergunta = (
+    id: string,
+    nivel: QuizQuestion["nivel"],
+    codigo: boolean,
+  ): QuizQuestion => ({
+    id,
+    nivel,
+    pergunta: "Qual?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    ...(codigo
+      ? {
+          tipo: "saida" as const,
+          codigo: { linguagem: "python", trecho: "print(1)" },
+          alternativasCodigo: true as const,
+        }
+      : {}),
+  });
+
+  it("nivel com menos codigo que a cota somada vira aviso com os dois numeros", () => {
+    const qs = [
+      pergunta("python-av-01", "avancado", true),
+      pergunta("python-av-02", "avancado", true),
+      pergunta("python-av-03", "avancado", false),
+      pergunta("python-av-04", "avancado", true),
+      pergunta("python-av-05", "avancado", true),
+      pergunta("python-av-06", "avancado", true),
+      pergunta("python-av-07", "avancado", false),
+    ];
+    const secoes = [
+      {
+        label: "avancado / A",
+        codeQuota: 3,
+        ids: ["python-av-01", "python-av-02", "python-av-03"],
+      },
+      {
+        label: "avancado / B",
+        codeQuota: 4,
+        ids: ["python-av-04", "python-av-05", "python-av-06", "python-av-07"],
+      },
+    ];
+    expect(codeQuotaWarnings(qs, secoes)).toEqual([
+      "nivel avancado: 5 perguntas de codigo de 7 previstas",
+    ]);
+  });
+
+  it("nivel que fecha a cota nao avisa", () => {
+    const qs = [
+      pergunta("python-ini-01", "iniciante", true),
+      pergunta("python-ini-02", "iniciante", false),
+    ];
+    expect(
+      codeQuotaWarnings(qs, [
+        {
+          label: "iniciante / A",
+          codeQuota: 1,
+          ids: ["python-ini-01", "python-ini-02"],
+        },
+      ]),
+    ).toEqual([]);
   });
 });

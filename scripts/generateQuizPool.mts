@@ -35,6 +35,7 @@ import {
   buildUserPrompt,
   codeLeafIds,
   codeQuotaFor,
+  codeQuotaWarnings,
   codeRuleViolations,
   codeTypeViolations,
   execViolations,
@@ -588,6 +589,12 @@ const violacoes = poolGateViolations(
   roadmap.codeLanguages ?? [],
   noExec ? null : executarPor,
 );
+// Cota de codigo por nivel: AVISO no stdout, nunca bloqueio. Bloquear
+// obrigaria a autorar codigo a mao em toda secao que esgota tentativas; o
+// aviso deixa a decisao com quem revisa. Ver codeQuotaWarnings.
+for (const aviso of codeQuotaWarnings(questions, gateSections)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
 if (problems.length > 0 || violacoes.length > 0) {
   for (const problem of problems) {
     console.error(`[generateQuizPool] ${problem}`);
