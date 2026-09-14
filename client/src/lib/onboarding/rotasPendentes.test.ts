@@ -58,9 +58,8 @@ describe("doc das rotas pendentes x registry", () => {
   const doDoc = rotasDoDoc();
 
   it("afirma o total", () => {
-    // 26 -> 27 com `/creator` (painel de creator, lote 03, 2026-09-14).
-    expect(pendentesNoRegistry).toHaveLength(27);
-    expect(doDoc).toHaveLength(27);
+    expect(pendentesNoRegistry).toHaveLength(26);
+    expect(doDoc).toHaveLength(26);
   });
 
   it("nao repete rota", () => {

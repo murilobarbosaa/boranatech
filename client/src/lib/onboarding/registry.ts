@@ -33,7 +33,7 @@ export type RouteOnboarding =
   | { type: "sem-onboarding"; motivo: string }
   /**
    * Ainda nao portado. Vira 'onboarding' ou 'sem-onboarding' quando alguem
-   * decidir. A classificacao PROPOSTA para as 27 de hoje esta em
+   * decidir. A classificacao PROPOSTA para as 26 de hoje esta em
    * `docs/onboarding-rotas-pendentes.md`, amarrada a este arquivo por
    * `rotasPendentes.test.ts`: classificar uma de verdade obriga a tirar ela do
    * doc no mesmo commit.
@@ -74,9 +74,12 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     load: () => import("./steps/home"),
   },
   "/creators": { type: "pendente" },
-  // Painel de creator (lote 03). Pendente e nao sem-onboarding: ter ou nao guia
-  // num painel restrito a creators e decisao de produto que o lote nao tomou.
-  "/creator": { type: "pendente" },
+  // Painel de creator. Sem guia por decisao de produto tomada na revisao do
+  // lote 03 (2026-09-14).
+  "/creator": {
+    type: "sem-onboarding",
+    motivo: "painel restrito a creators, sem guia por decisao de produto",
+  },
   "/areas": {
     type: "onboarding",
     load: () => import("./steps/areas"),

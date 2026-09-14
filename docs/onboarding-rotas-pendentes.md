@@ -4,13 +4,11 @@ Estado em 2026-08-09, no fechamento da `feat/onboarding`.
 
 Os 33 HTMLs de `design/onboardings/` estão todos portados: 34 entradas do
 registry marcadas como `onboarding` (33 chaves de persistência distintas, porque
-`/projetos/:id` compartilha a de `/projetos`). Sobram **27 rotas** classificadas
-como `pendente`, ou seja, sem decisão tomada. Eram 26 no fechamento; a 27ª é
-`/creator`, o painel de creator, que entrou em 2026-09-14 sem decisão de
-onboarding.
+`/projetos/:id` compartilha a de `/projetos`). Sobram **26 rotas** classificadas
+como `pendente`, ou seja, sem decisão tomada.
 
 Este documento registra a classificação **proposta** para elas. Nada aqui está
-implementado: no `registry.ts` as 27 continuam `pendente`, e é o `pendente` que
+implementado: no `registry.ts` as 26 continuam `pendente`, e é o `pendente` que
 vale. O objetivo é que a próxima pessoa não precise refazer a análise do zero.
 
 `client/src/lib/onboarding/rotasPendentes.test.ts` compara esta lista com o
@@ -54,7 +52,6 @@ motivo escrito. Ficar em `pendente` é o estado honesto enquanto ninguém decidi
 - `/perfil/favoritos`
 - `/comparador`
 - `/creators`
-- `/creator`
 - `/estudos/diario`
 - `/tecnologias/comparar`
 - `/tecnologias/jogos`
