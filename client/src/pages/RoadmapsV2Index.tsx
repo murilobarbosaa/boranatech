@@ -31,6 +31,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import { prefetchRoadmap } from "@/lib/roadmapV2/loaders";
 import { areasTI } from "@/lib/data";
+import { tagPaletteOf } from "@/lib/tagPalette";
 import {
   getCertificateStatuses,
   type CertificateStatus,
@@ -230,7 +231,14 @@ function TrailMascot({
           strokeWidth="3"
           strokeLinejoin="round"
         />
-        <line x1="32" y1="6" x2="32" y2="24" stroke="var(--bnt-ink)" strokeWidth="3" />
+        <line
+          x1="32"
+          y1="6"
+          x2="32"
+          y2="24"
+          stroke="var(--bnt-ink)"
+          strokeWidth="3"
+        />
         <rect
           x="9"
           y="22"
@@ -416,6 +424,12 @@ export default function RoadmapsV2Index() {
                 const area = areasTI.find((x) => x.slug === r.area);
                 if (!area) return null;
                 const Icon = area.icon;
+                // Cor pelo resolver do chip de area, nao pela classe crua: as
+                // `.tag-*` sairam do index.css em 2026-09-01 (2dae5521) e esta
+                // vitrine ficou de fora da migracao, com o quadrado e a faixa
+                // sem fundo e o icone branco invisivel. O resolver ja degrada
+                // para o neutro com tag_class desconhecida.
+                const palette = tagPaletteOf(area.tagClass);
                 const hasProject = r.hasProject;
                 const isMultiStack = Boolean(
                   r.languages && r.languages.length > 0,
@@ -440,13 +454,15 @@ export default function RoadmapsV2Index() {
                     >
                       <span
                         aria-hidden
-                        className={`-mx-5 -mt-5 mb-4 h-2 ${area.tagClass}`}
+                        className={`-mx-5 -mt-5 mb-4 h-2 ${palette.bg}`}
                       />
                       <div className="flex items-center gap-3">
                         <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${area.tagClass}`}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
                         >
-                          <Icon className="h-[19px] w-[19px] text-white" />
+                          <Icon
+                            className={`h-[19px] w-[19px] ${palette.text}`}
+                          />
                         </span>
                         <h2 className="text-[15px] font-bold leading-tight text-slate-900">
                           {area.nome}
