@@ -69,7 +69,9 @@ vi.mock("../lib/supabaseAdmin", () => {
   return {
     supabaseAdmin: {
       from: (table: string) => query(table),
-      rpc: vi.fn(),
+      // Formato do cliente real: o supabase-js SEMPRE devolve { data, error }.
+      // `vi.fn()` puro devolvia undefined, o que nenhuma chamada real faz.
+      rpc: vi.fn(async () => ({ data: null, error: null })),
     },
   };
 });

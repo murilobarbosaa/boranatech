@@ -23,6 +23,7 @@ import {
   revertNonRenewalIntent,
 } from "./shared";
 import { resolveCheckoutPriceCents } from "../lib/coupons";
+import { recordCreatorEvent } from "../lib/creatorEvents";
 import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
@@ -390,6 +391,21 @@ async function createCheckout(
     );
     throw createError(500, "db_error", "Erro ao registrar a cobrança.", {
       cause: insertError,
+    });
+  }
+
+  // EVENTO de checkout do creator quando o codigo de afiliado foi APROVADO pelo
+  // resolver (que so aprova em primeira compra). Diferente do cartao e do
+  // boleto, o Pix NAO tem o contador `trials` ao lado: `trials` so e somado no
+  // checkout da Stripe, entao a serie de checkouts Pix nao tem par no contador.
+  if (validAffiliateCode) {
+    await recordCreatorEvent({
+      eventType: "checkout",
+      affiliateCode: validAffiliateCode,
+      userId: input.user.id,
+      subscriptionId: created.id,
+      planId: plan.id,
+      paymentMethod: "pix",
     });
   }
 
@@ -1176,6 +1192,11 @@ async function activateOnPayment(args: {
     revenueCents: paidAmountCentsFromAsaas(event) ?? undefined,
     sourceEvent: { id: eventId, type: eventType, subscriptionId: chargeId },
     prevStatus: "pending",
+    subscriptionId: row.id,
+    planId: result.out_plan_id,
+    // Este provedor so cria linha de Pix (o checkout grava payment_method
+    // 'pix'), a mesma premissa do `oneOffAccessDays(planCode, "pix")` acima.
+    paymentMethod: "pix",
   });
 
   // LEDGER POR ULTIMO, e NAO LANCA. A ordem e a postura de erro sao deliberadas:

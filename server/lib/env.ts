@@ -217,8 +217,8 @@ export const env = {
   // duas pontas (checkout Pix indisponivel, webhook responde 503 sem processar).
   asaasEnabled: Boolean(
     process.env.ASAAS_API_URL &&
-      process.env.ASAAS_API_KEY &&
-      process.env.ASAAS_WEBHOOK_TOKEN,
+    process.env.ASAAS_API_KEY &&
+    process.env.ASAAS_WEBHOOK_TOKEN,
   ),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
@@ -333,6 +333,10 @@ export const env = {
   // 503 sentry_not_configured, nada mais quebra.
   sentryAuthToken: process.env.SENTRY_AUTH_TOKEN || "",
   sentryOrgSlug: process.env.SENTRY_ORG_SLUG || "",
+  // Sal do hash de IP dos eventos de clique dos Creators (creator_events). O IP
+  // NUNCA vai em claro: sem esta variavel o evento grava ip_hash null. Trocar o
+  // sal so impede comparar hashes gravados antes com os de depois.
+  creatorEventsSalt: process.env.CREATOR_EVENTS_SALT || "",
   // Destinos das notificacoes do bug tracker do admin. Vazios: o envio vira
   // no-op com log, no padrao resendApiKey.
   bugNotifyNewEmail: process.env.BUG_NOTIFY_NEW_EMAIL || "",

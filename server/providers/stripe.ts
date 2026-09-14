@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
+import { recordCreatorEvent } from "../lib/creatorEvents";
 import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import { env } from "../lib/env";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
@@ -182,6 +183,11 @@ async function handleTransition(
     // decisao: existe so para o Sentry conseguir identificar a conversao que
     // ficou sem valor pago e permitir o replay manual dela.
     sourceEvent?: { id: string; type: string; subscriptionId: string | null };
+    // Procedencia da venda para o evento de creator (creator_events). Tambem
+    // nao decide nada: so viaja ate applyActivationEffects.
+    subscriptionId?: string | null;
+    planId?: string | null;
+    paymentMethod?: string | null;
   },
 ): Promise<void> {
   const becameActive = !isProStatus(prevStatus) && isProStatus(nextStatus);
@@ -226,6 +232,9 @@ async function handleTransition(
       revenueCents: opts.revenueCents,
       sourceEvent: opts.sourceEvent,
       prevStatus,
+      subscriptionId: opts.subscriptionId,
+      planId: opts.planId,
+      paymentMethod: opts.paymentMethod,
     });
   } else if (prevStatus !== nextStatus) {
     void invalidateProStatusCache(userId);
@@ -738,12 +747,21 @@ export async function applySubscription(
   // boleto pagava sobre o valor real. `undefined` quando o evento nao declara
   // cobranca; ver paidAmountCentsFromEvent.
   const revenueCents = paidAmountCentsFromEvent(event) ?? undefined;
+  // Linha de subscriptions desta assinatura, para o evento de venda: a que ja
+  // existia, ou a que o upsert acabou de criar (o `select("id")` dele).
+  const linhaCriadaId =
+    (result.data as Array<{ id: string }> | null)?.[0]?.id ?? null;
   await handleTransition(userId, existing?.status ?? null, status, {
     affiliateCode,
     couponCode,
     revenueCents,
     planName: proPlan.name || planCode,
     sourceEvent: { id: event.id, type: event.type, subscriptionId: sub.id },
+    subscriptionId: existing?.id ?? linhaCriadaId,
+    planId: proPlan.id,
+    // O meio LIDO da Subscription, o mesmo que vai para a linha; ausente vira
+    // null, nunca 'card' por eliminacao (ver server/lib/paymentMethod.ts).
+    paymentMethod: meioDePagamento.payment_method ?? null,
   });
 }
 
@@ -987,7 +1005,7 @@ export async function onBoletoAsyncPaymentSucceeded(
   const paidAtIso = eventCreatedAt.toISOString();
   const { data: pendingRow } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, status")
+    .select("id, user_id, status, payment_method")
     .eq("provider_subscription_id", session.id)
     .maybeSingle();
   if (!pendingRow) {
@@ -1138,6 +1156,10 @@ export async function onBoletoAsyncPaymentSucceeded(
     revenueCents: paidAmountCentsFromEvent(event) ?? undefined,
     planName: plan?.name || plan?.code || "Pro",
     sourceEvent: { id: event.id, type: event.type, subscriptionId: session.id },
+    subscriptionId: pendingRow.id,
+    planId: resultado.out_plan_id,
+    // LIDO da linha pendente, gravado no checkout do boleto.
+    paymentMethod: pendingRow.payment_method ?? null,
   });
 
   // Gancho fiscal por ULTIMO: o acesso ja foi concedido e os efeitos ja
@@ -1752,9 +1774,28 @@ async function createCheckout(
 
         // trials: mesma condicao de antes (1a compra + afiliado ativo),
         // independente de o desconto aplicado ter vindo dele ou do cupom.
-        await supabaseAdmin.rpc("increment_affiliate_trials", {
-          p_affiliate_id: affiliate.id,
-        });
+        const { error: trialsError } = await supabaseAdmin.rpc(
+          "increment_affiliate_trials",
+          { p_affiliate_id: affiliate.id },
+        );
+        // EVENTO de checkout ao lado do contador `trials`, e so quando ele
+        // contou. O checkout ainda nao tem linha em subscriptions nem o uuid
+        // do plano, so o codigo: recordCreatorEvent resolve o uuid e, se nao
+        // conseguir, grava o codigo em metadata.plan_code.
+        if (trialsError) {
+          console.error(
+            "[billing/checkout] Falha ao contar trial de afiliado:",
+            trialsError,
+          );
+        } else {
+          await recordCreatorEvent({
+            eventType: "checkout",
+            affiliateId: affiliate.id,
+            userId: input.user.id,
+            planCode: input.planId,
+            paymentMethod: input.paymentMethod,
+          });
+        }
       }
     }
   }

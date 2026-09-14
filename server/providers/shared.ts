@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 
+import { recordCreatorEvent } from "../lib/creatorEvents";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -56,6 +57,10 @@ export async function recordAffiliateConversion(params: {
   prevStatus: string | null;
   nextStatus: string;
   sourceEvent?: { id: string; type: string; subscriptionId: string | null };
+  /** Procedencia da venda para o evento `sale` de creator_events. */
+  subscriptionId?: string | null;
+  planId?: string | null;
+  paymentMethod?: string | null;
 }): Promise<void> {
   const { userId, affiliateCode, revenueCents, sourceEvent } = params;
 
@@ -96,15 +101,44 @@ export async function recordAffiliateConversion(params: {
   try {
     const { data: affiliate } = await supabaseAdmin
       .from("affiliates")
-      .select("id")
+      .select("id, commission_percent")
       .eq("code", affiliateCode)
       .maybeSingle();
     if (affiliate) {
-      await supabaseAdmin.rpc("increment_affiliate_conversion", {
-        p_affiliate_id: affiliate.id,
-        // Zero DECLARADO entra: venda integralmente descontada e uma venda, e
-        // conta em `sales` com comissao zero.
-        p_revenue_cents: revenueCents,
+      const { error: conversionError } = await supabaseAdmin.rpc(
+        "increment_affiliate_conversion",
+        {
+          p_affiliate_id: affiliate.id,
+          // Zero DECLARADO entra: venda integralmente descontada e uma venda,
+          // e conta em `sales` com comissao zero.
+          p_revenue_cents: revenueCents,
+        },
+      );
+      if (conversionError) {
+        console.error(
+          "[webhook/stripe] Falha ao contar conversao de afiliado:",
+          conversionError,
+        );
+        return;
+      }
+
+      // EVENTO de venda ao lado do contador, e SO depois de ele ter somado:
+      // a serie por dia do painel precisa bater com `sales` e `revenue_cents`.
+      // Valor ausente ja saiu la em cima sem escrever nada, entao nao chega
+      // aqui. A comissao e a MESMA conta do SQL (round sobre o percentual
+      // corrente); percentual ilegivel grava null, nunca um numero inventado.
+      const percentual = Number(affiliate.commission_percent);
+      await recordCreatorEvent({
+        eventType: "sale",
+        affiliateId: affiliate.id,
+        userId,
+        subscriptionId: params.subscriptionId ?? null,
+        planId: params.planId ?? null,
+        paymentMethod: params.paymentMethod ?? null,
+        revenueCents,
+        commissionCents: Number.isFinite(percentual)
+          ? Math.round((revenueCents * percentual) / 100)
+          : null,
       });
     }
   } catch (affiliateError) {
@@ -207,6 +241,15 @@ export async function applyActivationEffects(params: {
   revenueCents?: number;
   sourceEvent?: { id: string; type: string; subscriptionId: string | null };
   prevStatus?: string | null;
+  /**
+   * Procedencia da venda para o evento de creator: a linha de subscriptions, o
+   * uuid do plano e o meio de pagamento LIDO (nunca deduzido). Opcionais
+   * porque o evento aceita null; os tres chamadores (cartao, boleto, Pix)
+   * passam o que tem.
+   */
+  subscriptionId?: string | null;
+  planId?: string | null;
+  paymentMethod?: string | null;
 }): Promise<void> {
   const { userId, logPrefix, motivo } = params;
   const ehRecuperacao = motivo === "recuperacao";
@@ -233,6 +276,9 @@ export async function applyActivationEffects(params: {
       prevStatus: params.prevStatus ?? null,
       nextStatus: "active",
       sourceEvent: params.sourceEvent,
+      subscriptionId: params.subscriptionId,
+      planId: params.planId,
+      paymentMethod: params.paymentMethod,
     });
   }
 
