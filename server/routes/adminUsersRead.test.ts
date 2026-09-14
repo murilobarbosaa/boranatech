@@ -300,6 +300,36 @@ describe("GET /users: enriquecimento chega na resposta", () => {
     }
   });
 
+  it("cada chip de concessao filtra o kind que o rotulo diz", async () => {
+    // `creators` e a uniao dos dois kinds; `influencers` e `afiliados` sao um
+    // kind cada. Ate o lote 04 `influencers` devolvia os dois, e esta trava e
+    // o que impede a volta silenciosa daquele comportamento.
+    const esperado: Array<[string, string | null]> = [
+      ["creators", null],
+      ["influencers", "influencer"],
+      ["afiliados", "afiliado"],
+    ];
+    for (const [filtro, kind] of esperado) {
+      montar({
+        profiles: { rows: [], count: 0 },
+        subscriptions: { rows: [] },
+        creators: { rows: [] },
+      });
+      const r = await chamarAdmin(
+        "GET",
+        `/users?filter=${filtro}&page=1&pageSize=50`,
+      );
+      expect(r.status, filtro).toBe(200);
+      const filtrosDeKind = estado.double
+        .de("creators")
+        .flatMap((c) => c.filtros)
+        .filter((f) => f.coluna === "kind");
+      expect(filtrosDeKind, filtro).toEqual(
+        kind === null ? [] : [{ tipo: "eq", coluna: "kind", valor: kind }],
+      );
+    }
+  });
+
   it("a ordenacao com desempate mudou de LUGAR, nao de existencia", async () => {
     // A propriedade e a mesma desde sempre: `created_at` sozinho nao e
     // deterministico, e sem desempate a paginacao por range pula e repete linhas

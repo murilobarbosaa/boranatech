@@ -62,7 +62,9 @@ export type UserListFilter =
   | "all"
   | "pro"
   | "not_pro"
+  | "creators"
   | "influencers"
+  | "afiliados"
   | "ativo";
 
 // O que a UI CONSOME de GET /users/:id (CPF ja mascarado; sem campos de

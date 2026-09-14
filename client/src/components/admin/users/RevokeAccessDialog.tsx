@@ -12,6 +12,7 @@ import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import type { TransactionsPayload, UserDetail } from "./types";
 import { ehRecuperacaoDeEstadoMeioFeito } from "./refundAccessCopy";
+import { concessaoDoProSource, nomeDaConcessao } from "./creatorConcessao";
 import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
 
 // REVOGAÇÃO AVULSA de acesso Pro.
@@ -60,8 +61,9 @@ export function RevokeAccessDialog({
   // pro_source vem da rota de detalhe, calculado pela MESMA função que alimenta
   // a lista (resolveProSource). Não recalculamos aqui: duas montagens da mesma
   // regra divergem na primeira mudança. Mesmo critério do CancelSubscriptionDialog.
-  const temInfluencer =
-    detail.pro_source === "influencer" || detail.pro_source === "both";
+  // Os dois kinds de creator (influencer e afiliado) concedem Pro por fora da
+  // assinatura, e os dois precisam do aviso.
+  const concessao = concessaoDoProSource(detail.pro_source);
 
   const recuperacao = ehRecuperacaoDeEstadoMeioFeito(transactions);
 
@@ -92,7 +94,8 @@ export function RevokeAccessDialog({
       // passar como se o acesso tivesse caído.
       if (json.data?.still_pro_via_influencer) {
         showErrorToast(
-          "Assinatura revogada, mas a pessoa CONTINUA Pro pela concessão de influencer. Para tirar o acesso, revogue a concessão também.",
+          // TODO(Ana)
+          `Assinatura revogada, mas a pessoa CONTINUA Pro pela concessão de ${nomeDaConcessao(concessao)}. Para tirar o acesso, revogue a concessão também.`,
         );
         return;
       }
@@ -160,14 +163,15 @@ export function RevokeAccessDialog({
               </p>
             ) : null}
 
-            {temInfluencer ? (
+            {concessao ? (
               <p
                 data-testid="aviso-influencer"
                 className="rounded-xl border-2 border-violet-700 bg-violet-50 p-3 font-bold text-violet-900"
               >
-                Esta conta também tem acesso de influencer. Revogar a assinatura{" "}
-                <strong>não remove o Pro</strong>: para isso, revogue a
-                concessão de influencer.
+                {/* TODO(Ana) */}
+                {`Esta conta também tem acesso de ${nomeDaConcessao(concessao)}. Revogar a assinatura `}
+                <strong>não remove o Pro</strong>
+                {`: para isso, revogue a concessão de ${nomeDaConcessao(concessao)}.`}
               </p>
             ) : null}
 

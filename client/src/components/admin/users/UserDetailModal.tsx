@@ -1313,7 +1313,9 @@ export function UserDetailModal({
         <RefundDialog
           userId={userId}
           charge={refundAlvo}
-          influencer={Boolean(detail?.influencer)}
+          concessao={
+            detail?.influencer ? (detail.influencer.kind ?? "creator") : null
+          }
           open={refundAlvo !== null}
           onOpenChange={(aberto) => {
             if (!aberto) setRefundAlvo(null);
@@ -1324,7 +1326,9 @@ export function UserDetailModal({
         <ExternalRefundDialog
           userId={userId}
           charge={externalRefundAlvo}
-          influencer={Boolean(detail?.influencer)}
+          concessao={
+            detail?.influencer ? (detail.influencer.kind ?? "creator") : null
+          }
           open={externalRefundAlvo !== null}
           onOpenChange={(aberto) => {
             if (!aberto) setExternalRefundAlvo(null);

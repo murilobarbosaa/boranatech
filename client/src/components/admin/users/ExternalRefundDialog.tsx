@@ -13,6 +13,7 @@ import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 import type { TransactionItem } from "./types";
 import { centavosDeTexto } from "./RefundDialog";
 import { toastDeDevolucao, vaiRevogar } from "./refundAccessCopy";
+import { nomeDaConcessao } from "./creatorConcessao";
 import { fmtBrl, fmtDate } from "./userFormat";
 
 // REGISTRO de uma devolução de boleto feita FORA da plataforma.
@@ -36,7 +37,8 @@ export function ExternalRefundDialog({
 }: {
   userId: string;
   charge: TransactionItem | null;
-  influencer?: boolean;
+  /** Tipo da concessão de creator ativa, ou null sem concessão. */
+  concessao?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
@@ -48,14 +50,14 @@ export function ExternalRefundDialog({
 function ExternalRefundDialogInterno({
   userId,
   charge,
-  influencer = false,
+  concessao = null,
   open,
   onOpenChange,
   onDone,
 }: {
   userId: string;
   charge: TransactionItem;
-  influencer?: boolean;
+  concessao?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
@@ -138,6 +140,7 @@ function ExternalRefundDialogInterno({
         acaoFeita,
         acesso: json.data?.access,
         extratoSincronizado: json.data?.statement_synced !== false,
+        concessao,
       });
       if (ehErro) showErrorToast(mensagem);
       else showActionToast({ message: mensagem });
@@ -262,10 +265,11 @@ function ExternalRefundDialogInterno({
                   >
                     Isto zera o valor pago desta cobrança, então{" "}
                     <strong>o acesso Pro será removido na hora</strong>.
-                    {influencer ? (
+                    {concessao ? (
                       <>
                         {" "}
-                        A pessoa tem concessão de <strong>influencer</strong> e
+                        {/* TODO(Ana) */}A pessoa tem concessão de{" "}
+                        <strong>{nomeDaConcessao(concessao)}</strong> e
                         continuará Pro por ela: para tirar o acesso, revogue a
                         concessão também.
                       </>

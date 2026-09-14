@@ -171,13 +171,15 @@ describe("card da lista: o andaime saiu, a informação ficou", () => {
 });
 
 describe("filtros: grade que fecha, em vez de wrap solto", () => {
-  it("as 5 opções continuam todas visíveis, nenhuma escondida atrás de scroll", async () => {
+  it("as 7 opções continuam todas visíveis, nenhuma escondida atrás de scroll", async () => {
     render(<UsersDashboard />);
     for (const label of [
       "Todos",
       "Assinantes",
       "Sem assinatura",
+      "Creators",
       "Influencers",
+      "Afiliados",
       "Ativo",
     ]) {
       expect(await screen.findByRole("button", { name: label })).toBeTruthy();
@@ -192,13 +194,17 @@ describe("filtros: grade que fecha, em vez de wrap solto", () => {
     expect(caixa.className).toContain("sm:flex");
   });
 
-  it("a quarta pill fecha a segunda linha ocupando duas colunas", async () => {
-    // 5 itens em 3 colunas deixam um vao. Com a quarta ocupando 2 colunas, a
-    // segunda linha fecha e as divisorias alinham com as de cima.
+  it("a sétima pill fecha a terceira linha ocupando as três colunas", async () => {
+    // 7 itens em 3 colunas deixam a última sozinha. Com ela ocupando as 3
+    // colunas, a terceira linha fecha e as divisórias alinham com as de cima.
     render(<UsersDashboard />);
-    const quarta = await screen.findByRole("button", { name: "Influencers" });
-    expect(quarta.className).toContain("col-span-2");
-    expect(quarta.className).toContain("sm:col-span-1");
+    const setima = await screen.findByRole("button", { name: "Ativo" });
+    expect(setima.className).toContain("col-span-3");
+    expect(setima.className).toContain("sm:col-span-1");
+    const influencers = await screen.findByRole("button", {
+      name: "Influencers",
+    });
+    expect(influencers.className).not.toContain("col-span-2");
   });
 });
 

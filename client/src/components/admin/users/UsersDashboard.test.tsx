@@ -187,7 +187,7 @@ describe("UsersDashboard: lista", () => {
     });
   });
 
-  it("os 5 filtros continuam existindo, com os mesmos valores enviados a API", async () => {
+  it("os 7 filtros existem, com os valores enviados a API", async () => {
     rotearFetch({ "/users?": listPayload([]) });
 
     render(<UsersDashboard />);
@@ -198,7 +198,9 @@ describe("UsersDashboard: lista", () => {
       ["Todos", null],
       ["Assinantes", "filter=pro"],
       ["Sem assinatura", "filter=not_pro"],
+      ["Creators", "filter=creators"],
       ["Influencers", "filter=influencers"],
+      ["Afiliados", "filter=afiliados"],
       ["Ativo", "filter=ativo"],
     ];
 

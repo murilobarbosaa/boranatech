@@ -109,14 +109,14 @@ export function UsersDashboard() {
           placeholder="Buscar por nome ou e-mail"
           className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:focus:bg-secondary"
         />
-        {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
+        {/* Pills, nao BntSelect: sao 7 opcoes mutuamente exclusivas e curtas.
             A pill mostra TODAS as opcoes e o estado atual sem abrir nada, e
             troca em um toque; um select esconde as opcoes e cobra dois. */}
         {/* GRADE de 3 colunas no mobile, linha unica no desktop.
-            5 opcoes em 3 colunas deixariam um vao na segunda linha (foi o
-            defeito relatado: parecia tabela quebrada). A quarta pill ocupa 2
-            colunas, entao a segunda linha FECHA e as divisorias verticais
-            alinham com as da primeira.
+            7 opcoes em 3 colunas deixariam a ultima sozinha na terceira linha
+            (o defeito relatado com 5: parecia tabela quebrada). A setima pill
+            ocupa as 3 colunas, entao a terceira linha FECHA e as divisorias
+            verticais alinham com as de cima.
 
             Scroll horizontal foi descartado: "Ativo" e a ultima opcao e
             ficaria fora da tela, ou seja, esconderia opcao. Esconder opcao era
@@ -139,7 +139,12 @@ export function UsersDashboard() {
               // valores enviados a API seguem "pro" e "not_pro".
               { value: "pro", label: "Assinantes" },
               { value: "not_pro", label: "Sem assinatura" },
+              // Concessao de creator: os dois kinds, e cada kind sozinho.
+              // TODO(Ana)
+              { value: "creators", label: "Creators" },
               { value: "influencers", label: "Influencers" },
+              // TODO(Ana)
+              { value: "afiliados", label: "Afiliados" },
               { value: "ativo", label: "Ativo" },
             ] as Array<{ value: UserListFilter; label: string }>
           ).map((option) => (
@@ -148,7 +153,7 @@ export function UsersDashboard() {
               type="button"
               onClick={() => changeFilter(option.value)}
               className={`-ml-0.5 -mt-0.5 border-l-2 border-t-2 border-slate-900 px-2 py-2.5 text-[11px] font-black uppercase leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 sm:px-4 sm:text-sm ${
-                option.value === "influencers" ? "col-span-2 sm:col-span-1" : ""
+                option.value === "ativo" ? "col-span-3 sm:col-span-1" : ""
               } ${
                 filter === option.value
                   ? "bg-yellow-300 text-ink-on-accent"

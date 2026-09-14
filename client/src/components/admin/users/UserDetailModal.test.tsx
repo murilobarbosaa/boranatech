@@ -1549,7 +1549,10 @@ describe("reembolso (Fatia 7)", () => {
   it("com INFLUENCER, o passo 2 avisa que o Pro sobrevive à revogação", async () => {
     rotearRefund(compraRef(), {
       detalhe: detalhe({
+        // `kind` vem no detalhe desde o lote 01. Sem ele o aviso diz
+        // "creator", de proposito: nao inventa o tipo.
         influencer: {
+          kind: "influencer",
           granted_at: "2026-01-01T00:00:00Z",
           note: null,
           granted_by_name: "Ana",

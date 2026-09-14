@@ -12,6 +12,7 @@ import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import type { TransactionItem } from "./types";
 import { toastDeDevolucao, vaiRevogar } from "./refundAccessCopy";
+import { nomeDaConcessao } from "./creatorConcessao";
 import { fmtBrl, fmtDate } from "./userFormat";
 
 // Emissão de reembolso, em dois passos. É a ÚNICA ação sem desfazer da aba, e
@@ -39,8 +40,11 @@ export function RefundDialog({
 }: {
   userId: string;
   charge: TransactionItem | null;
-  /** Concessão de influencer ativa: o Pro sobrevive à revogação da assinatura. */
-  influencer?: boolean;
+  /**
+   * Tipo da concessão de creator ativa ("influencer", "afiliado"), ou null sem
+   * concessão. Com concessão, o Pro sobrevive à revogação da assinatura.
+   */
+  concessao?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
@@ -70,14 +74,14 @@ export function toastDoEstornoPix(providerStatus: unknown): string {
 function RefundDialogInterno({
   userId,
   charge,
-  influencer = false,
+  concessao = null,
   open,
   onOpenChange,
   onDone,
 }: {
   userId: string;
   charge: TransactionItem;
-  influencer?: boolean;
+  concessao?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
@@ -192,6 +196,7 @@ function RefundDialogInterno({
         acaoFeita: "Reembolso emitido.",
         acesso: json.data?.access,
         extratoSincronizado: json.data?.statement_synced !== false,
+        concessao,
       });
       // Toast de ERRO quando ficou algo por fazer: o de sucesso desaparece
       // sozinho, e um estado meio-feito não pode depender de quem estava olhando.
@@ -365,10 +370,11 @@ function RefundDialogInterno({
                     Isto zera o valor pago desta cobrança, então{" "}
                     <strong>o acesso Pro será removido na hora</strong>. A
                     assinatura é cancelada imediatamente, não no fim do período.
-                    {influencer ? (
+                    {concessao ? (
                       <>
                         {" "}
-                        A pessoa tem concessão de <strong>influencer</strong> e
+                        {/* TODO(Ana) */}A pessoa tem concessão de{" "}
+                        <strong>{nomeDaConcessao(concessao)}</strong> e
                         continuará Pro por ela: para tirar o acesso, revogue a
                         concessão também.
                       </>

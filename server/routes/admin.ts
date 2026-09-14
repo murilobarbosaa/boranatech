@@ -3439,9 +3439,16 @@ router.get("/users", async (req, res, next) => {
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
       // PAGINADO pelo mesmo motivo do filtro Pro: o conjunto E o filtro.
       //
-      // `influencers` devolve os DOIS kinds, igual a `creators`: e o valor que o
-      // chip atual do client manda, e ate o lote da tela ele e o unico filtro de
-      // concessao que existe na interface. `afiliados` restringe ao kind.
+      // `creators` devolve os dois kinds; `influencers` e `afiliados` restringem
+      // ao kind. Ate o lote 04 o chip "Influencers" era o unico filtro de
+      // concessao da tela e `influencers` devolvia os dois; com o chip
+      // "Creators" existindo, cada chip filtra o que o rotulo diz.
+      const kindDoFiltro =
+        filter === "afiliados"
+          ? "afiliado"
+          : filter === "influencers"
+            ? "influencer"
+            : null;
       const { data: creatorRows, error: creatorError } = await coletarTagueado<{
         user_id: string | null;
       }>((from, to) => {
@@ -3449,7 +3456,7 @@ router.get("/users", async (req, res, next) => {
           .from("creators")
           .select("user_id")
           .is("revoked_at", null);
-        return (filter === "afiliados" ? ativos.eq("kind", "afiliado") : ativos)
+        return (kindDoFiltro ? ativos.eq("kind", kindDoFiltro) : ativos)
           .order("id", { ascending: true })
           .range(from, to);
       }, "users creator filter");

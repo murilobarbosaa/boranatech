@@ -1,3 +1,4 @@
+import { nomeDaConcessao } from "./creatorConcessao";
 import type { RefundAccessOutcome, TransactionsPayload } from "./types";
 
 // O que a tela diz sobre o ACESSO depois de uma devolução.
@@ -48,6 +49,8 @@ export function vaiRevogar(
  */
 export function avisoDeAcesso(
   acesso: RefundAccessOutcome | null | undefined,
+  /** Tipo da concessao de creator, quando a tela o conhece. */
+  concessao?: string | null,
 ): AvisoDeAcesso | null {
   // Backend antigo na janela de deploy: sem o campo, a tela não inventa nada.
   if (!acesso) return null;
@@ -65,8 +68,8 @@ export function avisoDeAcesso(
     return acesso.still_pro_via_influencer
       ? {
           tom: "atencao",
-          mensagem:
-            "Assinatura cancelada, mas a pessoa CONTINUA Pro pela concessão de influencer. Para tirar o acesso, revogue a concessão também.",
+          // TODO(Ana)
+          mensagem: `Assinatura cancelada, mas a pessoa CONTINUA Pro pela concessão de ${nomeDaConcessao(concessao)}. Para tirar o acesso, revogue a concessão também.`,
           exigeAcaoManual: true,
         }
       : {
@@ -99,8 +102,9 @@ export function toastDeDevolucao(input: {
   acaoFeita: string;
   acesso: RefundAccessOutcome | null | undefined;
   extratoSincronizado: boolean;
+  concessao?: string | null;
 }): { mensagem: string; erro: boolean } {
-  const aviso = avisoDeAcesso(input.acesso);
+  const aviso = avisoDeAcesso(input.acesso, input.concessao);
   const partes = [input.acaoFeita];
 
   if (aviso) partes.push(aviso.mensagem);
