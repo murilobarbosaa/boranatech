@@ -442,9 +442,9 @@ function Quadro({
           <thead>
             <tr className="text-left text-[11px] font-black uppercase tracking-wide text-slate-500">
               {/* TODO(Ana) */}
-              <th className="px-3 py-3">Creator</th>
+              <th className="min-w-[12rem] px-3 py-3">Creator</th>
               <th className="px-3 py-3">Tipo</th>
-              <th className="px-3 py-3">Códigos</th>
+              <th className="min-w-[10rem] px-3 py-3">Códigos</th>
               <th className="px-3 py-3 text-right">Cliques</th>
               <th className="px-3 py-3 text-right">Vendas</th>
               <th className="px-3 py-3 text-right">Receita</th>
