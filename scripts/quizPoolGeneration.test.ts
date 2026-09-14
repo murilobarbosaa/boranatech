@@ -1149,3 +1149,37 @@ describe("buildCodeRules: imports e arquivo em python", () => {
     );
   });
 });
+
+describe("codigo no enunciado: exemplo negativo e nota de correcao", () => {
+  it("python traz o exemplo proibido ao lado do certo", () => {
+    const regras = buildCodeRules(["python"]);
+    expect(regras).toContain("PROIBIDO (codigo no enunciado)");
+    expect(regras).toContain("print(len('abc'))");
+    expect(regras).toContain("O que este codigo imprime?");
+  });
+
+  it("js nao ganha o exemplo: o prompt dela fica como esta", () => {
+    expect(buildCodeRules(["js"])).not.toContain(
+      "PROIBIDO (codigo no enunciado)",
+    );
+  });
+
+  it("a violacao manda mover o codigo e reescrever a pergunta", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          pergunta: "O que imprime print(len('abc'))?",
+          codigo: { linguagem: "python", trecho: "print(len('abc'))" },
+          alternativas: { a: "2", b: "3", c: "4", d: "abc" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["python"],
+    );
+    const linha = v.find((x) => x.includes("pergunta contem codigo"));
+    expect(linha).toContain(
+      "mova o codigo para codigo.trecho e reescreva a pergunta sem ele",
+    );
+  });
+});

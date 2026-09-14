@@ -374,6 +374,18 @@ function completarErrado(codeLanguages: string[]): string {
   return "const x = 1;";
 }
 
+// Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
+// 06c e 06d o modelo repetiu o trecho dentro de pergunta em quase toda secao,
+// mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa. So
+// python por enquanto: a pool de js esta publicada e o prompt dela fica byte
+// a byte, mesmo criterio do exemplo de completar.
+function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
+  if (codeLanguages[0] !== "python") return [];
+  return [
+    `- PROIBIDO (codigo no enunciado): pergunta "O que imprime print(len('abc'))?" com codigo.trecho "print(len('abc'))". CERTO: pergunta "O que este codigo imprime?" e o codigo so em codigo.trecho.`,
+  ];
+}
+
 export function buildCodeRules(codeLanguages: string[]): string {
   return [
     "Regras adicionais para perguntas de CODIGO (esta trilha tem cota de perguntas de codigo):",
@@ -386,6 +398,7 @@ export function buildCodeRules(codeLanguages: string[]): string {
     `- codigo.linguagem e obrigatoriamente uma destas: ${codeLanguages.join(", ")}; a primeira da lista e a principal.`,
     "- Distratores de codigo: erros reais de quem esta aprendendo (off-by-one, tipo errado, ordem de argumentos, escopo), nunca sintaxe absurda.",
     "- A pergunta NUNCA contem codigo nem cerca markdown: o trecho vai SOMENTE em codigo.trecho. A pergunta diz o que fazer com o trecho (por exemplo: O que este codigo imprime? Qual alternativa completa a lacuna para que a saida seja X? Qual e o defeito deste codigo?).",
+    ...exemploCodigoNoEnunciado(codeLanguages),
     "- saida: cada alternativa e EXATAMENTE o texto que o terminal mostra, linha por linha separada por quebra de linha, sem frase em volta (escrever O codigo imprime 50. esta errado; escrever 50 esta certo) e sem virgula juntando linhas. A correta e a alternativa cujo texto e a saida real do trecho: confira a saida mentalmente, linha a linha, antes de escolher a letra.",
     "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
     "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
@@ -641,7 +654,7 @@ export function codeRuleViolations(
       question.pergunta.includes(trecho.trim())
     ) {
       out.push(
-        `${rotulo}: pergunta contem codigo (o trecho vai so em codigo.trecho)`,
+        `${rotulo}: pergunta contem codigo; mova o codigo para codigo.trecho e reescreva a pergunta sem ele (por exemplo: O que este codigo imprime?)`,
       );
     }
     const dependencia = externalDependency(trecho, codeLanguages);
