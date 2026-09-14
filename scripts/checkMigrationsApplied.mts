@@ -126,6 +126,21 @@ const RENAME_TABLE_RE =
 // vez de deixar a tabela velha viva no conjunto.
 const ANY_RENAME_TABLE_RE =
   /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?[^\s;]+\s+rename\s+to\s/gi;
+// VIEWS: "create [or replace] view public.<nome>" e "drop view [if exists]".
+// O PostgREST expoe view do mesmo jeito que expoe tabela, e o guard de
+// existencia (GET que devolve PGRST205) vale para as duas, entao elas entram no
+// MESMO conjunto declarado. Sem isto, a view de compatibilidade da
+// 20260913120000 (public.influencers sobre public.creators) apareceria como
+// DRIFT na direcao inversa: exposta pelo PostgREST e nao declarada.
+// Materializada fica fora do regex especifico de proposito (nenhuma migration
+// cria uma); se alguma criar, o guard de cobertura abaixo derruba o script em
+// vez de deixa-la passar calada.
+const CREATE_VIEW_RE =
+  /create\s+(?:or\s+replace\s+)?view\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+const DROP_VIEW_RE =
+  /drop\s+view\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+const ANY_CREATE_VIEW_RE =
+  /create\s+(?:or\s+replace\s+)?(?:\w+\s+)*?view\s+[^\s(;]+/gi;
 // Deteccao ampla, so para conferir COBERTURA do parser: pega qualquer
 // "create ... table" e compara com o que o regex especifico conseguiu ler.
 const ANY_CREATE_TABLE_RE =
@@ -254,7 +269,11 @@ const naoReconhecidasOutras: string[] = [];
 // creators, e o rename NAO muda o total (sai um nome, entra outro); quem garante
 // isso e o RENAME_TABLE_RE, sem o qual o conjunto teria as duas e acusaria
 // influencers como ausente no banco.
-const EXPECTED_TABLE_COUNT = 86;
+// 87 desde a view de compatibilidade public.influencers, na MESMA migration,
+// MEDIDO com `--declared`: view passou a entrar no conjunto declarado (o
+// PostgREST a expoe como expoe tabela). EXPECTED_RLS_COUNT NAO sobe junto,
+// porque view nao tem RLS propria; a leitura anonima dela e verificada a parte.
+const EXPECTED_TABLE_COUNT = 87;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -447,6 +466,10 @@ function conferirCoberturaSimples(
 // Ordem lexicografica dos arquivos = ordem cronologica das migrations (prefixo
 // timestamp), entao criar e dropar na sequencia reproduz o estado final.
 const declared = new Set<string>();
+// Subconjunto de `declared` que e VIEW. Existe so para a verificacao de
+// leitura anonima: view nao tem RLS propria, entao nao entra em rlsDeclarada e,
+// sem este conjunto, ficaria fora de qualquer checagem de exposicao.
+const viewsDeclaradas = new Set<string>();
 const naoReconhecidas: string[] = [];
 for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
@@ -466,10 +489,15 @@ for (const file of readdirSync(migrationsDir)
   // tabela que nenhuma migration anterior declarou e drift, e vira item nao
   // reconhecido (aborta), em vez de o nome novo entrar em silencio. Para o
   // conjunto de RLS o rename so MOVE a marca, se ela existir.
+  // `criar` e `dropar` aceitam LISTA de regex para que tabela e view entrem na
+  // MESMA sequencia de origem: a 20260913120000 renomeia a tabela influencers
+  // e em seguida cria uma view com o mesmo nome, e aplicar as duas familias em
+  // passadas separadas repetiria o defeito ja catalogado de aplicar todos os
+  // CREATE antes de todos os DROP.
   const aplicarEmOrdem = (
     conjunto: Set<string>,
-    criar: RegExp,
-    dropar: RegExp,
+    criar: RegExp | RegExp[],
+    dropar: RegExp | RegExp[],
     aoCriar?: (nome: string, indice: number) => void,
     renomear?: { re: RegExp; exigirDeclarada: boolean },
   ) => {
@@ -479,14 +507,16 @@ for (const file of readdirSync(migrationsDir)
       novo: string;
       tipo: "criar" | "dropar" | "renomear";
     };
+    const casar = (re: RegExp | RegExp[]) =>
+      (Array.isArray(re) ? re : [re]).flatMap((r) => [...sql.matchAll(r)]);
     const eventos: Evento[] = [
-      ...[...sql.matchAll(criar)].map((m) => ({
+      ...casar(criar).map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
         novo: "",
         tipo: "criar" as const,
       })),
-      ...[...sql.matchAll(dropar)].map((m) => ({
+      ...casar(dropar).map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
         novo: "",
@@ -518,10 +548,15 @@ for (const file of readdirSync(migrationsDir)
 
   const reconhecidas = [...sql.matchAll(CREATE_TABLE_RE)];
   const renomeiosLidos = [...sql.matchAll(RENAME_TABLE_RE)];
-  aplicarEmOrdem(declared, CREATE_TABLE_RE, DROP_TABLE_RE, undefined, {
-    re: RENAME_TABLE_RE,
-    exigirDeclarada: true,
-  });
+  const viewsLidas = [...sql.matchAll(CREATE_VIEW_RE)];
+  aplicarEmOrdem(
+    declared,
+    [CREATE_TABLE_RE, CREATE_VIEW_RE],
+    [DROP_TABLE_RE, DROP_VIEW_RE],
+    undefined,
+    { re: RENAME_TABLE_RE, exigirDeclarada: true },
+  );
+  aplicarEmOrdem(viewsDeclaradas, CREATE_VIEW_RE, DROP_VIEW_RE);
   // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
   const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
   const nomesFuncao = new Set<string>();
@@ -590,6 +625,7 @@ for (const file of readdirSync(migrationsDir)
     ANY_RENAME_TABLE_RE,
     "alter table ... rename to",
   );
+  conferirCobertura(viewsLidas, ANY_CREATE_VIEW_RE, "create view");
 
   // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
   const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
@@ -652,6 +688,9 @@ if (MODO_DECLARADO) {
   );
   console.log(
     `  funcoes declaradas: ${funcoesDeclaradas.size} (EXPECTED_FUNCTION_COUNT = ${EXPECTED_FUNCTION_COUNT}) ${funcoesDeclaradas.size === EXPECTED_FUNCTION_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  views declaradas:   ${[...viewsDeclaradas].filter((v) => declared.has(v)).length} (ja contadas nas tabelas declaradas; sem RLS propria)`,
   );
   // Uma tabela por argumento `--tabela=<nome>`: responde pertinencia sem
   // despejar as 85 na tela.
@@ -1398,6 +1437,33 @@ if (!anonKey) {
   } else if (recursosNaoDeclarados.length > 0) {
     console.log(
       `[checkMigrationsApplied] direcao inversa da RLS: as ${recursosNaoDeclarados.length} tabela(s) nao declaradas NAO sao legiveis pela chave anon.`,
+    );
+  }
+
+  // VIEWS DECLARADAS: nao tem RLS propria, entao nao estao em `rlsVivas` e
+  // ficariam fora de toda verificacao de leitura anonima. O criterio e o
+  // estrito das nao declaradas: nenhuma view deste projeto e publica (a unica,
+  // public.influencers, e de compatibilidade e revoga anon), entao QUALQUER
+  // leitura anon bem-sucedida e achado, inclusive com zero linhas.
+  const viewsExpostas: string[] = [];
+  const viewsVivas = [...viewsDeclaradas].filter((v) => declared.has(v)).sort();
+  for (const view of viewsVivas) {
+    const comAnon = await contarLinhas(view, anonKey);
+    if (comAnon.tipo === "ok") {
+      viewsExpostas.push(`${view} (anon leu, ${comAnon.n} linha(s) visiveis)`);
+    } else if (comAnon.tipo === "erro") {
+      inconclusivas.push(`${view} (view, ${comAnon.detalhe})`);
+    }
+  }
+  if (viewsExpostas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${viewsExpostas.length} view(s) declaradas estao LEGIVEIS pela chave anon:`,
+    );
+    for (const e of viewsExpostas) console.error(`  VIEW EXPOSTA: public.${e}`);
+  } else if (viewsVivas.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] as ${viewsVivas.length} view(s) declaradas NAO sao legiveis pela chave anon.`,
     );
   }
   console.log(

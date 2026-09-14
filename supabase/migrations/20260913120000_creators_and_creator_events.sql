@@ -9,6 +9,10 @@
 --    Os nomes antigos sao os que o Postgres gerou para a 20260716130000
 --    (constraints inline) e os que ela declarou (indices). Se algum nao existir
 --    com esse nome, o rename falha e a transacao inteira volta.
+--    Logo depois nasce a VIEW public.influencers sobre public.creators, com as
+--    colunas da tabela antiga na mesma ordem e sem kind, para o codigo em
+--    producao continuar lendo e escrevendo em influencers ate o deploy (ver o
+--    bloco dela abaixo). Ela cai em migration posterior.
 -- 2. affiliates.user_id: dono do codigo. NAO e unique: uma pessoa pode ter um
 --    codigo por rede. O vinculo e manual, feito pelo admin.
 -- 3. subscriptions.affiliate_code ganha o indice que so existia na migration
@@ -23,9 +27,11 @@
 --    rename do item 1 faria a funcao falhar em toda chamada, e o Pro de
 --    assinante cairia junto (a funcao e um OR numa query so).
 --
--- ORDEM DE DEPLOY: esta migration NAO e aditiva. O rename quebra o codigo que
--- ainda le public.influencers no instante em que roda, e o codigo novo le
--- public.creators. Ver o relatorio do lote para a janela.
+-- ORDEM DE DEPLOY: o rename sozinho quebraria o codigo que ainda le
+-- public.influencers no instante em que rodasse. A view de compatibilidade
+-- existe para que esta migration possa rodar ANTES ou DEPOIS do deploy do
+-- codigo que le public.creators, sem janela de erro. Continua sendo migration
+-- com rename, e por isso segue a janela destrutiva do CLAUDE.md.
 
 BEGIN;
 
@@ -49,6 +55,27 @@ ALTER TABLE public.creators
 
 COMMENT ON TABLE public.creators IS
   'Concessao de Creator (influencer ou afiliado). Concede Pro enquanto revoked_at e null. Substitui a tabela influencers.';
+
+-- view de compatibilidade: o codigo em producao ainda le e escreve em
+-- influencers. Cai em migration posterior, depois que a main sem referencias a
+-- influencers estiver no ar.
+--
+-- As colunas sao EXATAMENTE as da tabela antiga (20260716130000), na mesma
+-- ordem, sem kind. View de uma tabela so, sem join, sem agregacao e sem
+-- DISTINCT e automaticamente atualizavel no Postgres: o insert do grant antigo
+-- (user_id, granted_by, note) chega a creators, e as colunas que ele omite
+-- (id, granted_at, created_at, kind) recebem o default da tabela, entao kind
+-- vira 'influencer'. O update do revoke antigo tambem passa. security_invoker
+-- faz a view checar privilegio e RLS de creators com o papel de quem consulta,
+-- em vez do dono da view.
+CREATE VIEW public.influencers
+  WITH (security_invoker = true)
+  AS SELECT id, user_id, granted_by, granted_at, revoked_by, revoked_at, note, created_at
+  FROM public.creators;
+GRANT SELECT, INSERT, UPDATE ON public.influencers TO service_role;
+REVOKE ALL ON public.influencers FROM anon, authenticated;
+COMMENT ON VIEW public.influencers IS
+  'Compatibilidade temporaria com o codigo anterior ao rename para creators. Remover apos deploy.';
 
 -- 2. dono do codigo
 ALTER TABLE public.affiliates
