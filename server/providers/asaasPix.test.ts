@@ -668,6 +668,29 @@ describe("webhook: comissao de afiliado", () => {
     expect(incrementos).toHaveLength(1);
     expect(incrementos[0].args.p_revenue_cents).toBe(22200);
   });
+
+  it("venda por Pix grava o evento sale com payment_method pix", async () => {
+    estado.afiliado = { id: "aff-1", commission_percent: 30 };
+
+    await processAsaasEvent(eventoDePagamento());
+
+    const eventos = estado.escritas.filter(
+      (e) => e.tabela === "creator_events",
+    );
+    expect(eventos).toHaveLength(1);
+    // 30 por cento de 22200 = 6660, a mesma conta do SQL.
+    expect(eventos[0].carga).toEqual({
+      affiliate_id: "aff-1",
+      event_type: "sale",
+      user_id: USER,
+      subscription_id: "row-1",
+      plan_id: "plan-anual",
+      payment_method: "pix",
+      revenue_cents: 22200,
+      commission_cents: 6660,
+      metadata: {},
+    });
+  });
 });
 
 describe("webhook: encerramento e eventos desconhecidos", () => {

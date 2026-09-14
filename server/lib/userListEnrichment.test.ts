@@ -374,3 +374,60 @@ describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () =>
     });
   });
 });
+
+describe("afiliado: o outro kind de concessão de creator", () => {
+  it("afiliado ativo SEM assinatura: is_pro true e pro_source afiliado", () => {
+    const index = buildEnrichmentIndex(
+      [],
+      new Map<string, CreatorKind>([["u7", "afiliado"]]),
+      AGORA,
+    );
+
+    expect(index.get("u7")).toMatchObject({
+      is_pro: true,
+      pro_source: "afiliado",
+      plan_code: null,
+      subscription_status: null,
+    });
+  });
+
+  it("afiliado E assinante vira both_afiliado, e não o both do influencer", () => {
+    const index = buildEnrichmentIndex(
+      [sub()],
+      new Map<string, CreatorKind>([["u1", "afiliado"]]),
+      AGORA,
+    );
+
+    expect(index.get("u1")).toMatchObject({
+      is_pro: true,
+      pro_source: "both_afiliado",
+    });
+  });
+
+  it("tally separa os kinds, e both é a interseção com QUALQUER concessão", () => {
+    // a: só assinatura. b: assinatura + influencer. c: assinatura + afiliado.
+    // d: só afiliado. Quatro pessoas, e o total precisa dizer quatro.
+    const index = buildEnrichmentIndex(
+      [sub({ user_id: "a" }), sub({ user_id: "b" }), sub({ user_id: "c" })],
+      new Map<string, CreatorKind>([
+        ["b", "influencer"],
+        ["c", "afiliado"],
+        ["d", "afiliado"],
+      ]),
+      AGORA,
+    );
+
+    const tally = tallyProSources(index);
+    expect(tally).toEqual({
+      bySubscription: 3,
+      byInfluencer: 1,
+      byAfiliado: 2,
+      both: 2,
+      total: 4,
+    });
+    // A identidade que o card da Visão usa para a concessão pura.
+    expect(
+      tally.bySubscription + tally.byInfluencer + tally.byAfiliado - tally.both,
+    ).toBe(tally.total);
+  });
+});

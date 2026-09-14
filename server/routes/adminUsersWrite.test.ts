@@ -2848,3 +2848,310 @@ describe("POST /users/:id/subscription/revoke", () => {
     ).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Creators, lote 01: kind na concessao e dono do codigo de afiliado
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/influencer: kind da concessão de creator", () => {
+  it("kind inválido devolve 400 e não audita nem insere", async () => {
+    montar({ content_audit_logs: { rows: [{}] } });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      note: "x",
+      kind: "embaixador",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_creator_kind");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("creators").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
+    expect(estado.invalidateProCache).not.toHaveBeenCalled();
+  });
+
+  it("kind ausente também devolve 400: não existe default", async () => {
+    montar({});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      note: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_creator_kind");
+  });
+
+  it("grant com kind afiliado insere kind = 'afiliado' e audita o kind", async () => {
+    montar({ content_audit_logs: { rows: [{}] } });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      note: "parceria afiliado",
+      kind: "afiliado",
+    });
+
+    expect(r.status).toBe(201);
+    const insert = estado.double.de("creators").find((c) => c.op === "insert")!;
+    expect(insert.payload).toMatchObject({
+      user_id: UID,
+      granted_by: "admin-1",
+      kind: "afiliado",
+    });
+    expect(
+      estado.double.de("content_audit_logs")[0].payload!.after_json,
+    ).toEqual({ note: "parceria afiliado", kind: "afiliado" });
+  });
+
+  it("already_active vale para qualquer kind: uma concessão ativa por pessoa", async () => {
+    montar({
+      creators: { rows: [{ id: "c1", granted_at: "2026-01-01", note: null }] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      kind: "afiliado",
+    });
+
+    expect(r.body.data).toEqual({ granted: false, already_active: true });
+  });
+
+  it("revogar audita o kind da concessão no before_json", async () => {
+    montar({
+      creators: {
+        rows: [
+          {
+            id: "c1",
+            granted_at: "2026-01-01",
+            granted_by: "a",
+            note: null,
+            kind: "afiliado",
+          },
+        ],
+      },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
+
+    expect(
+      estado.double.de("content_audit_logs")[0].payload!.before_json,
+    ).toMatchObject({ kind: "afiliado" });
+  });
+});
+
+/**
+ * Ramo de CONCESSÃO de `is_user_pro`, LIDO DA MIGRATION vigente
+ * (20260913120000). Mesmo critério de `statusesQueDaoProNaMigration`: o teste
+ * afirma algo sobre a função de verdade, e o parser LANÇA quando não acha, em
+ * vez de devolver um conjunto vazio que faria tudo passar sobre nada.
+ */
+function ramoDeConcessaoNaMigration(): {
+  tabela: string;
+  condicoes: string[];
+} {
+  const sql = readFileSync(
+    resolve(
+      process.cwd(),
+      "supabase/migrations/20260913120000_creators_and_creator_events.sql",
+    ),
+    "utf8",
+  );
+  const m =
+    /or\s+exists\s*\(\s*select\s+1\s+from\s+public\.(\w+)\s+i\s+where\s+([\s\S]*?)\s*\)\s*;/i.exec(
+      sql,
+    );
+  if (!m) {
+    throw new Error(
+      "não foi possível ler o ramo de concessão de is_user_pro na migration",
+    );
+  }
+  const condicoes = m[2]
+    .split(/\s+and\s+/i)
+    .map((c) => c.replace(/\s+/g, " ").trim());
+  return { tabela: m[1], condicoes };
+}
+
+/**
+ * A linha concede Pro pelas condições LIDAS? Condição que este teste não sabe
+ * avaliar LANÇA: uma condição nova no SQL (um filtro por kind, por exemplo)
+ * precisa quebrar aqui, e não ser ignorada em silêncio.
+ */
+function concedeProPelaMigration(
+  linha: Record<string, unknown>,
+  condicoes: string[],
+): boolean {
+  return condicoes.every((c) => {
+    if (c === "i.user_id = p_user_id") return true;
+    if (c === "i.revoked_at is null") return linha.revoked_at == null;
+    throw new Error(`condição não classificada no ramo de concessão: ${c}`);
+  });
+}
+
+describe("concessão de AFILIADO dá Pro por is_user_pro, e a revogação tira", () => {
+  const RAMO = ramoDeConcessaoNaMigration();
+
+  it("o parser leu o ramo de verdade: creators, exatamente duas condições, nenhuma sobre kind", () => {
+    expect(RAMO.tabela).toBe("creators");
+    expect(RAMO.condicoes).toEqual([
+      "i.user_id = p_user_id",
+      "i.revoked_at is null",
+    ]);
+  });
+
+  it("a linha INSERIDA pelo grant de afiliado concede Pro", async () => {
+    montar({ content_audit_logs: { rows: [{}] } });
+
+    await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      kind: "afiliado",
+    });
+
+    const insert = estado.double.de("creators").find((c) => c.op === "insert")!;
+    expect(insert.payload!.kind).toBe("afiliado");
+    expect(concedeProPelaMigration(insert.payload!, RAMO.condicoes)).toBe(true);
+  });
+
+  it("a mesma linha depois do revoke NÃO concede", async () => {
+    const ativa = {
+      id: "c1",
+      granted_at: "2026-01-01",
+      granted_by: "a",
+      note: null,
+      kind: "afiliado",
+      revoked_at: null,
+    };
+    montar({
+      creators: { rows: [ativa] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    // As duas metades: antes concede, depois não. Sem a primeira, a segunda
+    // passaria mesmo se a linha nunca tivesse concedido nada.
+    expect(concedeProPelaMigration(ativa, RAMO.condicoes)).toBe(true);
+
+    await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
+
+    const update = estado.double.de("creators").find((c) => c.op === "update")!;
+    const depois = { ...ativa, ...update.payload };
+    expect(typeof depois.revoked_at).toBe("string");
+    expect(concedeProPelaMigration(depois, RAMO.condicoes)).toBe(false);
+  });
+});
+
+describe("PATCH /content/affiliates/:id: dono do código", () => {
+  const DONO = "22222222-2222-2222-2222-222222222222";
+  const AFILIADO = { id: "aff-1", name: "Parceira", code: "BORA10" };
+
+  it("user_id que não existe em profiles devolve 400 user_not_found e não atualiza", async () => {
+    montar({
+      affiliates: { rows: [AFILIADO] },
+      profiles: { rows: [] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("PATCH", "/content/affiliates/aff-1", {
+      user_id: DONO,
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("user_not_found");
+    expect(
+      estado.double.de("affiliates").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("valor que nem é uuid recebe o mesmo 400, sem consultar profiles", async () => {
+    montar({
+      affiliates: { rows: [AFILIADO] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("PATCH", "/content/affiliates/aff-1", {
+      user_id: "nao-e-uuid",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("user_not_found");
+    expect(estado.double.de("profiles")).toHaveLength(0);
+  });
+
+  it("uuid de um perfil que existe grava o dono", async () => {
+    montar({
+      affiliates: { rows: [{ ...AFILIADO, user_id: DONO }] },
+      profiles: { rows: [{ user_id: DONO }] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("PATCH", "/content/affiliates/aff-1", {
+      user_id: DONO,
+    });
+
+    expect(r.status).toBe(200);
+    const update = estado.double
+      .de("affiliates")
+      .find((c) => c.op === "update")!;
+    expect(update.payload).toEqual({ user_id: DONO });
+  });
+
+  it("null desvincula, sem consultar profiles", async () => {
+    montar({
+      affiliates: { rows: [AFILIADO] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("PATCH", "/content/affiliates/aff-1", {
+      user_id: null,
+    });
+
+    expect(r.status).toBe(200);
+    expect(estado.double.de("profiles")).toHaveLength(0);
+    expect(
+      estado.double.de("affiliates").find((c) => c.op === "update")!.payload,
+    ).toEqual({ user_id: null });
+  });
+});
+
+describe("GET /affiliates-stats: dono do código", () => {
+  it("devolve user_id, owner_name e owner_email do dono, e null sem dono", async () => {
+    const DONO = "22222222-2222-2222-2222-222222222222";
+    montar({
+      affiliates: {
+        rows: [
+          { id: "a1", code: "COMDONO", revenue_cents: 2, user_id: DONO },
+          { id: "a2", code: "SEMDONO", revenue_cents: 1 },
+        ],
+      },
+      profiles: {
+        rows: [{ user_id: DONO, name: "Rafa", email: "rafa@exemplo.com" }],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/affiliates-stats");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toEqual([
+      {
+        id: "a1",
+        code: "COMDONO",
+        revenue_cents: 2,
+        user_id: DONO,
+        owner_name: "Rafa",
+        owner_email: "rafa@exemplo.com",
+      },
+      {
+        id: "a2",
+        code: "SEMDONO",
+        revenue_cents: 1,
+        user_id: null,
+        owner_name: null,
+        owner_email: null,
+      },
+    ]);
+    // UMA consulta de perfis para a lista inteira, só com os donos que existem.
+    const perfis = estado.double.de("profiles");
+    expect(perfis).toHaveLength(1);
+    expect(perfis[0].filtros).toContainEqual({
+      tipo: "in",
+      coluna: "user_id",
+      valor: [DONO],
+    });
+  });
+});
