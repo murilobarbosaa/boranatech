@@ -390,12 +390,17 @@ export function buildCodeRules(codeLanguages: string[]): string {
     "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
     "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
-    "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+    // Em Python a regra geral "sem import" contradizia a excecao de import da
+    // lista, e o modelo passou a omitir o import de modulo permitido
+    // (python-int-13 do Lote 06d). A regra de js e ts fica igual.
     ...(codeLanguages.includes("python")
       ? [
-          `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo.`,
+          "- Trecho autocontido: nada de arquivo (open, leitura ou escrita), rede, entrada do usuario, aleatoriedade, data ou hora; so a linguagem e os modulos da lista abaixo.",
+          `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo. Se o trecho usa um modulo da lista, o import aparece no proprio trecho (json.dumps sem import json lanca NameError). JSON sempre sobre texto, com json.dumps e json.loads; json.dump e json.load pedem arquivo e sao proibidos.`,
         ]
-      : []),
+      : [
+          "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+        ]),
     "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
     `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
   ].join("\n");
@@ -500,7 +505,8 @@ export const PYTHON_STDLIB_ALLOWED = [
   "enum",
   "textwrap",
 ];
-const EXTERNAL_RE = /\b(export|require|fetch)\b|readFile|\bopen\(/;
+const FILE_RE = /readFile|\bopen\(/;
+const EXTERNAL_WORD_RE = /\b(export|require|fetch)\b/;
 const RELATIVE_IMPORT_RE = /\b(?:import|from)\s+['"]\.\.?\//;
 const PYTHON_IMPORT_RE =
   /^\s*(?:import\s+([\w.]+(?:\s*,\s*[\w.]+)*)|from\s+([\w.]+)\s+import\b)/;
@@ -510,18 +516,30 @@ const PYTHON_IMPORT_RE =
 // para linguagens de IMPORT_FREE_LANGUAGES). Em js e ts qualquer import e
 // externo; em python, import e from X import so sao aceitos quando cada
 // modulo (primeiro segmento) esta em PYTHON_STDLIB_ALLOWED.
-export function dependsOnExternal(
+// Devolve o MOTIVO, nao so sim ou nao, porque a mensagem vira nota de
+// correcao para o modelo. A versao antiga dizia "import, require, fetch ou
+// arquivo" sem dizer qual: nos Lotes 06c e 06d todas as tentativas de
+// arquivos.json caiam por open, e o modelo reagiu como se import fosse
+// proibido (python-int-13 saiu com json.dump sem import json).
+export function externalDependency(
   code: string,
   codeLanguages: string[],
-): boolean {
+): string | null {
   if (!codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang))) {
-    return false;
+    return null;
   }
-  if (EXTERNAL_RE.test(code) || RELATIVE_IMPORT_RE.test(code)) return true;
+  if (FILE_RE.test(code)) {
+    return "le ou grava arquivo (open, readFile); o trecho precisa rodar sem arquivo nenhum";
+  }
+  const palavra = EXTERNAL_WORD_RE.exec(code);
+  if (palavra) return `usa ${palavra[1]}; o trecho precisa rodar sozinho`;
+  if (RELATIVE_IMPORT_RE.test(code)) return "importa modulo relativo";
   const python = codeLanguages.includes("python");
   for (const linha of code.split("\n")) {
     if (!python) {
-      if (/\bimport\b/.test(linha)) return true;
+      if (/\bimport\b/.test(linha)) {
+        return "usa import; em js e ts o trecho nao importa nada";
+      }
       continue;
     }
     const m = PYTHON_IMPORT_RE.exec(linha);
@@ -529,10 +547,19 @@ export function dependsOnExternal(
     const modulos = (m[1] ?? m[2]).split(",").map((nome) => nome.trim());
     for (const modulo of modulos) {
       const raiz = modulo.split(/\s+as\s+/)[0].split(".")[0];
-      if (!PYTHON_STDLIB_ALLOWED.includes(raiz)) return true;
+      if (!PYTHON_STDLIB_ALLOWED.includes(raiz)) {
+        return `importa ${raiz}, fora da lista permitida (${PYTHON_STDLIB_ALLOWED.join(", ")})`;
+      }
     }
   }
-  return false;
+  return null;
+}
+
+export function dependsOnExternal(
+  code: string,
+  codeLanguages: string[],
+): boolean {
+  return externalDependency(code, codeLanguages) !== null;
 }
 // Heuristica de "alternativa de saida escrita como frase": a saida crua de um
 // programa raramente contem a palavra imprime ou termina em letra seguida de
@@ -617,10 +644,9 @@ export function codeRuleViolations(
         `${rotulo}: pergunta contem codigo (o trecho vai so em codigo.trecho)`,
       );
     }
-    if (dependsOnExternal(trecho, codeLanguages)) {
-      out.push(
-        `${rotulo}: trecho depende de import, require, fetch ou arquivo (precisa ser autocontido)`,
-      );
+    const dependencia = externalDependency(trecho, codeLanguages);
+    if (dependencia) {
+      out.push(`${rotulo}: trecho nao e autocontido: ${dependencia}`);
     }
     const alternativas = Object.values(question.alternativas);
     if (question.tipo === "completar") {

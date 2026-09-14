@@ -13,6 +13,7 @@ import {
   codeTypeViolations,
   dependsOnExternal,
   execViolations,
+  externalDependency,
   type GeneratedQuestion,
   missingCodeCount,
   MAX_QUOTA_PER_SECTION,
@@ -1088,5 +1089,63 @@ describe("portao final: adaptador e rotulo por id", () => {
         null,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("externalDependency: o motivo, nao so o sim ou nao", () => {
+  it("import de modulo da lista em python nao e dependencia", () => {
+    expect(
+      externalDependency("import json\nprint(json.dumps([1]))", ["python"]),
+    ).toBeNull();
+  });
+
+  it("import de pacote de fora nomeia o pacote", () => {
+    expect(externalDependency("import requests", ["python"])).toContain(
+      "requests",
+    );
+  });
+
+  it("open nomeia o arquivo como motivo, nao o import", () => {
+    const motivo = externalDependency(
+      "import json\nwith open('a.json') as f:\n  print(json.load(f))",
+      ["python"],
+    );
+    expect(motivo).toContain("open");
+    expect(motivo).not.toContain("import");
+  });
+
+  it("a violacao de trecho nao autocontido traz o motivo especifico", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          codigo: {
+            linguagem: "python",
+            trecho: "with open('a.txt') as f:\n  print(f.read())",
+          },
+          alternativas: { a: "1", b: "2", c: "3", d: "4" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["python"],
+    );
+    const linha = v.find((x) => x.includes("autocontido"));
+    expect(linha).toContain("open");
+    expect(linha).not.toContain("import, require, fetch ou arquivo");
+  });
+});
+
+describe("buildCodeRules: imports e arquivo em python", () => {
+  it("python nao diz sem import e explica o import da lista e o JSON sobre texto", () => {
+    const regras = buildCodeRules(["python"]);
+    expect(regras).not.toContain("sem import, require");
+    expect(regras).toContain("o import aparece no proprio trecho");
+    expect(regras).toContain("json.dumps e json.loads");
+  });
+
+  it("js mantem a regra de autocontido de hoje, byte a byte", () => {
+    expect(buildCodeRules(["js"])).toContain(
+      "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+    );
   });
 });
