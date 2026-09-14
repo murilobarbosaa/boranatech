@@ -92,6 +92,26 @@ Disciplina de codigo em trilha de linguagem, framework e ferramenta (SUBSTITUI a
 - A faixa de 120 a 250 palavras de prosa por passo continua valendo; o codigo nao conta como palavra.
 - O restante do guia (anatomia da folha, voz, conexoes nominais, resources canonicos, projeto unico gratuito, ids estaveis, registro triplo, pool) vale igual.
 
+## 12. Revisao humana obrigatoria
+
+- Toda trilha nova com `codeLanguages` entrega, no lote da pool, a tabela de revisao: `pnpm verify:quiz-pool <slug> --tabela-revisao`. Uma linha por pergunta de codigo (nenhuma para conceito): id, tipo, linguagem, `executado` ou `nao-executado` e o resumo da alternativa correta em ate 60 caracteres. Cada linha e lida contra o trecho e o enunciado, e o veredito (certa ou errada, com o motivo) vai no relatorio do lote. Pergunta errada nao entra em commit.
+- Por que e obrigatoria mesmo com execucao: o portao prova que o trecho roda, quebra ou imprime o esperado; nao prova que a alternativa correta descreve o motivo certo. Medido: na pool de Python (Lote 06g), 4 de 8 perguntas de `erro` aprovadas pelo portao estavam semanticamente erradas; na de JavaScript (Lote 06h), 0 de 9. O segundo numero nao revoga a regra: sem a leitura nao ha como saber em qual dos dois casos a trilha nova cai.
+- Linguagem sem runner (`runner: null` em `scripts/languageCapabilities.mts`: ts, bash, html, css e dockerfile): a verificacao por execucao nao cobre nenhum trecho, e o portao e o verificador dizem isso (`[aviso] N trechos de <linguagem> sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria`, e `nao-executado` na tabela). Ali a revisao cobre TODAS as perguntas de codigo, nao uma amostra, e e planejada desde o inicio do lote: o tempo da leitura completa com `--tabela-revisao` entra no plano antes da geracao, nao depois.
+- Em bash e dockerfile (saida de ferramenta), alternativa de `saida` ou `saidaEsperada` que parece frase ("Already up to date.") nao reprova: sai como `[portao] [aviso] ... revisao humana confirma`, e a tabela decide se e saida real de terminal ou frase inventada. Em js, python, html e css a regra de frase continua reprovando.
+- `codigo.saidaEsperada` segue a capacidade da linguagem: obrigatoria em js, ts, python e bash (comando de Git tem saida real e previsivel, e o campo e a unica declaracao explicita da intencao, que e o que a revisao compara com a correta); opcional em html, css e dockerfile, que nao tem saida de terminal (presente e vazia reprova).
+- Linguagem nova em `codeLanguages` e declarada primeiro em `LANGUAGE_CAPABILITIES` (runner, saidaEsperadaAplicavel, importRule, saidaDeFerramenta). Linguagem fora do mapa e erro de configuracao: o gerador para, nao cai num padrao.
+
+Disciplina de codigo em linguagem sem runner de marcacao e estilo (html, css), complementando a da secao 11:
+
+- `completar` e `erro` sao os tipos principais. A lacuna e a tag, o atributo, a propriedade ou o seletor que falta; o defeito e a tag que nao fecha, o atributo no lugar errado, a propriedade que nao existe, o seletor que nao casa. Os dois se conferem lendo o trecho, que ali e o unico instrumento.
+- `saida` so onde existe saida real e exata. Renderizacao nao e saida: descrever o que aparece na tela vira frase, que a regra de frase reprova em html e css, e vira pergunta que so acerta quem imaginou a mesma tela.
+
+## 13. Remocao de CSS
+
+- Antes de remover uma classe CSS (ou uma familia, como `.tag-*`), grep de TODO uso no repositorio inteiro, pelo prefixo da familia e nao so pelo nome completo: `className` literal, template string (`${area.tagClass}`), valor em dado (`client/src/lib/data.ts`, a coluna `tag_class` em `supabase/migrations/`, `server/`, seed), teste e script. Ex.: `git grep -nE 'tag-|tagClass|tag_class'`. O nome inteiro da classe muitas vezes so existe em tempo de execucao, montado a partir de um valor que mora em outro arquivo.
+- Licao do Lote M1: `2dae5521` (2026-09-01) tirou as 17 regras `.tag-*` do `index.css` e migrou `Cursos.tsx` e `SubAreaDetalhe.tsx` para `tagPaletteOf`; `RoadmapsV2Index.tsx` ficou de fora porque montava a classe em template string a partir de `area.tagClass`, e a vitrine /roadmaps ficou em producao com o quadrado do icone sem fundo e o icone branco invisivel ate `eb991189`. Nada acusou: o `tsc` nao le classe CSS e nenhum teste afirmava a cor.
+- O relatorio do lote lista TODOS os arquivos em que o grep achou a classe ou o prefixo, com o destino de cada um (migrado, ou por que nao e uso). Lista vazia vem com o comando de grep colado, para quem le conferir a superficie.
+
 ## Fechamento de qualquer lote
 
 - pnpm check com exit 0.

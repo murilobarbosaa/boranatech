@@ -47,8 +47,10 @@ import {
   missingCodeCount,
   NIVEIS,
   normalizeGeneratedQuestion,
+  noRunnerWarnings,
   overusedFontes,
   poolGateViolations,
+  poolRuleWarnings,
   type SectionMaterial,
   sectionQuotaWarnings,
   sectionQuotas,
@@ -158,6 +160,7 @@ async function generateSection(
     section.leaves.map((leaf) => leaf.id),
     quota,
     codeQuota,
+    roadmap.codeLanguages ?? [],
   );
   const jsonSchema = toOpenAIStrictSchema(schema);
   const systemPrompt = systemPromptFor(roadmap, codeQuota);
@@ -468,6 +471,7 @@ if (dryRun) {
           sections[i].leaves.map((leaf) => leaf.id),
           quotas[i],
           codeQuota,
+          roadmap.codeLanguages ?? [],
         );
         lines.push(
           `### SCHEMA ${nivel} / ${sections[i].title}`,
@@ -529,6 +533,15 @@ if (repairPath) {
     noExec ? null : executarPor,
   );
   for (const aviso of codeQuotaWarnings(reparo.questions, secoes)) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  for (const aviso of noRunnerWarnings(reparo.questions)) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  for (const aviso of poolRuleWarnings(
+    reparo.questions,
+    roadmap.codeLanguages ?? [],
+  )) {
     console.log(`[portao] [aviso] ${aviso}`);
   }
   console.log(
@@ -721,6 +734,14 @@ const violacoes = poolGateViolations(
 // obrigaria a autorar codigo a mao em toda secao que esgota tentativas; o
 // aviso deixa a decisao com quem revisa. Ver codeQuotaWarnings.
 for (const aviso of codeQuotaWarnings(questions, gateSections)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+// Linguagem sem runner: aviso, nunca bloqueio. A revisao humana cobre o que
+// a maquina nao executou (ver noRunnerWarnings e avisoSemRunner).
+for (const aviso of noRunnerWarnings(questions)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+for (const aviso of poolRuleWarnings(questions, roadmap.codeLanguages ?? [])) {
   console.log(`[portao] [aviso] ${aviso}`);
 }
 if (problems.length > 0 || violacoes.length > 0) {

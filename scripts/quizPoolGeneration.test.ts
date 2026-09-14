@@ -10,6 +10,7 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeRuleWarnings,
   codeQuotaWarnings,
   codeTypeViolations,
   dependsOnExternal,
@@ -19,6 +20,7 @@ import {
   missingCodeCount,
   MAX_QUOTA_PER_SECTION,
   normalizeGeneratedQuestion,
+  noRunnerWarnings,
   poolGateViolations,
   type SectionMaterial,
   sectionQuotaWarnings,
@@ -1352,5 +1354,201 @@ describe("folhas elegiveis para codigo", () => {
         ),
       ),
     ).toBe(true);
+  });
+});
+
+describe("noRunnerWarnings: trechos que a execucao nao cobre", () => {
+  const codigo = (id: string, linguagem: string): QuizQuestion => ({
+    id,
+    nivel: "iniciante",
+    pergunta: "O que acontece?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    tipo: "saida",
+    codigo: { linguagem, trecho: "echo 1" },
+    alternativasCodigo: true,
+  });
+  const conceito: QuizQuestion = {
+    id: "git-ini-09",
+    nivel: "iniciante",
+    pergunta: "O que e um commit?",
+    alternativas: {
+      a: "Um retrato",
+      b: "Um branch",
+      c: "Um remoto",
+      d: "Um merge",
+    },
+    correta: "a",
+    explicacao: "Guarda o estado.",
+    fonte: "basico.variaveis",
+  };
+
+  it("conta por linguagem sem runner e diz que a revisao humana e obrigatoria", () => {
+    expect(
+      noRunnerWarnings([
+        codigo("git-ini-01", "bash"),
+        codigo("git-ini-02", "bash"),
+        codigo("py-ini-01", "python"),
+        conceito,
+      ]),
+    ).toEqual([
+      "2 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
+    ]);
+  });
+
+  it("pool so com linguagem que executa nao avisa nada", () => {
+    expect(noRunnerWarnings([codigo("py-ini-01", "python"), conceito])).toEqual(
+      [],
+    );
+  });
+
+  it("execViolations pula o trecho sem runner em vez de inventar veredito", () => {
+    const executarPor = (linguagem: string) =>
+      linguagem === "js"
+        ? () => ({ status: 0, stdout: "", erro: "", timeout: false })
+        : null;
+    expect(
+      execViolations(
+        [toGeneratedQuestion(codigo("git-ini-01", "bash"))],
+        ["bash"],
+        executarPor,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("saidaEsperada condicionada: schema, regra e prompt", () => {
+  const ids = ["basico.variaveis", "basico.tipos"];
+  const resposta = (linguagem: string, saidaEsperada?: string) => ({
+    questions: [
+      {
+        pergunta: "Qual e o defeito deste codigo?",
+        alternativas: {
+          a: "Falta fechar a tag",
+          b: "Nada",
+          c: "Aspas",
+          d: "Ponto",
+        },
+        correta: "a",
+        explicacao: "A tag p nao fecha.",
+        fonte: "basico.variaveis",
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      },
+    ],
+  });
+
+  it("schema de html aceita erro sem saidaEsperada", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["html"]).safeParse(resposta("html"))
+        .success,
+    ).toBe(true);
+  });
+
+  it("schema de js continua exigindo saidaEsperada e o JSON dele nao muda", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["js"]).safeParse(resposta("js")).success,
+    ).toBe(false);
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["js"])),
+      ),
+    ).toBe(
+      JSON.stringify(toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1))),
+    );
+  });
+
+  it("schema strict de html nao pede saidaEsperada", () => {
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["html"])),
+      ),
+    ).not.toContain("saidaEsperada");
+  });
+
+  it("regra de codigo: html sem campo passa, html vazio viola, js sem campo viola", () => {
+    const erroEm = (linguagem: string, saidaEsperada?: string) =>
+      gerada({
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      });
+    const deSaida = (v: string[]) =>
+      v.filter((l) => l.includes("saidaEsperada"));
+    expect(deSaida(codeRuleViolations([erroEm("html")], ["html"]))).toEqual([]);
+    expect(
+      deSaida(codeRuleViolations([erroEm("html", " ")], ["html"])).some((l) =>
+        l.includes("vazia"),
+      ),
+    ).toBe(true);
+    expect(deSaida(codeRuleViolations([erroEm("js")], ["js"]))).toHaveLength(1);
+  });
+
+  it("prompt de html explica que erro nao traz saidaEsperada; o de js fica igual", () => {
+    const html = buildCodeRules(["html"]);
+    expect(html).not.toContain("- erro traz codigo.saidaEsperada");
+    expect(html).toContain("erro sem saidaEsperada");
+    expect(buildCodeRules(["js"])).toContain(
+      "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo",
+    );
+  });
+});
+
+describe("FRASE_RE vira aviso em linguagem de saida de ferramenta", () => {
+  const saidaEm = (linguagem: string, alternativa: string) =>
+    gerada({
+      tipo: "saida",
+      codigo: { linguagem, trecho: "git pull" },
+      alternativas: {
+        a: alternativa,
+        b: "error: failed",
+        c: "fatal: no",
+        d: "Merge made",
+      },
+      alternativasCodigo: true,
+    });
+  const erroEm = (linguagem: string, saidaEsperada: string) =>
+    gerada({
+      tipo: "erro",
+      codigo: { linguagem, trecho: "git pul", saidaEsperada },
+      alternativasCodigo: false,
+    });
+  const deFrase = (v: string[]) => v.filter((l) => l.includes("frase"));
+
+  it("bash: saida de terminal com ponto final nao reprova, vira aviso", () => {
+    const q = saidaEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    const avisos = codeRuleWarnings([q], ["bash"]);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("revisao humana");
+  });
+
+  it("bash: saidaEsperada que parece frase tambem vira aviso", () => {
+    const q = erroEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    expect(codeRuleWarnings([q], ["bash"])).toHaveLength(1);
+  });
+
+  it("html continua reprovando alternativa de saida em prosa", () => {
+    const q = saidaEm("html", "O titulo aparece em negrito.");
+    expect(deFrase(codeRuleViolations([q], ["html"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["html"])).toEqual([]);
+  });
+
+  it("js continua reprovando e nao avisa nada", () => {
+    const q = saidaEm("js", "O codigo imprime 50.");
+    expect(deFrase(codeRuleViolations([q], ["js"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["js"])).toEqual([]);
   });
 });

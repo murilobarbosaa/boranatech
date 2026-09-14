@@ -20,6 +20,13 @@ import {
 } from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { conferirCodigo, type Executor } from "./verifyQuizPoolByExecution.mts";
+import {
+  avisoSemRunner,
+  capabilityOf,
+  LANGUAGE_CAPABILITIES,
+  saidaDeFerramentaEm,
+  saidaEsperadaAplicavelEm,
+} from "./languageCapabilities.mts";
 
 export const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 export const MAX_PER_FONTE = 3;
@@ -216,6 +223,7 @@ export function buildQuestionSchema(
   leafIds: string[],
   count: number,
   codeQuota = 0,
+  codeLanguages: string[] = [],
 ): z.ZodType<{ questions: GeneratedQuestion[] }> {
   const base = {
     pergunta: z.string(),
@@ -240,32 +248,51 @@ export function buildQuestionSchema(
   // z.union (e nao discriminatedUnion) porque o zod serializa a primeira
   // como anyOf, que e a forma que o strict mode da OpenAI aceita, e a
   // segunda como oneOf.
+  // Ramo erro por capacidade da linguagem da trilha: com saidaEsperada onde
+  // ela se aplica, sem onde nao (html, css, dockerfile); trilha que mistura
+  // os dois tipos de linguagem leva os dois ramos. Sem linguagens informadas,
+  // o ramo de sempre. A ordem da uniao nao muda para js e python, entao o
+  // schema strict deles sai identico.
+  const aplicaveis = codeLanguages.map((lang) =>
+    saidaEsperadaAplicavelEm(lang),
+  );
+  const comSaida = aplicaveis.length === 0 || aplicaveis.some(Boolean);
+  const semSaida = aplicaveis.some((aplicavel) => !aplicavel);
+  const conceito = z.object({
+    ...base,
+    tipo: z.literal("conceito"),
+    codigo: z.null(),
+    alternativasCodigo: z.literal(false),
+  });
+  const erroComSaida = z.object({
+    ...base,
+    tipo: z.literal("erro"),
+    codigo: z.object({
+      linguagem: z.string(),
+      trecho: z.string(),
+      saidaEsperada: z.string(),
+    }),
+    alternativasCodigo: z.literal(false),
+  });
+  const erroSemSaida = z.object({
+    ...base,
+    tipo: z.literal("erro"),
+    codigo: z.object({ linguagem: z.string(), trecho: z.string() }),
+    alternativasCodigo: z.literal(false),
+  });
+  const completarOuSaida = z.object({
+    ...base,
+    tipo: z.enum(["completar", "saida"]),
+    codigo: z.object({ linguagem: z.string(), trecho: z.string() }),
+    alternativasCodigo: z.literal(true),
+  });
   const question =
     codeQuota > 0
-      ? z.union([
-          z.object({
-            ...base,
-            tipo: z.literal("conceito"),
-            codigo: z.null(),
-            alternativasCodigo: z.literal(false),
-          }),
-          z.object({
-            ...base,
-            tipo: z.literal("erro"),
-            codigo: z.object({
-              linguagem: z.string(),
-              trecho: z.string(),
-              saidaEsperada: z.string(),
-            }),
-            alternativasCodigo: z.literal(false),
-          }),
-          z.object({
-            ...base,
-            tipo: z.enum(["completar", "saida"]),
-            codigo: z.object({ linguagem: z.string(), trecho: z.string() }),
-            alternativasCodigo: z.literal(true),
-          }),
-        ])
+      ? comSaida && semSaida
+        ? z.union([conceito, erroComSaida, erroSemSaida, completarOuSaida])
+        : comSaida
+          ? z.union([conceito, erroComSaida, completarOuSaida])
+          : z.union([conceito, erroSemSaida, completarOuSaida])
       : z.object(base);
   return z.object({
     questions: z.array(question).min(count).max(count),
@@ -410,12 +437,27 @@ export function buildCodeRules(codeLanguages: string[]): string {
     ...exemploCodigoNoEnunciado(codeLanguages),
     "- saida: cada alternativa e EXATAMENTE o texto que o terminal mostra, linha por linha separada por quebra de linha, sem frase em volta (escrever O codigo imprime 50. esta errado; escrever 50 esta certo) e sem virgula juntando linhas. A correta e a alternativa cujo texto e a saida real do trecho: confira a saida mentalmente, linha a linha, antes de escolher a letra.",
     "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
-    "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
+    // saidaEsperada so onde a linguagem tem saida de terminal; trilha so com
+    // essas linguagens recebe a linha de sempre, byte a byte.
+    ...(codeLanguages.every((lang) => saidaEsperadaAplicavelEm(lang))
+      ? [
+          "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
+        ]
+      : [
+          ...(codeLanguages.some((lang) => saidaEsperadaAplicavelEm(lang))
+            ? [
+                "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
+              ]
+            : []),
+          `- erro sem saidaEsperada em ${codeLanguages.filter((lang) => !saidaEsperadaAplicavelEm(lang)).join(", ")}: essas linguagens nao tem saida de terminal, entao a pergunta de erro NAO traz codigo.saidaEsperada. A pergunta declara a intencao (por exemplo: esta pagina deveria mostrar o titulo em negrito) e a correta descreve o defeito do trecho.`,
+        ]),
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
     // Em Python a regra geral "sem import" contradizia a excecao de import da
     // lista, e o modelo passou a omitir o import de modulo permitido
     // (python-int-13 do Lote 06d). A regra de js e ts fica igual.
-    ...(codeLanguages.includes("python")
+    ...(codeLanguages.some(
+      (lang) => capabilityOf(lang).importRule === "stdlib-allowlist",
+    )
       ? [
           "- Trecho autocontido: nada de arquivo (open, leitura ou escrita), rede, entrada do usuario, aleatoriedade, data ou hora; so a linguagem e os modulos da lista abaixo.",
           `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo. Se o trecho usa um modulo da lista, o import aparece no proprio trecho (json.dumps sem import json lanca NameError). JSON sempre sobre texto, com json.dumps e json.loads; json.dump e json.load pedem arquivo e sao proibidos.`,
@@ -519,7 +561,10 @@ const DASH_RE = /\u2014|\u2013/;
 // so exporta roda em silencio e so faz sentido com um importador, e foi a
 // cerca de export de modulos.esm que manteve a folha como material no 04d,
 // com o modelo escrevendo import em todas as cinco tentativas da secao.
-export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
+// Derivada de LANGUAGE_CAPABILITIES: toda linguagem que tem regra de import.
+export const IMPORT_FREE_LANGUAGES = Object.keys(LANGUAGE_CAPABILITIES).filter(
+  (lang) => LANGUAGE_CAPABILITIES[lang].importRule !== "nao-se-aplica",
+);
 // Em Python, import da biblioteca padrao e legitimo num trecho autocontido,
 // e a regra unica de "sem import" (Lote 05) proibia a palavra. Lista fechada
 // de modulos deterministas e sem ambiente: fora dela ficam random, datetime,
@@ -570,9 +615,11 @@ export function externalDependency(
   const palavra = EXTERNAL_WORD_RE.exec(code);
   if (palavra) return `usa ${palavra[1]}; o trecho precisa rodar sozinho`;
   if (RELATIVE_IMPORT_RE.test(code)) return "importa modulo relativo";
-  const python = codeLanguages.includes("python");
+  const allowlist = codeLanguages.some(
+    (lang) => capabilityOf(lang).importRule === "stdlib-allowlist",
+  );
   for (const linha of code.split("\n")) {
-    if (!python) {
+    if (!allowlist) {
       if (/\bimport\b/.test(linha)) {
         return "usa import; em js e ts o trecho nao importa nada";
       }
@@ -732,7 +779,10 @@ export function codeRuleViolations(
       if (!question.alternativasCodigo) {
         out.push(`${rotulo}: saida exige alternativasCodigo true`);
       }
-      if (alternativas.some((alt) => FRASE_RE.test(alt.trim()))) {
+      if (
+        !saidaDeFerramentaEm(codigo.linguagem) &&
+        alternativas.some((alt) => FRASE_RE.test(alt.trim()))
+      ) {
         out.push(
           `${rotulo}: alternativa de saida escrita como frase (tem que ser a saida crua)`,
         );
@@ -742,16 +792,71 @@ export function codeRuleViolations(
       out.push(`${rotulo}: erro exige alternativasCodigo false`);
     }
     if (question.tipo === "erro") {
-      const saidaEsperada = codigo.saidaEsperada ?? "";
-      if (saidaEsperada.trim().length === 0) {
-        out.push(
-          `${rotulo}: erro exige codigo.saidaEsperada (stdout cru que o codigo deveria produzir)`,
-        );
-      } else if (FRASE_RE.test(saidaEsperada.trim())) {
-        out.push(
-          `${rotulo}: saidaEsperada escrita como frase (tem que ser a saida crua)`,
-        );
+      if (!saidaEsperadaAplicavelEm(codigo.linguagem)) {
+        // html, css, dockerfile: sem saida de terminal, o campo e opcional;
+        // presente e vazio e defeito de forma.
+        if (
+          codigo.saidaEsperada !== undefined &&
+          codigo.saidaEsperada.trim().length === 0
+        ) {
+          out.push(
+            `${rotulo}: saidaEsperada vazia (em ${codigo.linguagem} o campo e opcional: omita em vez de deixar vazio)`,
+          );
+        }
+      } else {
+        const saidaEsperada = codigo.saidaEsperada ?? "";
+        if (saidaEsperada.trim().length === 0) {
+          out.push(
+            `${rotulo}: erro exige codigo.saidaEsperada (stdout cru que o codigo deveria produzir)`,
+          );
+        } else if (
+          !saidaDeFerramentaEm(codigo.linguagem) &&
+          FRASE_RE.test(saidaEsperada.trim())
+        ) {
+          out.push(
+            `${rotulo}: saidaEsperada escrita como frase (tem que ser a saida crua)`,
+          );
+        }
       }
+    }
+  });
+  return out;
+}
+
+// Avisos de forma que NAO reprovam. Em linguagem de saida de ferramenta (bash,
+// dockerfile) texto de terminal real parece frase ("Already up to date."), e
+// FRASE_RE reprovaria a alternativa correta; ali a regra vira aviso e a
+// revisao humana obrigatoria da trilha decide. Em js, python, html e css a
+// regra continua reprovando em codeRuleViolations. Canal separado para o retry
+// nao pedir ao modelo que troque saida real por outra.
+export function codeRuleWarnings(
+  questions: GeneratedQuestion[],
+  codeLanguages: string[],
+  rotuloDe: Rotulo = rotuloPorPosicao,
+): string[] {
+  const out: string[] = [];
+  questions.forEach((question, index) => {
+    const codigo = question.codigo ?? null;
+    if (!codigo || !isCodeQuestion({ tipo: question.tipo })) return;
+    if (!codeLanguages.includes(codigo.linguagem)) return;
+    if (!saidaDeFerramentaEm(codigo.linguagem)) return;
+    const frases =
+      question.tipo === "saida"
+        ? Object.values(question.alternativas).filter((alt) =>
+            FRASE_RE.test(alt.trim()),
+          )
+        : [];
+    if (
+      question.tipo === "erro" &&
+      codigo.saidaEsperada &&
+      FRASE_RE.test(codigo.saidaEsperada.trim())
+    ) {
+      frases.push(codigo.saidaEsperada);
+    }
+    if (frases.length > 0) {
+      out.push(
+        `${rotuloDe(question, index)}: parece frase (${frases.map((f) => JSON.stringify(f)).join(", ")}); em ${codigo.linguagem} pode ser saida real de terminal, revisao humana confirma`,
+      );
     }
   });
   return out;
@@ -946,6 +1051,35 @@ export function poolGateViolations(
       ? execViolations(geradas, codeLanguages, executarPor, rotuloPorId)
       : []),
   ];
+}
+
+// Trechos que a execucao nao cobre, por linguagem sem runner. Canal de AVISO,
+// separado de execViolations (que ja pula esses trechos e segue devolvendo so
+// violacoes, porque o retry, o portao e o reparo dependem dessa forma): nunca
+// bloqueia, e existe para a pool dizer em voz alta o que ninguem executou.
+export function noRunnerWarnings(questions: QuizQuestion[]): string[] {
+  const porLinguagem = new Map<string, number>();
+  questions.forEach((question) => {
+    if (!isCodeQuestion(question) || !question.codigo) return;
+    const linguagem = question.codigo.linguagem;
+    if (capabilityOf(linguagem).runner) return;
+    porLinguagem.set(linguagem, (porLinguagem.get(linguagem) ?? 0) + 1);
+  });
+  return Array.from(porLinguagem.entries()).map(([linguagem, trechos]) =>
+    avisoSemRunner(linguagem, trechos),
+  );
+}
+
+// codeRuleWarnings na pool montada, rotulado pelo id, para o portao.
+export function poolRuleWarnings(
+  questions: QuizQuestion[],
+  codeLanguages: string[],
+): string[] {
+  return codeRuleWarnings(
+    questions.map(toGeneratedQuestion),
+    codeLanguages,
+    (question, index) => `${questions[index].id} (fonte ${question.fonte})`,
+  );
 }
 
 // Cota de codigo por nivel: quantas perguntas de codigo o laco PREVIU (soma

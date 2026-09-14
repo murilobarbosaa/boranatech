@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import type { QuizQuestion } from "../shared/roadmapQuiz/types";
 import {
   conferirCodigo,
   erroDoStderr,
@@ -9,8 +10,11 @@ import {
   fillGap,
   makeExecutor,
   normalizeStdout,
+  relatorioVerificacao,
+  resumoCorreta,
   runnerFor,
   stdoutMatches,
+  tabelaRevisao,
 } from "./verifyQuizPoolByExecution.mts";
 
 // So as funcoes puras do verificador: a execucao real (spawn de node ou
@@ -294,5 +298,144 @@ describe("excecaoObservada: o que a execucao de uma pergunta de erro viu", () =>
       makeExecutor(runner),
     );
     expect(r).toBe("ReferenceError: b is not defined (linha 2)");
+  });
+});
+
+describe("relatorioVerificacao: o verificador diz o que fez e o que nao fez", () => {
+  const linhas = [
+    {
+      id: "git-ini-01",
+      tipo: "saida",
+      fonte: "git.status",
+      linguagem: "bash",
+      resultado: "linguagem bash",
+      veredito: "SEM RUNNER" as const,
+    },
+    {
+      id: "python-ini-09",
+      tipo: "erro",
+      fonte: "valores.conversao",
+      linguagem: "python",
+      resultado: "lanca: ValueError",
+      veredito: "OK" as const,
+      observado: "ValueError: could not convert (linha 2)",
+    },
+  ];
+
+  it("pergunta sem runner sai marcada nao-executado, sem linha observado", () => {
+    const saida = relatorioVerificacao(linhas);
+    expect(saida).toContain("git-ini-01  saida  nao-executado");
+    expect(
+      saida.some((l) => l.startsWith("git-ini-01  saida  observado")),
+    ).toBe(false);
+    expect(saida).toContain(
+      "python-ini-09  erro  observado: ValueError: could not convert (linha 2)",
+    );
+  });
+
+  it("o resumo traz a contagem de nao executados com o aviso de revisao humana", () => {
+    const saida = relatorioVerificacao(linhas);
+    expect(saida).toContain(
+      "[aviso] 1 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
+    );
+  });
+});
+
+describe("tabelaRevisao: uma linha por pergunta de codigo para a revisao humana", () => {
+  const base = {
+    nivel: "iniciante" as const,
+    pergunta: "Pergunta?",
+    explicacao: "Explicacao.",
+    fonte: "folha.x",
+  };
+  const perguntas: QuizQuestion[] = [
+    {
+      ...base,
+      id: "git-ini-01",
+      tipo: "saida",
+      codigo: { linguagem: "bash", trecho: "git pull" },
+      alternativas: {
+        a: "Already up to date.",
+        b: "fatal: not a git repository",
+        c: "nothing to commit",
+        d: "error: failed to push",
+      },
+      correta: "a",
+      alternativasCodigo: true,
+    },
+    {
+      ...base,
+      id: "git-ini-02",
+      alternativas: { a: "Um", b: "Dois", c: "Tres", d: "Quatro" },
+      correta: "b",
+    },
+    {
+      ...base,
+      id: "python-ini-03",
+      tipo: "erro",
+      codigo: {
+        linguagem: "python",
+        trecho: "x = int('a')",
+        saidaEsperada: "1",
+      },
+      alternativas: {
+        a: "int nao converte a string 'a' e a linha lanca ValueError antes de qualquer print\nno programa",
+        b: "b",
+        c: "c",
+        d: "d",
+      },
+      correta: "a",
+    },
+    {
+      ...base,
+      id: "html-ini-04",
+      tipo: "completar",
+      codigo: { linguagem: "html", trecho: "<____>Titulo</h1>" },
+      alternativas: { a: "h2", b: "h1", c: "p", d: "div" },
+      correta: "b",
+      alternativasCodigo: true,
+    },
+  ];
+
+  it("uma linha por pergunta de codigo e nenhuma para conceito", () => {
+    const tabela = tabelaRevisao(perguntas);
+    expect(tabela).toHaveLength(3);
+    expect(tabela.some((l) => l.includes("git-ini-02"))).toBe(false);
+  });
+
+  it("cada linha traz id, tipo, linguagem, execucao e o resumo da correta", () => {
+    const tabela = tabelaRevisao(perguntas);
+    expect(tabela[0]).toBe(
+      "git-ini-01 | saida | bash | nao-executado | Already up to date.",
+    );
+    expect(tabela[2]).toBe(
+      "html-ini-04 | completar | html | nao-executado | h1",
+    );
+    expect(
+      tabela[1].startsWith("python-ini-03 | erro | python | executado | "),
+    ).toBe(true);
+  });
+
+  it("o resumo da correta tem no maximo 60 caracteres e uma linha so", () => {
+    const resumo = resumoCorreta(
+      "int nao converte a string 'a' e a linha lanca ValueError antes de qualquer print\nno programa",
+    );
+    expect(resumo.length).toBeLessThanOrEqual(60);
+    expect(resumo.endsWith("...")).toBe(true);
+    expect(resumo).not.toContain("\n");
+    expect(resumoCorreta("  curta   com\n espacos ")).toBe("curta com espacos");
+    expect(resumoCorreta("x".repeat(60))).toBe("x".repeat(60));
+  });
+
+  it("linguagem fora de LANGUAGE_CAPABILITIES e erro de configuracao, nao linha", () => {
+    expect(() =>
+      tabelaRevisao([
+        {
+          ...perguntas[0],
+          id: "x-ini-01",
+          codigo: { linguagem: "cobol", trecho: "DISPLAY 'OI'." },
+        },
+      ]),
+    ).toThrow(/cobol/);
   });
 });

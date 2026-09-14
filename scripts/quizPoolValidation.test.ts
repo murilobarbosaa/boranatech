@@ -370,3 +370,45 @@ describe("quizPoolWarnings: variedade de tipo de codigo por nivel", () => {
     expect(quizPoolWarnings(soConceito, roadmapComCodigo)).toHaveLength(9);
   });
 });
+
+describe("saidaEsperada condicionada a capacidade da linguagem", () => {
+  const trilhaEm = (linguagem: string): RoadmapV2 => ({
+    ...roadmap,
+    area: "linguagem",
+    kind: "linguagem",
+    codeLanguages: [linguagem],
+  });
+  const erroEm = (linguagem: string, saidaEsperada?: string): QuizQuestion => ({
+    ...pergunta("a+b-ini-01"),
+    tipo: "erro",
+    codigo: {
+      linguagem,
+      trecho: "<p>oi</p",
+      ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+    },
+  });
+  const deSaida = (q: QuizQuestion, linguagem: string) =>
+    validateQuizPool(
+      { slug: "a+b", questions: [q] },
+      "a+b",
+      trilhaEm(linguagem),
+    ).filter((p) => p.includes("saidaEsperada"));
+
+  it("html aceita erro sem saidaEsperada", () => {
+    expect(deSaida(erroEm("html"), "html")).toEqual([]);
+  });
+
+  it("html rejeita saidaEsperada presente e vazia", () => {
+    const problemas = deSaida(erroEm("html", "   "), "html");
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("vazia");
+  });
+
+  it("bash continua exigindo saidaEsperada", () => {
+    expect(
+      deSaida(erroEm("bash"), "bash").some((p) =>
+        p.includes("erro exige codigo.saidaEsperada"),
+      ),
+    ).toBe(true);
+  });
+});

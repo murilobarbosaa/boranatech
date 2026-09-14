@@ -18,6 +18,7 @@ import {
   POOL_MIN_PER_LEVEL,
 } from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
+import { saidaEsperadaAplicavelEm } from "./languageCapabilities.mts";
 
 const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 const ALTERNATIVA_IDS = ["a", "b", "c", "d"] as const;
@@ -174,10 +175,26 @@ export function validateQuizPool(
       if (DASH_RE.test(trecho ?? "")) {
         problems.push(`${q}: codigo.trecho com travessao ou meia-risca`);
       }
-      // saidaEsperada: obrigatoria em erro (e o que o verificador por
-      // execucao compara), proibida nos demais tipos.
+      // saidaEsperada: obrigatoria em erro nas linguagens com saida de
+      // terminal (e o que o verificador por execucao compara), opcional em
+      // html, css e dockerfile (capacidade em languageCapabilities.mts) e
+      // proibida nos demais tipos. Opcional nao e vazia: presente e vazia e
+      // defeito de forma.
       const { saidaEsperada } = question.codigo;
-      if (question.tipo === "erro") {
+      if (
+        question.tipo === "erro" &&
+        !saidaEsperadaAplicavelEm(linguagem ?? "")
+      ) {
+        if (saidaEsperada !== undefined && saidaEsperada.trim().length === 0) {
+          problems.push(
+            `${q}: codigo.saidaEsperada vazia (em ${linguagem} o campo e opcional: omita em vez de deixar vazio)`,
+          );
+        } else if (saidaEsperada && DASH_RE.test(saidaEsperada)) {
+          problems.push(
+            `${q}: codigo.saidaEsperada contem travessao ou meia-risca`,
+          );
+        }
+      } else if (question.tipo === "erro") {
         if (!saidaEsperada || saidaEsperada.trim().length === 0) {
           problems.push(`${q}: erro exige codigo.saidaEsperada`);
         } else if (DASH_RE.test(saidaEsperada)) {

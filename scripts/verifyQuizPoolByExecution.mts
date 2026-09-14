@@ -1,5 +1,5 @@
 // Confere por EXECUCAO as perguntas de codigo de um pool de trilha:
-//   pnpm verify:quiz-pool <slug>
+//   pnpm verify:quiz-pool <slug> [--tabela-revisao]
 // saida: roda o trecho e compara o stdout com a alternativa correta; acusa
 //   tambem alternativa errada igual ao stdout (duas respostas certas).
 // completar: a correta na lacuna roda sem lancar; cada errada na lacuna e
@@ -26,6 +26,9 @@
 // timeout. Trecho de trilha e codigo didatico curto e o portao real continua
 // sendo a revisao humana da pool; cwd e env fecham o acidente que aconteceu
 // no Lote 06, em que um trecho gravou um arquivo na raiz do repositorio.
+//
+// --tabela-revisao: depois do relatorio, imprime a tabela da revisao humana
+// (tabelaRevisao), uma linha por pergunta de codigo.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,20 +41,23 @@ import {
   type QuizQuestion,
 } from "../shared/roadmapQuiz/types";
 
+import {
+  avisoSemRunner,
+  capabilityOf,
+  type Runner,
+} from "./languageCapabilities.mts";
+
 const TIMEOUT_MS = 10000;
 const ALTERNATIVAS: QuizAlternativaId[] = ["a", "b", "c", "d"];
 
-export interface Runner {
-  command: string;
-  ext: string;
-}
+export type { Runner };
 
 // ---------- puros ----------
 
+// Runner lido de LANGUAGE_CAPABILITIES: null quando a linguagem nao executa
+// aqui; linguagem fora do mapa lanca, porque e erro de configuracao.
 export function runnerFor(linguagem: string): Runner | null {
-  if (linguagem === "js") return { command: "node", ext: ".mjs" };
-  if (linguagem === "python") return { command: "python3", ext: ".py" };
-  return null;
+  return capabilityOf(linguagem).runner;
 }
 
 // Quebras normalizadas para \n, espacos das pontas de cada linha e do todo
@@ -274,10 +280,11 @@ export function excecaoObservada(
 
 type Veredito = Conferencia["veredito"] | "SEM RUNNER";
 
-interface Linha {
+export interface Linha {
   id: string;
   tipo: string;
   fonte: string;
+  linguagem: string;
   resultado: string;
   veredito: Veredito;
   // So em pergunta de erro: ver excecaoObservada.
@@ -289,15 +296,71 @@ function conferir(question: QuizQuestion, executar: Executor): Linha {
     id: question.id,
     tipo: question.tipo ?? "",
     fonte: question.fonte,
+    linguagem: question.codigo?.linguagem ?? "",
     ...conferirCodigo(question, executar),
     observado: excecaoObservada(question, executar),
   };
 }
 
+// Saida do verify:quiz-pool, pura para o teste ler. O instrumento diz o que
+// fez e o que NAO fez: pergunta de linguagem sem runner sai marcada
+// nao-executado no lugar da linha observado, e o resumo repete, por
+// linguagem, o aviso de revisao humana obrigatoria. Para trilha que executa
+// tudo (js, python), as linhas sao as de sempre.
+export function relatorioVerificacao(linhas: Linha[]): string[] {
+  const out: string[] = [];
+  for (const l of linhas) {
+    out.push(
+      `${l.id} | ${l.tipo} | ${l.fonte} | ${l.resultado} | ${l.veredito}`,
+    );
+    if (l.veredito === "SEM RUNNER") {
+      out.push(`${l.id}  ${l.tipo}  nao-executado`);
+    } else if (l.observado) {
+      out.push(`${l.id}  ${l.tipo}  observado: ${l.observado}`);
+    }
+  }
+  const conta = (v: Veredito) => linhas.filter((l) => l.veredito === v).length;
+  out.push(
+    `\nperguntas de codigo: ${linhas.length} | CORRIGIR: ${conta("CORRIGIR")} | LER: ${conta("LER")}${conta("SEM RUNNER") ? ` | SEM RUNNER: ${conta("SEM RUNNER")}` : ""}`,
+  );
+  const semRunner = new Map<string, number>();
+  linhas.forEach((l) => {
+    if (l.veredito !== "SEM RUNNER") return;
+    semRunner.set(l.linguagem, (semRunner.get(l.linguagem) ?? 0) + 1);
+  });
+  semRunner.forEach((trechos, linguagem) =>
+    out.push(`[aviso] ${avisoSemRunner(linguagem, trechos)}`),
+  );
+  return out;
+}
+
+// Resumo da alternativa correta para a tabela de revisao: uma linha so
+// (quebras e espacos repetidos viram um espaco) e no maximo 60 caracteres,
+// cortado com "..." quando passa.
+export function resumoCorreta(texto: string): string {
+  const linha = texto.replace(/\s+/g, " ").trim();
+  return linha.length <= 60 ? linha : `${linha.slice(0, 57)}...`;
+}
+
+// Tabela da revisao humana obrigatoria (Lote 07, licao do 2c do Lote 06g:
+// 4 de 8 perguntas de erro de Python aprovadas pelo portao estavam
+// semanticamente erradas, e so a leitura lado a lado pegou). Uma linha por
+// pergunta de codigo, nenhuma para conceito: id | tipo | linguagem |
+// executado ou nao-executado | resumo da correta. "executado" vem da
+// capacidade da linguagem (tem runner), a mesma leitura que decide o SEM
+// RUNNER do relatorio; linguagem fora do mapa lanca, como em runnerFor.
+export function tabelaRevisao(questions: QuizQuestion[]): string[] {
+  return questions.filter(isCodeQuestion).map((question) => {
+    const linguagem = question.codigo?.linguagem ?? "";
+    const execucao = runnerFor(linguagem) ? "executado" : "nao-executado";
+    return `${question.id} | ${question.tipo ?? ""} | ${linguagem} | ${execucao} | ${resumoCorreta(question.alternativas[question.correta])}`;
+  });
+}
+
 async function main() {
   const slug = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
   if (!slug) {
-    console.error("Uso: pnpm verify:quiz-pool <slug>");
+    console.error("Uso: pnpm verify:quiz-pool <slug> [--tabela-revisao]");
     process.exit(1);
   }
   const { roadmapQuizPools } = await import("../server/data/roadmapQuizzes");
@@ -323,6 +386,7 @@ async function main() {
         id: question.id,
         tipo: question.tipo ?? "",
         fonte: question.fonte,
+        linguagem,
         resultado: `linguagem ${linguagem}`,
         veredito: "SEM RUNNER",
       });
@@ -335,19 +399,14 @@ async function main() {
     }
     linhas.push(conferir(question, executar));
   }
-  for (const l of linhas) {
+  for (const linha of relatorioVerificacao(linhas)) console.log(linha);
+  if (process.argv.includes("--tabela-revisao")) {
     console.log(
-      `${l.id} | ${l.tipo} | ${l.fonte} | ${l.resultado} | ${l.veredito}`,
+      "\ntabela de revisao humana (id | tipo | linguagem | execucao | correta):",
     );
-    if (l.observado) {
-      console.log(`${l.id}  ${l.tipo}  observado: ${l.observado}`);
-    }
+    for (const linha of tabelaRevisao(pool.questions)) console.log(linha);
   }
-  const conta = (v: Veredito) => linhas.filter((l) => l.veredito === v).length;
-  console.log(
-    `\nperguntas de codigo: ${linhas.length} | CORRIGIR: ${conta("CORRIGIR")} | LER: ${conta("LER")}${conta("SEM RUNNER") ? ` | SEM RUNNER: ${conta("SEM RUNNER")}` : ""}`,
-  );
-  if (conta("CORRIGIR") > 0) process.exit(1);
+  if (linhas.some((l) => l.veredito === "CORRIGIR")) process.exit(1);
 }
 
 if (
