@@ -171,3 +171,14 @@ describe("blocosDaTrilha e relatorioBlocos", () => {
     );
   });
 });
+
+describe("conferirBloco: saida real que parece comando", () => {
+  it("a resposta do git --version nao e confundida com comando sem $", () => {
+    const r = conferirBloco(
+      { linguagem: "bash", corpo: "$ git --version\ngit version 2.43.0" },
+      ["bash"],
+      () => executorQueRoda(),
+    );
+    expect(r.problemas).toEqual([]);
+  });
+});

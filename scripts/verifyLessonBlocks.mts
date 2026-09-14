@@ -33,6 +33,10 @@ export const BLOCO_MAX_COLUNAS = 60;
 // comando que perdeu o "$ " no meio do bloco.
 const COMANDO_SEM_PREFIXO_RE =
   /^(git|cd|ls|mkdir|touch|cat|echo|rm|mv|cp|code|python3|node|npm|pnpm)\s/;
+// Saida real que casa o padrao acima: a resposta do git --version. Achada no
+// primeiro uso do verificador, na propria trilha de Git (Lote 07b), onde o
+// bloco verdadeiro de fundamentos.instalar saiu como divergencia.
+const SAIDA_QUE_PARECE_COMANDO_RE = /^git version \d/;
 
 export interface Bloco {
   linguagem: string;
@@ -115,7 +119,10 @@ function convencaoBash(corpo: string): string[] {
       out.push(
         `linha ${i + 1} nao comeca com "$ ": bloco bash abre com um comando`,
       );
-    } else if (COMANDO_SEM_PREFIXO_RE.test(linha)) {
+    } else if (
+      COMANDO_SEM_PREFIXO_RE.test(linha) &&
+      !SAIDA_QUE_PARECE_COMANDO_RE.test(linha)
+    ) {
       out.push(`linha ${i + 1} parece comando sem o prefixo "$ "`);
     }
   });
