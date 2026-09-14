@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { temSessaoPersistida } from "@/lib/persistedSession";
+import { isPrerender } from "@/lib/prerender";
 import Logo from "@/components/Logo";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
@@ -803,6 +804,11 @@ export default function Header() {
   // uma vez por montagem, e o Header remonta a cada navegacao (ver CLAUDE.md).
   const [sessaoPersistida] = useState(temSessaoPersistida);
   const aguardandoSessao = !user && authLoading && sessaoPersistida;
+  // O prerender sai sem sessao, entao os links de visitante vao para o HTML de
+  // cada rota. A marca deixa o index.css esconde-los ate o React montar quando o
+  // sessao-init.js acha sessao. So no prerender: no Header vivo o "Entrar" de
+  // quem nao virou usuario aparece sempre.
+  const marcaEstatica = isPrerender() ? "" : undefined;
   // Display do proprio avatar: borda Pro rebaixa pra default se o dono nao e Pro.
   const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, isPro);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
@@ -867,12 +873,14 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
+                  data-auth-estatico={marcaEstatica}
                   className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Entrar
                 </Link>
                 <Link
                   href="/cadastro"
+                  data-auth-estatico={marcaEstatica}
                   className="btn-brutal-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black"
                 >
                   Cadastre-se agora
@@ -988,6 +996,7 @@ export default function Header() {
           ) : !user ? (
             <Link
               href="/login"
+              data-auth-estatico={marcaEstatica}
               onClick={closeMobileDrawer}
               className="mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
@@ -1078,6 +1087,7 @@ export default function Header() {
           <div className="shrink-0 border-t-2 border-slate-900 bg-white p-4">
             <Link
               href="/cadastro"
+              data-auth-estatico={marcaEstatica}
               onClick={closeMobileDrawer}
               className="btn-brutal-accent flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-black"
             >

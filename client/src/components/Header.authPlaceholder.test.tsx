@@ -100,3 +100,54 @@ describe("bloco de auth do Header", () => {
     expect(aguardando()).toHaveLength(0);
   });
 });
+
+/**
+ * MARCA DO HTML ESTATICO (lote Home 03, item D).
+ *
+ * O prerender sai sem sessao, entao os links de visitante vao para o HTML. Eles
+ * saem marcados com `data-auth-estatico`, e o CSS os esconde quando o
+ * sessao-init.js acha sessao no navegador. A marca so existe no prerender: no
+ * Header vivo o "Entrar" de quem nao virou usuario tem de aparecer sempre.
+ */
+describe("marca data-auth-estatico", () => {
+  function marcados(): HTMLElement[] {
+    return Array.from(
+      document.querySelectorAll<HTMLElement>("[data-auth-estatico]"),
+    );
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(window.navigator, "webdriver");
+  });
+
+  it("fora do prerender nenhum link sai marcado", () => {
+    estado.auth.loading = false;
+    render(<Header />);
+    expect(linksEntrar().length).toBeGreaterThan(0);
+    expect(marcados()).toHaveLength(0);
+  });
+
+  it("no prerender marca os quatro links de visitante e so eles", () => {
+    Object.defineProperty(window.navigator, "webdriver", {
+      value: true,
+      configurable: true,
+    });
+    estado.auth.loading = false;
+    render(<Header />);
+    const hrefs = marcados()
+      .map((el) => el.getAttribute("href"))
+      .sort();
+    expect(hrefs).toEqual(["/cadastro", "/cadastro", "/login", "/login"]);
+  });
+
+  it("no prerender com usuario nao ha link de visitante para marcar", () => {
+    Object.defineProperty(window.navigator, "webdriver", {
+      value: true,
+      configurable: true,
+    });
+    estado.auth.loading = false;
+    estado.auth.user = { id: "u1", email: "a@b.com", user_metadata: {} };
+    render(<Header />);
+    expect(marcados()).toHaveLength(0);
+  });
+});

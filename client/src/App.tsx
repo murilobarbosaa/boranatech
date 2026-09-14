@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import AppToaster from "@/components/AppToaster";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,6 +20,7 @@ import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
+import { liberarMarcaDeSessaoEstatica } from "./lib/persistedSession";
 import Home from "./pages/home/HomeLanding";
 
 const Admin = lazyWithRetry(() => import("@/pages/Admin"));
@@ -375,6 +376,12 @@ function AffiliateTracker() {
 }
 
 function App() {
+  // A marca de sessao do sessao-init.js so cobre o HTML estatico. Montado o
+  // React, o bloco de auth e do Header vivo. Ver lib/persistedSession.ts.
+  useEffect(() => {
+    liberarMarcaDeSessaoEstatica();
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider>
