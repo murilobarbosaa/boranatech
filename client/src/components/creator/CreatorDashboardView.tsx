@@ -286,9 +286,7 @@ function Serie({
         className="rounded-2xl border-2 border-dashed border-slate-300 px-4 py-6 text-center text-sm font-bold text-slate-600"
       >
         {/* TODO(Ana) */}
-        {`Ainda não registramos cliques no seu link desde ${dataCurta(
-          new Date(agoraMs).toISOString(),
-        )}.`}
+        Ainda não registramos cliques no seu link.
       </p>
     );
   }

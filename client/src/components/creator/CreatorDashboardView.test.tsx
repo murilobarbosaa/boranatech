@@ -304,7 +304,7 @@ describe("CreatorDashboardView: estados sem dado", () => {
     };
     desenhar(p);
     expect(screen.getByTestId("creator-sem-eventos").textContent).toBe(
-      "Ainda não registramos cliques no seu link desde 20/09/2026.",
+      "Ainda não registramos cliques no seu link.",
     );
     expect(screen.queryByTestId("creator-grafico")).toBeNull();
     expect(valorDoTile("creator-tile-cliques")).toBe("140");
