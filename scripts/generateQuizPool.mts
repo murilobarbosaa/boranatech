@@ -12,7 +12,7 @@
 // regenerar com --force troca ids e invalida tentativas.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   POOL_MIN_PER_LEVEL,
   POOL_TARGET_PER_LEVEL,
@@ -55,6 +55,7 @@ import {
   SYSTEM_PROMPT,
 } from "./quizPoolGeneration.mts";
 import { NIVEL_ABBR, validateQuizPool } from "./quizPoolValidation.mts";
+import { gateSectionsForPool, repairPool } from "./quizPoolRepair.mts";
 import {
   type Executor,
   makeExecutor,
@@ -66,6 +67,10 @@ const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
 // Destino do despejo de pool reprovada: fora do worktree de proposito, para
 // nunca virar arquivo nao rastreado nem entrar num commit por engano.
 const REJECTED_DIR = "/tmp";
+// Teto de custo do modo de reparo: ao atingi-lo, para de chamar o modelo e
+// segue para o portao com o que ja foi reparado (Lote 06f, autorizado ate
+// USD 0,05).
+const REPAIR_BUDGET_USD = 0.05;
 
 const AI_MAX_ATTEMPTS = 5;
 const AI_BACKOFF_MS = [400, 800, 800, 800];
@@ -359,11 +364,18 @@ const executarPor = (linguagem: string): Executor | null => {
   }
   return executar;
 };
-const slug = args.find((arg) => !arg.startsWith("--"));
+// --repair <pool.ts>: reparo por pergunta de uma pool reprovada
+// (quizPoolRepair.mts). O caminho e o argumento seguinte, entao fica fora da
+// busca pelo slug.
+const repairIdx = args.indexOf("--repair");
+const repairPath = repairIdx >= 0 ? args[repairIdx + 1] : undefined;
+const slug = args.find(
+  (arg, i) => !arg.startsWith("--") && !(repairIdx >= 0 && i === repairIdx + 1),
+);
 
-if (!slug) {
+if (!slug || (repairIdx >= 0 && (!repairPath || repairPath.startsWith("--")))) {
   console.error(
-    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec]",
+    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec] [--repair <pool.ts>]",
   );
   process.exit(1);
 }
@@ -472,6 +484,84 @@ if (!env.openaiApiKey) {
   process.exit(1);
 }
 
+if (repairPath) {
+  // Modo de reparo por pergunta: le a pool reprovada, reenvia ao modelo so as
+  // perguntas com violacao e roda o portao completo no fim. Nunca gera
+  // pergunta nova nem troca id. Passou: escreve a pool; reprovou: despejo
+  // com sufixo -reparo e EXIT 1.
+  const modulo = (await import(
+    pathToFileURL(path.resolve(repairPath)).href
+  )) as { default?: QuizPool };
+  const rejeitada = modulo.default;
+  if (!rejeitada || rejeitada.slug !== slug) {
+    console.error(`[repair] ${repairPath} nao e uma pool de ${slug}.`);
+    process.exit(1);
+  }
+  const custoDe = (uso: Usage) =>
+    (uso.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
+    (uso.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
+  const reparo = await repairPool({
+    roadmap,
+    questions: rejeitada.questions,
+    systemPrompt: systemPromptFor(roadmap, 1),
+    callModel: callOpenAIOnce,
+    executarPor: noExec ? null : executarPor,
+    custo: custoDe,
+    orcamentoUsd: REPAIR_BUDGET_USD,
+    maxPerSection,
+    log: (linha) => console.log(`[repair] ${linha}`),
+  });
+  console.log(
+    "[repair] id | rodadas | antes (regra/execucao/variedade) | resultado",
+  );
+  for (const linha of reparo.linhas) {
+    console.log(
+      `[repair] ${linha.id} | ${linha.rodadas} | ${linha.antes.regra}/${linha.antes.execucao}/${linha.antes.variedade} | ${linha.resultado}`,
+    );
+  }
+  const poolReparada: QuizPool = { slug, questions: reparo.questions };
+  const problemas = validateQuizPool(poolReparada, slug, roadmap);
+  const secoes = gateSectionsForPool(roadmap, reparo.questions, maxPerSection);
+  const pendentes = poolGateViolations(
+    reparo.questions,
+    secoes,
+    roadmap.codeLanguages ?? [],
+    noExec ? null : executarPor,
+  );
+  for (const aviso of codeQuotaWarnings(reparo.questions, secoes)) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  console.log(
+    `[repair] tokens: ${reparo.uso.prompt_tokens} in / ${reparo.uso.completion_tokens} out; custo estimado USD ${custoDe(reparo.uso).toFixed(4)}${reparo.estourouOrcamento ? ` (parou no teto de USD ${REPAIR_BUDGET_USD})` : ""}`,
+  );
+  if (problemas.length > 0 || pendentes.length > 0) {
+    for (const problema of problemas) {
+      console.error(`[repair] ${problema}`);
+    }
+    for (const pendente of pendentes) {
+      console.error(`[repair] ${pendente}`);
+    }
+    const { arquivo, lista } = despejarPoolReprovada(
+      poolReparada,
+      problemas,
+      pendentes,
+      "-reparo",
+    );
+    console.error(
+      `[repair] pool ainda invalida, nada foi salvo em ${path.relative(ROOT, outFile)}.`,
+    );
+    console.error(`[repair] pool reparada e reprovada: ${arquivo}`);
+    console.error(`[repair] violacoes por id: ${lista}`);
+    process.exit(1);
+  }
+  mkdirSync(QUIZ_DIR, { recursive: true });
+  writeFileSync(outFile, poolFileContent(poolReparada));
+  console.log(
+    `[repair] ${reparo.questions.length} perguntas -> ${path.relative(process.cwd(), outFile)}`,
+  );
+  process.exit(0);
+}
+
 const usageTotal: Usage = { prompt_tokens: 0, completion_tokens: 0 };
 const questions: QuizQuestion[] = [];
 const gateSections: GateSection[] = [];
@@ -572,6 +662,41 @@ export default pool;
 `;
 }
 
+// Despejo da pool reprovada. O conteudo gerado custa dinheiro e tempo, e
+// reprovar nao pode significar perder tudo: com o arquivo no formato final
+// e a lista de violacoes por id, a correcao a mao mantendo os ids substitui
+// uma nova geracao (foi o que funcionou no Lote 04e, 12 perguntas). O sufixo
+// separa o despejo do modo de reparo (-reparo) do da geracao.
+function despejarPoolReprovada(
+  pool: QuizPool,
+  problems: string[],
+  violacoes: string[],
+  sufixo = "",
+): { arquivo: string; lista: string } {
+  const arquivo = path.join(REJECTED_DIR, `${pool.slug}-rejeitada${sufixo}.ts`);
+  const lista = path.join(
+    REJECTED_DIR,
+    `${pool.slug}-rejeitada${sufixo}-violacoes.txt`,
+  );
+  // Os problemas de validateQuizPool vem como "pool <slug>, pergunta <id>:";
+  // tirar o prefixo deixa o id no inicio da linha. Problema da pool inteira
+  // (contagem por nivel, cobertura de secao) nao tem id e fica como veio.
+  const prefixoPergunta = `pool ${pool.slug}, pergunta `;
+  writeFileSync(arquivo, poolFileContent(pool));
+  writeFileSync(
+    lista,
+    [
+      ...problems.map((problem) =>
+        problem.startsWith(prefixoPergunta)
+          ? problem.slice(prefixoPergunta.length)
+          : problem,
+      ),
+      ...violacoes,
+    ].join("\n") + "\n",
+  );
+  return { arquivo, lista };
+}
+
 function custoLinha(): string {
   const cost =
     (usageTotal.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
@@ -605,30 +730,10 @@ if (problems.length > 0 || violacoes.length > 0) {
   for (const violacao of violacoes) {
     console.error(`[generateQuizPool] ${violacao}`);
   }
-  // Despejo da pool reprovada. O conteudo gerado custa dinheiro e tempo, e
-  // reprovar nao pode significar perder tudo: com o arquivo no formato final
-  // e a lista de violacoes por id, a correcao a mao mantendo os ids substitui
-  // uma nova geracao (foi o que funcionou no Lote 04e, 12 perguntas).
-  const rejeitada = path.join(REJECTED_DIR, `${slug}-rejeitada.ts`);
-  const listaViolacoes = path.join(
-    REJECTED_DIR,
-    `${slug}-rejeitada-violacoes.txt`,
-  );
-  // Os problemas de validateQuizPool vem como "pool <slug>, pergunta <id>:";
-  // tirar o prefixo deixa o id no inicio da linha. Problema da pool inteira
-  // (contagem por nivel, cobertura de secao) nao tem id e fica como veio.
-  const prefixoPergunta = `pool ${slug}, pergunta `;
-  writeFileSync(rejeitada, poolFileContent(pool));
-  writeFileSync(
-    listaViolacoes,
-    [
-      ...problems.map((problem) =>
-        problem.startsWith(prefixoPergunta)
-          ? problem.slice(prefixoPergunta.length)
-          : problem,
-      ),
-      ...violacoes,
-    ].join("\n") + "\n",
+  const { arquivo: rejeitada, lista: listaViolacoes } = despejarPoolReprovada(
+    pool,
+    problems,
+    violacoes,
   );
   console.error(`[generateQuizPool] ${custoLinha()}`);
   console.error(
