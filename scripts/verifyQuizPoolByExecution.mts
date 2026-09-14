@@ -231,12 +231,18 @@ export function conferirCodigo(
   };
 }
 
-// Linha do trecho onde a execucao quebrou: em Python, o ultimo
-// `File "...", line N` do traceback (o frame mais interno); em Node, o
-// primeiro `arquivo.mjs:N`, que e onde lancou. Sem nenhum, null.
+// Linha do trecho onde a execucao quebrou: em Python, o ultimo frame DO
+// PROPRIO TRECHO no traceback; em Node, o primeiro `arquivo.mjs:N`, que e
+// onde lancou. Sem nenhum, null. O primeiro frame do traceback e sempre o do
+// trecho executado; a excecao pode nascer mais fundo, dentro da biblioteca
+// padrao, e a versao anterior devolvia a linha de la (python-int-14 saiu com
+// "linha 353", de json/decoder.py, no Lote 06g).
 export function linhaDoErro(stderr: string): number | null {
-  const py = [...stderr.matchAll(/File "[^"]*\.py", line (\d+)/g)];
-  if (py.length > 0) return Number(py[py.length - 1][1]);
+  const py = [...stderr.matchAll(/File "([^"]*\.py)", line (\d+)/g)];
+  if (py.length > 0) {
+    const doTrecho = py.filter((m) => m[1] === py[0][1]);
+    return Number(doTrecho[doTrecho.length - 1][2]);
+  }
   const js = /\.mjs:(\d+)/.exec(stderr);
   return js ? Number(js[1]) : null;
 }

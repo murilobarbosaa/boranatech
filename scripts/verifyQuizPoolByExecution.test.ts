@@ -235,6 +235,20 @@ describe("excecaoObservada: o que a execucao de uma pergunta de erro viu", () =>
     expect(r).toBe("SyntaxError: invalid syntax (linha 2)");
   });
 
+  it("stub: a linha e a do trecho, nao a da biblioteca padrao onde a excecao nasceu", () => {
+    const r = excecaoObservada(erroPy, () => ({
+      status: 1,
+      stdout: "",
+      erro: "json.decoder.JSONDecodeError: Expecting property name",
+      timeout: false,
+      stderr:
+        'Traceback (most recent call last):\n  File "/tmp/verify-pool-x/q7.py", line 3, in <module>\n    dados = json.loads(texto)\n  File "/usr/lib/python3.12/json/__init__.py", line 346, in loads\n    return _default_decoder.decode(s)\n  File "/usr/lib/python3.12/json/decoder.py", line 353, in raw_decode\n    obj, end = self.scan_once(s, idx)\njson.decoder.JSONDecodeError: Expecting property name',
+    }));
+    expect(r).toBe(
+      "json.decoder.JSONDecodeError: Expecting property name (linha 3)",
+    );
+  });
+
   it("pergunta de saida nao produz linha e nem executa", () => {
     const r = excecaoObservada(
       {
