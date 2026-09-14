@@ -364,14 +364,23 @@ export function codeQuotaFor(
 // O exemplo de completar sai na linguagem principal da trilha: um exemplo em
 // sintaxe de JavaScript numa trilha de Python contradiz a regra de que o
 // trecho e valido na linguagem (registro do Lote 06).
-function completarExemplo(codeLanguages: string[]): string {
+// Linguagem sem forma propria aqui (bash, dockerfile) fica SEM exemplo: um
+// exemplo em sintaxe de JavaScript numa trilha de ferramenta ensinaria o erro
+// que o exemplo existe para evitar.
+function completarExemplo(codeLanguages: string[]): string | null {
   if (codeLanguages[0] === "python") return `x = ${CODE_PLACEHOLDER}`;
-  return `const x = ${CODE_PLACEHOLDER};`;
+  if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
+    return `const x = ${CODE_PLACEHOLDER};`;
+  }
+  return null;
 }
 
-function completarErrado(codeLanguages: string[]): string {
+function completarErrado(codeLanguages: string[]): string | null {
   if (codeLanguages[0] === "python") return "x = 1";
-  return "const x = 1;";
+  if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {
+    return "const x = 1;";
+  }
+  return null;
 }
 
 // Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
@@ -414,8 +423,14 @@ export function buildCodeRules(codeLanguages: string[]): string {
       : [
           "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
         ]),
-    "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
-    `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+    // completar obrigatoria com 2 ou mais: nos Lotes 06c e 06d iniciante e
+    // avancado sairam sem nenhuma completar nas duas geracoes.
+    "- Variedade: em secao com 2 ou mais perguntas de codigo, pelo menos uma e completar (obrigatoria); com 3 ou mais, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
+    ...(completarExemplo(codeLanguages)
+      ? [
+          `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -749,6 +764,12 @@ export function codeTypeViolations(
   } else if (tipos.length === 2 && tipos[0] === tipos[1]) {
     out.push(
       `variedade: as 2 perguntas de codigo precisam ser de tipos diferentes (vieram 2 de ${tipos[0]})`,
+    );
+  } else if (tipos.length === 2 && conta("completar") === 0) {
+    // Com 3 ou mais a regra de um de cada tipo ja exige completar; com 2 so
+    // exigia tipos diferentes, e erro mais saida passava sem completar.
+    out.push(
+      `variedade: com 2 perguntas de codigo, uma precisa ser completar (vieram ${tipos[0]} e ${tipos[1]})`,
     );
   }
   if (tipos.length > 0 && conta("saida") > tipos.length / 2) {

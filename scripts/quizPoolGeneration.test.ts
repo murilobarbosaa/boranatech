@@ -759,6 +759,18 @@ describe("codeTypeViolations", () => {
     expect(v[0]).toContain("tipos diferentes");
   });
 
+  it("duas de codigo de tipos diferentes sem completar acusa a completar", () => {
+    const v = codeTypeViolations([de("erro"), de("saida"), gerada()], 2);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("completar");
+  });
+
+  it("duas de codigo com uma completar passa", () => {
+    expect(
+      codeTypeViolations([de("erro"), de("completar"), gerada()], 2),
+    ).toEqual([]);
+  });
+
   it("saida acima da metade acusa", () => {
     const v = codeTypeViolations(
       [de("saida"), de("saida"), de("saida"), de("erro"), de("completar")],
@@ -979,8 +991,16 @@ describe("buildCodeRules: exemplo de completar na linguagem da trilha", () => {
     );
   });
 
-  it("linguagem sem forma propria cai no generico", () => {
-    expect(buildCodeRules(["bash"])).toContain("const x = ____;");
+  it("linguagem sem forma propria nao ganha exemplo em sintaxe de js", () => {
+    const regras = buildCodeRules(["bash"]);
+    expect(regras).not.toContain("const x = ____;");
+    expect(regras).not.toContain("Exemplo de completar");
+  });
+
+  it("variedade marca completar como obrigatoria com 2 ou mais de codigo", () => {
+    expect(buildCodeRules(["python"])).toContain(
+      "em secao com 2 ou mais perguntas de codigo, pelo menos uma e completar (obrigatoria)",
+    );
   });
 });
 
