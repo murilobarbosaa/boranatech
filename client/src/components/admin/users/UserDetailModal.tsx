@@ -23,6 +23,7 @@ import {
 
 import { ActivityBlock } from "./ActivityBlock";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
+import { CreatorCodesBlock } from "./CreatorCodesBlock";
 import { UserAuditHistory } from "./UserAuditHistory";
 import { BoletoBlock } from "./BoletoBlock";
 import { SubscriptionHistory } from "./SubscriptionHistory";
@@ -143,6 +144,18 @@ const INFLUENCER_REVOKE_BUTTON =
 const INFLUENCER_REVOKE_CONFIRM_BUTTON =
   "w-full rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
 
+// TODO(Ana)
+const ROTULO_DO_KIND: Record<string, string> = {
+  influencer: "Influencer",
+  afiliado: "Afiliado",
+};
+
+/** Kind vem do servidor: resolver com fallback neutro (CLAUDE.md). */
+function rotuloDoKind(kind: string | null | undefined): string {
+  // TODO(Ana)
+  return (kind ? ROTULO_DO_KIND[kind] : undefined) ?? "Creator";
+}
+
 function Section({
   title,
   children,
@@ -221,6 +234,11 @@ export function UserDetailModal({
   // refetch do detalhe apos mutacao (detailVersion entra nas deps do effect).
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantNote, setGrantNote] = useState("");
+  // Sem padrao pre-selecionado: conceder exige escolher o tipo, e o botao de
+  // confirmar fica desabilitado ate la (o servidor tambem recusa sem kind).
+  const [grantKind, setGrantKind] = useState<"influencer" | "afiliado" | null>(
+    null,
+  );
   const [revokeConfirm, setRevokeConfirm] = useState(false);
   const [influencerBusy, setInfluencerBusy] = useState(false);
   const [detailVersion, setDetailVersion] = useState(0);
@@ -457,19 +475,22 @@ export function UserDetailModal({
   // de um corpo rolavel deixa a confirmacao fora da tela quando a pessoa ja
   // rolou para outro lugar.
   async function handleGrantInfluencer() {
-    if (influencerBusy) return;
+    if (influencerBusy || grantKind === null) return;
     setInfluencerBusy(true);
     try {
+      // A rota continua /influencer com `kind` no body: renomear o contrato e
+      // lote proprio de expand/contract. O que muda aqui e o que a pessoa ve.
       await adminFetch(`/users/${userId}/influencer`, {
         method: "POST",
-        // O botao ainda so concede influencer; o de afiliado vem com a tela.
-        body: JSON.stringify({ note: grantNote.trim(), kind: "influencer" }),
+        body: JSON.stringify({ note: grantNote.trim(), kind: grantKind }),
       });
       setGrantOpen(false);
       setGrantNote("");
+      setGrantKind(null);
       setDetailVersion((version) => version + 1);
       showActionToast({
-        message: "Influencer concedido. O Pro já está ativo.",
+        // TODO(Ana)
+        message: `${rotuloDoKind(grantKind)} concedido. O Pro já está ativo.`,
       });
     } catch (err) {
       showErrorToast(
@@ -728,8 +749,11 @@ export function UserDetailModal({
                       data-testid="influencer-status"
                       className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3"
                     >
-                      <span className="inline-block rounded-full border-2 border-violet-700 bg-violet-200 px-3 py-1 text-xs font-black uppercase text-violet-900">
-                        Influencer
+                      <span
+                        data-testid="creator-kind-status"
+                        className="inline-block rounded-full border-2 border-violet-700 bg-violet-200 px-3 py-1 text-xs font-black uppercase text-violet-900"
+                      >
+                        {rotuloDoKind(detail.influencer.kind)}
                       </span>
                       <p className="text-sm font-semibold text-violet-900">
                         Acesso Pro de parceria: sem assinatura e sem prazo.
@@ -785,6 +809,14 @@ export function UserDetailModal({
                       ) : null}
                     </div>
                   ) : null}
+
+                  <BlocoBoundary nome="Códigos de creator" compacto>
+                    <CreatorCodesBlock
+                      userId={userId}
+                      nomeDoUsuario={detail.name ?? ""}
+                      temConcessao={Boolean(detail.influencer)}
+                    />
+                  </BlocoBoundary>
                 </div>
               </Section>
 
@@ -1205,7 +1237,8 @@ export function UserDetailModal({
                 onClick={() => setGrantOpen((open) => !open)}
                 className={ACTION_BUTTON}
               >
-                Tornar influencer
+                {/* TODO(Ana) */}
+                Tornar creator
               </button>
             ) : null}
           </div>
@@ -1215,8 +1248,32 @@ export function UserDetailModal({
           {grantOpen && detail && !detail.influencer && !edit.editing ? (
             <div className="w-full space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
               <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
-                Conceder acesso de influencer
+                {/* TODO(Ana) */}
+                Conceder acesso de creator
               </p>
+              <div
+                role="radiogroup"
+                // TODO(Ana)
+                aria-label="Tipo de creator"
+                className="flex flex-wrap gap-2"
+              >
+                {(["influencer", "afiliado"] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={grantKind === kind}
+                    onClick={() => setGrantKind(kind)}
+                    className={`rounded-full border-2 border-violet-700 px-3 py-1 text-xs font-black uppercase ${
+                      grantKind === kind
+                        ? "bg-violet-700 text-white"
+                        : "bg-white text-violet-900"
+                    }`}
+                  >
+                    {rotuloDoKind(kind)}
+                  </button>
+                ))}
+              </div>
               <textarea
                 value={grantNote}
                 onChange={(event) => setGrantNote(event.target.value)}
@@ -1228,7 +1285,7 @@ export function UserDetailModal({
                 <button
                   type="button"
                   onClick={handleGrantInfluencer}
-                  disabled={influencerBusy}
+                  disabled={influencerBusy || grantKind === null}
                   className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
                 >
                   {influencerBusy ? "Concedendo..." : "Conceder"}
@@ -1238,6 +1295,7 @@ export function UserDetailModal({
                   onClick={() => {
                     setGrantOpen(false);
                     setGrantNote("");
+                    setGrantKind(null);
                   }}
                   disabled={influencerBusy}
                   className={ACTION_BUTTON}

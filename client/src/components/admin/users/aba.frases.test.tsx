@@ -255,7 +255,16 @@ const COPY_ESTATICA = new Set<string>([
   "Editar",
   "Revelar CPF",
   "Revelar fica registrado: quem revelou, de quem e quando.",
-  "Tornar influencer",
+  "Tornar creator",
+  // Bloco "Códigos de creator" (lote 04), no estado que o fixture produz: o
+  // usuário não tem concessão e nenhum código é dele. As frases de erro, de
+  // lista preenchida e dos formulários de vincular e criar não entram porque
+  // este cenário não as exercita; se aparecerem, caem como não classificadas.
+  "Códigos de creator",
+  "Este usuário ainda não é creator; o código só aparece no painel dele depois da concessão.",
+  "Nenhum código vinculado a este usuário.",
+  "Vincular código existente",
+  "Criar código para este usuário",
   "Trocar e-mail",
   "Cancelar no fim do período",
   "Encerrar Pro agora",
@@ -301,6 +310,11 @@ function frasesVisiveis(): string[] {
 beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockImplementation((path: string) => {
+    // Lista de códigos vazia: sem esta rota o fallback devolveria a LISTA de
+    // usuários, que não é lista de códigos, e o bloco mostraria o estado de
+    // erro em vez do estado que o inventário quer fotografar.
+    if (path.includes("/affiliates-stats"))
+      return Promise.resolve({ data: [] });
     if (path.includes("/audit")) return Promise.resolve(AUDIT);
     if (path.includes("/activity"))
       return Promise.resolve({ data: { state: "ok", hasData: false } });

@@ -211,7 +211,8 @@ describe("toast para ACAO, inline para CARREGAMENTO", () => {
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
-    fireEvent.click(screen.getByRole("button", { name: "Tornar influencer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tornar creator" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Influencer" }));
     fireEvent.click(screen.getByRole("button", { name: "Conceder" }));
 
     await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
@@ -224,7 +225,8 @@ describe("toast para ACAO, inline para CARREGAMENTO", () => {
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
-    fireEvent.click(screen.getByRole("button", { name: "Tornar influencer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tornar creator" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Influencer" }));
     fireEvent.click(screen.getByRole("button", { name: "Conceder" }));
 
     await waitFor(() =>
@@ -262,7 +264,7 @@ describe("rodape de acoes", () => {
 
     const rodape = document.querySelector("footer") as HTMLElement;
     expect(
-      within(rodape).getByRole("button", { name: "Tornar influencer" }),
+      within(rodape).getByRole("button", { name: "Tornar creator" }),
     ).toBeTruthy();
   });
 

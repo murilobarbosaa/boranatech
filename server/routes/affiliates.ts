@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Router } from "express";
 
+import { AFFILIATE_CODE_PATTERN } from "../../shared/affiliateCode";
 import { recordCreatorEvent } from "../lib/creatorEvents";
 import { env } from "../lib/env";
 import { cacheConnection } from "../lib/redis";
@@ -8,7 +9,9 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
 const CLICK_WINDOW_SECONDS = 60 * 60;
-const CODE_PATTERN = /^[A-Z0-9]{3,32}$/;
+// Fonte unica em shared/: o formulario de criar codigo do admin valida com o
+// mesmo padrao, e duas copias divergiriam na primeira mudanca.
+const CODE_PATTERN = AFFILIATE_CODE_PATTERN;
 // Teto dos campos de texto livre que vao para o metadata do evento de clique.
 // Vem do navegador de quem clicou, entao nao pode ter tamanho arbitrario.
 const TETO_CAMPO_EVENTO = 512;

@@ -253,7 +253,7 @@ describe("revogar influencer mora na secao de status", () => {
     await pronto();
 
     expect(
-      within(rodape()).getByRole("button", { name: "Tornar influencer" }),
+      within(rodape()).getByRole("button", { name: "Tornar creator" }),
     ).toBeTruthy();
     expect(screen.queryByTestId("influencer-status")).toBeNull();
     expect(

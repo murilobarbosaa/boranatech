@@ -8730,6 +8730,19 @@ export default function Admin() {
                                           • {affiliate.commission_percent}%
                                           comissão • {affiliate.status}
                                         </p>
+                                        <p
+                                          data-testid={`afiliado-dono-${affiliate.code}`}
+                                          className="mt-1 text-xs font-bold text-slate-600"
+                                        >
+                                          {/* TODO(Ana) */}
+                                          {affiliate.user_id
+                                            ? `Dono: ${
+                                                affiliate.owner_name ||
+                                                affiliate.owner_email ||
+                                                affiliate.user_id
+                                              }`
+                                            : "Sem dono"}
+                                        </p>
                                       </div>
                                       <div className="flex flex-wrap gap-2 sm:justify-end">
                                         <button
