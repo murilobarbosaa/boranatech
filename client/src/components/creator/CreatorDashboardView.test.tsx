@@ -378,3 +378,95 @@ describe("CreatorDashboardView: contencao por bloco", () => {
     expect(capturado.escopos).toEqual(["admin-bloco:Cliques e vendas por dia"]);
   });
 });
+
+describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
+  // O recharts nao desenha nada no jsdom (o ResponsiveContainer mede zero), entao
+  // a forma escolhida e lida nos atributos do contêiner, que a view escreve a
+  // partir da mesma decisao que escolhe o grafico.
+  it("serie de 1 dia vira barras, e barras nao tem eixo de vendas", () => {
+    const p = painelBase();
+    p.eventos.serie = [{ dia: "2026-09-20", ...ZERO, clicks: 4, sales: 1 }];
+    desenhar(p);
+    const grafico = screen.getByTestId("creator-grafico");
+    expect(grafico.getAttribute("data-forma")).toBe("barras");
+    expect(grafico.getAttribute("data-eixo-vendas")).toBe("nao");
+  });
+
+  it("serie de 2 dias ainda e barras", () => {
+    const p = painelBase();
+    p.eventos.serie = [
+      { dia: "2026-09-19", ...ZERO, clicks: 2 },
+      { dia: "2026-09-20", ...ZERO, clicks: 4 },
+    ];
+    desenhar(p);
+    expect(screen.getByTestId("creator-grafico").getAttribute("data-forma")).toBe(
+      "barras",
+    );
+  });
+
+  it("a partir de 3 dias volta a linha, com eixo de vendas porque houve venda", () => {
+    desenhar(painelBase());
+    const grafico = screen.getByTestId("creator-grafico");
+    expect(grafico.getAttribute("data-forma")).toBe("linha");
+    expect(grafico.getAttribute("data-eixo-vendas")).toBe("sim");
+  });
+
+  it("linha sem venda nenhuma nao ganha o eixo da direita", () => {
+    const p = painelBase();
+    p.eventos.serie = [
+      { dia: "2026-09-18", ...ZERO, clicks: 1 },
+      { dia: "2026-09-19", ...ZERO },
+      { dia: "2026-09-20", ...ZERO, clicks: 3 },
+    ];
+    desenhar(p);
+    const grafico = screen.getByTestId("creator-grafico");
+    expect(grafico.getAttribute("data-forma")).toBe("linha");
+    expect(grafico.getAttribute("data-eixo-vendas")).toBe("nao");
+  });
+
+  it("conversao com valor ganha a linha de vendas por 100 cliques", () => {
+    desenhar(painelBase());
+    expect(screen.getByTestId("creator-tile-conversao").textContent).toContain(
+      "2,14 vendas por 100 cliques",
+    );
+  });
+
+  it("sem cliques, a conversao nao ganha a linha auxiliar", () => {
+    const p = painelBase();
+    p.totais = { ...p.totais, clicks: 0, sales: 0, conversao_pct: null };
+    desenhar(p);
+    expect(
+      screen.getByTestId("creator-tile-conversao").textContent,
+    ).not.toContain("por 100 cliques");
+  });
+
+  it("Desde o inicio e selo ao lado do titulo Seus numeros", () => {
+    desenhar(painelBase());
+    const titulo = screen.getByRole("heading", { name: "Seus números" });
+    expect(titulo.parentElement?.textContent).toContain("Desde o início");
+  });
+
+  it("o subtitulo fala com o creator, e some na visao admin", () => {
+    const frase =
+      "Seu link, seus números e o que você já gerou para a Bora na Tech.";
+    desenhar(painelBase(), "creator");
+    expect(screen.getByText(frase)).toBeTruthy();
+    cleanup();
+    desenhar(painelBase(), "admin");
+    expect(screen.queryByText(frase)).toBeNull();
+  });
+
+  it("dois codigos ficam em duas colunas; um codigo ocupa a largura inteira", () => {
+    desenhar(painelBase());
+    expect(
+      screen.getByTestId("creator-codigo-ANA30").parentElement?.className,
+    ).toContain("md:grid-cols-2");
+    cleanup();
+    const p = painelBase();
+    p.codigos = [p.codigos[0]];
+    desenhar(p);
+    expect(
+      screen.getByTestId("creator-codigo-ANA30").parentElement?.className,
+    ).not.toContain("md:grid-cols-2");
+  });
+});
