@@ -180,6 +180,9 @@ describe("CupomDoCodigo", () => {
     const code = within(cupom).getByText("ANA30");
     expect(code.className).toContain("font-display");
     expect(code.className).not.toContain("font-mono");
+    // Codigos de producao chegam a 18 caracteres, e o overflow-hidden do
+    // poster cortaria o que nao quebra.
+    expect(code.className.split(" ")).toContain("break-all");
     const divisor = screen.getByTestId(
       "creator-cupom-numeros-ANA30",
     ).previousElementSibling;

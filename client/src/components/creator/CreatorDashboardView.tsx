@@ -726,7 +726,7 @@ export function CreatorDashboardView({
 
           <BlocoBoundary
             // TODO(Ana)
-            nome="Seus links"
+            nome="Seu cupom"
           >
             <section
               aria-labelledby="creator-links-titulo"

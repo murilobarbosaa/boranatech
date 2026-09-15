@@ -121,7 +121,7 @@ export function CupomDoCodigo({
               {/* TODO(Ana) */}
               cupom
             </p>
-            <p className="font-display mt-2 text-4xl font-black leading-none tracking-tight text-slate-950 md:text-5xl">
+            <p className="font-display mt-2 break-all text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-4xl md:text-5xl">
               {codigo.code}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
