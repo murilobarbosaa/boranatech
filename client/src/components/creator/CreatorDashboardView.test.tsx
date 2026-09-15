@@ -518,6 +518,117 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
   });
 });
 
+describe("CreatorDashboardView: forma do admin", () => {
+  // As quatro cores de quadrado de icone que o admin ja usa, literais.
+  const VIOLETA = "bg-violet-800 text-white";
+  const CEU = "bg-sky-600 text-white";
+  const ACENTO = "bg-[var(--bnt-accent-solid)] text-ink-on-accent";
+  const ESMERALDA = "bg-emerald-600 text-white";
+  const CORES = [VIOLETA, CEU, ACENTO, ESMERALDA];
+
+  it("com identidade externa a view nao desenha a identidade, nem na visao admin", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelAdmin()}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="admin"
+        identidade="externa"
+      />,
+    );
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+    expect(screen.queryByTestId("creator-kind")).toBeNull();
+    expect(screen.queryByTestId("creator-email")).toBeNull();
+    expect(screen.queryByTestId("creator-revogado")).toBeNull();
+  });
+
+  it("no padrao a view desenha a identidade; na visao admin, com e-mail e revogado", () => {
+    desenhar(painelBase(), "creator");
+    expect(screen.getByTestId("creator-kind")).toBeTruthy();
+    cleanup();
+    desenhar(painelAdmin(), "admin");
+    expect(screen.getByTestId("creator-kind")).toBeTruthy();
+    expect(screen.getByTestId("creator-email")).toBeTruthy();
+    expect(screen.getByTestId("creator-revogado")).toBeTruthy();
+  });
+
+  it("os seis cards: card-brutal branco, com o quadrado de icone na cor da tabela", () => {
+    desenhar(painelBase());
+    const esperado: Array<[string, string]> = [
+      ["cliques", VIOLETA],
+      ["vendas", VIOLETA],
+      ["conversao", CEU],
+      ["receita", ACENTO],
+      ["a-receber", ACENTO],
+      ["paga", ESMERALDA],
+    ];
+    for (const [id, cor] of esperado) {
+      const card = screen.getByTestId(`creator-tile-${id}`);
+      expect(card.className, id).toContain("card-brutal");
+      expect(card.className, id).toContain("bg-white");
+      const quadrado = card.firstElementChild;
+      expect(quadrado?.getAttribute("aria-hidden"), id).toBe("true");
+      const classes = quadrado?.getAttribute("class") ?? "";
+      expect(classes, id).toContain("border-2 border-slate-900");
+      expect(
+        CORES.filter((c) => classes.includes(c)),
+        id,
+      ).toEqual([cor]);
+    }
+  });
+
+  it("nenhum elemento do painel tem fundo pastel bg-*-200", () => {
+    desenhar(painelAdmin(), "admin");
+    const painel = screen.getByTestId("creator-painel");
+    const pasteis = [painel, ...Array.from(painel.querySelectorAll("*"))]
+      .map((el) => el.getAttribute("class") ?? "")
+      .filter((classes) => /\bbg-[a-z]+-200\b/.test(classes));
+    expect(pasteis).toEqual([]);
+  });
+
+  it("pilulas na forma do OverviewPeriod: a ativa bg-slate-950 e nenhuma com sombra dura", () => {
+    desenhar(painelBase());
+    const grupo = screen.getByRole("group", { name: "Período da série" });
+    const botoes = within(grupo).getAllByRole("button");
+    expect(botoes.map((b) => b.textContent)).toEqual([
+      "7 dias",
+      "30 dias",
+      "90 dias",
+      "Tudo",
+    ]);
+    for (const botao of botoes) {
+      expect(botao.className).not.toContain("shadow-[");
+      const ativa = botao.getAttribute("aria-pressed") === "true";
+      expect(botao.className).toContain(ativa ? "bg-slate-950" : "bg-white");
+    }
+    expect(
+      botoes.filter((b) => b.getAttribute("aria-pressed") === "true"),
+    ).toHaveLength(1);
+  });
+
+  it("a moldura da serie e a do ChartFrame: eyebrow violeta e o h3", () => {
+    desenhar(painelBase());
+    const h3 = screen.getByRole("heading", {
+      level: 3,
+      name: "Cliques e vendas por dia",
+    });
+    const eyebrow = h3.previousElementSibling;
+    expect(eyebrow?.textContent).toBe("série diária");
+    expect(eyebrow?.className).toContain("text-violet-700");
+    expect(h3.closest("section")?.className).toContain("card-brutal");
+  });
+
+  it("os quatro blocos do periodo tem a forma do bloco interno do admin", () => {
+    desenhar(painelBase());
+    const blocos = Array.from(
+      screen.getByTestId("creator-periodo").children,
+    ).map((bloco) => bloco.className);
+    expect(blocos).toEqual(
+      Array(4).fill("rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"),
+    );
+  });
+});
+
 describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques", () => {
   // O backfill de 2026-09 reconstruiu vendas anteriores a creator_events. A
   // serie passa a comecar nelas, e os dias sem medicao de clique precisam
