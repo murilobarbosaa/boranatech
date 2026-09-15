@@ -195,11 +195,14 @@ describe("CreatorDashboardView: totais", () => {
     expect(valorDoTile("creator-tile-paga")).toBe("R$\u00a00,00");
   });
 
-  it("conversao null mostra o texto, nunca 0%", () => {
+  it("conversao null mostra um traco e 'sem cliques ainda', nunca 0%", () => {
     const p = painelBase();
     p.totais = { ...p.totais, clicks: 0, sales: 0, conversao_pct: null };
     desenhar(p);
-    expect(valorDoTile("creator-tile-conversao")).toBe("sem cliques ainda");
+    expect(valorDoTile("creator-tile-conversao")).toBe("-");
+    expect(screen.getByTestId("creator-tile-conversao").textContent).toContain(
+      "sem cliques ainda",
+    );
   });
 
   it("cabecalho: kind rotulado e data de concessao em dia de Brasilia", () => {
@@ -453,17 +456,17 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     ).not.toContain("por 100 cliques");
   });
 
-  it("Desde o inicio e selo ao lado do titulo Seus numeros", () => {
+  it("desde o inicio e o selo acima do titulo Seus numeros", () => {
     desenhar(painelBase());
     const titulo = screen.getByRole("heading", { name: "Seus números" });
-    expect(titulo.parentElement?.textContent).toContain("Desde o início");
+    expect(titulo.previousElementSibling?.textContent).toBe("desde o início");
   });
 
-  it("o subtitulo fala com o creator, e some na visao admin", () => {
+  it("a frase do creator saiu da view para a faixa da pagina, nas duas visoes", () => {
     const frase =
       "Seu link, seus números e o que você já gerou para a Bora na Tech.";
     desenhar(painelBase(), "creator");
-    expect(screen.getByText(frase)).toBeTruthy();
+    expect(screen.queryByText(frase)).toBeNull();
     cleanup();
     desenhar(painelBase(), "admin");
     expect(screen.queryByText(frase)).toBeNull();
@@ -478,47 +481,40 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     expect(lista?.className).not.toContain("grid-cols-2");
   });
 
-  it("cabecalho: faixa listrada atras do cartao brutal, e a etiqueta CREATOR nele", () => {
+  it("identidade embutida: cartao card-brutal, sem faixa e sem etiqueta", () => {
     desenhar(painelBase());
-    const faixa = screen.getByTestId("creator-faixa");
-    expect(faixa.getAttribute("aria-hidden")).toBe("true");
-    expect(faixa.className).toContain("repeating-linear-gradient(45deg");
-    const cartao = screen.getByText("Ana Creator").closest("section");
-    expect(faixa.nextElementSibling).toBe(cartao);
-    expect(cartao?.className).toContain("card-brutal");
-    const etiqueta = screen.getByTestId("creator-etiqueta");
-    expect(etiqueta.textContent).toBe("Creator");
-    expect(cartao?.contains(etiqueta)).toBe(true);
+    expect(screen.queryByTestId("creator-faixa")).toBeNull();
+    expect(screen.queryByTestId("creator-etiqueta")).toBeNull();
+    const identidade = screen.getByTestId("creator-identidade");
+    expect(identidade.className).toContain("card-brutal");
+    expect(identidade.textContent).toContain("Ana Creator");
   });
 
-  it("os seis tiles sao card-brutal, cada um num par pastel diferente", () => {
+  it("os seis numeros sao cards card-brutal brancos", () => {
     desenhar(painelBase());
-    const familias = [
+    for (const id of [
       "cliques",
       "vendas",
       "conversao",
       "receita",
       "a-receber",
       "paga",
-    ].map((id) => {
+    ]) {
       const classes = screen.getByTestId(`creator-tile-${id}`).className;
       expect(classes, id).toContain("card-brutal");
-      const familia = /\bbg-([a-z]+)-200\b/.exec(classes)?.[1];
-      expect(familia, id).toBeTruthy();
-      return familia;
-    });
-    expect(new Set(familias).size).toBe(6);
+      expect(classes, id).toContain("bg-white");
+    }
   });
 
-  it("a visao admin usa o mesmo cupom, tiles e faixa, sem nada a definir", () => {
+  it("a visao admin abre com a identidade e usa os mesmos cards e cupom", () => {
     desenhar(painelAdmin(), "admin");
-    expect(screen.getByTestId("creator-faixa")).toBeTruthy();
-    expect(
-      screen.getByTestId("creator-codigo-ANA30").className,
-    ).toContain("bg-[var(--brand-yellow)]");
+    expect(screen.getByTestId("creator-painel").firstElementChild).toBe(
+      screen.getByTestId("creator-identidade"),
+    );
     expect(screen.getByTestId("creator-tile-cliques").className).toContain(
       "card-brutal",
     );
+    expect(screen.getByTestId("creator-codigo-ANA30")).toBeTruthy();
   });
 });
 

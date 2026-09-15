@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Link } from "wouter";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
-import { ProfileBackground } from "@/components/profile/ProfileBackground";
+import { CreatorIdentidade } from "@/components/creator/CreatorIdentidade";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
@@ -22,11 +23,10 @@ import {
 // O 403 `creator_check_failed` (o servidor nao conseguiu conferir) NAO e "voce
 // nao e creator": cai no erro generico, com "tentar de novo".
 //
-// FUNDO E CONTAINER sao os do /perfil (ProfileBackground e o mesmo wrapper):
-// e a outra pagina de conta com fundo decorado, e o /creator segue ela em vez
-// de inventar um terceiro fundo, so com os orbes na intensidade alta. O
-// `overflow-x-clip` segura a faixa listrada do cabecalho, que sangra alem do
-// cartao, sem abrir rolagem lateral no celular.
+// ESTRUTURA DO ADMIN: faixa `hero-pattern` no topo com o titulo, e corpo
+// `section-alt` com o painel. A identidade do creator mora na faixa, ao lado do
+// titulo, e so no estado `ok`; por isso a view recebe `identidade="externa"` e
+// nao a desenha de novo.
 
 type Estado =
   | { tipo: "carregando" }
@@ -85,14 +85,38 @@ export default function Creator() {
     <Layout>
       {/* TODO(Ana) */}
       <SEO title="Painel de Creator" url="/creator" noindex />
-      <div className="relative isolate min-h-screen overflow-x-clip">
-        <ProfileBackground intensidade="alta" />
-        <div className="container relative space-y-6 py-8 md:space-y-8 md:py-12">
-          <h1 className="font-display text-3xl font-black text-slate-950 md:text-4xl">
-            {/* TODO(Ana) */}
-            Painel de Creator
-          </h1>
+      <section className="hero-pattern border-b-2 border-slate-900 py-8 md:py-10">
+        <div className="container">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <p className="social-badge mb-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wide">
+                <Sparkles className="h-4 w-4" />
+                {/* TODO(Ana) */}
+                painel de creator
+              </p>
+              <h1 className="font-display text-4xl font-black text-slate-950 lg:text-5xl">
+                {/* TODO(Ana) */}
+                Painel de Creator
+              </h1>
+              <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-slate-700">
+                {/* TODO(Ana) */}
+                Seu link, seus números e o que você já gerou para a Bora na
+                Tech.
+              </p>
+            </div>
+            {estado.tipo === "ok" ? (
+              <CreatorIdentidade
+                perfil={estado.painel.perfil}
+                creator={estado.painel.creator}
+                visao="creator"
+              />
+            ) : null}
+          </div>
+        </div>
+      </section>
 
+      <section className="section-alt py-8 md:py-10">
+        <div className="container space-y-10">
           {estado.tipo === "carregando" ? (
             // TODO(Ana)
             <LoadingBlock label="Carregando seu painel..." />
@@ -134,10 +158,11 @@ export default function Creator() {
               janela={janela}
               onJanelaChange={setJanela}
               visao="creator"
+              identidade="externa"
             />
           )}
         </div>
-      </div>
+      </section>
     </Layout>
   );
 }
