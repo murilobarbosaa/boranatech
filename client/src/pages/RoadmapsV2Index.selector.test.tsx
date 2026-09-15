@@ -81,6 +81,21 @@ describe("seletor da vitrine /roadmaps", () => {
     expect(
       barra.getByRole("button", { name: "Todos" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    // Lote M2: ativa em violeta no claro; no escuro, o par de antes.
+    const ativa = barra.getByRole("button", { name: "Todos" }).className;
+    expect(ativa).toContain("bg-violet-600");
+    expect(ativa).toContain("dark:bg-slate-900");
+    expect(
+      barra.getByRole("button", { name: "Carreiras" }).className,
+    ).not.toContain("bg-violet-600");
+    // Respiro: os grupos ficam num conteiner com mt-8 abaixo da barra e
+    // gap-14 entre si, sem margem propria.
+    const carreira = container.querySelector<HTMLElement>(
+      '[data-testid="vitrine-grupo-carreira"]',
+    );
+    expect(carreira?.parentElement?.className).toContain("mt-8");
+    expect(carreira?.parentElement?.className).toContain("gap-14");
+    expect(carreira?.className ?? "").not.toContain("mt-14");
   });
 
   it("cada pilula filtra para o seu grupo, com titulo, e grava ?grupo= na URL", () => {
