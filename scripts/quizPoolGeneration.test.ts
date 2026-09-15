@@ -994,9 +994,18 @@ describe("buildCodeRules: exemplo de completar na linguagem da trilha", () => {
   });
 
   it("linguagem sem forma propria nao ganha exemplo em sintaxe de js", () => {
-    const regras = buildCodeRules(["bash"]);
+    const regras = buildCodeRules(["dockerfile"]);
     expect(regras).not.toContain("const x = ____;");
     expect(regras).not.toContain("Exemplo de completar");
+  });
+
+  it("bash ganha exemplo de comando de Git com o prefixo $ da convencao", () => {
+    const regras = buildCodeRules(["bash"]);
+    expect(regras).toContain(
+      '- Exemplo de completar: trecho $ git ____ -m "ajusta o titulo" com alternativas commit, add, push e status. NUNCA git commit -m "ajusta o titulo" como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.',
+    );
+    expect(regras).not.toContain("const x = ____;");
+    expect(regras).not.toContain("x = 1");
   });
 
   it("variedade marca completar como obrigatoria com 2 ou mais de codigo", () => {
@@ -1179,6 +1188,38 @@ describe("codigo no enunciado: exemplo negativo e nota de correcao", () => {
     expect(regras).toContain("PROIBIDO (codigo no enunciado)");
     expect(regras).toContain("print(len('abc'))");
     expect(regras).toContain("O que este codigo imprime?");
+  });
+
+  it("bash traz o exemplo proibido com comando de Git ao lado do certo", () => {
+    const regras = buildCodeRules(["bash"]);
+    expect(regras).toContain("PROIBIDO (codigo no enunciado)");
+    expect(regras).toContain('codigo.trecho "$ git status"');
+    expect(regras).toContain(
+      "Num repositorio sem alteracoes, o que este comando imprime?",
+    );
+    expect(regras).not.toContain("print(len('abc'))");
+  });
+
+  it("pergunta bash com o comando do trecho no enunciado reprova", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          pergunta:
+            "O que $ git status imprime num repositorio sem alteracoes?",
+          codigo: { linguagem: "bash", trecho: "$ git status" },
+          alternativas: {
+            a: "nothing to commit, working tree clean",
+            b: "Already up to date.",
+            c: "Everything up-to-date",
+            d: "fatal: not a git repository",
+          },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["bash"],
+    );
+    expect(v.some((x) => x.includes("pergunta contem codigo"))).toBe(true);
   });
 
   it("js nao ganha o exemplo: o prompt dela fica como esta", () => {

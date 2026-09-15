@@ -13,6 +13,7 @@ vi.mock("@/lib/adminApi", () => ({ adminFetch: api.fetch }));
 import type { AdminFinanceContract } from "@shared/adminFinance";
 
 import { FinanceDashboard } from "./FinanceDashboard";
+import { clearHonestFinanceClientCacheForTests } from "./useHonestFinance";
 
 function money(valueCents: number, currency: string) {
   return {
@@ -158,6 +159,7 @@ function fixture(): AdminFinanceContract {
 }
 
 beforeEach(() => {
+  clearHonestFinanceClientCacheForTests();
   api.fetch.mockImplementation((path: string) =>
     path.startsWith("/finance/summary")
       ? Promise.resolve({ data: fixture() })
@@ -198,7 +200,9 @@ describe("FinanceDashboard", () => {
       screen.getByText(/não é dinheiro recebido nem obrigação contratual/i),
     ).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Indicadores ainda indisponíveis" }),
+      screen.getByRole("heading", {
+        name: "Métricas de recorrência ainda indisponíveis",
+      }),
     ).toBeTruthy();
     expect(screen.getByText(/MRR contratual · ARR · New MRR/)).toBeTruthy();
     expect(screen.queryByText(/^MRR$/)).toBeNull();
@@ -280,5 +284,16 @@ describe("FinanceDashboard", () => {
       screen.getByText(/Nenhum card monetário é fabricado como zero/),
     ).toBeTruthy();
     expect(screen.queryByText("R$ 0,00")).toBeNull();
+  });
+
+  it("não oferece filtro de provedor limitado à página como se fosse global", async () => {
+    render(<FinanceDashboard view="transactions" />);
+    await waitFor(() =>
+      expect(api.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/finance/transactions?"),
+      ),
+    );
+    expect(screen.queryByRole("combobox", { name: /provedor/i })).toBeNull();
+    expect(api.fetch.mock.calls.flat().join(" ")).not.toContain("provider=");
   });
 });

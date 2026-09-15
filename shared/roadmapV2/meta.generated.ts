@@ -434,5 +434,17 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 43,
     "hasProject": true,
     "hasQuiz": true
+  },
+  {
+    "slug": "git",
+    "area": "ferramenta",
+    "kind": "ferramenta",
+    "title": "Git do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro commit ao pull request, com o controle de versão que todo time de tecnologia usa: histórico, branches, conflitos, remotos e as ferramentas que salvam o dia. Conclua uma etapa pra liberar a próxima.",
+    "sectionCount": 10,
+    "stepCount": 44,
+    "hasProject": true,
+    "hasQuiz": true
   }
 ];

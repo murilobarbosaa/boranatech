@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatarDiaCivil } from "@shared/brasiliaDay";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { BntSelect } from "@/components/shared/BntSelect";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // TODO(Ana): revisar TODA a copy visivel deste bloco (labels do formulario,
 // categorias, cabecalhos da tabela, mensagens de estado e o aviso de cambio).
@@ -97,8 +104,12 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const newExpenseTriggerRef = useRef<HTMLButtonElement>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [fxRate, setFxRate] = useState<number | null>(null);
@@ -136,8 +147,11 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
         from: from.toISOString(),
         to: now.toISOString(),
       });
-      const json: { data: { despesasPorCategoria: Array<{ category: string; cents: number }> } } =
-        await adminFetch(`/finance/summary?${params.toString()}`);
+      const json: {
+        data: {
+          despesasPorCategoria: Array<{ category: string; cents: number }>;
+        };
+      } = await adminFetch(`/finance/summary?${params.toString()}`);
       setBreakdown(json.data.despesasPorCategoria ?? []);
       setBreakdownError(null);
     } catch (err) {
@@ -197,6 +211,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
     setForm(EMPTY_FORM);
     setEditingId(null);
     setFormError(null);
+    setFormOpen(false);
   }
 
   function startEdit(exp: Expense) {
@@ -216,10 +231,12 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
       notes: exp.notes ?? "",
     });
     setFormError(null);
+    setFormOpen(true);
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (savingRef.current) return;
     setFormError(null);
     const cents = amountToCents(form.amount);
     if (cents === null) {
@@ -254,6 +271,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
         form.kind === "recurring" ? form.recurrence_interval : null,
       notes: form.notes.trim() || null,
     };
+    savingRef.current = true;
     setSaving(true);
     try {
       if (editingId) {
@@ -275,6 +293,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
         err instanceof Error ? err.message : "Erro ao salvar despesa.",
       );
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -285,9 +304,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
       await Promise.all([loadList(), loadBreakdown()]);
       onChanged?.();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao remover despesa.",
-      );
+      setError(err instanceof Error ? err.message : "Erro ao remover despesa.");
     }
   }
 
@@ -298,217 +315,268 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
   const breakdownTotal = breakdown.reduce((sum, b) => sum + b.cents, 0);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
-      {/* Formulario de lancamento */}
-      <form
-        onSubmit={(e) => void handleSubmit(e)}
-        className="card-brutal rounded-3xl bg-white p-6"
-      >
-        <h3 className="font-display text-2xl font-black text-slate-950">
-          {editingId ? "Editar despesa" : "Nova despesa"}
-        </h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
-            Descrição
-            <input
-              value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
-              }
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Categoria
-            <BntSelect
-              accent="gold"
-              label="Categoria"
-              className="mt-1"
-              value={form.category}
-              onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
-              options={CATEGORIES}
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Fornecedor
-            <input
-              value={form.vendor}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, vendor: e.target.value }))
-              }
-              placeholder="Railway, OpenAI, Meta Ads..."
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Tipo
-            <BntSelect
-              accent="gold"
-              label="Tipo"
-              className="mt-1"
-              value={form.kind}
-              onValueChange={(v) =>
-                setForm((f) => ({
-                  ...f,
-                  kind: v === "recurring" ? "recurring" : "one_off",
-                }))
-              }
-              options={[
-                { value: "one_off", label: "Pontual" },
-                { value: "recurring", label: "Recorrente" },
-              ]}
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Competência
-            <input
-              type="date"
-              value={form.incurred_on}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, incurred_on: e.target.value }))
-              }
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Valor
-            <input
-              value={form.amount}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, amount: e.target.value }))
-              }
-              placeholder="0,00"
-              inputMode="decimal"
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            />
-          </label>
-          <label className="text-xs font-black uppercase text-slate-600">
-            Moeda
-            <BntSelect
-              accent="gold"
-              label="Moeda"
-              className="mt-1"
-              value={form.currency}
-              onValueChange={(v) =>
-                setForm((f) => ({
-                  ...f,
-                  currency: v === "USD" ? "USD" : "BRL",
-                }))
-              }
-              options={[
-                { value: "BRL", label: "BRL" },
-                { value: "USD", label: "USD" },
-              ]}
-            />
-          </label>
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          ref={newExpenseTriggerRef}
+          type="button"
+          onClick={() => setFormOpen(true)}
+          className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
+        >
+          Nova despesa
+        </button>
+      </div>
 
-          {form.kind === "recurring" ? (
-            <>
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent
+          overlayClassName="z-[2000]"
+          className="z-[2100] max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            descriptionRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            newExpenseTriggerRef.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl font-black text-slate-950">
+              {editingId ? "Editar despesa" : "Nova despesa"}
+            </DialogTitle>
+            <DialogDescription>
+              O rascunho é preservado ao fechar este painel.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => void handleSubmit(e)}>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                Descrição
+                <input
+                  ref={descriptionRef}
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
+                  className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                />
+              </label>
               <label className="text-xs font-black uppercase text-slate-600">
-                Recorrência
+                Categoria
                 <BntSelect
                   accent="gold"
-                  label="Recorrência"
+                  label="Categoria"
                   className="mt-1"
-                  value={form.recurrence_interval}
+                  value={form.category}
+                  onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
+                  options={CATEGORIES}
+                />
+              </label>
+              <label className="text-xs font-black uppercase text-slate-600">
+                Fornecedor
+                <input
+                  value={form.vendor}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, vendor: e.target.value }))
+                  }
+                  placeholder="Railway, OpenAI, Meta Ads..."
+                  className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                />
+              </label>
+              <label className="text-xs font-black uppercase text-slate-600">
+                Tipo
+                <BntSelect
+                  accent="gold"
+                  label="Tipo"
+                  className="mt-1"
+                  value={form.kind}
                   onValueChange={(v) =>
                     setForm((f) => ({
                       ...f,
-                      recurrence_interval: v === "yearly" ? "yearly" : "monthly",
+                      kind: v === "recurring" ? "recurring" : "one_off",
                     }))
                   }
                   options={[
-                    { value: "monthly", label: "Mensal" },
-                    { value: "yearly", label: "Anual" },
+                    { value: "one_off", label: "Pontual" },
+                    { value: "recurring", label: "Recorrente" },
                   ]}
                 />
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
-                Início
+                Competência
                 <input
                   type="date"
-                  value={form.recurrence_start}
+                  value={form.incurred_on}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, recurrence_start: e.target.value }))
+                    setForm((f) => ({ ...f, incurred_on: e.target.value }))
                   }
                   className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
                 />
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
-                Fim (opcional)
+                Valor
                 <input
-                  type="date"
-                  value={form.recurrence_end}
+                  value={form.amount}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, recurrence_end: e.target.value }))
+                    setForm((f) => ({ ...f, amount: e.target.value }))
+                  }
+                  placeholder="0,00"
+                  inputMode="decimal"
+                  className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                />
+              </label>
+              <label className="text-xs font-black uppercase text-slate-600">
+                Moeda
+                <BntSelect
+                  accent="gold"
+                  label="Moeda"
+                  className="mt-1"
+                  value={form.currency}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      currency: v === "USD" ? "USD" : "BRL",
+                    }))
+                  }
+                  options={[
+                    { value: "BRL", label: "BRL" },
+                    { value: "USD", label: "USD" },
+                  ]}
+                />
+              </label>
+
+              {form.kind === "recurring" ? (
+                <>
+                  <label className="text-xs font-black uppercase text-slate-600">
+                    Recorrência
+                    <BntSelect
+                      accent="gold"
+                      label="Recorrência"
+                      className="mt-1"
+                      value={form.recurrence_interval}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          recurrence_interval:
+                            v === "yearly" ? "yearly" : "monthly",
+                        }))
+                      }
+                      options={[
+                        { value: "monthly", label: "Mensal" },
+                        { value: "yearly", label: "Anual" },
+                      ]}
+                    />
+                  </label>
+                  <label className="text-xs font-black uppercase text-slate-600">
+                    Início
+                    <input
+                      type="date"
+                      value={form.recurrence_start}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          recurrence_start: e.target.value,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                    />
+                  </label>
+                  <label className="text-xs font-black uppercase text-slate-600">
+                    Fim (opcional)
+                    <input
+                      type="date"
+                      value={form.recurrence_end}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          recurrence_end: e.target.value,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                Notas
+                <input
+                  value={form.notes}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notes: e.target.value }))
                   }
                   className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
                 />
               </label>
-            </>
-          ) : null}
+            </div>
 
-          <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
-            Notas
-            <input
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            />
-          </label>
-        </div>
+            {/* Preview de cambio (antes de salvar) */}
+            {form.currency === "USD" ? (
+              <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 text-sm font-bold text-slate-700">
+                {fxError ? (
+                  <span className="text-rose-700">
+                    {/* TODO(Ana) */}
+                    Câmbio indisponível: {fxError}. Não dá para salvar em USD
+                    agora.
+                  </span>
+                ) : fxRate !== null ? (
+                  <span>
+                    {/* TODO(Ana): copy do aviso de cambio */}
+                    PTAX {fxRate.toFixed(4)}
+                    {fxDate ? ` (cotação de ${fxDate})` : ""} ·{" "}
+                    {previewBrlCents !== null
+                      ? `${fmtBrlCents(previewBrlCents)} serão congelados`
+                      : "informe o valor"}
+                  </span>
+                ) : (
+                  <span>Buscando cotação PTAX...</span>
+                )}
+              </div>
+            ) : null}
 
-        {/* Preview de cambio (antes de salvar) */}
-        {form.currency === "USD" ? (
-          <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 text-sm font-bold text-slate-700">
-            {fxError ? (
-              <span className="text-rose-700">
-                {/* TODO(Ana) */}
-                Câmbio indisponível: {fxError}. Não dá para salvar em USD agora.
-              </span>
-            ) : fxRate !== null ? (
-              <span>
-                {/* TODO(Ana): copy do aviso de cambio */}
-                PTAX {fxRate.toFixed(4)}
-                {fxDate ? ` (cotação de ${fxDate})` : ""} ·{" "}
-                {previewBrlCents !== null
-                  ? `${fmtBrlCents(previewBrlCents)} serão congelados`
-                  : "informe o valor"}
-              </span>
-            ) : (
-              <span>Buscando cotação PTAX...</span>
-            )}
-          </div>
-        ) : null}
+            {formError ? (
+              <div className="mt-3">
+                <ErrorBlock message={formError} />
+              </div>
+            ) : null}
 
-        {formError ? (
-          <div className="mt-3">
-            <ErrorBlock message={formError} />
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex gap-2">
-          <button
-            type="submit"
-            disabled={saving || (form.currency === "USD" && fxRate === null)}
-            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Lançar despesa"}
-          </button>
-          {editingId ? (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-full border-2 border-slate-900 bg-white px-5 py-2 text-sm font-black"
-            >
-              Cancelar
-            </button>
-          ) : null}
-        </div>
-      </form>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={
+                  saving || (form.currency === "USD" && fxRate === null)
+                }
+                className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
+              >
+                {saving
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Lançar despesa"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormOpen(false)}
+                className="rounded-full border-2 border-slate-900 bg-white px-5 py-2 text-sm font-black"
+              >
+                Fechar
+              </button>
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-full px-3 py-2 text-sm font-black text-rose-700 underline"
+                >
+                  Descartar edição
+                </button>
+              ) : null}
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Breakdown por categoria (ultimos 12 meses, com recorrencia expandida) */}
-      <div className="card-brutal rounded-3xl bg-white p-6">
+      <div className="rounded-2xl border border-slate-300 bg-white p-5">
         <h3 className="font-display text-2xl font-black text-slate-950">
           Por categoria (12 meses)
         </h3>
@@ -548,7 +616,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
       </div>
 
       {/* Tabela de despesas */}
-      <div className="xl:col-span-2">
+      <div>
         <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
           {loading && !data ? (
             <div className="p-4">
@@ -565,15 +633,29 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="border-b-2 border-slate-900 bg-slate-50">
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Descrição</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Categoria</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Tipo</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Valor</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Em BRL</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Competência</th>
-                    <th className="px-4 py-3 font-black uppercase text-slate-600">Ações</th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Descrição
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Categoria
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Tipo
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Valor
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Em BRL
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Competência
+                    </th>
+                    <th className="px-4 py-3 font-black uppercase text-slate-600">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
