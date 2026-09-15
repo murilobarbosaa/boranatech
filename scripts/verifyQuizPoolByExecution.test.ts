@@ -406,13 +406,13 @@ describe("tabelaRevisao: uma linha por pergunta de codigo para a revisao humana"
   it("cada linha traz id, tipo, linguagem, execucao e o resumo da correta", () => {
     const tabela = tabelaRevisao(perguntas);
     expect(tabela[0]).toBe(
-      "git-ini-01 | saida | bash | nao-executado | Already up to date.",
+      "git-ini-01 | saida | bash | nao-executado | - | Already up to date.",
     );
     expect(tabela[2]).toBe(
-      "html-ini-04 | completar | html | nao-executado | h1",
+      "html-ini-04 | completar | html | nao-executado | limpo (erradas limpas: 0/3) | h1",
     );
     expect(
-      tabela[1].startsWith("python-ini-03 | erro | python | executado | "),
+      tabela[1].startsWith("python-ini-03 | erro | python | executado | - | "),
     ).toBe(true);
   });
 
@@ -437,5 +437,66 @@ describe("tabelaRevisao: uma linha por pergunta de codigo para a revisao humana"
         },
       ]),
     ).toThrow(/cobol/);
+  });
+});
+
+describe("tabelaRevisao: coluna estrutura nas perguntas de html", () => {
+  const base = {
+    nivel: "iniciante" as const,
+    pergunta: "Qual e o defeito?",
+    explicacao: "Explicacao.",
+    fonte: "fundamentos.documento",
+  };
+  const perguntas: QuizQuestion[] = [
+    {
+      ...base,
+      id: "html-ini-01",
+      tipo: "erro",
+      codigo: { linguagem: "html", trecho: "<div>\n  <p>texto</p>" },
+      alternativas: {
+        a: "A div abre e nunca fecha",
+        b: "O p esta fora de ordem",
+        c: "Falta o atributo lang",
+        d: "A div nao aceita p dentro",
+      },
+      correta: "a",
+    },
+    {
+      ...base,
+      id: "html-ini-02",
+      tipo: "completar",
+      codigo: {
+        linguagem: "html",
+        trecho: '<img src="foto.jpg" ____="Ana sorrindo">',
+      },
+      alternativas: { a: "alt", b: "title", c: "name", d: "label" },
+      correta: "a",
+      alternativasCodigo: true,
+    },
+    {
+      ...base,
+      id: "git-ini-01",
+      tipo: "completar",
+      codigo: { linguagem: "bash", trecho: "$ git ____ ." },
+      alternativas: { a: "add", b: "commit", c: "status", d: "restore" },
+      correta: "a",
+      alternativasCodigo: true,
+    },
+  ];
+
+  it("erro com defeito estrutural sai com acusa e o problema", () => {
+    const linha = tabelaRevisao(perguntas)[0];
+    expect(linha).toContain("| acusa:");
+    expect(linha).toContain("div");
+  });
+
+  it("completar com a correta na lacuna sai limpo e conta as erradas limpas", () => {
+    const linha = tabelaRevisao(perguntas)[1];
+    expect(linha).toContain("| limpo");
+    expect(linha).toMatch(/erradas limpas: \d\/3/);
+  });
+
+  it("linguagem sem verificador estrutural mostra hifen na coluna", () => {
+    expect(tabelaRevisao(perguntas)[2].split(" | ")[4]).toBe("-");
   });
 });
