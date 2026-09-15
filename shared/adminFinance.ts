@@ -3,6 +3,8 @@ import { inicioDoDiaBrasilia, somarDiaCivil } from "./brasiliaDay";
 
 export const ADMIN_FINANCE_CONTRACT_VERSION = 1 as const;
 export const ADMIN_FINANCE_TIMEZONE = "America/Sao_Paulo" as const;
+// Limite explícito de payload para a série diária do histórico local completo.
+export const MAX_FINANCE_HISTORY_DAYS = 3653;
 
 export const FinanceAvailabilitySchema = z.enum([
   "available",
@@ -26,7 +28,7 @@ const nonNegativeIntegerSchema = safeIntegerSchema.nonnegative();
 
 export const FinancePeriodSchema = z
   .object({
-    preset: z.enum(["30d", "90d", "previous_month", "custom"]),
+    preset: z.enum(["30d", "90d", "previous_month", "custom", "all"]),
     startDay: daySchema,
     endDayInclusive: daySchema,
     from: instantSchema,
@@ -47,6 +49,20 @@ export const FinancePeriodSchema = z
       ctx.addIssue({
         code: "custom",
         message: "dias civis invertidos",
+        path: ["endDayInclusive"],
+      });
+    }
+    const startMs = Date.parse(`${period.startDay}T00:00:00Z`);
+    const endMs = Date.parse(`${period.endDayInclusive}T00:00:00Z`);
+    const spanDays = Math.floor((endMs - startMs) / 86_400_000) + 1;
+    if (
+      !Number.isSafeInteger(spanDays) ||
+      spanDays < 1 ||
+      spanDays > MAX_FINANCE_HISTORY_DAYS
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "período excede o limite explícito da série diária",
         path: ["endDayInclusive"],
       });
     }
@@ -172,7 +188,7 @@ const CashCurrencySchema = z
     payments: FinanceCountMetricSchema,
     identifiedPeople: FinanceCountMetricSchema,
     transactionsWithoutPerson: FinanceCountMetricSchema,
-    series: z.array(CashSeriesPointSchema).max(366),
+    series: z.array(CashSeriesPointSchema).max(MAX_FINANCE_HISTORY_DAYS),
   })
   .strict()
   .superRefine((bucket, ctx) => {
@@ -305,6 +321,24 @@ export const AdminFinanceContractSchema = z
   })
   .strict()
   .superRefine((contract, ctx) => {
+    const spanDays =
+      Math.floor(
+        (Date.parse(`${contract.period.endDayInclusive}T00:00:00Z`) -
+          Date.parse(`${contract.period.startDay}T00:00:00Z`)) /
+          86_400_000,
+      ) + 1;
+    if (
+      !Number.isSafeInteger(spanDays) ||
+      spanDays < 1 ||
+      spanDays > MAX_FINANCE_HISTORY_DAYS
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "série diária fora dos limites de validação",
+        path: ["period"],
+      });
+      return;
+    }
     const currencies = contract.cash.currencies.map((item) => item.currency);
     if (new Set(currencies).size !== currencies.length) {
       ctx.addIssue({

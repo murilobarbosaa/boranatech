@@ -23,6 +23,7 @@ import {
 } from "../lib/financeMetrics";
 import {
   getHonestFinanceDashboard,
+  resolveHonestFinanceAllPeriod,
   resolveHonestFinancePeriod,
 } from "../lib/honestFinance";
 import {
@@ -6813,9 +6814,12 @@ router.get("/finance/summary", async (req, res, next) => {
     // nunca cai silenciosamente nesse payload: versão ausente/desconhecida é
     // recusada pelo parser compartilhado no servidor e no cliente.
     if (req.query.contract === "honest-v1") {
-      const period = resolveHonestFinancePeriod(
-        req.query as Record<string, unknown>,
-      );
+      const period =
+        req.query.preset === "all"
+          ? await resolveHonestFinanceAllPeriod(
+              req.query as Record<string, unknown>,
+            )
+          : resolveHonestFinancePeriod(req.query as Record<string, unknown>);
       const cacheKey =
         `admincache:finance:honest:v${ADMIN_FINANCE_CONTRACT_VERSION}` +
         `:from=${period.from}&to=${period.toExclusive}`;

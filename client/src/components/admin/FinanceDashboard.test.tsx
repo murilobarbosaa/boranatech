@@ -13,6 +13,7 @@ vi.mock("@/lib/adminApi", () => ({ adminFetch: api.fetch }));
 import type { AdminFinanceContract } from "@shared/adminFinance";
 
 import { FinanceDashboard } from "./FinanceDashboard";
+import { financeFixtureForRequest } from "./financeFixtureForRequest.testUtils";
 import { clearHonestFinanceClientCacheForTests } from "./useHonestFinance";
 
 function money(valueCents: number, currency: string) {
@@ -162,7 +163,7 @@ beforeEach(() => {
   clearHonestFinanceClientCacheForTests();
   api.fetch.mockImplementation((path: string) =>
     path.startsWith("/finance/summary")
-      ? Promise.resolve({ data: fixture() })
+      ? Promise.resolve({ data: financeFixtureForRequest(fixture(), path) })
       : Promise.resolve({
           data: { rows: [], total: 0, page: 1, pageSize: 25 },
         }),
@@ -186,9 +187,43 @@ describe("FinanceDashboard", () => {
     expect(screen.getByText("Manuais pré-pagos ativos")).toBeTruthy();
     expect(screen.getByText("Em trial")).toBeTruthy();
     expect(screen.getByText(/Trial não é cliente pagante/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Ver exclusões por motivo"));
+    fireEvent.click(screen.getByText("Ver exclusões, conflitos e limitações"));
     expect(screen.getByText(/conflito econômico: 1/)).toBeTruthy();
     expect(screen.queryByText("R$ 120,00")).toBeNull();
+  });
+
+  it("destaca quatro valores por moeda e move contagens para qualidade dos dados", async () => {
+    render(<FinanceDashboard />);
+    const brl = await screen.findByText("Movimentos em BRL");
+    const grid = brl.closest("div.space-y-3")?.querySelector("div.grid");
+    expect(grid?.children).toHaveLength(4);
+    expect(grid?.children[0].textContent).toContain(
+      "Caixa líquido calculável registrado",
+    );
+    expect(grid?.textContent).not.toContain("Transações sem pessoa");
+    expect(screen.getByText("Pagamentos e qualidade dos dados")).toBeTruthy();
+    expect(screen.getByText("Transações excluídas")).toBeTruthy();
+    fireEvent.click(screen.getByText("Ver exclusões, conflitos e limitações"));
+    expect(
+      screen.getByText(/BRL: .* transações aceitas sem pessoa/),
+    ).toBeTruthy();
+  });
+
+  it("permite consultar Todo histórico local sem converter a janela para 30 dias", async () => {
+    render(<FinanceDashboard />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Todo histórico local" }),
+    );
+    await waitFor(() =>
+      expect(api.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/preset=all&asOfDay=/),
+      ),
+    );
+    expect(
+      screen
+        .getByRole("button", { name: "Todo histórico local" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 
   it("rotula catálogo honestamente e agrupa métricas indisponíveis", async () => {
@@ -269,7 +304,7 @@ describe("FinanceDashboard", () => {
     };
     api.fetch.mockImplementation((path: string) =>
       path.startsWith("/finance/summary")
-        ? Promise.resolve({ data: empty })
+        ? Promise.resolve({ data: financeFixtureForRequest(empty, path) })
         : Promise.resolve({
             data: { rows: [], total: 0, page: 1, pageSize: 25 },
           }),

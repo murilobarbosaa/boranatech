@@ -127,7 +127,7 @@ import {
 } from "@/constants/avatarOptions";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
-import { somarDiaCivil } from "@shared/brasiliaDay";
+import { diaBrasilia, somarDiaCivil } from "@shared/brasiliaDay";
 import {
   applyNamePlaceholder,
   applyUnsubscribeUrl,
@@ -1254,27 +1254,31 @@ function OverviewFinancialCard({
 }: {
   overview: OverviewData | null;
   overviewWindow: OverviewWindow;
-  onNavigate: () => void;
+  onNavigate: (filter: {
+    preset: "all" | "custom";
+    customFrom?: string;
+    customTo?: string;
+  }) => void;
 }) {
   const hasBoundedPeriod =
     overviewWindow !== "all" &&
     Boolean(overview?.windowFirstDay && overview?.windowLastDay);
-  const customFrom = hasBoundedPeriod
-    ? somarDiaCivil(overview!.windowFirstDay!, -1)
-    : undefined;
+  const customFrom = hasBoundedPeriod ? overview!.windowFirstDay! : undefined;
   const customTo = hasBoundedPeriod
     ? somarDiaCivil(overview!.windowLastDay, -1)
     : undefined;
+  const hasCompleteDays =
+    overviewWindow === "all" ||
+    Boolean(customFrom && customTo && customFrom <= customTo);
   const finance = useHonestFinance(
     {
-      // A janela executiva padrão usa exatamente a mesma chave/cache do Resumo
-      // financeiro. Sete dias ainda precisa do período customizado equivalente,
-      // pois o contrato financeiro v1 não possui preset 7d.
-      preset: overviewWindow === "30" ? "30d" : "custom",
+      // A Visão inclui hoje; o caixa mantém o início selecionado e exclui
+      // somente o dia corrente, que ainda não está completo.
+      preset: overviewWindow === "all" ? "all" : "custom",
       customFrom,
       customTo,
     },
-    { enabled: hasBoundedPeriod },
+    { enabled: hasCompleteDays },
   );
   const brl = finance.data?.cash.currencies.find(
     (bucket) => bucket.currency === "BRL",
@@ -1287,10 +1291,12 @@ function OverviewFinancialCard({
         new Date(`${finance.data.period.startDay}T00:00:00Z`),
       )} a ${new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
         new Date(`${finance.data.period.endDayInclusive}T00:00:00Z`),
-      )} · ${finance.data.period.timezone}`
+      )} · ${finance.data.period.timezone} · Hoje excluído`
     : overviewWindow === "all"
-      ? "Período todo"
-      : `Últimos ${overviewWindow} dias completos`;
+      ? "Histórico financeiro local até ontem; hoje excluído"
+      : customFrom && customTo
+        ? `${customFrom} a ${customTo} · Hoje excluído`
+        : "Não há dia encerrado neste período";
   const financeCoverage = finance.error
     ? "Financeiro indisponível"
     : finance.data
@@ -1333,7 +1339,7 @@ function OverviewFinancialCard({
         ) : finance.error ? (
           "A falha desta leitura não afeta os demais indicadores."
         ) : overviewWindow === "all" ? (
-          "Selecione uma janela com dias completos para consultar o caixa."
+          "Histórico local ainda não disponível; nenhum zero foi criado."
         ) : (
           "Nenhum subtotal BRL foi informado; não foi criado R$ 0."
         )}
@@ -1348,7 +1354,17 @@ function OverviewFinancialCard({
       </p>
       <button
         type="button"
-        onClick={onNavigate}
+        onClick={() =>
+          onNavigate(
+            overviewWindow === "all"
+              ? { preset: "all" }
+              : {
+                  preset: "custom",
+                  customFrom: finance.data?.period.startDay ?? customFrom,
+                  customTo: finance.data?.period.endDayInclusive ?? customTo,
+                },
+          )
+        }
         className="mt-auto pt-3 text-left text-sm font-black text-violet-700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
       >
         Ver financeiro
@@ -6382,6 +6398,16 @@ export default function Admin() {
   const overviewWindow = parseOverviewWindow(
     new URLSearchParams(search).get("window"),
   );
+  const [todayForOverview, setTodayForOverview] = useState(
+    () => diaBrasilia(new Date().toISOString()) ?? "",
+  );
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = diaBrasilia(new Date().toISOString()) ?? "";
+      setTodayForOverview((previous) => (previous === next ? previous : next));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const setOverviewWindow = useCallback(
     (proxima: OverviewWindow) => {
       const params = new URLSearchParams(window.location.search);
@@ -6417,7 +6443,7 @@ export default function Admin() {
     return () => {
       cancelled = true;
     };
-  }, [overviewWindow]);
+  }, [overviewWindow, todayForOverview]);
 
   // PRESENCA, com efeito e ritmo PROPRIOS.
   //
@@ -6476,7 +6502,7 @@ export default function Admin() {
     return () => {
       cancelled = true;
     };
-  }, [overviewWindow]);
+  }, [overviewWindow, todayForOverview]);
 
   // ATENCAO NECESSARIA: estado proprio, e NAO segue o seletor.
   //
@@ -7670,7 +7696,21 @@ export default function Admin() {
                             <OverviewFinancialCard
                               overview={overview}
                               overviewWindow={overviewWindow}
-                              onNavigate={() => setActiveSection("financeiro")}
+                              onNavigate={(filter) => {
+                                const params = new URLSearchParams(
+                                  window.location.search,
+                                );
+                                params.set("section", "financeiro");
+                                params.delete("financeView");
+                                params.set("financePeriod", filter.preset);
+                                if (filter.customFrom)
+                                  params.set("financeFrom", filter.customFrom);
+                                else params.delete("financeFrom");
+                                if (filter.customTo)
+                                  params.set("financeTo", filter.customTo);
+                                else params.delete("financeTo");
+                                setLocation(`/admin?${params.toString()}`);
+                              }}
                             />
                           </BlocoBoundary>
                         ) : (

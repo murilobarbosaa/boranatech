@@ -2,6 +2,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import financeFixture from "../../../../docs/investigacoes/2026-09-14-adm-004-p1-1-exemplo-sintetico.json";
+import type { AdminFinanceContract } from "@shared/adminFinance";
+import { financeFixtureForRequest } from "./financeFixtureForRequest.testUtils";
 
 const fetchMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/adminApi", () => ({
@@ -10,8 +12,16 @@ vi.mock("@/lib/adminApi", () => ({
 
 import {
   clearHonestFinanceClientCacheForTests,
+  honestFinanceParams,
   useHonestFinance,
 } from "./useHonestFinance";
+
+function fixtureFor(from = "2026-08-15", to = "2026-09-13") {
+  return financeFixtureForRequest(
+    financeFixture as AdminFinanceContract,
+    `/finance/summary?contract=honest-v1&preset=custom&fromDay=${from}&toDay=${to}`,
+  );
+}
 
 function Probe({
   name,
@@ -57,12 +67,44 @@ function RefreshProbe({ refreshKey }: { refreshKey: number }) {
 beforeEach(() => {
   clearHonestFinanceClientCacheForTests();
   fetchMock.mockReset();
-  fetchMock.mockResolvedValue({ data: financeFixture });
+  fetchMock.mockImplementation((path: string) =>
+    Promise.resolve({
+      data: financeFixtureForRequest(
+        financeFixture as AdminFinanceContract,
+        path,
+      ),
+    }),
+  );
 });
 
 afterEach(cleanup);
 
 describe("useHonestFinance", () => {
+  it("distingue o dia real de referência do histórico completo na chave", () => {
+    const before = honestFinanceParams({
+      preset: "all",
+      asOfDay: "2026-09-14",
+    })?.toString();
+    const after = honestFinanceParams({
+      preset: "all",
+      asOfDay: "2026-09-15",
+    })?.toString();
+    expect(before).toContain("asOfDay=2026-09-14");
+    expect(after).toContain("asOfDay=2026-09-15");
+    expect(before).not.toBe(after);
+  });
+
+  it("rejeita resposta válida para um período diferente, sem exibir valor antigo", async () => {
+    fetchMock.mockResolvedValueOnce({
+      data: fixtureFor("2026-08-16", "2026-09-13"),
+    });
+    render(<Probe name="janela" />);
+    expect(
+      await screen.findByText("error", { selector: "output" }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("janela").dataset.computedAt).toBeUndefined();
+  });
+
   it("compartilha a requisição em andamento para a mesma janela", async () => {
     render(
       <>
@@ -79,7 +121,7 @@ describe("useHonestFinance", () => {
 
   it("faz refresh write-through e preserva o dado anterior se ele falhar", async () => {
     fetchMock
-      .mockResolvedValueOnce({ data: financeFixture })
+      .mockResolvedValueOnce({ data: fixtureFor() })
       .mockRejectedValueOnce(new Error("refresh indisponível"));
     const rendered = render(<RefreshProbe refreshKey={0} />);
     expect(await screen.findByText("1 · ok")).toBeTruthy();
@@ -112,7 +154,7 @@ describe("useHonestFinance", () => {
     const oldRequest = new Promise((resolve) => {
       resolveOld = resolve;
     });
-    const newer = structuredClone(financeFixture);
+    const newer = fixtureFor("2026-07-01", "2026-07-31");
     newer.computedAt = "2026-09-14T13:00:00.000Z";
     fetchMock
       .mockReturnValueOnce(oldRequest)
@@ -128,7 +170,7 @@ describe("useHonestFinance", () => {
         "2026-09-14T13:00:00.000Z",
       ),
     );
-    resolveOld({ data: financeFixture });
+    resolveOld({ data: fixtureFor() });
     await waitFor(() =>
       expect(screen.getByLabelText("janela").dataset.computedAt).toBe(
         "2026-09-14T13:00:00.000Z",
@@ -144,7 +186,7 @@ describe("useHonestFinance", () => {
       await screen.findByText("error", { selector: "output" }),
     ).toBeTruthy();
     first.unmount();
-    fetchMock.mockResolvedValueOnce({ data: financeFixture });
+    fetchMock.mockResolvedValueOnce({ data: fixtureFor() });
     render(<Probe name="segunda" />);
     expect(await screen.findByText("1", { selector: "output" })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -161,7 +203,7 @@ describe("useHonestFinance", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     old.unmount();
     clearHonestFinanceClientCacheForTests();
-    resolveOld({ data: financeFixture });
+    resolveOld({ data: fixtureFor() });
     await Promise.resolve();
 
     render(<Probe name="nova" />);
