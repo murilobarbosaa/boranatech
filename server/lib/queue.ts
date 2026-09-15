@@ -48,6 +48,12 @@ export type EmailJobData =
     } & Recipient)
   | ({
       type: "pix_pending_reminder";
+      /**
+       * Linha de `subscriptions` da cobranca. OBRIGATORIO, e nao opcional, para
+       * o `tsc` cobrar de quem enfileira: o envio reconfere a linha antes de
+       * montar o e-mail (ver `sendDirect`), e sem o id nao ha o que reconferir.
+       */
+      subscriptionId: string;
       variant: "aberto" | "vence_hoje";
       planName: string;
       /** Valor da COBRANCA, nao do plano. */

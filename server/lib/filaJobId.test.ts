@@ -48,6 +48,7 @@ const LEMBRETE = {
   type: "pix_pending_reminder" as const,
   to: "a@b.com",
   name: "Ana",
+  subscriptionId: "row-1",
   variant: "aberto" as const,
   planName: "Anual",
   amountCents: 1737,

@@ -313,6 +313,9 @@ describe("rodarLembretesPix", () => {
       type: "pix_pending_reminder",
       to: "u1@exemplo.com",
       name: "Pessoa",
+      // O envio reconfere a linha antes de montar o e-mail; sem o id do job
+      // nao ha o que reconferir.
+      subscriptionId: "row-1",
       variant: "aberto",
       planName: "Anual",
       amountCents: 1737,

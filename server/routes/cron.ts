@@ -1450,6 +1450,7 @@ export async function rodarLembretesPix(
           type: "pix_pending_reminder",
           to: emailTo,
           name,
+          subscriptionId: linha.id,
           variant: decisao.variant,
           planName: PLAN_PRICING[planCode].label,
           amountCents,
