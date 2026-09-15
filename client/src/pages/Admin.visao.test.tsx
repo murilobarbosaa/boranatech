@@ -274,7 +274,7 @@ describe("inventário de blocos da Visão", () => {
     const faixa = await screen.findByTestId("health-band");
     expect(faixa.getAttribute("data-estado")).toBe("ok");
     // Os cards caem no estado nomeado, não em R$ 0,00 falso.
-    expect(screen.getAllByText("indisponível").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/indisponível/i).length).toBeGreaterThan(0);
   });
 
   it("payload de ERRO no lugar do de sucesso também não derruba", async () => {

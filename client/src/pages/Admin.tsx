@@ -22,6 +22,7 @@ import {
   Compass,
   Copy,
   CreditCard,
+  ChevronDown,
   DollarSign,
   Eye,
   FileText,
@@ -71,7 +72,6 @@ const TasksDashboard = lazyWithRetry(
   () => import("@/components/admin/tasks/TasksDashboard"),
 );
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
-import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,9 +80,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
-import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashboard";
-import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
+import { formatMoneyMetric } from "@/components/admin/FinanceDashboard";
+import { FinanceWorkspace } from "@/components/admin/FinanceWorkspace";
+import { useHonestFinance } from "@/components/admin/useHonestFinance";
 import { clearAttentionContext } from "@/components/admin/adminContext";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { CreatorsSection } from "@/components/admin/creators/CreatorsSection";
@@ -115,10 +115,7 @@ import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
-import {
-  SubscribersSummary,
-  SubscribersTable,
-} from "@/components/admin/SubscribersTable";
+import { SubscribersSummary } from "@/components/admin/SubscribersTable";
 import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
@@ -131,6 +128,7 @@ import {
 } from "@/constants/avatarOptions";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
+import { somarDiaCivil } from "@shared/brasiliaDay";
 import {
   applyNamePlaceholder,
   applyUnsubscribeUrl,
@@ -603,8 +601,6 @@ type OnlineNowData =
   | { state: "ok"; atividade?: { online: number; hojePessoas: number } };
 
 /** De quanto em quanto tempo o card de presenca se refaz. */
-const ONLINE_NOW_REFRESH_MS = 60_000;
-
 /**
  * Valor e linha secundaria do card "Atividade agora", por RESOLVER.
  *
@@ -763,7 +759,7 @@ export const metricCards: MetricCard[] = [
     // icone que nao existem na tela carregada.
     key: "receita_periodo",
     label: "Caixa registrado por moeda",
-    value: "Ver financeiro",
+    value: "Indisponível",
     detail: "O agregado legado sem moeda não é exibido",
     icon: <DollarSign className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
@@ -876,6 +872,22 @@ export const adminNavItems: AdminNavItem[] = [
     icon: <SquareKanban className="h-4 w-4" />,
   },
 ];
+
+const PRIMARY_ADMIN_SECTIONS = new Set([
+  "visao-geral",
+  "conversao",
+  "usuarios",
+  "retencao",
+  "financeiro",
+  "ia",
+]);
+
+export const primaryAdminNavItems = adminNavItems.filter((item) =>
+  PRIMARY_ADMIN_SECTIONS.has(item.href.replace("#", "")),
+);
+export const secondaryAdminNavItems = adminNavItems.filter(
+  (item) => !PRIMARY_ADMIN_SECTIONS.has(item.href.replace("#", "")),
+);
 
 // Slugs canonicos das abas, derivados da propria nav (fonte unica: se uma aba
 // entra/sai da nav, o conjunto valido acompanha).
@@ -1250,6 +1262,212 @@ function MetricCardView({
   );
 }
 
+function ExecutiveKpi({
+  title,
+  value,
+  period,
+  coverage,
+  context,
+  action,
+  onNavigate,
+}: {
+  title: string;
+  value: string;
+  period: string;
+  coverage: string;
+  context: ReactNode;
+  action: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <article className="flex h-full flex-col rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
+      <p className="font-display text-3xl font-black text-slate-950">{value}</p>
+      <h2 className="mt-1 text-sm font-black uppercase tracking-wide text-slate-700">
+        {title}
+      </h2>
+      <p className="mt-3 text-sm font-semibold text-slate-600">{context}</p>
+      <div className="mt-auto pt-4">
+        <p className="text-xs font-bold text-slate-500">
+          {period} · {coverage}
+        </p>
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="mt-3 text-sm font-black text-violet-700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+        >
+          {action}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function OverviewExecutiveKpis({
+  overview,
+  overviewWindow,
+  seriesData,
+  onNavigate,
+}: {
+  overview: OverviewData | null;
+  overviewWindow: OverviewWindow;
+  seriesData: SeriesData | null;
+  onNavigate: (section: AdminSectionId) => void;
+}) {
+  const hasBoundedPeriod =
+    overviewWindow !== "all" &&
+    Boolean(overview?.windowFirstDay && overview?.windowLastDay);
+  const customFrom = hasBoundedPeriod
+    ? somarDiaCivil(overview!.windowFirstDay!, -1)
+    : undefined;
+  const customTo = hasBoundedPeriod
+    ? somarDiaCivil(overview!.windowLastDay, -1)
+    : undefined;
+  const finance = useHonestFinance(
+    {
+      // A janela executiva padrão usa exatamente a mesma chave/cache do Resumo
+      // financeiro. Sete dias ainda precisa do período customizado equivalente,
+      // pois o contrato financeiro v1 não possui preset 7d.
+      preset: overviewWindow === "30" ? "30d" : "custom",
+      customFrom,
+      customTo,
+    },
+    { enabled: hasBoundedPeriod },
+  );
+  const brl = finance.data?.cash.currencies.find(
+    (bucket) => bucket.currency === "BRL",
+  );
+  const otherCurrencies =
+    finance.data?.cash.currencies.some((bucket) => bucket.currency !== "BRL") ??
+    false;
+  const firstPayments = seriesData?.pagamentos?.series.find(
+    (series) => series.chave === "primeiroPagamentoObservado",
+  )?.total;
+  const period = finance.data
+    ? `${new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
+        new Date(`${finance.data.period.startDay}T00:00:00Z`),
+      )} a ${new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
+        new Date(`${finance.data.period.endDayInclusive}T00:00:00Z`),
+      )} · ${finance.data.period.timezone}`
+    : overviewWindow === "all"
+      ? "Período todo"
+      : `Últimos ${overviewWindow} dias completos`;
+  const financeCoverage = finance.error
+    ? "Financeiro indisponível"
+    : finance.data
+      ? finance.data.status === "available"
+        ? "Cobertura disponível"
+        : finance.data.status === "partial"
+          ? "Cobertura parcial"
+          : finance.data.status === "not_collected"
+            ? "Dados não coletados"
+            : "Cobertura indisponível"
+      : finance.loading
+        ? "Carregando cobertura"
+        : "Período financeiro indisponível";
+
+  return (
+    <div
+      data-testid="executive-kpis"
+      className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+    >
+      <BlocoBoundary nome="Caixa líquido registrado" compacto>
+        <ExecutiveKpi
+          title="Caixa líquido registrado"
+          value={
+            brl
+              ? formatMoneyMetric(brl.calculableNet)
+              : finance.loading
+                ? "…"
+                : "Indisponível"
+          }
+          period={period}
+          coverage={financeCoverage}
+          context={
+            brl ? (
+              <>
+                {formatMoneyMetric(brl.positiveEntries)} entradas ·{" "}
+                {formatMoneyMetric(brl.refunds)} reembolsos ·{" "}
+                {formatMoneyMetric(brl.fees)} taxas
+                {otherCurrencies ? (
+                  <span className="mt-2 block text-xs font-black text-amber-800">
+                    Há movimentos em outras moedas.
+                  </span>
+                ) : null}
+              </>
+            ) : finance.error ? (
+              "A falha desta leitura não afeta os demais indicadores."
+            ) : overviewWindow === "all" ? (
+              "Selecione uma janela com dias completos para consultar o caixa."
+            ) : (
+              <>
+                Nenhum subtotal BRL foi informado; não foi criado R$ 0.
+                {otherCurrencies ? (
+                  <span className="mt-2 block text-xs font-black text-amber-800">
+                    Há movimentos em outras moedas.
+                  </span>
+                ) : null}
+              </>
+            )
+          }
+          action="Ver financeiro"
+          onNavigate={() => onNavigate("financeiro")}
+        />
+      </BlocoBoundary>
+
+      <ExecutiveKpi
+        title="Pessoas com primeiro pagamento observado"
+        value={
+          typeof firstPayments === "number"
+            ? formatCount(firstPayments)
+            : "Indisponível"
+        }
+        period={overview?.windowLabel ?? "Período selecionado"}
+        coverage="Histórico local não integral"
+        context="Primeiro charge elegível observado por pessoa; não prova primeira compra histórica."
+        action="Ver aquisição"
+        onNavigate={() => onNavigate("conversao")}
+      />
+
+      <ExecutiveKpi
+        title="Acessos automáticos ativos"
+        value={
+          finance.data?.accesses.automaticActive.value === null ||
+          finance.data?.accesses.automaticActive.value === undefined
+            ? "Indisponível"
+            : formatCount(finance.data.accesses.automaticActive.value)
+        }
+        period="Estado atual"
+        coverage={financeCoverage}
+        context="Acessos com renovação automática; não afirma obrigação contratual ou pagamento."
+        action="Ver assinaturas"
+        onNavigate={() => onNavigate("financeiro")}
+      />
+
+      <ExecutiveKpi
+        title="Custo de IA no período"
+        value={
+          overview?.cards?.custoIa
+            ? `US$ ${overview.cards.custoIa.valueUsd.toFixed(2)}`
+            : "Indisponível"
+        }
+        period={overview?.windowLabel ?? "Período selecionado"}
+        coverage={
+          overview?.cards?.custoIa?.chamadasSemCustoMedido
+            ? "Cobertura parcial"
+            : "Cobertura observada"
+        }
+        context={
+          overview?.cards?.custoIa?.chamadasSemCustoMedido
+            ? `${formatCount(overview.cards.custoIa.chamadasSemCustoMedido)} chamadas sem custo medido.`
+            : "Soma dos custos registrados pelas ferramentas de IA."
+        }
+        action="Ver IA"
+        onNavigate={() => onNavigate("ia")}
+      />
+    </div>
+  );
+}
+
 // PostHog como quatro telas DISTINTAS (not_configured / error / ok-sem-dados /
 // ok-com-dados). A tela sem dados parece saudavel, nao quebrada.
 // TODO(Ana): revisar copy dos estados do PostHog.
@@ -1319,6 +1537,7 @@ function AdminShell({
   // busca nada novo: `useAuth` ja esta montado nesta arvore e o `profile` traz
   // avatar_url, avatar_mode e a moderacao.
   const { profile } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // A ESCOLHA DE AVATAR E DO SITE, e quem a resolve e `effectiveOwnAvatar`, a
   // mesma funcao do Header. Antes o admin desenhava as duas primeiras letras do
@@ -1362,8 +1581,8 @@ function AdminShell({
             </Link>
 
             {session ? (
-              <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 px-2 py-2 lg:flex">
-                {adminNavItems.map((item) => (
+              <nav className="hidden min-w-0 flex-1 flex-nowrap items-center justify-center gap-1 px-2 py-2 lg:flex">
+                {primaryAdminNavItems.map((item) => (
                   <button
                     key={item.href}
                     type="button"
@@ -1378,6 +1597,59 @@ function AdminShell({
                     {item.label}
                   </button>
                 ))}
+                <Popover open={moreOpen} onOpenChange={setMoreOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Abrir mais seções do admin"
+                      aria-current={
+                        secondaryAdminNavItems.some(
+                          (item) =>
+                            activeSection === item.href.replace("#", ""),
+                        )
+                          ? "page"
+                          : undefined
+                      }
+                      className={`nav-pill inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:text-slate-950 ${
+                        secondaryAdminNavItems.some(
+                          (item) =>
+                            activeSection === item.href.replace("#", ""),
+                        )
+                          ? "nav-pill-active text-slate-950"
+                          : "text-slate-700"
+                      }`}
+                    >
+                      Mais
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    className="z-[1200] w-56 border-2 border-slate-900 p-2"
+                  >
+                    <div className="grid gap-1" role="menu">
+                      {secondaryAdminNavItems.map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          role="menuitem"
+                          onClick={(event) => {
+                            handleSectionClick(event, item.href);
+                            setMoreOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-yellow-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${
+                            activeSection === item.href.replace("#", "")
+                              ? "bg-yellow-200 text-slate-950"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </nav>
             ) : null}
 
@@ -6258,8 +6530,9 @@ export default function Admin() {
   // sobrevive ao reload e o link fica compartilhavel. O custo era o
   // setActiveSection acima descartar o parametro, e ele foi corrigido junto.
   const [overview, setOverview] = useState<OverviewData | null>(null);
-  // PRESENCA, em estado PROPRIO. `null` e "ainda nao respondeu", nao "zero".
-  const [onlineNow, setOnlineNow] = useState<OnlineNowData | null>(null);
+  // O resumo executivo não exibe mais o card de presença instantânea. Mantido
+  // apenas como fallback do inventário legado até sua remoção estrutural.
+  const onlineNow: OnlineNowData | null = null;
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
@@ -6311,39 +6584,6 @@ export default function Admin() {
       cancelled = true;
     };
   }, [overviewWindow]);
-
-  // PRESENCA, com efeito e ritmo PROPRIOS.
-  //
-  // Fora do efeito do /overview de proposito: aquele e governado pelo seletor de
-  // janela, e presenca e estado ATUAL. Acoplar os dois faria "online agora"
-  // mudar ao trocar para "ultimos 7 dias", o que nao quer dizer nada, e refaria
-  // a query HogQL a cada mexida no seletor.
-  //
-  // 60s e o intervalo de RENOVACAO da tela; o cache da rota (30s) e que limita a
-  // carga real no PostHog quando ha varias abas abertas.
-  useEffect(() => {
-    let cancelled = false;
-    const buscar = () => {
-      adminFetch("/online-now")
-        .then((json) => {
-          if (cancelled) return;
-          // Payload degradado (sem `data`) e FALHA, nao sucesso vazio: sem esta
-          // guarda o card ficaria "carregando" para sempre, que e o unico estado
-          // do resolver que nao diz nada a quem le.
-          setOnlineNow((json.data as OnlineNowData) ?? { state: "error" });
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setOnlineNow({ state: "error" });
-        });
-    };
-    buscar();
-    const id = setInterval(buscar, ONLINE_NOW_REFRESH_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
 
   // SERIES DA VISAO: SEGUE o seletor, porque e a mesma janela dos cards. Efeito
   // separado do /overview de proposito: o payload e uma ordem de grandeza maior
@@ -6993,7 +7233,7 @@ export default function Admin() {
       {
         ...metricCards[4],
         label: "Caixa registrado por moeda",
-        value: "Ver financeiro",
+        value: "Indisponível",
         detail:
           "O agregado legado não declara moeda nem cobertura; valores confiáveis ficam separados na aba Financeiro.",
         secundaria: undefined,
@@ -7436,39 +7676,29 @@ export default function Admin() {
         contentClassName="z-[2000]"
         overlayClassName="z-[2000]"
       />
-      <section className="hero-pattern border-b-2 border-slate-900 py-10">
+      <section className="hero-pattern border-b-2 border-slate-900 py-5 sm:py-6">
         <div className="container">
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="social-badge mb-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wide">
+              <p className="mb-2 inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-violet-800">
                 <LayoutDashboard className="h-4 w-4" />
                 painel admin
               </p>
-              <h1 className="font-display text-4xl font-black text-slate-950 lg:text-6xl">
-                Centro de comando do BORA NA TECH?
+              <h1 className="font-display text-3xl font-black text-slate-950 lg:text-4xl">
+                Centro de comando
               </h1>
-              <p className="mt-4 max-w-3xl text-base font-semibold leading-relaxed text-slate-700">
-                Visão executiva e operacional para acompanhar crescimento,
-                receita, uso de IA, engajamento, saúde do sistema e gargalos do
-                funil.
+              <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
+                Indicadores executivos e operação da plataforma.
               </p>
             </div>
-            <div className="card-brutal rounded-3xl bg-white p-4">
-              <p className="text-xs font-black uppercase text-slate-500">
-                central admin
-              </p>
-              <p className="font-display text-xl font-black text-slate-950">
-                Dados separados por seção
-              </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Carregado às {loadedAt}
-              </p>
-            </div>
+            <p className="text-xs font-bold text-slate-500">
+              Atualizado às {loadedAt}
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="section-alt py-10">
+      <section className="section-alt py-6 sm:py-8">
         {/* `lg:max-w-none` neutraliza SO o teto de largura do `.container`,
             preservando o `mx-auto` (que vira no-op sem teto) e o padding
             lateral, que continua sendo o respiro padrao da pagina.
@@ -7517,52 +7747,31 @@ export default function Admin() {
                 />
               </div>
 
-              {overviewLoading ? (
-                <LoadingBlock />
-              ) : overviewError ? (
-                <ErrorBlock message={overviewError} />
-              ) : (
-                // ALCANCE LIMITADO, e a limitação é declarada: este boundary
-                // pega erro DENTRO do MetricCardView, mas NÃO pega o `useMemo`
-                // que monta `adminMetricCards`, porque ele roda no corpo do
-                // Admin, acima daqui. Foi lá que estava o defeito nº 8 da
-                // varredura, e quem o contém é a guarda de `overview.cards`, não
-                // este boundary. Mover a derivação para dentro de um componente
-                // filho resolveria de verdade, e é reestruturação, não fatia
-                // curta.
-                <BlocoBoundary nome="Cards do período">
-                  <div className="space-y-5">
-                    {/* LINHA 1: os três principais, maiores. */}
-                    <div
-                      data-testid="cards-principais"
-                      className="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
-                    >
-                      {cardsPrincipais.map((metric) => (
-                        <MetricCardView
-                          key={metric.key}
-                          metric={metric}
-                          destaque
-                          onNavigate={setActiveSection}
-                        />
-                      ))}
-                    </div>
-                    {/* LINHA 2: os quatro de detalhe, compactos. Empilham no
-                        mobile pelo mesmo mecanismo da linha de cima. */}
-                    <div
-                      data-testid="cards-secundarios"
-                      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-                    >
-                      {cardsSecundarios.map((metric) => (
-                        <MetricCardView
-                          key={metric.key}
-                          metric={metric}
-                          onNavigate={setActiveSection}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </BlocoBoundary>
-              )}
+              {overviewLoading && !overview ? (
+                <p className="text-sm font-bold text-slate-500">
+                  Atualizando indicadores executivos…
+                </p>
+              ) : null}
+              {overviewError ? (
+                <p className="text-sm font-bold text-rose-700">
+                  Parte dos indicadores está indisponível: {overviewError}
+                </p>
+              ) : null}
+              <OverviewExecutiveKpis
+                overview={overview}
+                overviewWindow={overviewWindow}
+                seriesData={seriesData}
+                onNavigate={setActiveSection}
+              />
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-violet-700">
+                  Aquisição e receita
+                </p>
+                <h2 className="font-display mt-1 text-2xl font-black text-slate-950">
+                  Conversão em contexto
+                </h2>
+              </div>
 
               {/* Os dois gráficos OBEDECEM ao seletor: cada um refaz a busca
                   quando a janela muda. São os únicos blocos abaixo dos cards que
@@ -7614,6 +7823,15 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-violet-700">
+                  Produto e engajamento
+                </p>
+                <h2 className="font-display mt-1 text-2xl font-black text-slate-950">
+                  Uso das funcionalidades
+                </h2>
+              </div>
+
               <div className="grid gap-6">
                 <BlocoBoundary nome="Uso de IA por ferramenta">
                   <ToolUsagePanel
@@ -7641,7 +7859,15 @@ export default function Admin() {
                   `setActiveSection("paginas")`, que e exatamente o que a aba
                   "Paginas" do nav superior faz (linha do `NAV_ITEMS`), entao ele
                   duplicava navegacao em vez de alcancar destino proprio. */}
-              <div className="grid gap-6">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-rose-700">
+                    Operação prioritária
+                  </p>
+                  <h2 className="font-display mt-1 text-2xl font-black text-slate-950">
+                    Pendências acionáveis
+                  </h2>
+                </div>
                 {/* ATENCAO NECESSARIA substitui "Eventos recentes".
                     O bloco antigo listava as 10 ultimas linhas de
                     `content_audit_logs`, ou seja, historico de edicao de
@@ -7817,89 +8043,12 @@ export default function Admin() {
               title="Financeiro"
               subtitle="Caixa registrado e acessos atuais, com cobertura e limitações explícitas. Métricas contratuais ausentes não aparecem como zero."
             >
-              {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
-              {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
-              <FinanceDashboard refreshKey={financeRefreshKey} />
-
-              {/* NOTAS FISCAIS (NFS-e). Fica no financeiro porque o que ele
-                  mostra e obrigacao sobre o dinheiro que entrou, e os dois
-                  estados que exigem acao humana nao aparecem em lugar nenhum
-                  fora daqui. */}
-              <div className="mt-10">
-                {/* TODO(Ana): titulo e paragrafo do bloco de notas fiscais. */}
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Notas fiscais
-                </h2>
-                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Emissão automática por cobrança confirmada. Bloqueadas
-                  dependem do cadastro fiscal do assinante; as marcadas para
-                  revisão vieram de reembolso parcial ou cancelamento recusado
-                  pela prefeitura.
-                </p>
-                <FiscalInvoicesDashboard />
-              </div>
-
-              {/* DESPESAS (CRUD manual, cambio travado no lancamento) */}
-              <div className="mt-10">
-                {/* TODO(Ana): titulo e subtitulo do bloco de despesas. */}
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Despesas
-                </h2>
-                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Lance cobranças recorrentes e gastos pontuais. Moeda
-                  estrangeira trava o câmbio (PTAX) na data do lançamento.
-                </p>
-                <ExpensesManager
-                  onChanged={() => setFinanceRefreshKey((k) => k + 1)}
-                />
-              </div>
-
-              {/* PAGAMENTOS SEM ASSINATURA. Fica no Financeiro, e nao na Visao,
-                  porque a acao aqui e sobre dinheiro de uma pessoa especifica, e
-                  quem abre esta secao ja esta no contexto de conferir caixa. O
-                  painel de Atencao continua apontando os casos criticos; a
-                  diferenca e que la e um aviso e aqui e onde se resolve. */}
-              <OrphanPaymentsPanel />
-
-              <div className="mt-12 border-t-4 border-slate-900 pt-8">
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Operação de assinaturas e afiliados
-                </h2>
-                <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Listas operacionais preservadas. Os contadores de comissão são
-                  parciais e não formam um ledger financeiro reconciliado.
-                </p>
-
-                <div className="mt-5 grid gap-6 xl:grid-cols-3">
-                  <article className="card-brutal rounded-3xl bg-white p-6">
-                    <h3 className="font-display text-2xl font-black">
-                      Afiliados externos
-                    </h3>
-                    <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        Comissões a pagar
-                      </p>
-                      <p className="font-display mt-1 text-2xl font-black text-slate-950">
-                        {formatCents(affiliateTotals.commissionDue)}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-500">
-                        {formatCount(affiliateTotals.sales)} vendas atribuídas
-                      </p>
-                    </div>
-                  </article>
-                </div>
-
-                <div className="mt-8">
-                  {/* TODO(Ana): titulo e subtitulo da tabela de assinantes. */}
-                  <h3 className="font-display text-2xl font-black text-slate-950">
-                    Assinantes
-                  </h3>
-                  <p className="mb-4 mt-1 text-sm font-semibold text-slate-600">
-                    Lista completa de assinaturas, com filtros e paginação.
-                  </p>
-                  <SubscribersTable />
-                </div>
-              </div>
+              <FinanceWorkspace
+                refreshKey={financeRefreshKey}
+                onExpenseChanged={() =>
+                  setFinanceRefreshKey((current) => current + 1)
+                }
+              />
             </AdminSection>
           ) : null}
 

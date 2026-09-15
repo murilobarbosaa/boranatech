@@ -218,7 +218,7 @@ export function SubscribersTable() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b-2 border-slate-900 bg-slate-50">
                   <th className="px-4 py-3 font-black uppercase text-slate-600">
                     E-mail
