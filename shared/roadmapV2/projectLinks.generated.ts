@@ -159,5 +159,11 @@ export const projectTrailLinks: Record<
       "slug": "git",
       "nodeId": "projeto.cli"
     }
+  ],
+  "landing-page-pessoal": [
+    {
+      "slug": "html",
+      "nodeId": "projeto.pagina"
+    }
   ]
 };

@@ -85,9 +85,11 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
 
   it("3 cards, com os links certos e na ordem do registro", () => {
     const { container } = render(<RoadmapsV2Index />);
+    // Lote 08: HTML entrou no grupo de linguagens, depois de Python.
     expect(links(grupo(container, "linguagem"))).toEqual([
       "/roadmaps/javascript",
       "/roadmaps/python",
+      "/roadmaps/html",
     ]);
     expect(links(grupo(container, "ferramenta"))).toEqual(["/roadmaps/git"]);
   });
