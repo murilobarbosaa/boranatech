@@ -40,7 +40,7 @@ const pool: QuizPool = {
       pergunta:
         "Por que o arquivo principal de um site costuma se chamar index.html?",
       alternativas: {
-        a: "Porque o navegador só abre arquivos cujo nome comece com index",
+        a: "Porque o navegador só abre arquivos com esse nome",
         b: "Porque é o nome que servidores entregam por padrão",
         c: "Porque o nome define o título que aparece na aba do navegador",
         d: "Porque arquivos com outro nome precisam ser convertidos antes de publicar",
@@ -89,7 +89,7 @@ const pool: QuizPool = {
         "Este trecho deveria abrir a página com o título principal e, logo abaixo, o título da primeira seção. Qual é o defeito?",
       alternativas: {
         a: "A hierarquia pula de h1 para h4",
-        b: "Uma página não pode ter mais de um título",
+        b: "A página só aceita um título",
         c: "O h1 precisa vir depois das seções da página",
         d: "Títulos precisam do atributo id para funcionar",
       },
@@ -124,7 +124,7 @@ const pool: QuizPool = {
       id: "html-ini-07",
       nivel: "iniciante",
       pergunta:
-        "Este trecho deveria destacar duas palavras dentro do parágrafo. Qual é o defeito?",
+        "Este trecho deveria destacar parte do parágrafo. Qual é o defeito?",
       alternativas: {
         a: "O parágrafo precisa do atributo lang para aceitar destaque",
         b: "O strong não pode ficar dentro de um parágrafo",
@@ -252,7 +252,7 @@ const pool: QuizPool = {
       alternativas: {
         a: "Uma lista sem ordem aceita no máximo um item",
         b: "Os itens não são fechados",
-        c: "Os itens precisam do atributo type",
+        c: "Falta o atributo type",
         d: "A lista precisa de um título antes do primeiro item",
       },
       correta: "b",
@@ -452,7 +452,7 @@ const pool: QuizPool = {
         "Um formulário usa required e minlength. Por que o servidor ainda precisa conferir os dados?",
       alternativas: {
         a: "Porque quem envia dados pode pular o formulário",
-        b: "Porque required e minlength só funcionam em campos de texto",
+        b: "Porque required só vale em campos de texto",
         c: "Porque o navegador só valida depois que a página é publicada",
         d: "Porque a validação do HTML expira depois de alguns minutos",
       },
@@ -519,7 +519,7 @@ const pool: QuizPool = {
         a: "Falta o atributo controls",
         b: "O vídeo precisa do atributo autoplay para ser exibido",
         c: "O caminho do vídeo precisa ser absoluto",
-        d: "O elemento video não aceita o atributo width",
+        d: "O video não aceita width",
       },
       correta: "a",
       explicacao:
@@ -555,7 +555,7 @@ const pool: QuizPool = {
       pergunta:
         "Uma imagem é puramente decorativa e não acrescenta informação. O que escrever no alt dela?",
       alternativas: {
-        a: "A palavra decoracao, para deixar claro o papel dela",
+        a: "A palavra decoração, para deixar claro o papel dela",
         b: "O nome do arquivo da imagem",
         c: "O alt vazio, para que leitores de tela a ignorem",
         d: "Nada: o atributo deve ser omitido",
@@ -594,7 +594,7 @@ const pool: QuizPool = {
       alternativas: {
         a: "Por atalhos de títulos, regiões e links",
         b: "Lendo obrigatoriamente todo o conteúdo em ordem, sem atalhos",
-        c: "Pelas cores e pelo tamanho dos elementos na tela",
+        c: "Pelas cores e tamanhos na tela",
         d: "Apenas pelos formulários, que são a única parte anunciada",
       },
       correta: "a",
@@ -662,7 +662,7 @@ const pool: QuizPool = {
       pergunta: "O que diz a primeira regra do ARIA?",
       alternativas: {
         a: "Não use ARIA quando existe elemento nativo",
-        b: "Todo elemento interativo precisa de um atributo role",
+        b: "Todo elemento interativo precisa de role",
         c: "ARIA substitui a marcação semântica em páginas modernas",
         d: "Atributos ARIA devem ser aplicados a todos os elementos de texto",
       },
@@ -755,7 +755,7 @@ const pool: QuizPool = {
       alternativas: {
         a: "O estilo substitui a marcação por classes e dispensa os elementos semânticos",
         b: "O estilo se apoia nos elementos já marcados",
-        c: "A marcação precisa ser refeita do zero quando o estilo entra",
+        c: "A marcação é refeita quando o estilo entra",
         d: "Estilo e marcação são independentes: um não interfere no outro",
       },
       correta: "b",
