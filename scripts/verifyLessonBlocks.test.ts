@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
+import { capabilityOf } from "./languageCapabilities.mts";
+import {
+  makeExecutor,
+  makeGroupExecutor,
+} from "./verifyQuizPoolByExecution.mts";
 import {
   blocosDaTrilha,
   conferirBloco,
+  conferirGrupo,
+  lerCerca,
   estruturaCss,
   estruturaHtml,
   extrairBlocos,
@@ -35,8 +42,8 @@ describe("extrairBlocos", () => {
       "Texto.\n\n```bash\n$ git status\n```\n\nMais.\n\n```js\nconsole.log(1);\n```",
     );
     expect(blocos).toEqual([
-      { linguagem: "bash", corpo: "$ git status" },
-      { linguagem: "js", corpo: "console.log(1);" },
+      { linguagem: "bash", corpo: "$ git status", problemasDaCerca: [] },
+      { linguagem: "js", corpo: "console.log(1);", problemasDaCerca: [] },
     ]);
   });
 });
@@ -60,7 +67,7 @@ describe("conferirBloco: bash valida a convencao sem executar", () => {
 
   it("linha de comando sem o prefixo $ acusa", () => {
     const r = conferirBloco(
-      { linguagem: "bash", corpo: "git status" },
+      { linguagem: "bash", corpo: "git status", problemasDaCerca: [] },
       ["bash"],
       () => executorQueRoda(),
     );
@@ -81,7 +88,11 @@ describe("conferirBloco: bash valida a convencao sem executar", () => {
 
   it("linha acima de 60 caracteres e bloco acima de 10 linhas acusam", () => {
     const longa = conferirBloco(
-      { linguagem: "bash", corpo: `$ git commit -m "${"x".repeat(60)}"` },
+      {
+        linguagem: "bash",
+        corpo: `$ git commit -m "${"x".repeat(60)}"`,
+        problemasDaCerca: [],
+      },
       ["bash"],
       () => executorQueRoda(),
     );
@@ -90,18 +101,21 @@ describe("conferirBloco: bash valida a convencao sem executar", () => {
       {
         linguagem: "bash",
         corpo: Array.from({ length: 11 }, () => "$ git status").join("\n"),
+        problemasDaCerca: [],
       },
       ["bash"],
       () => executorQueRoda(),
     );
-    expect(comprido.problemas.some((p) => p.includes("10 linhas"))).toBe(true);
+    expect(
+      comprido.problemas.some((p) => p.includes("11 linhas de conteudo")),
+    ).toBe(true);
   });
 });
 
 describe("conferirBloco: js continua executando", () => {
   it("bloco js que roda sai executado", () => {
     const r = conferirBloco(
-      { linguagem: "js", corpo: "console.log('ok');" },
+      { linguagem: "js", corpo: "console.log('ok');", problemasDaCerca: [] },
       ["js"],
       () => executorQueRoda(),
     );
@@ -111,7 +125,7 @@ describe("conferirBloco: js continua executando", () => {
 
   it("bloco js que lanca sai falhou, com o erro", () => {
     const r = conferirBloco(
-      { linguagem: "js", corpo: "console.log(x);" },
+      { linguagem: "js", corpo: "console.log(x);", problemasDaCerca: [] },
       ["js"],
       () => executorQueLanca(),
     );
@@ -121,7 +135,7 @@ describe("conferirBloco: js continua executando", () => {
 
   it("cerca fora de codeLanguages so confere limites, sem executar", () => {
     const r = conferirBloco(
-      { linguagem: "json", corpo: '{ "a": 1 }' },
+      { linguagem: "json", corpo: '{ "a": 1 }', problemasDaCerca: [] },
       ["js"],
       () => {
         throw new Error("json nao pode ser executado");
@@ -171,7 +185,7 @@ describe("blocosDaTrilha e relatorioBlocos", () => {
     }));
     const saida = relatorioBlocos(linhas);
     expect(saida).toContain(
-      "blocos: 2 | executados: 0 | nao-executados: 2 | falharam: 0 | fora de codeLanguages: 0 | divergencias de convencao: 1",
+      "blocos: 2 | executados: 0 | lancaram como esperado: 0 | gravados: 0 | nao-executados: 2 | falharam: 0 | fora de codeLanguages: 0 | divergencias de convencao: 1",
     );
     expect(saida).toContain(
       "[aviso] 2 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
@@ -182,7 +196,11 @@ describe("blocosDaTrilha e relatorioBlocos", () => {
 describe("conferirBloco: saida real que parece comando", () => {
   it("a resposta do git --version nao e confundida com comando sem $", () => {
     const r = conferirBloco(
-      { linguagem: "bash", corpo: "$ git --version\ngit version 2.43.0" },
+      {
+        linguagem: "bash",
+        corpo: "$ git --version\ngit version 2.43.0",
+        problemasDaCerca: [],
+      },
       ["bash"],
       () => executorQueRoda(),
     );
@@ -477,4 +495,155 @@ describe("prosaIdInterno: id de passo exposto na prosa", () => {
   it("sem os ids, a conferencia nao acusa nada (controle)", () => {
     expect(prosaIdInterno("veja o passo `html.seo`", new Set())).toEqual([]);
   });
+});
+
+// Lote 10a. Duas contagens de linha (conteudo e total) e os metadados de
+// cerca. Os controles de `lanca=` e de `arquivo=` usam o EXECUTOR REAL, e nao
+// stub: o que eles precisam provar e que o processo filho quebra (ou nao) do
+// jeito declarado, e um stub provaria so o meu if.
+describe("limites: conteudo e total contam separado", () => {
+  const bash = (corpo: string) =>
+    conferirBloco({ linguagem: "bash", corpo }, ["bash"], () =>
+      executorQueRoda(),
+    );
+
+  it("reprova 11 linhas de conteudo", () => {
+    const corpo = Array.from({ length: 11 }, () => "$ git status").join("\n");
+    expect(bash(corpo).problemas.join(" ")).toContain("11 linhas de conteudo");
+  });
+
+  it("reprova 13 linhas no total", () => {
+    // 9 de conteudo e 4 em branco: passa no limite de conteudo e estoura o total.
+    const corpo = Array.from({ length: 9 }, () => "$ git status")
+      .join("\n")
+      .concat("\n\n\n\n");
+    const problemas = bash(corpo).problemas.join(" ");
+    expect(problemas).toContain("13 linhas no total");
+    expect(problemas).not.toContain("linhas de conteudo");
+  });
+
+  it("aceita 10 de conteudo com 2 em branco", () => {
+    const linhas = Array.from({ length: 10 }, () => "$ git status");
+    linhas.splice(3, 0, "");
+    linhas.splice(7, 0, "");
+    expect(bash(linhas.join("\n")).problemas).toEqual([]);
+  });
+});
+
+describe("lerCerca: metadados da cerca", () => {
+  it("le linguagem, lanca e arquivo", () => {
+    expect(lerCerca("js lanca=TypeError")).toEqual({
+      linguagem: "js",
+      lanca: "TypeError",
+      arquivo: undefined,
+      problemasDaCerca: [],
+    });
+    expect(lerCerca("js arquivo=mat.js").arquivo).toBe("mat.js");
+  });
+
+  it("reprova metadado desconhecido", () => {
+    expect(lerCerca("js lanka=TypeError").problemasDaCerca).toEqual([
+      "metadado desconhecido na cerca: lanka",
+    ]);
+  });
+
+  it("reprova nome de arquivo que sai do diretorio", () => {
+    expect(lerCerca("js arquivo=../fora.js").problemasDaCerca).toEqual([
+      "nome de arquivo invalido na cerca: ../fora.js",
+    ]);
+    expect(lerCerca("js arquivo=sub/dir.js").problemasDaCerca.length).toBe(1);
+  });
+
+  it("cerca sem metadado continua igual", () => {
+    expect(lerCerca("js").linguagem).toBe("js");
+    expect(lerCerca("js").problemasDaCerca).toEqual([]);
+  });
+});
+
+describe("lanca= no executor real", () => {
+  const js = capabilityOf("js").runner!;
+
+  it("aceita o bloco que lanca o tipo declarado", () => {
+    const r = conferirBloco(
+      {
+        linguagem: "js",
+        corpo: "const pedido = undefined;\nconsole.log(pedido.itens);",
+        lanca: "TypeError",
+      },
+      ["js"],
+      makeExecutor(js),
+    );
+    expect(r.veredito).toBe("lancou-como-esperado");
+    expect(r.problemas).toEqual([]);
+  }, 30000);
+
+  it("reprova o bloco que declarou lanca e rodou limpo", () => {
+    const r = conferirBloco(
+      { linguagem: "js", corpo: "console.log(1);", lanca: "TypeError" },
+      ["js"],
+      makeExecutor(js),
+    );
+    expect(r.veredito).toBe("falhou");
+    expect(r.problemas.join(" ")).toContain("rodou sem erro");
+  }, 30000);
+
+  it("reprova o bloco que lancou outro tipo", () => {
+    const r = conferirBloco(
+      {
+        linguagem: "js",
+        corpo: "throw new RangeError('fora');",
+        lanca: "TypeError",
+      },
+      ["js"],
+      makeExecutor(js),
+    );
+    expect(r.veredito).toBe("falhou");
+    expect(r.problemas.join(" ")).toContain("RangeError");
+  }, 30000);
+
+  it("aceita lanca= em python", () => {
+    const r = conferirBloco(
+      {
+        linguagem: "python",
+        corpo: "print(1 / 0)",
+        lanca: "ZeroDivisionError",
+      },
+      ["python"],
+      makeExecutor(capabilityOf("python").runner!),
+    );
+    expect(r.veredito).toBe("lancou-como-esperado");
+  }, 30000);
+});
+
+describe("arquivo= agrupa os blocos do passo", () => {
+  const grupo = (appCorpo: string) =>
+    conferirGrupo(
+      [
+        {
+          linguagem: "js",
+          arquivo: "mat.js",
+          corpo: "export function dobro(n) {\n  return n * 2;\n}",
+        },
+        { linguagem: "js", arquivo: "app.js", corpo: appCorpo },
+      ],
+      ["js"],
+      makeGroupExecutor(capabilityOf("js").runner!),
+    );
+
+  it("o par mat.js e app.js roda, e so o ultimo executa", () => {
+    const r = grupo(
+      "import { dobro } from './mat.js';\nconsole.log(dobro(2));",
+    );
+    expect(r.map((x) => x.veredito)).toEqual(["gravado", "executado"]);
+    expect(r.flatMap((x) => x.problemas)).toEqual([]);
+  }, 30000);
+
+  it("reprova quando o ultimo importa o que o primeiro nao exporta", () => {
+    const r = grupo(
+      "import { triplo } from './mat.js';\nconsole.log(triplo(2));",
+    );
+    expect(r[0].veredito).toBe("gravado");
+    expect(r[1].veredito).toBe("falhou");
+    expect(r[1].problemas.join(" ")).toContain("triplo");
+  }, 30000);
 });
