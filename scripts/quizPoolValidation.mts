@@ -25,6 +25,30 @@ const ALTERNATIVA_IDS = ["a", "b", "c", "d"] as const;
 const TIPOS: QuizTipo[] = ["conceito", "completar", "erro", "saida"];
 const DASH_RE = /\u2014|\u2013/;
 
+// Referencia a POSICAO de alternativa. Desde que o sorteio embaralha as
+// alternativas e o servidor passou a mandar o id por posicao (Lote Q1), a
+// letra e a ordem que quem faz a prova ve NAO sao as do arquivo: "a opcao b"
+// ou "as duas primeiras alternativas" apontam para outra coisa na tela, e a
+// explicacao passa a mentir. Escreva citando o CONTEUDO da alternativa.
+//
+// As fronteiras sao explicitas ((?![\p{L}\d])) e nao \b, porque \b em
+// JavaScript nao entende letra acentuada: em "ultimas", o \b depois de
+// "ultima" casaria no meio da palavra.
+const POSICAO_RES: RegExp[] = [
+  /(?<![\p{L}])(alternativa|op[çc][ãa]o|letra)\s+[a-d](?![\p{L}\d])/giu,
+  /(?<![\p{L}])(primeira|segunda|terceira|quarta|[úu]ltima)s?\s+(alternativas?|op[çc][õo]es|op[çc][ãa]o)(?![\p{L}\d])/giu,
+  /(?<![\p{L}])(duas|tr[êe]s)\s+(primeiras|[úu]ltimas)\s+(alternativas|op[çc][õo]es)(?![\p{L}\d])/giu,
+];
+
+// Exportada para o lote poder medir as pools antigas com o mesmo instrumento.
+export function referenciasDePosicao(texto: string): string[] {
+  const achados: string[] = [];
+  for (const re of POSICAO_RES) {
+    for (const m of texto.matchAll(re)) achados.push(m[0]);
+  }
+  return achados;
+}
+
 // O slug entra num RegExp construido por string (idRe): sem escape, um
 // metacaractere no slug muda o padrao em silencio. Protecao aqui dentro, nao
 // no call site.
@@ -134,6 +158,11 @@ export function validateQuizPool(
       }
       if (DASH_RE.test(value)) {
         problems.push(`${q}: ${field} contem travessao ou meia-risca`);
+      }
+      for (const achado of referenciasDePosicao(value)) {
+        problems.push(
+          `${q}: ${field} cita posicao de alternativa ("${achado}"): a ordem na tela e embaralhada`,
+        );
       }
     }
 

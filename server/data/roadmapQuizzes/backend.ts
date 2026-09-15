@@ -351,13 +351,13 @@ const pool: QuizPool = {
       "nivel": "intermediario",
       "pergunta": "Você precisa realizar uma consulta para obter todos os produtos com preço menor que 50, ordenados pelo nome. Qual comando SQL você deve usar?",
       "alternativas": {
-        "a": "SELECT * FROM produtos WHERE preco < 50 ORDER BY nome;",
+        "a": "SELECT * FROM produtos WHERE preco > 50 ORDER BY nome;",
         "b": "SELECT nome, preco FROM produtos WHERE preco < 50;",
         "c": "SELECT * FROM produtos ORDER BY nome WHERE preco < 50;",
         "d": "SELECT nome, preco FROM produtos WHERE preco < 50 ORDER BY nome;"
       },
       "correta": "d",
-      "explicacao": "A alternativa d é a única que combina corretamente a filtragem e a ordenação na mesma consulta SQL.",
+      "explicacao": "A consulta precisa filtrar com WHERE e ordenar com ORDER BY, nessa ordem. ORDER BY antes do WHERE é inválido, e sem ORDER BY a lista não sai ordenada pelo nome.",
       "fonte": "bancodedados.relacional.queries"
     },
     {

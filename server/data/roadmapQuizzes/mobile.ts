@@ -581,7 +581,7 @@ const pool: QuizPool = {
         "d": "Não permitir que o usuário faça alterações enquanto estiver offline, para evitar conflitos."
       },
       "correta": "a",
-      "explicacao": "A alternativa correta é a letra a, pois usar o armazenamento local garante que as alterações sejam persistidas mesmo sem conexão, evitando a perda de dados.",
+      "explicacao": "Salvar no armazenamento local na hora e sincronizar quando a conexão voltar garante que nada se perde. Variável temporária e memória somem se o app for fechado, e bloquear a edição offline elimina a funcionalidade em vez de protegê-la.",
       "fonte": "carreira.projeto"
     },
     {
@@ -595,7 +595,7 @@ const pool: QuizPool = {
         "d": "Desenvolver apps apenas para simulação, sem publicá-los, pois isso não é necessário."
       },
       "correta": "a",
-      "explicacao": "A alternativa correta é a letra a, pois ter um app completo e publicado, com documentação, mostra a capacidade prática e atrai a atenção dos recrutadores.",
+      "explicacao": "Um app completo e publicado, com documentação e telas, mostra capacidade prática de ponta a ponta. Projeto sem documentação ou sem publicação esconde justamente o que o recrutador quer ver.",
       "fonte": "carreira.entrar"
     },
     {
@@ -609,7 +609,7 @@ const pool: QuizPool = {
         "d": "Desabilitar todas as funcionalidades do app até que a conexão seja restabelecida."
       },
       "correta": "a",
-      "explicacao": "A alternativa correta é a letra a, pois implementar um sistema de cache permite que o usuário acesse dados mesmo sem conexão, melhorando a experiência do usuário.",
+      "explicacao": "Guardar em cache o que a API devolveu deixa o app útil mesmo com a conexão caindo. Ignorar a conexão, mostrar só erro ou desligar tudo transfere o problema para quem usa o app.",
       "fonte": "carreira.projeto"
     },
     {
@@ -623,7 +623,7 @@ const pool: QuizPool = {
         "d": "Publicar apenas com um ícone e sem descrição, já que os usuários baixarão pelo nome."
       },
       "correta": "a",
-      "explicacao": "A alternativa correta é a letra a, pois seguir os requisitos de build e ter uma descrição clara são essenciais para a aceitação na loja.",
+      "explicacao": "A loja aceita o app que cumpre os requisitos de build e assinatura e tem descrição clara. Publicar sem testar, ignorar as diretrizes ou omitir a descrição leva a rejeição ou a avaliações ruins.",
       "fonte": "carreira.entrar"
     },
     {
@@ -637,7 +637,7 @@ const pool: QuizPool = {
         "d": "Decidir pela stack nativa, independentemente do seu conhecimento prévio."
       },
       "correta": "a",
-      "explicacao": "A alternativa correta é a letra a, pois escolher pela afinidade e pelas oportunidades disponíveis é fundamental para o sucesso na carreira.",
+      "explicacao": "Afinidade com a linguagem e oportunidades na sua área são os critérios que sustentam a escolha. Nenhuma das duas abordagens é a única com bom desempenho, nem a única que atende aos dois sistemas.",
       "fonte": "carreira.entrar"
     }
   ]

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { QuizPool, QuizQuestion } from "../shared/roadmapQuiz/types";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
-import { quizPoolWarnings, validateQuizPool } from "./quizPoolValidation.mts";
+import {
+  quizPoolWarnings,
+  referenciasDePosicao,
+  validateQuizPool,
+} from "./quizPoolValidation.mts";
 
 // Literais escritos a mao. O slug "a+b" tem um metacaractere de regex: sem
 // escape, o "+" vira quantificador e o id correto "a+b-ini-01" deixa de casar
@@ -409,6 +413,58 @@ describe("saidaEsperada condicionada a capacidade da linguagem", () => {
       deSaida(erroEm("bash"), "bash").some((p) =>
         p.includes("erro exige codigo.saidaEsperada"),
       ),
+    ).toBe(true);
+  });
+});
+
+// Lote 09b. A ordem das alternativas na tela e embaralhada, e desde o Lote Q1
+// o id que o client recebe e a POSICAO, nao a letra do arquivo: texto que cita
+// letra ou posicao aponta para outra alternativa na tela.
+describe("referenciasDePosicao: citar letra ou posicao de alternativa", () => {
+  const REPROVA = [
+    "a opção b usa WHERE",
+    "A alternativa correta é a letra a",
+    "As duas primeiras opções",
+    "É o contrário da última alternativa",
+    "a opcao c esta errada",
+    "as tres ultimas opcoes",
+  ];
+  for (const texto of REPROVA) {
+    it(`acusa ${JSON.stringify(texto)}`, () => {
+      expect(referenciasDePosicao(texto).length).toBeGreaterThan(0);
+    });
+  }
+
+  const PASSA = [
+    "a alternativa correta usa HAVING",
+    "a letra do alfabeto",
+    "a primeira regra da folha",
+    "a opção de menu do editor",
+    "letras maiusculas e minusculas",
+  ];
+  for (const texto of PASSA) {
+    it(`aceita ${JSON.stringify(texto)}`, () => {
+      expect(referenciasDePosicao(texto)).toEqual([]);
+    });
+  }
+
+  it("a validacao da pool reprova a explicacao que cita a letra", () => {
+    const pergunta: QuizQuestion = {
+      id: "a+b-ini-01",
+      nivel: "iniciante",
+      pergunta: "Pergunta de teste?",
+      alternativas: { a: "Um", b: "Dois", c: "Tres", d: "Quatro" },
+      correta: "a",
+      explicacao: "A alternativa correta é a letra a, e nao as outras.",
+      fonte: "s1.f1",
+    };
+    const problemas = validateQuizPool(
+      { slug: "a+b", questions: [pergunta] } as unknown as QuizPool,
+      "a+b",
+      roadmap,
+    );
+    expect(
+      problemas.some((p) => p.includes("cita posicao de alternativa")),
     ).toBe(true);
   });
 });
