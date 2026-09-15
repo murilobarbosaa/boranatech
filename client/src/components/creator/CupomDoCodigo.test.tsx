@@ -129,15 +129,15 @@ describe("CupomDoCodigo", () => {
     expect(screen.queryByTestId("creator-codigo-notas-ANA30")).toBeNull();
   });
 
-  it("o corpo tem os dois recortes laterais, e o cupom nao corta o que transborda", () => {
+  it("o cupom e o poster de assinatura do /perfil: borda da tinta e fundo do ticket numa camada atras", () => {
     render(<CupomDoCodigo codigo={codigo()} visao="creator" />);
-    const corpo = screen.getByTestId("creator-cupom-corpo-ANA30").className;
-    expect(corpo).toContain("before:-left-4");
-    expect(corpo).toContain("after:-right-4");
-    expect(corpo).toContain("before:bg-[var(--brand-cream)]");
-    expect(corpo).toContain("after:bg-[var(--brand-cream)]");
-    const cupom = screen.getByTestId("creator-codigo-ANA30").className;
-    expect(cupom).toContain("bg-[var(--brand-yellow)]");
-    expect(cupom).not.toContain("overflow-hidden");
+    const cupom = screen.getByTestId("creator-codigo-ANA30");
+    expect(cupom.className).toContain("border-[var(--bnt-ink)]");
+    expect(cupom.className).toContain("overflow-hidden");
+    expect(cupom.className).not.toContain("bg-[var(--brand-yellow)]");
+    const fundo = screen.getByTestId("creator-cupom-fundo-ANA30");
+    expect(fundo.getAttribute("aria-hidden")).toBe("true");
+    expect(fundo.getAttribute("style")).toContain("var(--bnt-ticket-pro)");
+    expect(fundo.parentElement).toBe(cupom);
   });
 });
