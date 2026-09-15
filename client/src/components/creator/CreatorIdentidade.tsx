@@ -3,11 +3,11 @@ import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
 
-// QUEM E O CREATOR: avatar, nome, @handle, kind e desde quando. Um componente
-// so para os dois donos: o admin o recebe dentro do CreatorDashboardView
-// (`identidade="embutida"`), e a pagina /creator o desenha na faixa de topo, ao
-// lado do titulo (`identidade="externa"`). Os test ids `creator-kind`,
-// `creator-email` e `creator-revogado` moram aqui.
+// QUEM E O CREATOR: avatar, nome, @handle, kind e desde quando. Hoje so o admin
+// o desenha, dentro do CreatorDashboardView (`identidade="embutida"`), porque la
+// quem olha e outra pessoa. A pagina /creator passa `identidade="nenhuma"`: o
+// avatar da propria pessoa ja esta no header do site. Os test ids
+// `creator-kind`, `creator-email` e `creator-revogado` moram aqui.
 //
 // E-mail e revogacao so na visao admin: o servidor nem os envia na visao
 // creator, e a guarda aqui cobre o payload que vier com eles mesmo assim.
