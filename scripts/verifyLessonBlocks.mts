@@ -11,9 +11,10 @@
 //   portao do gerador. Em bash, confere a convencao de trecho decidida no Lote
 //   07b: o bloco abre com um comando prefixado por "$ ", e saida vem sem
 //   prefixo; linha que parece comando sem o prefixo e acusada.
-// - html e css (Lote 08): sem execucao tambem, mas com conferencia
-//   estrutural. Em html, a marcacao precisa valer por si, e nao porque o
-//   parser conserta; em css, chaves balanceadas.
+// - html e css: sem execucao tambem, mas com conferencia estrutural. Em
+//   html (Lote 08), a marcacao precisa valer por si, e nao porque o parser
+//   conserta; em css (Lote 09), o bloco passa pelo parser e pelo lexer do
+//   css-tree e pelas convencoes de escrita da trilha (ver validarCss).
 // - cerca fora de codeLanguages (json, text, sem identificador): so os
 //   limites, "fora-de-codeLanguages".
 //
@@ -32,8 +33,8 @@ import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { avisoSemRunner, capabilityOf } from "./languageCapabilities.mts";
 // Reexportadas do modulo proprio (ver htmlStructure.mts): quem ja importava
 // daqui continua importando daqui.
-export { estruturaCss, estruturaHtml } from "./htmlStructure.mts";
-import { estruturaCss, estruturaHtml } from "./htmlStructure.mts";
+export { estruturaCss, estruturaHtml, validarCss } from "./htmlStructure.mts";
+import { estruturaHtml, validarCss } from "./htmlStructure.mts";
 import { type Executor, makeExecutor } from "./verifyQuizPoolByExecution.mts";
 
 export const BLOCO_MAX_LINHAS = 10;
@@ -153,18 +154,57 @@ export function prosaHtmlCru(texto: string): string[] {
   );
 }
 
+// Id interno de passo exposto na PROSA (Lote 09). O aluno le o texto da
+// licao; "veja o passo `html.seo`" nao diz nada a ele, porque esse id so
+// existe no arquivo. Conexao entre passos e nominal, pelo TITULO. A regra pega
+// codigo inline cujo conteudo seja EXATAMENTE um id de passo de qualquer
+// trilha registrada, o que deixa passar `lista.map` e outros trechos de codigo
+// que so por acaso tem ponto.
+export function prosaIdInterno(
+  texto: string,
+  idsDePasso: Set<string>,
+): string[] {
+  const semCerca = texto.replace(/```[\s\S]*?```/g, " ");
+  return Array.from(semCerca.matchAll(/`([^`\n]+)`/g))
+    .filter((m) => idsDePasso.has(m[1].trim()))
+    .map((m) => `id interno de passo exposto na prosa: ${m[1].trim()}`);
+}
+
+// Todos os ids de passo das trilhas registradas, que e o universo contra o
+// qual a regra acima decide.
+export function idsDePasso(roadmaps: RoadmapV2[]): Set<string> {
+  const out = new Set<string>();
+  const visitar = (node: RoadmapNode) => {
+    out.add(node.id);
+    node.children?.forEach(visitar);
+  };
+  for (const roadmap of roadmaps) {
+    roadmap.sections.forEach((section) => section.children.forEach(visitar));
+  }
+  return out;
+}
+
 export interface LinhaProsa {
   passo: string;
   problemas: string[];
 }
 
-export function prosaDaTrilha(roadmap: RoadmapV2): LinhaProsa[] {
+export function prosaDaTrilha(
+  roadmap: RoadmapV2,
+  ids: Set<string> = new Set(),
+): LinhaProsa[] {
   const out: LinhaProsa[] = [];
   const visitar = (node: RoadmapNode) => {
-    const problemas = prosaHtmlCru(node.content ?? "");
+    const problemas = [
+      ...prosaHtmlCru(node.content ?? ""),
+      ...prosaIdInterno(node.content ?? "", ids),
+    ];
     for (const [lang, variante] of Object.entries(node.byLanguage ?? {})) {
       problemas.push(
         ...prosaHtmlCru(variante.content ?? "").map((p) => `[${lang}] ${p}`),
+        ...prosaIdInterno(variante.content ?? "", ids).map(
+          (p) => `[${lang}] ${p}`,
+        ),
       );
     }
     if (problemas.length > 0) out.push({ passo: node.id, problemas });
@@ -187,7 +227,7 @@ export function conferirBloco(
   }
   if (bloco.linguagem === "bash") problemas.push(...convencaoBash(bloco.corpo));
   if (bloco.linguagem === "html") problemas.push(...estruturaHtml(bloco.corpo));
-  if (bloco.linguagem === "css") problemas.push(...estruturaCss(bloco.corpo));
+  if (bloco.linguagem === "css") problemas.push(...validarCss(bloco.corpo));
   const runner = capabilityOf(bloco.linguagem).runner;
   if (!runner) return { veredito: "nao-executado", problemas };
   const r = executar(bloco.corpo);
@@ -272,11 +312,16 @@ async function main() {
     };
   });
   for (const linha of relatorioBlocos(linhas)) console.log(linha);
-  const prosa = prosaDaTrilha(roadmap);
+  const prosa = prosaDaTrilha(roadmap, idsDePasso(roadmapsV2));
   for (const linha of prosa) {
     console.log(`${linha.passo} | prosa | ${linha.problemas.join("; ")}`);
   }
-  console.log(`prosa com HTML cru: ${prosa.length} passo(s)`);
+  const comIdInterno = prosa.filter((l) =>
+    l.problemas.some((p) => p.includes("id interno de passo")),
+  ).length;
+  console.log(
+    `prosa com problema: ${prosa.length} passo(s) (id interno exposto em ${comIdInterno})`,
+  );
   const reprova =
     prosa.length > 0 ||
     linhas.some(
