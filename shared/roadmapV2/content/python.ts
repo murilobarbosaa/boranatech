@@ -14,6 +14,8 @@ export const python: RoadmapV2 = {
   // TODO(Ana): descricao da trilha
   description:
     "Do primeiro print no terminal até classes, geradores e arquivos, com a linguagem que virou a porta de entrada de dados, automação e web. Conclua uma etapa pra liberar a próxima.",
+  // TODO(Ana): resumo curto da trilha no card da vitrine
+  summary: "Sintaxe direta para automação, dados e scripts do dia a dia.",
   sections: [
     {
       id: "comeco",

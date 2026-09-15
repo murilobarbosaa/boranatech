@@ -65,6 +65,7 @@ const meta: RoadmapMeta[] = roadmapsV2.map((roadmap) => ({
   title: roadmap.title,
   level: roadmap.level,
   description: roadmap.description,
+  ...(roadmap.summary ? { summary: roadmap.summary } : {}),
   ...(roadmap.languages && roadmap.languages.length > 0
     ? { languages: roadmap.languages }
     : {}),

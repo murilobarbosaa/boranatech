@@ -14,6 +14,8 @@ export const git: RoadmapV2 = {
   // TODO(Ana): descricao da trilha
   description:
     "Do primeiro commit ao pull request, com o controle de versão que todo time de tecnologia usa: histórico, branches, conflitos, remotos e as ferramentas que salvam o dia. Conclua uma etapa pra liberar a próxima.",
+  // TODO(Ana): resumo curto da trilha no card da vitrine
+  summary: "Versionamento do init ao pull request, direto no terminal.",
   sections: [
     {
       id: "fundamentos",

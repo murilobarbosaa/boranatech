@@ -14,6 +14,8 @@ export const javascript: RoadmapV2 = {
   // TODO(Ana): descricao da trilha
   description:
     "Da primeira linha no terminal até módulos, assincronia e o que roda por dentro da linguagem. Conclua uma etapa pra liberar a próxima.",
+  // TODO(Ana): resumo curto da trilha no card da vitrine
+  summary: "A linguagem da web, do primeiro console.log ao projeto final.",
   sections: [
     {
       id: "comeco",
