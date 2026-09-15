@@ -129,16 +129,22 @@ describe("CupomDoCodigo", () => {
     expect(screen.queryByTestId("creator-codigo-notas-ANA30")).toBeNull();
   });
 
-  it("o cupom e o poster de assinatura do /perfil: borda da tinta e fundo do ticket numa camada atras", () => {
-    render(<CupomDoCodigo codigo={codigo()} visao="creator" />);
+  it("o cupom fica na superficie secondary, sem a camada ambar do ticket e sem classe ambar", () => {
+    render(
+      <CupomDoCodigo
+        codigo={codigo({ status: "paused", notes: "contrato assinado" })}
+        visao="admin"
+      />,
+    );
     const cupom = screen.getByTestId("creator-codigo-ANA30");
+    expect(cupom.className.split(" ")).toContain("bg-secondary");
     expect(cupom.className).toContain("border-[var(--bnt-ink)]");
-    expect(cupom.className).toContain("overflow-hidden");
     expect(cupom.className).not.toContain("bg-[var(--brand-yellow)]");
-    const fundo = screen.getByTestId("creator-cupom-fundo-ANA30");
-    expect(fundo.getAttribute("aria-hidden")).toBe("true");
-    expect(fundo.getAttribute("style")).toContain("var(--bnt-ticket-pro)");
-    expect(fundo.parentElement).toBe(cupom);
+    expect(screen.queryByTestId("creator-cupom-fundo-ANA30")).toBeNull();
+    for (const el of [cupom, ...Array.from(cupom.querySelectorAll("*"))]) {
+      expect(el.getAttribute("style") ?? "").not.toContain("--bnt-ticket-pro");
+      expect(el.getAttribute("class") ?? "").not.toContain("amber");
+    }
   });
 
   it("sem recortes e sem listras: nenhum before:, after: nem repeating-linear-gradient", () => {
@@ -187,7 +193,7 @@ describe("CupomDoCodigo", () => {
       "creator-cupom-numeros-ANA30",
     ).previousElementSibling;
     expect(divisor?.className).toBe(
-      "my-6 border-t-2 border-dashed border-amber-200",
+      "my-6 border-t-2 border-dashed border-violet-200",
     );
   });
 });
