@@ -151,6 +151,11 @@ describe("FinanceWorkspace", () => {
     );
     expect(financeViewFromSearch("?financeView=desconhecida")).toBe("resumo");
     expect(financeViewFromSearch("")).toBe("resumo");
+    expect(financePeriodFromSearch("?financePeriod=all")).toEqual({
+      preset: "all",
+      customFrom: "",
+      customTo: "",
+    });
     expect(
       financePeriodFromSearch(
         "?financePeriod=custom&financeFrom=invalido&financeTo=2026-08-31",

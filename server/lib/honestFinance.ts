@@ -1,5 +1,6 @@
 import {
   ADMIN_FINANCE_TIMEZONE,
+  MAX_FINANCE_HISTORY_DAYS,
   type AdminFinanceContract,
   type FinanceAvailability,
   type FinanceCountMetric,
@@ -19,7 +20,12 @@ import {
 } from "./registeredPayments";
 import { supabaseAdmin } from "./supabaseAdmin";
 
-export type HonestFinancePreset = "30d" | "90d" | "previous_month" | "custom";
+export type HonestFinancePreset =
+  | "30d"
+  | "90d"
+  | "previous_month"
+  | "custom"
+  | "all";
 
 export type HonestFinancePeriod = AdminFinanceContract["period"];
 
@@ -102,6 +108,78 @@ export function resolveHonestFinancePeriod(
     timezone: ADMIN_FINANCE_TIMEZONE,
     basis: "complete_calendar_days",
   };
+}
+
+/** "Tudo" começa no primeiro movimento financeiro local suportado, nunca no
+ * primeiro cadastro de usuário. A leitura é agregada pelo índice de instante;
+ * o dashboard continua fazendo sua única varredura deduplicada do intervalo. */
+export async function resolveHonestFinanceAllPeriod(
+  query: Record<string, unknown>,
+  now: Date = new Date(),
+  findFirstMovement: () => Promise<
+    string | null
+  > = findFirstLocalFinanceMovement,
+): Promise<HonestFinancePeriod> {
+  const today = diaBrasilia(now.toISOString());
+  if (!today || query.asOfDay !== today) {
+    invalidPeriod("O dia de referência financeiro mudou. Atualize a leitura.");
+  }
+  const firstInstant = await findFirstMovement();
+  const startDay = firstInstant ? diaBrasilia(firstInstant) : null;
+  if (!startDay) {
+    throw createError(
+      404,
+      "finance_history_not_collected",
+      "Histórico financeiro local não coletado.",
+    );
+  }
+  const endDayInclusive = somarDiaCivil(today, -1);
+  if (startDay > endDayInclusive) {
+    throw createError(
+      404,
+      "finance_history_not_collected",
+      "Ainda não há movimentos financeiros em dias encerrados.",
+    );
+  }
+  const length =
+    Math.floor(
+      (Date.parse(`${endDayInclusive}T00:00:00Z`) -
+        Date.parse(`${startDay}T00:00:00Z`)) /
+        DAY_MS,
+    ) + 1;
+  if (length > MAX_FINANCE_HISTORY_DAYS) {
+    invalidPeriod(
+      "O histórico local excede o limite explícito da série diária; nenhuma janela menor foi usada.",
+    );
+  }
+  return {
+    preset: "all",
+    startDay,
+    endDayInclusive,
+    from: inicioDoDiaBrasilia(startDay),
+    toExclusive: inicioDoDiaBrasilia(today),
+    timezone: ADMIN_FINANCE_TIMEZONE,
+    basis: "complete_calendar_days",
+  };
+}
+
+async function findFirstLocalFinanceMovement(): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("finance_transactions")
+    .select("occurred_at")
+    .in("provider", ["stripe", "asaas"])
+    .in("type", ["charge", "refund", "adjustment", "dispute"])
+    .order("occurred_at", { ascending: true })
+    .limit(1);
+  if (error) {
+    throw createError(
+      500,
+      "db_error",
+      "Falha ao localizar o início financeiro local.",
+    );
+  }
+  const firstInstant = data?.[0]?.occurred_at;
+  return typeof firstInstant === "string" ? firstInstant : null;
 }
 
 type RawFinanceRow = FinancePaymentRow & {
