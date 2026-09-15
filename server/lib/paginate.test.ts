@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { paginateRange, type PaginatedPage } from "./paginate";
+import {
+  coletarTudoProvandoTotal,
+  paginateRange,
+  type PaginatedPage,
+} from "./paginate";
 
 type Row = { n: number };
 
@@ -57,14 +61,18 @@ describe("paginateRange", () => {
 
   it("avanca pelo tamanho real da pagina, sem pular linhas", async () => {
     const { fetchPage, calls } = makeSource(750, 300);
-    await collect(paginateRange(fetchPage, { errorLabel: "x", pageSize: 1000 }));
+    await collect(
+      paginateRange(fetchPage, { errorLabel: "x", pageSize: 1000 }),
+    );
     // paginas: [0,999]->300, [300,1299]->300, [600,1599]->150, [750,1749]->0.
     expect(calls.map((c) => c.from)).toEqual([0, 300, 600, 750]);
   });
 
   it("para na pagina vazia (uma consulta extra ao final)", async () => {
     const { fetchPage, calls } = makeSource(1000, 1000);
-    await collect(paginateRange(fetchPage, { errorLabel: "x", pageSize: 1000 }));
+    await collect(
+      paginateRange(fetchPage, { errorLabel: "x", pageSize: 1000 }),
+    );
     // [0,999]->1000, [1000,1999]->0 (para aqui).
     expect(calls).toHaveLength(2);
   });
@@ -85,7 +93,10 @@ describe("paginateRange", () => {
     });
     await expect(
       collect(
-        paginateRange(fetchPage, { errorLabel: "Falha ao buscar", pageSize: 10 }),
+        paginateRange(fetchPage, {
+          errorLabel: "Falha ao buscar",
+          pageSize: 10,
+        }),
       ),
     ).rejects.toThrow("Falha ao buscar: boom");
   });
@@ -103,5 +114,109 @@ describe("paginateRange", () => {
     expect(out).toEqual([0, 1, 2]);
     // so a 1a pagina foi buscada antes do break.
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("coletarTudoProvandoTotal", () => {
+  it("falha na segunda página sem devolver agregado parcial", async () => {
+    let page = 0;
+    await expect(
+      coletarTudoProvandoTotal(
+        async () => {
+          page += 1;
+          return page === 1
+            ? { data: [{ id: "movimento-antigo" }], error: null, count: 2 }
+            : {
+                data: null,
+                error: { message: "leitura interrompida" },
+                count: 2,
+              };
+        },
+        { op: "financeiro-historico", pageSize: 1, rowKey: (row) => row.id },
+      ),
+    ).rejects.toMatchObject({ statusCode: 500 });
+    expect(page).toBe(2);
+  });
+  it("mantém páginas curtas quando o servidor limita abaixo do solicitado", async () => {
+    const source = Array.from({ length: 7 }, (_, n) => ({ id: `row-${n}` }));
+    const result = await coletarTudoProvandoTotal(
+      async (from, to) => ({
+        data: source.slice(from, Math.min(to + 1, from + 2)),
+        error: null,
+        count: source.length,
+      }),
+      { op: "teste-cap", pageSize: 5, rowKey: (row) => row.id },
+    );
+    expect(result).toEqual(source);
+  });
+
+  it.each([null, -1, 1.5])(
+    "rejeita count inválido em qualquer página: %s",
+    async (invalidCount) => {
+      let call = 0;
+      await expect(
+        coletarTudoProvandoTotal(
+          async () => {
+            call += 1;
+            return call === 1
+              ? { data: [{ id: "a" }], error: null, count: 1 }
+              : { data: [], error: null, count: invalidCount };
+          },
+          { op: "teste-count-invalido", rowKey: (row) => row.id },
+        ),
+      ).rejects.toMatchObject({
+        context: expect.objectContaining({ motivo: "contagem_invalida" }),
+      });
+    },
+  );
+
+  it("rejeita mudança de count inclusive quando ele volta ao inicial", async () => {
+    const pages = [
+      { data: [{ id: "a" }, { id: "b" }], count: 4 },
+      { data: [{ id: "c" }, { id: "d" }], count: 5 },
+      { data: [], count: 4 },
+    ];
+    let call = 0;
+    await expect(
+      coletarTudoProvandoTotal(
+        async () => ({ ...pages[call++], error: null }),
+        { op: "teste-count-mutavel", pageSize: 2, rowKey: (row) => row.id },
+      ),
+    ).rejects.toMatchObject({
+      context: expect.objectContaining({
+        motivo: "contagem_mudou_entre_paginas",
+        esperado: 4,
+        obtido: 5,
+      }),
+    });
+  });
+
+  it("rejeita ID repetido antes da deduplicação de domínio", async () => {
+    const pages = [[{ id: "b" }, { id: "c" }], [{ id: "c" }, { id: "d" }], []];
+    let call = 0;
+    await expect(
+      coletarTudoProvandoTotal(
+        async () => ({ data: pages[call++], error: null, count: 4 }),
+        { op: "teste-offset-mutavel", pageSize: 2, rowKey: (row) => row.id },
+      ),
+    ).rejects.toMatchObject({
+      context: expect.objectContaining({
+        motivo: "identidade_de_linha_repetida",
+        rowKey: "c",
+      }),
+    });
+  });
+
+  it("rejeita identidade de linha ausente quando a validação é habilitada", async () => {
+    await expect(
+      coletarTudoProvandoTotal(
+        async () => ({ data: [{ id: "" }], error: null, count: 1 }),
+        { op: "teste-id-ausente", rowKey: (row) => row.id },
+      ),
+    ).rejects.toMatchObject({
+      context: expect.objectContaining({
+        motivo: "identidade_de_linha_ausente",
+      }),
+    });
   });
 });

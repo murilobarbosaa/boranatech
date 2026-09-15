@@ -1,6 +1,8 @@
 import { useEffect, useId, useState } from "react";
 import { Trash2 } from "lucide-react";
 
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
 /**
  * Modal de exclusao de conta, com CONFIRMACAO DIGITADA.
  *
@@ -56,42 +58,37 @@ export function DeleteAccountConfirmModal({
   const inputId = useId();
   const apoioId = useId();
 
-  // Zera A CADA ABERTURA. O componente nao desmonta quando fecha (ele devolve
-  // `null` mais abaixo), entao sem isto o campo continuaria preenchido de uma
+  // Zera A CADA ABERTURA. O componente nao desmonta quando fecha (o Dialog so
+  // desmonta o conteudo), entao sem isto o campo continuaria preenchido de uma
   // tentativa anterior e a segunda abertura ja nasceria com o botao liberado,
   // que e o oposto do que o campo existe para fazer.
   useEffect(() => {
     if (isOpen) setDigitado("");
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const liberado = confirmacaoDigitadaValida(digitado);
   const bloqueado = !liberado || Boolean(isLoading);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-      onClick={() => {
-        if (!isLoading) onClose();
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isLoading) onClose();
       }}
     >
-      <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-modal-title"
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        overlayClassName="bg-slate-950/60 backdrop-blur-sm"
+        className="block max-w-[min(28rem,calc(100%-2rem))] rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] sm:max-w-md"
       >
         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-700 bg-rose-100">
           <Trash2 className="h-5 w-5 text-rose-700" strokeWidth={2.5} />
         </div>
-        <h2
-          id="delete-modal-title"
-          className="font-display text-2xl font-black text-rose-800"
-        >
+        <DialogTitle className="font-display text-2xl font-black text-rose-800">
           Excluir conta
-        </h2>
+        </DialogTitle>
         <p className="mt-2 text-sm font-semibold text-slate-600">
           Esta ação é permanente e irreversível. Todos os seus dados, favoritos
           e histórico de estudos serão apagados.
@@ -196,7 +193,7 @@ export function DeleteAccountConfirmModal({
             {isLoading ? "Excluindo..." : "Confirmar exclusão"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

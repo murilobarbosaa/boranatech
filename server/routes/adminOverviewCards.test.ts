@@ -131,6 +131,22 @@ function assinatura(over: Record<string, unknown> = {}) {
   };
 }
 
+function pagamento(over: Record<string, unknown> = {}) {
+  return {
+    id: "ft-1",
+    provider: "stripe",
+    provider_transaction_id: "bt-1",
+    stripe_charge_id: "ch-1",
+    type: "charge",
+    gross_cents: 2990,
+    occurred_at: "2026-07-01T04:00:00Z",
+    created_at: "2026-07-01T04:05:00Z",
+    user_id: "u1",
+    plan_code: "pro_monthly",
+    ...over,
+  };
+}
+
 function base(over: Record<string, RespostaTabela> = {}) {
   estado.double = criarSupabaseDouble(
     {
@@ -139,7 +155,7 @@ function base(over: Record<string, RespostaTabela> = {}) {
       // enxerga qual card leu de onde.
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 40 },
       subscriptions: { rows: [assinatura()] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
@@ -390,7 +406,12 @@ describe("card Assinantes Pro (D3)", () => {
           assinatura({ id: "b", user_id: "u2" }),
         ],
       },
-      influencers: { rows: [{ user_id: "u1" }, { user_id: "u3" }] },
+      creators: {
+        rows: [
+          { user_id: "u1", kind: "influencer" },
+          { user_id: "u3", kind: "influencer" },
+        ],
+      },
     });
 
     const r = await chamarAdmin("GET", "/overview?window=30");
@@ -879,7 +900,7 @@ describe("GET /overview-series", () => {
       },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
 
     const cadastros = serie(r, "cadastros");
     expect(cadastros.tipo).toBe("fluxo");
@@ -906,7 +927,7 @@ describe("GET /overview-series", () => {
       },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
 
     const mrr = serie(r, "mrrCents");
     expect(mrr.tipo).toBe("estoque");
@@ -920,7 +941,7 @@ describe("GET /overview-series", () => {
 
   it("toda série declara a DIREÇÃO, para o client não inferir pelo nome", async () => {
     base({ profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 } });
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
     const direcoes = Object.fromEntries(
       (r.body.data.series as Array<{ chave: string; direcao: string }>).map(
         (s) => [s.chave, s.direcao],
@@ -951,7 +972,10 @@ describe("GET /overview-series", () => {
 
     const cards = await chamarAdmin("GET", "/overview?window=7");
     base({ profiles: { rows: linhas, count: linhas.length } });
-    const series = await chamarAdmin("GET", "/overview-series?window=7");
+    const series = await chamarAdmin(
+      "GET",
+      "/overview-series?window=7&contract=3",
+    );
 
     const soma = serie(series, "cadastros").pontos.reduce(
       (a, p) => a + (p.value ?? 0),
@@ -965,9 +989,9 @@ describe("GET /overview-series", () => {
   it("funil traz taxas adjacentes e NENHUM delta entre janelas", async () => {
     base({
       // QUATRO PESSOAS, escolhidas para separar os três passos de ponta a ponta:
-      //   u1  assinou E usou       -> conta nos três
-      //   u2  assinou e NUNCA usou -> conta no 2º, NÃO no 3º (controle negativo)
-      //   u3  usou e NÃO assinou   -> não conta em nenhum dos dois
+      //   u1  pagou E usou IA depois -> conta nos três
+      //   u2  pagou e NUNCA usou     -> conta no 2º, NÃO no 3º
+      //   u3  usou e NÃO pagou       -> não conta nos passos seguintes
       //   u4  só se cadastrou      -> só no topo
       // Com um assinante só, os passos 2 e 3 dariam o mesmo número e a
       // reordenação passaria sem ninguém notar.
@@ -988,7 +1012,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.5",
-            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
+            created_at: `${diasAtras(1)}T05:00:00Z`,
           },
           {
             id: "l2",
@@ -1001,29 +1025,36 @@ describe("GET /overview-series", () => {
         ],
       },
       subscriptions: {
+        rows: [],
+      },
+      finance_transactions: {
         rows: [
-          assinatura({
-            id: "s1",
+          pagamento({
+            id: "ft-u1",
+            provider_transaction_id: "bt-u1",
+            stripe_charge_id: "ch-u1",
             user_id: "u1",
-            created_at: `${diasAtras(1)}T15:00:00Z`,
+            occurred_at: `${diasAtras(1)}T04:00:00Z`,
           }),
-          assinatura({
-            id: "s2",
+          pagamento({
+            id: "ft-u2",
+            provider_transaction_id: "bt-u2",
+            stripe_charge_id: "ch-u2",
             user_id: "u2",
-            created_at: `${diasAtras(2)}T15:00:00Z`,
+            occurred_at: `${diasAtras(2)}T04:00:00Z`,
           }),
         ],
       },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
     const f = r.body.data.funil;
 
-    // D20: cadastro -> assinou Pro -> assinantes que já usaram.
+    // ADM-001: cadastro -> pagamento registrado -> uso de IA pós-pagamento.
     expect(f.passos.map((p: { chave: string }) => p.chave)).toEqual([
       "cadastro",
-      "pro",
-      "engajamento",
+      "pagamento",
+      "uso_ia",
     ]);
     expect(f.passos.map((p: { valor: number }) => p.valor)).toEqual([4, 2, 1]);
     expect(f.passos[1].taxaSobreAnterior).toBeCloseTo(50, 6);
@@ -1034,10 +1065,10 @@ describe("GET /overview-series", () => {
     // O delta NÃO existe, e o motivo é nomeado. Com 4 cadastros na fixture, o
     // motivo específico é o TAMANHO da coorte (mínimo de 100), não a
     // maturidade: motivo genérico mandaria investigar a coisa errada.
-    expect(f.motivoSemDelta).toBe("coorte_anterior_pequena");
+    expect(f.motivoSemDelta).toBe("janelas_de_observacao_nao_equivalentes");
     expect(f.deltaPp).toBeNull();
     // Empate em 50%: o `reduce` mantém o PRIMEIRO, e a regra é determinística.
-    expect(f.destaque).toBe("pro");
+    expect(f.destaque).toBe("pagamento");
   });
 
   it("CONTROLE NEGATIVO: base vazia não vira NaN em lugar nenhum", async () => {
@@ -1048,7 +1079,7 @@ describe("GET /overview-series", () => {
       finance_transactions: { rows: [] },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
 
     expect(r.status).toBe(200);
     const f = r.body.data.funil;
@@ -1087,7 +1118,7 @@ describe("GET /overview-series", () => {
       },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
     const porTool = Object.fromEntries(
       (
         r.body.data.ferramentas as Array<{
@@ -1110,7 +1141,7 @@ describe("GET /overview-series", () => {
 
   it("declara o que NÃO tem fonte local, em vez de omitir em silêncio", async () => {
     base({ profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 } });
-    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const r = await chamarAdmin("GET", "/overview-series?window=7&contract=3");
     const chaves = (
       r.body.data.semFonteLocal as Array<{ chave: string; motivo: string }>
     ).map((x) => x.chave);
@@ -1140,7 +1171,10 @@ describe("REGRESSÃO: série de 'tudo' começa no PRIMEIRO cadastro", () => {
       },
     });
 
-    const r = await chamarAdmin("GET", "/overview-series?window=all");
+    const r = await chamarAdmin(
+      "GET",
+      "/overview-series?window=all&contract=3",
+    );
 
     const cadastros = (
       r.body.data.series as Array<{ chave: string; pontos: unknown[] }>
@@ -1149,6 +1183,165 @@ describe("REGRESSÃO: série de 'tudo' começa no PRIMEIRO cadastro", () => {
     expect(cadastros.pontos.length).toBeGreaterThan(90);
     expect((cadastros.pontos as Array<{ date: string }>)[0].date).toBe(
       "2026-05-04",
+    );
+  });
+});
+
+describe("GET /attention contrato v3", () => {
+  it("recusa consumidor sem negociação explícita", async () => {
+    base();
+    const response = await chamarAdmin("GET", "/attention");
+    expect(response.status).toBe(409);
+  });
+
+  it("serve contrato v3 e declara fontes não coletadas sem zero", async () => {
+    base();
+    const response = await chamarAdmin("GET", "/attention?contract=3");
+    expect(response.status).toBe(200);
+    expect(response.body.data.contractVersion).toBe(3);
+    expect(response.body.data.computedAt).toBe(response.body.computedAt);
+    expect(response.body.data.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "failed_charges_reconciled",
+          status: "not_collected",
+        }),
+        expect.objectContaining({
+          source: "failed_payouts_reconciled",
+          status: "not_collected",
+        }),
+      ]),
+    );
+  });
+
+  it("recusa refresh diferente do sinal fechado 1", async () => {
+    base();
+    const response = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=true",
+    );
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("attention_refresh_invalid");
+  });
+});
+
+describe("regressão integrada de custo medido na Visão", () => {
+  function aiLog(cost_estimate: string | null) {
+    return {
+      id: "ai-consistency",
+      user_id: "u1",
+      tool: "invalid-parser",
+      status: "success",
+      cost_estimate,
+      created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
+    };
+  }
+
+  function prepararCustoIntegrado(costEstimate: string | null) {
+    base({
+      profiles: {
+        rows: [
+          {
+            user_id: "u1",
+            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
+          },
+        ],
+        count: 1,
+      },
+      ai_usage_logs: { rows: [aiLog(costEstimate)] },
+    });
+  }
+
+  it("recusa texto parcialmente parseável no card, séries, ferramenta e atenção", async () => {
+    prepararCustoIntegrado("0.25lixo");
+
+    const overview = await chamarAdmin("GET", "/overview?window=30");
+    const series = await chamarAdmin(
+      "GET",
+      "/overview-series?window=30&contract=3",
+    );
+    const attention = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=1",
+    );
+
+    expect(overview.status).toBe(200);
+    expect(series.status).toBe(200);
+    expect(attention.status).toBe(200);
+    expect(overview.body.data.cards.custoIa).toMatchObject({
+      valueUsd: 0,
+      chamadasSemCustoMedido: 1,
+    });
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "custoIaUsd",
+      ).total,
+    ).toBe(0);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "chamadasSemCustoMedido",
+      ).total,
+    ).toBe(1);
+    expect(series.body.data.ferramentas).toContainEqual(
+      expect.objectContaining({
+        tool: "invalid-parser",
+        custoUsd: 0,
+        semCustoMedido: 1,
+      }),
+    );
+    expect(attention.body.data.sources).toContainEqual(
+      expect.objectContaining({
+        source: "ai_usage_logs",
+        status: "partial",
+      }),
+    );
+    expect(
+      attention.body.data.items.some(
+        (item: { kind: string }) => item.kind === "ai_cost_spike",
+      ),
+    ).toBe(false);
+  });
+
+  it("mantém decimal válido reconciliado e sem lacuna", async () => {
+    prepararCustoIntegrado("0.25");
+
+    const overview = await chamarAdmin("GET", "/overview?window=30");
+    const series = await chamarAdmin(
+      "GET",
+      "/overview-series?window=30&contract=3",
+    );
+    const attention = await chamarAdmin(
+      "GET",
+      "/attention?contract=3&refresh=1",
+    );
+
+    expect(overview.status).toBe(200);
+    expect(series.status).toBe(200);
+    expect(attention.status).toBe(200);
+    expect(overview.body.data.cards.custoIa.valueUsd).toBeCloseTo(0.25, 10);
+    expect(overview.body.data.cards.custoIa.chamadasSemCustoMedido).toBe(0);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "custoIaUsd",
+      ).total,
+    ).toBeCloseTo(0.25, 10);
+    expect(
+      series.body.data.series.find(
+        (item: { chave: string }) => item.chave === "chamadasSemCustoMedido",
+      ).total,
+    ).toBe(0);
+    expect(series.body.data.ferramentas).toContainEqual(
+      expect.objectContaining({
+        tool: "invalid-parser",
+        custoUsd: 0.25,
+        semCustoMedido: 0,
+      }),
+    );
+    expect(attention.body.data.sources).toContainEqual(
+      expect.objectContaining({
+        source: "ai_usage_logs",
+        status: "available",
+      }),
     );
   });
 });

@@ -19,6 +19,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useCreator } from "@/hooks/useCreator";
+import { temSessaoPersistida } from "@/lib/persistedSession";
+import { isPrerender } from "@/lib/prerender";
 import Logo from "@/components/Logo";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
@@ -783,6 +786,10 @@ export default function Header() {
     user,
   } = useAuth();
   const { isAdmin } = useAdmin();
+  const creator = useCreator();
+  // So com resposta afirmativa do servidor. `loading` e `error` escondem o
+  // botao, e erro nunca e lido como "nao e creator" (ver useCreator).
+  const isCreator = creator.status === "ready" && creator.kind !== null;
   const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName =
     profile?.name ||
@@ -795,6 +802,18 @@ export default function Header() {
   const avatarLoading = Boolean(
     user && !profile && (authLoading || profileStatus === "loading"),
   );
+  // Estado indeterminado ASSIMETRICO. Enquanto o AuthContext carrega, `user` e
+  // null, e sem isto quem ja esta logado via "Entrar" antes do proprio avatar. O
+  // espaco neutro so aparece com sessao persistida no navegador: o visitante sem
+  // sessao, a maioria, continua vendo "Entrar" na hora, sem flicker novo. Lido
+  // uma vez por montagem, e o Header remonta a cada navegacao (ver CLAUDE.md).
+  const [sessaoPersistida] = useState(temSessaoPersistida);
+  const aguardandoSessao = !user && authLoading && sessaoPersistida;
+  // O prerender sai sem sessao, entao os links de visitante vao para o HTML de
+  // cada rota. A marca deixa o index.css esconde-los ate o React montar quando o
+  // sessao-init.js acha sessao. So no prerender: no Header vivo o "Entrar" de
+  // quem nao virou usuario aparece sempre.
+  const marcaEstatica = isPrerender() ? "" : undefined;
   // Display do proprio avatar: borda Pro rebaixa pra default se o dono nao e Pro.
   const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, isPro);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
@@ -837,16 +856,36 @@ export default function Header() {
                 de sessao. */}
             <ThemeToggle variant="desktop" />
             <BotaoGuiaDaPagina variant="desktop" />
-            {!user ? (
+            {!user && aguardandoSessao ? (
+              <>
+                <span
+                  data-testid="header-auth-aguardando"
+                  aria-hidden="true"
+                  className="invisible rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                >
+                  Entrar
+                </span>
+                <span
+                  data-testid="header-auth-aguardando"
+                  aria-hidden="true"
+                  className="invisible btn-brutal-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black"
+                >
+                  Cadastre-se agora
+                  <Sparkles className="h-4 w-4" />
+                </span>
+              </>
+            ) : !user ? (
               <>
                 <Link
                   href="/login"
+                  data-auth-estatico={marcaEstatica}
                   className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Entrar
                 </Link>
                 <Link
                   href="/cadastro"
+                  data-auth-estatico={marcaEstatica}
                   className="btn-brutal-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black"
                 >
                   Cadastre-se agora
@@ -882,6 +921,17 @@ export default function Header() {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
+                  </Link>
+                ) : null}
+                {isCreator ? (
+                  <Link
+                    href="/creator"
+                    data-testid="header-creator"
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-on-accent bg-sky-300 px-3 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:bg-sky-400 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {/* TODO(Ana) */}
+                    Creator
                   </Link>
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
@@ -951,9 +1001,18 @@ export default function Header() {
           className="min-h-0 flex-1 overflow-y-auto pb-4"
           aria-label="Navegação principal mobile"
         >
-          {!user ? (
+          {!user && aguardandoSessao ? (
+            <span
+              data-testid="header-auth-aguardando"
+              aria-hidden="true"
+              className="invisible mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            >
+              Entrar
+            </span>
+          ) : !user ? (
             <Link
               href="/login"
+              data-auth-estatico={marcaEstatica}
               onClick={closeMobileDrawer}
               className="mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
@@ -987,6 +1046,18 @@ export default function Header() {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
+                  </Link>
+                ) : null}
+                {isCreator ? (
+                  <Link
+                    href="/creator"
+                    onClick={closeMobileDrawer}
+                    data-testid="header-creator-mobile"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-ink-on-accent bg-sky-300 px-3 py-2 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {/* TODO(Ana) */}
+                    Creator
                   </Link>
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
@@ -1044,6 +1115,7 @@ export default function Header() {
           <div className="shrink-0 border-t-2 border-slate-900 bg-white p-4">
             <Link
               href="/cadastro"
+              data-auth-estatico={marcaEstatica}
               onClick={closeMobileDrawer}
               className="btn-brutal-accent flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-black"
             >

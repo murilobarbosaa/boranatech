@@ -114,6 +114,24 @@ export const env = {
     );
     return false;
   })(),
+  // Kill-switch do lembrete de Pix pendente, no MESMO desenho do billingEnabled:
+  // fail-closed, so o literal exato "true" liga. Um e-mail de cobranca que sai
+  // por engano e pior que um que nao sai. Existe para a PRIMEIRA execucao em
+  // producao ser de observacao: desligado, o cron le, decide e grava no
+  // cron_run_logs quantos lembretes ENVIARIA, sem enfileirar nem marcar nada.
+  // Ligar e desligar e so trocar a variavel no Railway, sem deploy.
+  pixRemindersEnabled: (() => {
+    const raw = process.env.PIX_REMINDERS_ENABLED;
+    if (!raw) return false; // ausente: lembrete off, so observa, sem alarde.
+    if (raw === "true") {
+      console.log("[env] lembrete de Pix LIGADO (PIX_REMINDERS_ENABLED=true).");
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: PIX_REMINDERS_ENABLED="${raw}" nao liga o lembrete de Pix. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); lembrete DESLIGADO.`,
+    );
+    return false;
+  })(),
   // Qual adapter atende a emissao. NAO tem fallback silencioso para valor
   // desconhecido: qual provedor emitiu a nota E a informacao, nao apresentacao
   // dela, e cair em 'mock' por engano produziria "nota emitida" com numero
@@ -217,8 +235,8 @@ export const env = {
   // duas pontas (checkout Pix indisponivel, webhook responde 503 sem processar).
   asaasEnabled: Boolean(
     process.env.ASAAS_API_URL &&
-      process.env.ASAAS_API_KEY &&
-      process.env.ASAAS_WEBHOOK_TOKEN,
+    process.env.ASAAS_API_KEY &&
+    process.env.ASAAS_WEBHOOK_TOKEN,
   ),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
@@ -333,6 +351,10 @@ export const env = {
   // 503 sentry_not_configured, nada mais quebra.
   sentryAuthToken: process.env.SENTRY_AUTH_TOKEN || "",
   sentryOrgSlug: process.env.SENTRY_ORG_SLUG || "",
+  // Sal do hash de IP dos eventos de clique dos Creators (creator_events). O IP
+  // NUNCA vai em claro: sem esta variavel o evento grava ip_hash null. Trocar o
+  // sal so impede comparar hashes gravados antes com os de depois.
+  creatorEventsSalt: process.env.CREATOR_EVENTS_SALT || "",
   // Destinos das notificacoes do bug tracker do admin. Vazios: o envio vira
   // no-op com log, no padrao resendApiKey.
   bugNotifyNewEmail: process.env.BUG_NOTIFY_NEW_EMAIL || "",

@@ -66,8 +66,13 @@ export function useAffiliate() {
           JSON.stringify(nextAffiliate),
         );
         setAffiliate(nextAffiliate);
+        // O caminho vai na query string, e nao num corpo JSON: POST entre
+        // origens com Content-Type JSON dispara preflight de CORS, e o simples
+        // continua simples. O servidor grava o caminho no evento de clique.
         return fetch(
-          apiUrl(`/api/affiliates/${encodeURIComponent(json.code)}/click`),
+          apiUrl(
+            `/api/affiliates/${encodeURIComponent(json.code)}/click?path=${encodeURIComponent(window.location.pathname)}`,
+          ),
           { method: "POST" },
         );
       })

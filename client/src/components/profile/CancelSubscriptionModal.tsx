@@ -117,8 +117,9 @@ export function CancelSubscriptionModal({
             <p className="mt-3 text-sm font-semibold text-slate-600">
               {isNonRenewal ? (
                 <>
-                  Sua assinatura por boleto não renova sozinha. Se você avisar
-                  que não vai continuar, seu acesso Pro segue até{" "}
+                  {/* TODO(Ana) */}
+                  Sua assinatura não renova sozinha. Se você avisar que não vai
+                  continuar, seu acesso Pro segue até{" "}
                   {formattedDate ?? "o fim do período"}. Olha o que você ainda
                   tem disponível:
                 </>

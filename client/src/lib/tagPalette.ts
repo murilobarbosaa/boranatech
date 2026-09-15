@@ -169,3 +169,35 @@ export function tagChipClasses(tagClass: string | null | undefined): string {
   const p = tagPaletteOf(tagClass);
   return `${p.bg} ${p.text}`;
 }
+
+/**
+ * Paleta dos cards de TRILHA de linguagem, framework e ferramenta na vitrine
+ * (/roadmaps). Mapa proprio, por SLUG, porque essas trilhas nao tem
+ * `tag_class`: o mapa das 15 acima e so do chip de area e continua fechado
+ * nos valores do banco.
+ *
+ * Mesmo par pastel (`bg-*-200` com `text-*-900`) e strings LITERAIS pelo mesmo
+ * motivo do resto do arquivo: o Tailwind so emite classe que ele encontra
+ * escrita na fonte (licao do Lote M1).
+ *
+ * Trilha nova sem entrada cai no teal, familia livre no mapa das areas, e
+ * aparece na vitrine assim mesmo; ganha cor propria quando alguem acrescentar
+ * a linha dela aqui.
+ */
+export const TRAIL_PALETTE: Record<string, TagPalette> = {
+  javascript: { bg: "bg-amber-200", text: "text-amber-900" },
+  python: { bg: "bg-sky-200", text: "text-sky-900" },
+  git: { bg: "bg-orange-200", text: "text-orange-900" },
+  html: { bg: "bg-rose-200", text: "text-rose-900" },
+};
+
+const TRAIL_FALLBACK: TagPalette = {
+  bg: "bg-teal-200",
+  text: "text-teal-900",
+};
+
+export function trailPaletteOf(slug: string): TagPalette {
+  return Object.prototype.hasOwnProperty.call(TRAIL_PALETTE, slug)
+    ? TRAIL_PALETTE[slug]
+    : TRAIL_FALLBACK;
+}

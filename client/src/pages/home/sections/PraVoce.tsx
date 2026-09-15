@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -10,6 +10,8 @@ import {
   Tag,
 } from "lucide-react";
 import { praVoceCursos, praVoceNoticia } from "@/lib/homeData.generated";
+import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 type Evento = import("@/services/eventosService").Evento;
 
@@ -130,7 +132,7 @@ export default function PraVoce() {
         {/* Header */}
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -140,7 +142,7 @@ export default function PraVoce() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -158,7 +160,7 @@ export default function PraVoce() {
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -221,7 +223,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 30 }}
+      initial={entrada({ opacity: 0, y: 30 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6, delay: 0.2 }}
@@ -288,7 +290,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
 function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
   return (
     <motion.article
-      initial={{ opacity: 0, x: 30 }}
+      initial={entrada({ opacity: 0, x: 30 })}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5, delay }}
@@ -433,7 +435,7 @@ function CursoCard({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay }}
@@ -553,6 +555,7 @@ function NuvemSvg({
 // =========================================
 
 function BackgroundDecoration() {
+  const reduzirMovimento = useReducedMotion();
   return (
     <>
       {/* Pattern de pontinhos sky sutis */}
@@ -584,11 +587,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(125, 211, 252, 0.25) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
-        animate={{
-          x: [0, -40, 30, 0],
-          y: [0, 30, -20, 0],
-          opacity: [0.4, 0.6, 0.4, 0.4],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, -40, 30, 0],
+            y: [0, 30, -20, 0],
+            opacity: [0.4, 0.6, 0.4, 0.4],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 20,
           repeat: Infinity,
@@ -609,11 +615,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(252, 211, 77, 0.2) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
-        animate={{
-          x: [0, 30, -20, 0],
-          y: [0, -20, 30, 0],
-          opacity: [0.3, 0.5, 0.3, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 30, -20, 0],
+            y: [0, -20, 30, 0],
+            opacity: [0.3, 0.5, 0.3, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 24,
           repeat: Infinity,

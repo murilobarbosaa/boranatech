@@ -174,7 +174,7 @@ export function calcularProblemas(
     problemas.push({
       id: "snapshot-parado",
       label: "Cron de snapshot parado",
-      detalhe: `Sem snapshot há ${sinais.snapshotStaleDays} dias. A série de MRR parou de crescer.`,
+      detalhe: `Sem snapshot há ${sinais.snapshotStaleDays} dias. A série de valor mensal de catálogo parou de crescer.`,
       severidade: "erro",
     });
   }

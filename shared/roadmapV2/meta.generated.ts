@@ -418,8 +418,48 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "JavaScript do Zero",
     "level": "Iniciante",
     "description": "Da primeira linha no terminal até módulos, assincronia e o que roda por dentro da linguagem. Conclua uma etapa pra liberar a próxima.",
+    "summary": "A linguagem da web, do primeiro console.log ao projeto final.",
     "sectionCount": 10,
     "stepCount": 46,
+    "hasProject": true,
+    "hasQuiz": true
+  },
+  {
+    "slug": "python",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "Python do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro print no terminal até classes, geradores e arquivos, com a linguagem que virou a porta de entrada de dados, automação e web. Conclua uma etapa pra liberar a próxima.",
+    "summary": "Sintaxe direta para automação, dados e scripts do dia a dia.",
+    "sectionCount": 10,
+    "stepCount": 43,
+    "hasProject": true,
+    "hasQuiz": true
+  },
+  {
+    "slug": "git",
+    "area": "ferramenta",
+    "kind": "ferramenta",
+    "title": "Git do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro commit ao pull request, com o controle de versão que todo time de tecnologia usa: histórico, branches, conflitos, remotos e as ferramentas que salvam o dia. Conclua uma etapa pra liberar a próxima.",
+    "summary": "Versionamento do init ao pull request, direto no terminal.",
+    "sectionCount": 10,
+    "stepCount": 44,
+    "hasProject": true,
+    "hasQuiz": true
+  },
+  {
+    "slug": "html",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "HTML do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro arquivo aberto no navegador até formulários, mídia e acessibilidade, com a linguagem que dá estrutura a toda página da web. Conclua uma etapa pra liberar a próxima.",
+    "summary": "A estrutura de toda página da web, do primeiro arquivo ao projeto.",
+    "sectionCount": 10,
+    "stepCount": 42,
     "hasProject": true,
     "hasQuiz": true
   }

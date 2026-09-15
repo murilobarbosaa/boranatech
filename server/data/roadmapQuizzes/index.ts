@@ -26,6 +26,9 @@ import javascript from "./javascript";
 import mainframe from "./mainframe";
 import mobile from "./mobile";
 import produto from "./produto";
+import python from "./python";
+import git from "./git";
+import html from "./html";
 import qa from "./qa";
 import sre from "./sre";
 import uxui from "./uxui";
@@ -52,6 +55,9 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   mainframe,
   mobile,
   produto,
+  python,
+  git,
+  html,
   qa,
   sre,
   uxui,

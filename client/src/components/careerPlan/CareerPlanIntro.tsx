@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import CareerTrail from "./CareerTrail";
 import { buildTrailVM, type TrailSourceResult } from "./types";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Estado de entrada do Plano de Carreira: linha de 3 passos (conta, intake,
 // mapa) no espirito do HowItWorksTimeline do portfolio + VITRINE ilustrativa
@@ -103,7 +104,7 @@ export function HowItWorksSteps() {
           return (
             <motion.li
               key={step.title}
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: Math.min(i * 0.08, 0.3) }}
@@ -143,7 +144,7 @@ export function TrailShowcase() {
 
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.4, ease: "easeOut" }}

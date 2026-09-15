@@ -31,6 +31,7 @@ import VagasShowcase from "@/components/vagas/VagasShowcase";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("cyan");
 
@@ -89,7 +90,7 @@ export default function Vagas() {
         <VagasBackdrop reduce={reduce} />
         <div className="container relative z-10">
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10"

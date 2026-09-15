@@ -401,7 +401,7 @@ const pool: QuizPool = {
         "d": "[ 1, 2 ]\n[ 1, 2, 3, 4 ]"
       },
       "correta": "b",
-      "explicacao": "O código usa o spread operator para adicionar 4 ao final do array original, resultando em `[1, 2, 3, 4]`.",
+      "explicacao": "O spread copia os itens de lista para um array novo e acrescenta o 4 no fim. lista continua [ 1, 2, 3 ] e novaLista é [ 1, 2, 3, 4 ], cada um impresso numa linha.",
       "fonte": "estruturas.destructuring",
       "tipo": "saida",
       "codigo": {
@@ -653,7 +653,7 @@ const pool: QuizPool = {
     {
       "id": "javascript-av-09",
       "nivel": "avancado",
-      "pergunta": "Qual é o erro neste código, que deveria retornar o saldo após um depósito?",
+      "pergunta": "Este código deveria imprimir 50, o saldo depois do depósito, mas lança um erro. Qual é o defeito?",
       "alternativas": {
         "a": "O método `depositar` não está retornando `this`",
         "b": "O objeto `conta` não é instanciado corretamente",
@@ -661,12 +661,12 @@ const pool: QuizPool = {
         "d": "O `constructor` não está definindo `this.saldo`"
       },
       "correta": "a",
-      "explicacao": "O método `depositar` deve retornar `this` para permitir o encadeamento de chamadas, mas não está fazendo isso.",
+      "explicacao": "Sem return this, depositar devolve undefined, então conta recebe undefined e conta.saldo lança TypeError. Com return this, a chamada encadeada devolve a própria conta e o saldo 50 é impresso.",
       "fonte": "avancado.prototipos",
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "class Conta {\n  constructor(titular) {\n    this.titular = titular;\n    this.saldo = 0;\n  }\n  depositar(valor) {\n    this.saldo += valor;\n  }\n}\nconst conta = new Conta('Ana').depositar(50);\nconsole.log(conta.saldo); // 50",
+        "trecho": "class Conta {\n  constructor(titular) {\n    this.titular = titular;\n    this.saldo = 0;\n  }\n  depositar(valor) {\n    this.saldo += valor;\n  }\n}\nconst conta = new Conta('Ana').depositar(50);\nconsole.log(conta.saldo);",
         "saidaEsperada": "50"
       }
     },

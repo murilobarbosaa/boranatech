@@ -17,13 +17,14 @@ import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { womenArea } from "@/lib/platformData";
 import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 export default function Mulheres() {
   const reduce = useReducedMotion();
   const reveal = reduce
     ? {}
     : {
-        initial: { opacity: 0, y: 20 },
+        initial: entrada({ opacity: 0, y: 20 }),
         whileInView: { opacity: 1, y: 0 },
         viewport: { once: true, margin: "-80px" },
         transition: { duration: 0.5, ease: "easeOut" as const },
@@ -31,7 +32,7 @@ export default function Mulheres() {
   const stepList = reduce
     ? {}
     : {
-        initial: "hidden",
+        initial: entrada("hidden"),
         whileInView: "show",
         viewport: { once: true, margin: "-80px" },
         variants: {

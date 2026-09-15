@@ -38,6 +38,7 @@ import certificatesRouter, {
 import consentRouter from "./routes/consent";
 import contentRouter from "./routes/content";
 import couponsRouter from "./routes/coupons";
+import creatorRouter from "./routes/creator";
 import cronRouter from "./routes/cron";
 import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
@@ -557,6 +558,7 @@ app.use("/api/certificates", certificatesRouter);
 app.use("/api/study", studyRouter);
 app.use("/api/quiz", quizRouter);
 app.use("/api/vagas", vagasRouter);
+app.use("/api/creator", creatorRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/cron", cronRouter);

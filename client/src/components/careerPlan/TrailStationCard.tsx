@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { FxRate } from "@/services/careerPlanService";
 import TrophyCard from "./TrophyCard";
 import type { TrailStationVM } from "./types";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("amber");
 
@@ -146,7 +147,7 @@ export default function TrailStationCard({
         {expanded ? (
           <motion.div
             key="detail"
-            initial={reduce ? false : { height: 0, opacity: 0 }}
+            initial={entrada(reduce ? false : { height: 0, opacity: 0 })}
             animate={{ height: "auto", opacity: 1 }}
             exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.28, ease: "easeOut" }}

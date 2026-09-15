@@ -97,7 +97,7 @@ const FICARAM = [
   // "Do visitante ao assinante Pro" virou "Onde as pessoas param?": o funil saiu
   // do PostHog para tabelas locais e passou a mostrar TAXAS entre etapas.
   /Onde as pessoas param\?/i,
-  /Conversões Pro por dia/i,
+  /Pagamentos registrados por dia/i,
   /Custo de IA e receita/i,
   /uso de IA por ferramenta/i,
   /Atenção necessária/i,
@@ -210,6 +210,12 @@ describe("inventário de blocos da Visão", () => {
     for (const titulo of FICARAM) {
       await waitFor(() => expect(screen.getByText(titulo)).toBeTruthy());
     }
+
+    expect(
+      screen.getByRole("heading", {
+        name: /Quantos pagamentos foram registrados, e de quantas pessoas\?/i,
+      }),
+    ).toBeTruthy();
   });
 
   it("a aba Páginas é alcançável pelo nav (o botão duplicado saiu)", async () => {
@@ -268,7 +274,7 @@ describe("inventário de blocos da Visão", () => {
     const faixa = await screen.findByTestId("health-band");
     expect(faixa.getAttribute("data-estado")).toBe("ok");
     // Os cards caem no estado nomeado, não em R$ 0,00 falso.
-    expect(screen.getAllByText("indisponível").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/indisponível/i).length).toBeGreaterThan(0);
   });
 
   it("payload de ERRO no lugar do de sucesso também não derruba", async () => {

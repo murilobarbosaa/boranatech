@@ -48,6 +48,7 @@ import {
   SUBAREA_ORDER,
   type Subarea,
 } from "@/lib/faculdadesSubareas";
+import { entrada } from "@/lib/entradaEstatica";
 
 const tipos = ["Todos", "Técnico", "Tecnólogo", "Bacharelado"];
 const matNiveis = ["Todos", "Médio", "Alto", "Médio-Alto"];
@@ -606,7 +607,7 @@ export default function Faculdades() {
           role="tabpanel"
           id="panel-tipos"
           aria-labelledby="tab-tipos"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
@@ -903,7 +904,7 @@ export default function Faculdades() {
           role="tabpanel"
           id="panel-como-escolher"
           aria-labelledby="tab-como-escolher"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
@@ -1169,7 +1170,7 @@ export default function Faculdades() {
           role="tabpanel"
           id="panel-estados"
           aria-labelledby="tab-estados"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
@@ -1535,7 +1536,7 @@ export default function Faculdades() {
       {aba === "Como escolher" ? (
         <motion.div
           key="como-b"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
@@ -1583,7 +1584,7 @@ export default function Faculdades() {
           role="tabpanel"
           id="panel-descubra"
           aria-labelledby="tab-descubra"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >

@@ -249,7 +249,7 @@ export function FiscalInvoicesDashboard() {
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             {/* TODO(Ana): cabecalhos da tabela de notas. */}
             <tr className="border-b-2 border-slate-900 text-left">
               <th className="p-2 text-xs font-black uppercase">Usuário</th>

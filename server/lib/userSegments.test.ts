@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   USER_SEGMENTS,
+  fetchProStatusFlagsForUser,
+  fetchProStatusSets,
   flagsMatchSegment,
   userMatchesSegment,
   type ProStatusFlags,
@@ -35,7 +37,12 @@ const CASES: Array<{
 }> = [
   {
     name: "nunca pagou, nao e influencer",
-    flags: { active: false, payingActive: false, pastDue: false, everPaid: false },
+    flags: {
+      active: false,
+      payingActive: false,
+      pastDue: false,
+      everPaid: false,
+    },
     expected: ["all", "never_pro"],
   },
   {
@@ -45,22 +52,42 @@ const CASES: Array<{
   },
   {
     name: "ex-assinante (pagou, hoje sem plano)",
-    flags: { active: false, payingActive: false, pastDue: false, everPaid: true },
+    flags: {
+      active: false,
+      payingActive: false,
+      pastDue: false,
+      everPaid: true,
+    },
     expected: ["all", "ex_pro"],
   },
   {
     name: "past_due (recuperacao de pagamento) entra apenas em all",
-    flags: { active: false, payingActive: false, pastDue: true, everPaid: true },
+    flags: {
+      active: false,
+      payingActive: false,
+      pastDue: true,
+      everPaid: true,
+    },
     expected: ["all"],
   },
   {
     name: "influencer ativo que nunca assinou: active_pro SIM, paying_pro NAO",
-    flags: { active: true, payingActive: false, pastDue: false, everPaid: false },
+    flags: {
+      active: true,
+      payingActive: false,
+      pastDue: false,
+      everPaid: false,
+    },
     expected: ["all", "active_pro"],
   },
   {
     name: "ex-assinante que virou influencer: active_pro SIM, paying_pro NAO, sai de ex_pro",
-    flags: { active: true, payingActive: false, pastDue: false, everPaid: true },
+    flags: {
+      active: true,
+      payingActive: false,
+      pastDue: false,
+      everPaid: true,
+    },
     expected: ["all", "active_pro"],
   },
 ];
@@ -95,5 +122,87 @@ describe("userSegments truth table", () => {
         userMatchesSegment("outro-usuario", segment, sets),
       ),
     ).toEqual(["all", "never_pro"]);
+  });
+});
+
+/**
+ * Dublê mínimo do Supabase para as duas leituras de conjunto. Registra os
+ * filtros aplicados a `creators`: o que se afirma é que a consulta NÃO filtra
+ * kind, então afiliado entra em `active` exatamente como influencer.
+ */
+const estadoSeg = vi.hoisted(() => ({
+  creators: [] as Array<{ user_id: string; kind: string }>,
+  filtrosCreators: [] as string[],
+}));
+
+vi.mock("./supabaseAdmin", () => ({
+  supabaseAdmin: {
+    from: (tabela: string) => {
+      const q: Record<string, unknown> = {};
+      const registrar = (coluna: string) => {
+        if (tabela === "creators") estadoSeg.filtrosCreators.push(coluna);
+        return q;
+      };
+      q.select = () => q;
+      q.eq = registrar;
+      q.is = registrar;
+      q.neq = () => q;
+      q.range = (from: number, to: number) => {
+        const linhas = tabela === "creators" ? estadoSeg.creators : [];
+        return Promise.resolve({
+          data: linhas.slice(from, to + 1),
+          error: null,
+        });
+      };
+      q.maybeSingle = async () => ({
+        data:
+          tabela === "creators" && estadoSeg.creators.length > 0
+            ? { id: "c1" }
+            : null,
+        error: null,
+      });
+      q.then = (resolve: (v: unknown) => unknown) =>
+        Promise.resolve({
+          data: tabela === "plans" ? [{ id: "p1", code: "pro_monthly" }] : [],
+          error: null,
+        }).then(resolve);
+      return q;
+    },
+  },
+}));
+
+describe("afiliado entra em active e nunca em payingActive", () => {
+  it("fetchProStatusSets: concessão de afiliado sem assinatura", async () => {
+    estadoSeg.creators = [{ user_id: "afil", kind: "afiliado" }];
+    estadoSeg.filtrosCreators = [];
+
+    const sets = await fetchProStatusSets();
+
+    expect(sets.active.has("afil")).toBe(true);
+    expect(sets.payingActive.has("afil")).toBe(false);
+    expect(userMatchesSegment("afil", "active_pro", sets)).toBe(true);
+    expect(userMatchesSegment("afil", "paying_pro", sets)).toBe(false);
+    expect(userMatchesSegment("afil", "never_pro", sets)).toBe(false);
+    // Nenhum filtro por kind: qualquer concessão ativa conta. O CONJUNTO de
+    // colunas filtradas, e não a lista: o paginateRange monta uma consulta por
+    // página (a com dados e a vazia que encerra), e cada uma repete o filtro.
+    expect(Array.from(new Set(estadoSeg.filtrosCreators))).toEqual([
+      "revoked_at",
+    ]);
+  });
+
+  it("fetchProStatusFlagsForUser: afiliado ativo é active, não payingActive", async () => {
+    estadoSeg.creators = [{ user_id: "afil", kind: "afiliado" }];
+    estadoSeg.filtrosCreators = [];
+
+    const flags = await fetchProStatusFlagsForUser("afil");
+
+    expect(flags).toEqual({
+      active: true,
+      payingActive: false,
+      pastDue: false,
+      everPaid: false,
+    });
+    expect(estadoSeg.filtrosCreators).not.toContain("kind");
   });
 });

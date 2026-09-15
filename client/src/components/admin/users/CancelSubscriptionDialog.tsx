@@ -12,6 +12,7 @@ import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import type { UserDetail } from "./types";
 import { fmtBrl, fmtDate, fmtText, planLabelOf } from "./userFormat";
+import { concessaoDoProSource, nomeDaConcessao } from "./creatorConcessao";
 
 // Confirmação do cancelamento de assinatura. Ação destrutiva: mesmo padrão de
 // AlertDialog que o TaskModal usa para exclusão.
@@ -50,8 +51,9 @@ export function CancelSubscriptionDialog({
   // pro_source vem da rota de detalhe, calculado pela MESMA função que alimenta
   // a lista (resolveProSource). Não recalculamos aqui: duas montagens da mesma
   // regra divergem na primeira mudança.
-  const temInfluencer =
-    detail.pro_source === "influencer" || detail.pro_source === "both";
+  // Os dois kinds de creator (influencer e afiliado) concedem Pro por fora da
+  // assinatura, e os dois precisam do aviso.
+  const concessao = concessaoDoProSource(detail.pro_source);
 
   async function confirmar() {
     if (cancelando) return;
@@ -118,14 +120,15 @@ export function CancelSubscriptionDialog({
             {/* Sem este aviso o admin cancela, vê a pessoa continuar Pro e não
                 entende. A concessão de influencer é um ramo independente de
                 is_user_pro. */}
-            {temInfluencer ? (
+            {concessao ? (
               <p
                 data-testid="aviso-influencer"
                 className="rounded-xl border-2 border-violet-700 bg-violet-50 p-3 font-bold text-violet-900"
               >
-                Esta conta também tem acesso de influencer. Cancelar a
-                assinatura <strong>não remove o Pro</strong>: para isso, revogue
-                a concessão de influencer.
+                {/* TODO(Ana) */}
+                {`Esta conta também tem acesso de ${nomeDaConcessao(concessao)}. Cancelar a assinatura `}
+                <strong>não remove o Pro</strong>
+                {`: para isso, revogue a concessão de ${nomeDaConcessao(concessao)}.`}
               </p>
             ) : null}
 

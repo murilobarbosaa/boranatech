@@ -1,5 +1,12 @@
+import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 
 /**
  * Hold do ConsentGate sobre a escrita de consentimento (itens 3.4 e ajuste 3).
@@ -80,6 +87,10 @@ async function assentar() {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  // Todo "sim" do servidor grava a marca de consentimento no localStorage. Sem
+  // limpar aqui, ela vaza entre casos e o seguinte comeca otimista, sem camada,
+  // passando ou falhando conforme a ordem de execucao.
+  window.localStorage.clear();
   auth.value.consentWriteInFlight = false;
   auth.value.consentWriteConfirmed = 0;
   servico.getConsentStatus.mockResolvedValue(true);
@@ -100,7 +111,10 @@ describe("hold enquanto a escrita esta em voo (item 3.4)", () => {
     await avancar(1_000);
 
     expect(servico.getConsentStatus).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("app")).toBeNull();
+    // Bloqueado continua bloqueado, mas agora por camada e `inert`, e nao pela
+    // ausencia dos children (lote Home 02, ver o bloco no fim deste arquivo).
+    expect(camada()).toBeTruthy();
+    expect(inerte("app")).toBe(true);
   });
 
   it("consulta assim que a escrita termina, sem esperar o teto", async () => {
@@ -212,5 +226,156 @@ describe("escrita que conclui DEPOIS do teto fecha o modal sozinha", () => {
     // nenhum loop de reverificacao.
     expect(servico.getConsentStatus).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeTruthy();
+  });
+});
+
+/**
+ * BLOQUEIO SEM DESMONTAR (lote Home 02).
+ *
+ * Antes, a fase "checking" trocava os children por um spinner de tela cheia: a
+ * arvore inteira desmontava quando a sessao resolvia e remontava do zero quando
+ * o /status respondia. Era o "reload" percebido na home de quem esta logado.
+ *
+ * A chave da marca e escrita a mao aqui, e nao importada do codigo: teste que le
+ * a propria constante que testa nao percebe a constante mudando.
+ */
+const MARCA_U1 = "bnt:consent-ok:u1";
+
+const montagens = { total: 0 };
+
+function Filho() {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    montagens.total += 1;
+  }, []);
+  return (
+    <button
+      type="button"
+      data-testid="contador"
+      onClick={() => setN((v) => v + 1)}
+    >
+      {n}
+    </button>
+  );
+}
+
+function pendente() {
+  let resolver: (valor: boolean) => void = () => {};
+  const promessa = new Promise<boolean>((r) => {
+    resolver = r;
+  });
+  return { promessa, resolver };
+}
+
+function camada() {
+  return screen.queryByTestId("consent-gate-camada");
+}
+
+function inerte(testId: string) {
+  return screen.getByTestId(testId).closest("[inert]") !== null;
+}
+
+describe("bloqueio sem desmontar os children", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    montagens.total = 0;
+  });
+
+  it("os children NAO desmontam entre a sessao chegar, checking e consented", async () => {
+    const { promessa, resolver } = pendente();
+    servico.getConsentStatus.mockReturnValue(promessa);
+    const sessaoOriginal = auth.value.session;
+    auth.value.session = null;
+
+    const { rerender } = render(
+      <ConsentGate>
+        <Filho />
+      </ConsentGate>,
+    );
+    fireEvent.click(screen.getByTestId("contador"));
+    expect(screen.getByTestId("contador").textContent).toBe("1");
+
+    try {
+      auth.value.session = sessaoOriginal;
+      rerender(
+        <ConsentGate>
+          <Filho />
+        </ConsentGate>,
+      );
+      await assentar();
+
+      await act(async () => {
+        resolver(true);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId("contador").textContent).toBe("1");
+      expect(montagens.total).toBe(1);
+    } finally {
+      auth.value.session = sessaoOriginal;
+    }
+  });
+
+  it("em checking o conteudo fica montado, inerte e coberto pela camada", async () => {
+    servico.getConsentStatus.mockReturnValue(pendente().promessa);
+    montar();
+    await assentar();
+
+    expect(camada()).toBeTruthy();
+    expect(inerte("app")).toBe(true);
+  });
+
+  it("sem marca, nao libera antes da resposta e grava a marca no sim", async () => {
+    const { promessa, resolver } = pendente();
+    servico.getConsentStatus.mockReturnValue(promessa);
+    montar();
+    await avancar(3_000);
+
+    expect(camada()).toBeTruthy();
+    expect(inerte("app")).toBe(true);
+    expect(window.localStorage.getItem(MARCA_U1)).toBeNull();
+
+    await act(async () => {
+      resolver(true);
+      await Promise.resolve();
+    });
+
+    expect(camada()).toBeNull();
+    expect(inerte("app")).toBe(false);
+    expect(window.localStorage.getItem(MARCA_U1)).toBe("1");
+  });
+
+  it("com marca, comeca liberado e confirma em segundo plano", async () => {
+    window.localStorage.setItem(MARCA_U1, "1");
+    servico.getConsentStatus.mockReturnValue(pendente().promessa);
+    montar();
+
+    expect(camada()).toBeNull();
+    expect(inerte("app")).toBe(false);
+    await assentar();
+    expect(servico.getConsentStatus).toHaveBeenCalledTimes(1);
+    expect(camada()).toBeNull();
+  });
+
+  it("com marca, o primeiro nao do servidor bloqueia na hora e limpa a marca", async () => {
+    window.localStorage.setItem(MARCA_U1, "1");
+    servico.getConsentStatus.mockResolvedValue(false);
+    montar();
+    await assentar();
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(camada()).toBeTruthy();
+    expect(inerte("app")).toBe(true);
+    expect(window.localStorage.getItem(MARCA_U1)).toBeNull();
+  });
+
+  it("marca de OUTRO usuario nao acelera ninguem", async () => {
+    window.localStorage.setItem("bnt:consent-ok:u2", "1");
+    servico.getConsentStatus.mockReturnValue(pendente().promessa);
+    montar();
+    await assentar();
+
+    expect(camada()).toBeTruthy();
+    expect(inerte("app")).toBe(true);
   });
 });

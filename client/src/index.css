@@ -2663,3 +2663,11 @@ body[data-scroll-locked] [data-app-header] {
     animation: none;
   }
 }
+
+/* Links de visitante que o prerender deixou no HTML (marcados com
+   data-auth-estatico no Header) somem para quem tem sessao persistida, ate o
+   React montar. A classe vem de client/public/sessao-init.js. visibility, e nao
+   display, para o Header nao mudar de largura. */
+.bnt-sessao-persistida [data-auth-estatico] {
+  visibility: hidden;
+}

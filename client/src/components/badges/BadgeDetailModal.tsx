@@ -1,6 +1,7 @@
 import { Lock, X } from "lucide-react";
 
 import { ICON_MAP } from "@/components/badges/iconMap";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { BadgeInfo } from "@/services/badgesService";
 import { BADGE_CATEGORIES } from "@shared/badges";
 
@@ -19,13 +20,17 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
     : 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <Dialog
+      open
+      onOpenChange={(aberto) => {
+        if (!aberto) onClose();
+      }}
     >
-      <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        overlayClassName="bg-slate-950/60 backdrop-blur-sm"
+        className="block max-w-[min(28rem,calc(100%-2rem))] rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md md:p-8"
       >
         <button
           type="button"
@@ -64,9 +69,9 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
           {categoryStyle.label}
         </p>
 
-        <h2 className="mb-3 text-center font-display text-3xl font-black text-slate-950">
+        <DialogTitle className="mb-3 text-center font-display text-3xl font-black text-slate-950">
           {badge.name}
-        </h2>
+        </DialogTitle>
 
         <p className="mb-6 text-center text-sm font-semibold text-slate-600">
           {badge.description}
@@ -120,7 +125,7 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
             </>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

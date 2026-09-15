@@ -14,11 +14,13 @@
 // teste proprio, e este comentario aponta a fonte. Se a RPC mudar,
 // server/lib/userListEnrichment.test.ts e o lugar que quebra.
 //
-// Fonte espelhada: supabase/migrations/20260716130100_add_influencer_to_is_user_pro.sql
+// Fonte espelhada: supabase/migrations/20260913120000_creators_and_creator_events.sql
 //   ramo 1: subscriptions JOIN plans, plans.code <> 'free',
 //           status in ('active','trialing'),
 //           (current_period_end is null or current_period_end > now())
-//   ramo 2: influencers com revoked_at is null
+//   ramo 2: creators com revoked_at is null (qualquer kind)
+
+import type { CreatorKind } from "./creatorKind";
 
 /** Status de assinatura que concedem acesso, conforme a RPC. */
 const STATUS_QUE_DAO_PRO = new Set(["active", "trialing"]);
@@ -37,7 +39,15 @@ export type SubscriptionRow = {
   renewal_type?: string | null;
 };
 
-export type ProSource = "subscription" | "influencer" | "both";
+// "both" continua sendo assinatura + concessao de INFLUENCER, com o mesmo nome
+// de antes: o valor sai na resposta da API, e o bundle em execucao le "both".
+// Assinatura + concessao de AFILIADO e "both_afiliado", valor novo.
+export type ProSource =
+  | "subscription"
+  | "influencer"
+  | "afiliado"
+  | "both"
+  | "both_afiliado";
 
 export type UserListEnrichment = {
   is_pro: boolean;
@@ -124,13 +134,16 @@ export function pickSubscription(
 }
 
 /**
- * Junta assinaturas e concessoes de influencer num indice por user_id. Usuario
+ * Junta assinaturas e concessoes de creator num indice por user_id. Usuario
  * sem nenhum dos dois nao entra: quem consome trata a ausencia como "sem
  * assinatura, sem Pro".
+ *
+ * `activeCreators` mapeia user_id para o kind da concessao ATIVA (o indice
+ * unico parcial garante no maximo uma por usuario).
  */
 export function buildEnrichmentIndex(
   subscriptions: SubscriptionRow[],
-  activeInfluencerIds: Set<string>,
+  activeCreators: Map<string, CreatorKind>,
   now: Date,
 ): Map<string, UserListEnrichment> {
   const porUsuario = new Map<string, SubscriptionRow[]>();
@@ -149,10 +162,10 @@ export function buildEnrichmentIndex(
     const proPorAssinatura = escolhida
       ? subscriptionGrantsPro(escolhida, now)
       : false;
-    const proPorInfluencer = activeInfluencerIds.has(userId);
+    const creatorKind = activeCreators.get(userId) ?? null;
     index.set(userId, {
-      is_pro: proPorAssinatura || proPorInfluencer,
-      pro_source: resolveProSource(proPorAssinatura, proPorInfluencer),
+      is_pro: proPorAssinatura || creatorKind !== null,
+      pro_source: resolveProSource(proPorAssinatura, creatorKind),
       plan_code: escolhida ? planCodeOf(escolhida) : null,
       subscription_status: escolhida?.status ?? null,
       renewal_type: escolhida?.renewal_type ?? null,
@@ -160,12 +173,12 @@ export function buildEnrichmentIndex(
     });
   });
 
-  // Influencers sem nenhuma assinatura ainda nao entraram no laco acima.
-  activeInfluencerIds.forEach((userId) => {
+  // Creators sem nenhuma assinatura ainda nao entraram no laco acima.
+  activeCreators.forEach((kind, userId) => {
     if (index.has(userId)) return;
     index.set(userId, {
       is_pro: true,
-      pro_source: "influencer",
+      pro_source: kind,
       plan_code: null,
       subscription_status: null,
       renewal_type: null,
@@ -188,10 +201,15 @@ export function buildEnrichmentIndex(
  * Os dois ramos sao ORTOGONAIS e o total NAO e a soma: quem tem os dois entra em
  * `both` e apareceria duas vezes. `total` e a uniao, e existe justamente para
  * ninguem precisar somar por conta propria.
+ *
+ * A concessao se divide por kind (`byInfluencer`, `byAfiliado`), e `both` e a
+ * intersecao da assinatura com QUALQUER concessao: e ela que se subtrai uma vez
+ * para fechar a uniao, `bySubscription + byInfluencer + byAfiliado - both`.
  */
 export type ProSourceTally = {
   bySubscription: number;
   byInfluencer: number;
+  byAfiliado: number;
   both: number;
   total: number;
 };
@@ -199,21 +217,27 @@ export type ProSourceTally = {
 export function tallyProSources(
   index: Map<string, UserListEnrichment>,
 ): ProSourceTally {
-  let bySubscription = 0;
-  let byInfluencer = 0;
-  let both = 0;
+  let soAssinatura = 0;
+  let soInfluencer = 0;
+  let soAfiliado = 0;
+  let assinaturaEInfluencer = 0;
+  let assinaturaEAfiliado = 0;
   index.forEach((item) => {
-    if (item.pro_source === "subscription") bySubscription += 1;
-    else if (item.pro_source === "influencer") byInfluencer += 1;
-    else if (item.pro_source === "both") both += 1;
+    if (item.pro_source === "subscription") soAssinatura += 1;
+    else if (item.pro_source === "influencer") soInfluencer += 1;
+    else if (item.pro_source === "afiliado") soAfiliado += 1;
+    else if (item.pro_source === "both") assinaturaEInfluencer += 1;
+    else if (item.pro_source === "both_afiliado") assinaturaEAfiliado += 1;
   });
+  const both = assinaturaEInfluencer + assinaturaEAfiliado;
   return {
     // Quem tem os dois conta nos DOIS ramos: "assinantes pagantes" inclui quem
     // tambem tem concessao.
-    bySubscription: bySubscription + both,
-    byInfluencer: byInfluencer + both,
+    bySubscription: soAssinatura + both,
+    byInfluencer: soInfluencer + assinaturaEInfluencer,
+    byAfiliado: soAfiliado + assinaturaEAfiliado,
     both,
-    total: bySubscription + byInfluencer + both,
+    total: soAssinatura + soInfluencer + soAfiliado + both,
   };
 }
 
@@ -224,19 +248,21 @@ export function tallyProSources(
  */
 export function resolveProSource(
   porAssinatura: boolean,
-  porInfluencer: boolean,
+  creatorKind: CreatorKind | null,
 ): ProSource | null {
-  if (porAssinatura && porInfluencer) return "both";
+  if (porAssinatura && creatorKind === "influencer") return "both";
+  if (porAssinatura && creatorKind === "afiliado") return "both_afiliado";
   if (porAssinatura) return "subscription";
-  if (porInfluencer) return "influencer";
-  return null;
+  return creatorKind;
 }
 
 export type EnrichmentLookups = {
   /** Assinaturas de TODOS os ids da pagina, numa consulta so. */
   bySubscription: (userIds: string[]) => Promise<SubscriptionRow[]>;
-  /** user_ids com concessao de influencer ativa, numa consulta so. */
-  byInfluencer: (userIds: string[]) => Promise<string[]>;
+  /** Concessoes de creator ATIVAS dos ids da pagina, numa consulta so. */
+  byCreator: (
+    userIds: string[],
+  ) => Promise<Array<{ user_id: string; kind: CreatorKind }>>;
 };
 
 /**
@@ -251,10 +277,12 @@ export async function fetchUserListEnrichment(
 ): Promise<Map<string, UserListEnrichment>> {
   if (userIds.length === 0) return new Map();
 
-  const [subscriptions, influencerIds] = await Promise.all([
+  const [subscriptions, creators] = await Promise.all([
     lookups.bySubscription(userIds),
-    lookups.byInfluencer(userIds),
+    lookups.byCreator(userIds),
   ]);
 
-  return buildEnrichmentIndex(subscriptions, new Set(influencerIds), now);
+  const porUsuario = new Map<string, CreatorKind>();
+  for (const creator of creators) porUsuario.set(creator.user_id, creator.kind);
+  return buildEnrichmentIndex(subscriptions, porUsuario, now);
 }

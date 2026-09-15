@@ -5,6 +5,7 @@ import {
   type Response,
 } from "express";
 
+import { isCreatorKind, type CreatorKind } from "../lib/creatorKind";
 import { env } from "../lib/env";
 import { montarDbError } from "../lib/dbError";
 import { signedFiscalUrl } from "../lib/fiscalStorage";
@@ -388,30 +389,33 @@ export async function handleGetSubscription(
       }
     }
 
-    // De onde vem o acesso: assinatura real, concessao de influencer ou admin.
-    // ADITIVO: isPro e subscription seguem exatamente como estao; o client usa
-    // isto so para rotular o acesso com honestidade (ex: influencer nao ve
-    // botao de cancelar uma assinatura que nao existe). Fail-open para null:
-    // erro aqui nao derruba o endpoint, so deixa a origem indeterminada.
-    let accessSource: "subscription" | "influencer" | "admin" | null = null;
+    // De onde vem o acesso: assinatura real, concessao de creator (o kind:
+    // influencer ou afiliado) ou admin. ADITIVO: isPro e subscription seguem
+    // exatamente como estao; o client usa isto so para rotular o acesso com
+    // honestidade (ex: creator nao ve botao de cancelar uma assinatura que nao
+    // existe). Fail-open para null: erro aqui nao derruba o endpoint, so deixa a
+    // origem indeterminada.
+    let accessSource: "subscription" | CreatorKind | "admin" | null = null;
     if (subscription) {
       accessSource = "subscription";
     } else {
-      const { data: influencerRow, error: influencerError } =
-        await supabaseAdmin
-          .from("influencers")
-          .select("id")
-          .eq("user_id", userId)
-          .is("revoked_at", null)
-          .maybeSingle();
-      if (influencerError) {
+      const { data: creatorRow, error: creatorError } = await supabaseAdmin
+        .from("creators")
+        .select("id, kind")
+        .eq("user_id", userId)
+        .is("revoked_at", null)
+        .maybeSingle();
+      if (creatorError) {
         console.error(
-          "[billing/subscription] influencer lookup failed:",
-          influencerError,
+          "[billing/subscription] creator lookup failed:",
+          creatorError,
         );
       }
-      if (influencerRow) {
-        accessSource = "influencer";
+      if (creatorRow) {
+        // Kind que este codigo nao conhece vira null (origem indeterminada),
+        // o mesmo fail-open do erro acima: rotular com o kind errado seria
+        // pior do que dizer que nao se sabe.
+        accessSource = isCreatorKind(creatorRow.kind) ? creatorRow.kind : null;
       } else {
         const { data: adminData, error: adminError } = await supabaseAdmin.rpc(
           "is_user_admin",
@@ -821,13 +825,35 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       );
     }
 
-    const data = await stripeProvider.cancel({
+    const { data: vigente, error: vigenteError } =
+      await buscarAssinaturaVigente(userId);
+    if (vigenteError) {
+      return next(
+        montarDbError(
+          "billing",
+          "billing cancel lookup",
+          vigenteError,
+          "Erro ao buscar assinatura.",
+        ),
+      );
+    }
+    if (!vigente) {
+      return next(
+        createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
+      );
+    }
+
+    const entrada = {
       userId,
       // O ator e a propria pessoa neste caminho.
       actorUserId: userId,
       reasonCode,
       reasonText,
-    });
+    };
+    const data =
+      vigente.provider === "asaas"
+        ? await asaasProvider.cancel(entrada)
+        : await stripeProvider.cancel(entrada);
 
     res.json({ data });
   } catch (err) {
@@ -835,15 +861,51 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
   }
 });
 
+// Sem assinatura vigente o reactivate NAO responde 404: segue para a Stripe,
+// que manda para o checkout, exatamente como antes do despacho. So a linha
+// vigente do Asaas muda de caminho.
 router.post("/reactivate", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const data = await stripeProvider.reactivate({ userId });
+
+    const { data: vigente, error: vigenteError } =
+      await buscarAssinaturaVigente(userId);
+    if (vigenteError) {
+      return next(
+        montarDbError(
+          "billing",
+          "billing reactivate lookup",
+          vigenteError,
+          "Erro ao buscar assinatura.",
+        ),
+      );
+    }
+
+    const data =
+      vigente?.provider === "asaas"
+        ? await asaasProvider.reactivate({ userId })
+        : await stripeProvider.reactivate({ userId });
     res.json({ data });
   } catch (err) {
     next(err);
   }
 });
+
+// Linha vigente do usuario, SEM FILTRO DE PROVEDOR, so para decidir qual
+// provider atende /cancel e /reactivate. Mesmo motivo da rota admin desde
+// 2026-09-02: com o filtro `provider='stripe'`, o assinante Pix recebia 404
+// "Nenhuma assinatura ativa encontrada." sobre uma assinatura ativa. Cada
+// provider continua fazendo a propria busca e validacao depois.
+function buscarAssinaturaVigente(userId: string) {
+  return supabaseAdmin
+    .from("subscriptions")
+    .select("provider")
+    .eq("user_id", userId)
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+}
 
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {

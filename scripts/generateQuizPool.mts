@@ -12,7 +12,7 @@
 // regenerar com --force troca ids e invalida tentativas.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   POOL_MIN_PER_LEVEL,
   POOL_TARGET_PER_LEVEL,
@@ -35,21 +35,29 @@ import {
   buildUserPrompt,
   codeLeafIds,
   codeQuotaFor,
+  codeQuotaWarnings,
   codeRuleViolations,
   codeTypeViolations,
   execViolations,
+  type GateSection,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
+  MAX_QUOTA_PER_SECTION,
   missingCodeCount,
   NIVEIS,
   normalizeGeneratedQuestion,
+  noRunnerWarnings,
   overusedFontes,
+  poolGateViolations,
+  poolRuleWarnings,
   type SectionMaterial,
+  sectionQuotaWarnings,
   sectionQuotas,
   SYSTEM_PROMPT,
 } from "./quizPoolGeneration.mts";
 import { NIVEL_ABBR, validateQuizPool } from "./quizPoolValidation.mts";
+import { gateSectionsForPool, repairPool } from "./quizPoolRepair.mts";
 import {
   type Executor,
   makeExecutor,
@@ -58,6 +66,13 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
+// Destino do despejo de pool reprovada: fora do worktree de proposito, para
+// nunca virar arquivo nao rastreado nem entrar num commit por engano.
+const REJECTED_DIR = "/tmp";
+// Teto de custo do modo de reparo: ao atingi-lo, para de chamar o modelo e
+// segue para o portao com o que ja foi reparado (Lote 06f, autorizado ate
+// USD 0,05).
+const REPAIR_BUDGET_USD = 0.05;
 
 const AI_MAX_ATTEMPTS = 5;
 const AI_BACKOFF_MS = [400, 800, 800, 800];
@@ -145,6 +160,7 @@ async function generateSection(
     section.leaves.map((leaf) => leaf.id),
     quota,
     codeQuota,
+    roadmap.codeLanguages ?? [],
   );
   const jsonSchema = toOpenAIStrictSchema(schema);
   const systemPrompt = systemPromptFor(roadmap, codeQuota);
@@ -164,6 +180,9 @@ async function generateSection(
   // resposta limpa com concentracao residual vale mais que uma concentrada
   // certa com trecho fora da regra (a validacao final reprovaria a segunda).
   let bestClean: GeneratedQuestion[] | null = null;
+  // O que ficou pendente na resposta guardada em bestValid, por classe, para
+  // o fallback dizer o motivo real em vez de supor concentracao.
+  let pendenciasBestValid: string[] = [];
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
       const userPrompt = buildUserPrompt(
@@ -201,23 +220,45 @@ async function generateSection(
         validation.data.questions,
         codeQuota,
       );
-      const violacoes =
+      // As tres classes de violacao de codigo em separado, para o fallback
+      // nomear a que ficou pendente; `violacoes` junta as tres na ordem de
+      // sempre, entao a nota de rebalanceamento do retry nao muda.
+      const regra =
         codeQuota > 0
-          ? [
-              ...codeRuleViolations(
-                validation.data.questions,
-                roadmap.codeLanguages ?? [],
-              ),
-              ...codeTypeViolations(validation.data.questions, codeQuota),
-              ...(executarPor
-                ? execViolations(
-                    validation.data.questions,
-                    roadmap.codeLanguages ?? [],
-                    executarPor,
-                  )
-                : []),
-            ]
+          ? codeRuleViolations(
+              validation.data.questions,
+              roadmap.codeLanguages ?? [],
+              undefined,
+              codeLeaves,
+            )
           : [];
+      const variedade =
+        codeQuota > 0
+          ? codeTypeViolations(validation.data.questions, codeQuota)
+          : [];
+      const execucao =
+        codeQuota > 0 && executarPor
+          ? execViolations(
+              validation.data.questions,
+              roadmap.codeLanguages ?? [],
+              executarPor,
+            )
+          : [];
+      const violacoes = [...regra, ...variedade, ...execucao];
+      pendenciasBestValid = [
+        ...(excedidos.length > 0
+          ? [
+              `concentracao: passos acima de ${MAX_PER_FONTE} perguntas (${excedidos.join(", ")})`,
+            ]
+          : []),
+        ...(faltamCodigo > 0
+          ? [`cota de codigo: faltam ${faltamCodigo} de ${codeQuota}`]
+          : []),
+        ...regra.map((violacao) => `regra de codigo: ${violacao}`),
+        // codeTypeViolations ja devolve cada linha com o prefixo "variedade:".
+        ...variedade,
+        ...execucao.map((violacao) => `execucao: ${violacao}`),
+      ];
       if (violacoes.length === 0) {
         bestClean = validation.data.questions;
       }
@@ -290,8 +331,11 @@ async function generateSection(
   }
   if (bestValid) {
     console.warn(
-      `[generateQuizPool] ${label}: aceitando com concentracao residual apos ${AI_MAX_ATTEMPTS} tentativas (secao fina, distribuicao ideal inatingivel).`,
+      `[generateQuizPool] ${label}: aceitando a ultima resposta valida no schema apos ${AI_MAX_ATTEMPTS} tentativas, com ${pendenciasBestValid.length} pendencia(s); o portao final da pool confere de novo:`,
     );
+    for (const pendencia of pendenciasBestValid) {
+      console.warn(`[generateQuizPool]     - ${pendencia}`);
+    }
     return bestValid;
   }
   throw lastError instanceof Error
@@ -323,11 +367,18 @@ const executarPor = (linguagem: string): Executor | null => {
   }
   return executar;
 };
-const slug = args.find((arg) => !arg.startsWith("--"));
+// --repair <pool.ts>: reparo por pergunta de uma pool reprovada
+// (quizPoolRepair.mts). O caminho e o argumento seguinte, entao fica fora da
+// busca pelo slug.
+const repairIdx = args.indexOf("--repair");
+const repairPath = repairIdx >= 0 ? args[repairIdx + 1] : undefined;
+const slug = args.find(
+  (arg, i) => !arg.startsWith("--") && !(repairIdx >= 0 && i === repairIdx + 1),
+);
 
-if (!slug) {
+if (!slug || (repairIdx >= 0 && (!repairPath || repairPath.startsWith("--")))) {
   console.error(
-    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec]",
+    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec] [--repair <pool.ts>]",
   );
   process.exit(1);
 }
@@ -336,6 +387,13 @@ if (!roadmap) {
   console.error(`[generateQuizPool] slug "${slug}" nao existe no agregado.`);
   process.exit(1);
 }
+// Teto de cota por secao so em trilha com codeLanguages: as trilhas de area
+// tem 40 combinacoes de nivel com duas secoes e 15 perguntas, e as pools
+// delas ja publicadas foram geradas sem teto (medido no Lote 06b).
+const maxPerSection =
+  roadmap.codeLanguages && roadmap.codeLanguages.length > 0
+    ? MAX_QUOTA_PER_SECTION
+    : undefined;
 const outFile = path.join(QUIZ_DIR, `${slug}.ts`);
 if (existsSync(outFile) && !force && !dryRun) {
   console.error(
@@ -384,7 +442,15 @@ if (dryRun) {
       );
       process.exit(1);
     }
-    const quotas = sectionQuotas(sections, levelTarget);
+    const quotas = sectionQuotas(sections, levelTarget, maxPerSection);
+    for (const aviso of sectionQuotaWarnings(
+      sections,
+      levelTarget,
+      maxPerSection,
+    )) {
+      // stderr de proposito: o stdout do dry-run entra em diff.
+      console.error(`[generateQuizPool] [aviso] ${nivel}: ${aviso}`);
+    }
     for (let i = 0; i < sections.length; i += 1) {
       const codeLeaves = codeLeafIds(sections[i], roadmap.codeLanguages ?? []);
       const codeQuota = codeQuotaFor(roadmap, quotas[i], codeLeaves.length);
@@ -405,6 +471,7 @@ if (dryRun) {
           sections[i].leaves.map((leaf) => leaf.id),
           quotas[i],
           codeQuota,
+          roadmap.codeLanguages ?? [],
         );
         lines.push(
           `### SCHEMA ${nivel} / ${sections[i].title}`,
@@ -421,8 +488,96 @@ if (!env.openaiApiKey) {
   process.exit(1);
 }
 
+if (repairPath) {
+  // Modo de reparo por pergunta: le a pool reprovada, reenvia ao modelo so as
+  // perguntas com violacao e roda o portao completo no fim. Nunca gera
+  // pergunta nova nem troca id. Passou: escreve a pool; reprovou: despejo
+  // com sufixo -reparo e EXIT 1.
+  const modulo = (await import(
+    pathToFileURL(path.resolve(repairPath)).href
+  )) as { default?: QuizPool };
+  const rejeitada = modulo.default;
+  if (!rejeitada || rejeitada.slug !== slug) {
+    console.error(`[repair] ${repairPath} nao e uma pool de ${slug}.`);
+    process.exit(1);
+  }
+  const custoDe = (uso: Usage) =>
+    (uso.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
+    (uso.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
+  const reparo = await repairPool({
+    roadmap,
+    questions: rejeitada.questions,
+    systemPrompt: systemPromptFor(roadmap, 1),
+    callModel: callOpenAIOnce,
+    executarPor: noExec ? null : executarPor,
+    custo: custoDe,
+    orcamentoUsd: REPAIR_BUDGET_USD,
+    maxPerSection,
+    log: (linha) => console.log(`[repair] ${linha}`),
+  });
+  console.log(
+    "[repair] id | rodadas | antes (regra/execucao/variedade) | resultado",
+  );
+  for (const linha of reparo.linhas) {
+    console.log(
+      `[repair] ${linha.id} | ${linha.rodadas} | ${linha.antes.regra}/${linha.antes.execucao}/${linha.antes.variedade} | ${linha.resultado}`,
+    );
+  }
+  const poolReparada: QuizPool = { slug, questions: reparo.questions };
+  const problemas = validateQuizPool(poolReparada, slug, roadmap);
+  const secoes = gateSectionsForPool(roadmap, reparo.questions, maxPerSection);
+  const pendentes = poolGateViolations(
+    reparo.questions,
+    secoes,
+    roadmap.codeLanguages ?? [],
+    noExec ? null : executarPor,
+  );
+  for (const aviso of codeQuotaWarnings(reparo.questions, secoes)) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  for (const aviso of noRunnerWarnings(reparo.questions)) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  for (const aviso of poolRuleWarnings(
+    reparo.questions,
+    roadmap.codeLanguages ?? [],
+  )) {
+    console.log(`[portao] [aviso] ${aviso}`);
+  }
+  console.log(
+    `[repair] tokens: ${reparo.uso.prompt_tokens} in / ${reparo.uso.completion_tokens} out; custo estimado USD ${custoDe(reparo.uso).toFixed(4)}${reparo.estourouOrcamento ? ` (parou no teto de USD ${REPAIR_BUDGET_USD})` : ""}`,
+  );
+  if (problemas.length > 0 || pendentes.length > 0) {
+    for (const problema of problemas) {
+      console.error(`[repair] ${problema}`);
+    }
+    for (const pendente of pendentes) {
+      console.error(`[repair] ${pendente}`);
+    }
+    const { arquivo, lista } = despejarPoolReprovada(
+      poolReparada,
+      problemas,
+      pendentes,
+      "-reparo",
+    );
+    console.error(
+      `[repair] pool ainda invalida, nada foi salvo em ${path.relative(ROOT, outFile)}.`,
+    );
+    console.error(`[repair] pool reparada e reprovada: ${arquivo}`);
+    console.error(`[repair] violacoes por id: ${lista}`);
+    process.exit(1);
+  }
+  mkdirSync(QUIZ_DIR, { recursive: true });
+  writeFileSync(outFile, poolFileContent(poolReparada));
+  console.log(
+    `[repair] ${reparo.questions.length} perguntas -> ${path.relative(process.cwd(), outFile)}`,
+  );
+  process.exit(0);
+}
+
 const usageTotal: Usage = { prompt_tokens: 0, completion_tokens: 0 };
 const questions: QuizQuestion[] = [];
+const gateSections: GateSection[] = [];
 for (const nivel of NIVEIS) {
   const sections = levelSections(roadmap, nivel);
   if (sections.length === 0) {
@@ -449,7 +604,14 @@ for (const nivel of NIVEIS) {
     );
     process.exit(1);
   }
-  const quotas = sectionQuotas(sections, levelTarget);
+  const quotas = sectionQuotas(sections, levelTarget, maxPerSection);
+  for (const aviso of sectionQuotaWarnings(
+    sections,
+    levelTarget,
+    maxPerSection,
+  )) {
+    console.warn(`[generateQuizPool] [aviso] ${nivel}: ${aviso}`);
+  }
   for (let i = 0; i < sections.length; i += 1) {
     console.log(
       `[generateQuizPool] orcamento ${nivel} / ${sections[i].title}: ${sections[i].leaves.length} folhas, cota ${quotas[i]}`,
@@ -467,16 +629,25 @@ for (const nivel of NIVEIS) {
       usageLevel,
       noExec ? null : executarPor,
     );
+    const ids: string[] = [];
     for (const question of generated) {
       seq += 1;
-      questions.push(
-        normalizeGeneratedQuestion(
-          question,
-          `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`,
-          nivel,
-        ),
-      );
+      const id = `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`;
+      ids.push(id);
+      questions.push(normalizeGeneratedQuestion(question, id, nivel));
     }
+    // Cota de codigo da secao pela mesma conta de generateSection (e do
+    // dry-run), para o portao final conferir a variedade no escopo do laco.
+    gateSections.push({
+      label: `${nivel} / ${sections[i].title}`,
+      codeQuota: codeQuotaFor(
+        roadmap,
+        quotas[i],
+        codeLeafIds(sections[i], roadmap.codeLanguages ?? []).length,
+      ),
+      ids,
+      eligible: codeLeafIds(sections[i], roadmap.codeLanguages ?? []),
+    });
   }
   console.log(
     `[generateQuizPool] ${nivel}: ${usageLevel.prompt_tokens} in / ${usageLevel.completion_tokens} out tokens`,
@@ -485,18 +656,12 @@ for (const nivel of NIVEIS) {
   usageTotal.completion_tokens += usageLevel.completion_tokens;
 }
 
-const pool: QuizPool = { slug, questions };
-const problems = validateQuizPool(pool, slug, roadmap);
-if (problems.length > 0) {
-  for (const problem of problems) {
-    console.error(`[generateQuizPool] ${problem}`);
-  }
-  console.error("[generateQuizPool] pool invalido, nada foi salvo.");
-  process.exit(1);
-}
-
-const fileContent = `// GENERATED FILE. Gerado por scripts/generateQuizPool.mts
-// (pnpm gen:quiz-pool ${slug}). SERVER-ONLY: este arquivo contem o GABARITO;
+// Conteudo do arquivo da pool. Serializador UNICO: o arquivo final e o
+// despejo da pool reprovada saem daqui, entao o despejo copiado para
+// server/data/roadmapQuizzes/ e byte a byte o que a geracao escreveria.
+function poolFileContent(pool: QuizPool): string {
+  return `// GENERATED FILE. Gerado por scripts/generateQuizPool.mts
+// (pnpm gen:quiz-pool ${pool.slug}). SERVER-ONLY: este arquivo contem o GABARITO;
 // NUNCA importar, direta ou indiretamente, de client/src (o client recebe as
 // perguntas sem gabarito via API). Ids sao estaveis: regenerar com --force
 // troca os ids e invalida tentativas registradas. Ver README.md desta pasta.
@@ -508,16 +673,105 @@ const pool: QuizPool = ${JSON.stringify(pool, null, 2)};
 
 export default pool;
 `;
+}
+
+// Despejo da pool reprovada. O conteudo gerado custa dinheiro e tempo, e
+// reprovar nao pode significar perder tudo: com o arquivo no formato final
+// e a lista de violacoes por id, a correcao a mao mantendo os ids substitui
+// uma nova geracao (foi o que funcionou no Lote 04e, 12 perguntas). O sufixo
+// separa o despejo do modo de reparo (-reparo) do da geracao.
+function despejarPoolReprovada(
+  pool: QuizPool,
+  problems: string[],
+  violacoes: string[],
+  sufixo = "",
+): { arquivo: string; lista: string } {
+  const arquivo = path.join(REJECTED_DIR, `${pool.slug}-rejeitada${sufixo}.ts`);
+  const lista = path.join(
+    REJECTED_DIR,
+    `${pool.slug}-rejeitada${sufixo}-violacoes.txt`,
+  );
+  // Os problemas de validateQuizPool vem como "pool <slug>, pergunta <id>:";
+  // tirar o prefixo deixa o id no inicio da linha. Problema da pool inteira
+  // (contagem por nivel, cobertura de secao) nao tem id e fica como veio.
+  const prefixoPergunta = `pool ${pool.slug}, pergunta `;
+  writeFileSync(arquivo, poolFileContent(pool));
+  writeFileSync(
+    lista,
+    [
+      ...problems.map((problem) =>
+        problem.startsWith(prefixoPergunta)
+          ? problem.slice(prefixoPergunta.length)
+          : problem,
+      ),
+      ...violacoes,
+    ].join("\n") + "\n",
+  );
+  return { arquivo, lista };
+}
+
+function custoLinha(): string {
+  const cost =
+    (usageTotal.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
+    (usageTotal.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
+  return `tokens: ${usageTotal.prompt_tokens} in / ${usageTotal.completion_tokens} out; custo estimado USD ${cost.toFixed(4)}`;
+}
+
+const pool: QuizPool = { slug, questions };
+const problems = validateQuizPool(pool, slug, roadmap);
+// Portao final com a bateria completa do retry (poolGateViolations): o laco
+// aceita resposta ainda violando pelo fallback, entao so a estrutura
+// (validateQuizPool) deixaria passar correta errada por execucao, erro sem
+// defeito e distrator equivalente. Roda mesmo quando a estrutura ja reprovou,
+// para a lista de pendencias sair inteira de uma vez.
+const violacoes = poolGateViolations(
+  questions,
+  gateSections,
+  roadmap.codeLanguages ?? [],
+  noExec ? null : executarPor,
+);
+// Cota de codigo por nivel: AVISO no stdout, nunca bloqueio. Bloquear
+// obrigaria a autorar codigo a mao em toda secao que esgota tentativas; o
+// aviso deixa a decisao com quem revisa. Ver codeQuotaWarnings.
+for (const aviso of codeQuotaWarnings(questions, gateSections)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+// Linguagem sem runner: aviso, nunca bloqueio. A revisao humana cobre o que
+// a maquina nao executou (ver noRunnerWarnings e avisoSemRunner).
+for (const aviso of noRunnerWarnings(questions)) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+for (const aviso of poolRuleWarnings(questions, roadmap.codeLanguages ?? [])) {
+  console.log(`[portao] [aviso] ${aviso}`);
+}
+if (problems.length > 0 || violacoes.length > 0) {
+  for (const problem of problems) {
+    console.error(`[generateQuizPool] ${problem}`);
+  }
+  for (const violacao of violacoes) {
+    console.error(`[generateQuizPool] ${violacao}`);
+  }
+  const { arquivo: rejeitada, lista: listaViolacoes } = despejarPoolReprovada(
+    pool,
+    problems,
+    violacoes,
+  );
+  console.error(`[generateQuizPool] ${custoLinha()}`);
+  console.error(
+    `[generateQuizPool] pool invalido, nada foi salvo em ${path.relative(ROOT, outFile)}.`,
+  );
+  console.error(`[generateQuizPool] pool reprovada: ${rejeitada}`);
+  console.error(`[generateQuizPool] violacoes por id: ${listaViolacoes}`);
+  console.error(
+    `[generateQuizPool] O caminho e corrigir a mao mantendo os ids: copiar a pool reprovada para ${path.relative(ROOT, outFile)}, editar so as perguntas listadas e conferir com pnpm verify:quiz-pool ${slug}. Gerar de novo troca o conteudo inteiro e custa outra rodada.`,
+  );
+  process.exit(1);
+}
 
 mkdirSync(QUIZ_DIR, { recursive: true });
-writeFileSync(outFile, fileContent);
+writeFileSync(outFile, poolFileContent(pool));
 
-const cost =
-  (usageTotal.prompt_tokens / 1_000_000) * PRICE_INPUT_PER_M +
-  (usageTotal.completion_tokens / 1_000_000) * PRICE_OUTPUT_PER_M;
 console.log(
   `[generateQuizPool] ${questions.length} perguntas -> ${path.relative(process.cwd(), outFile)}`,
 );
-console.log(
-  `[generateQuizPool] tokens: ${usageTotal.prompt_tokens} in / ${usageTotal.completion_tokens} out; custo estimado USD ${cost.toFixed(4)}`,
-);
+console.log(`[generateQuizPool] ${custoLinha()}`);

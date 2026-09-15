@@ -176,8 +176,8 @@ export function UsageRetentionDashboard() {
           <span className="font-black text-slate-900">
             {data.posthogKnown} de {data.baseTotal}
           </span>{" "}
-          usuários ({coveragePct}%). Os outros {data.posthogUnknown} não têm dado
-          de navegação: entraram na base antes do rastreio ou não navegaram
+          usuários ({coveragePct}%). Os outros {data.posthogUnknown} não têm
+          dado de navegação: entraram na base antes do rastreio ou não navegaram
           logados. Não sabemos se sumiram, só que não temos como afirmar.
         </p>
       </div>
@@ -239,9 +239,7 @@ export function UsageRetentionDashboard() {
               muted={band.key === "nodata"}
               // TODO(Ana): copy do rotulo de contagem quando nao ha dado.
               note={
-                band.key === "nodata"
-                  ? `${band.count} sem dado`
-                  : undefined
+                band.key === "nodata" ? `${band.count} sem dado` : undefined
               }
             />
           ))}
@@ -250,9 +248,9 @@ export function UsageRetentionDashboard() {
 
       {/* TODO(Ana): copy da nota de divergencia com "Usuarios em risco". */}
       <p className="text-xs font-bold text-slate-500">
-        Nota: o bloco "Usuários em risco" usa só a data de login. Estes números
-        cruzam login com navegação real, então quem usa logado sem relogar
-        aparece ativo aqui e some de lá. É esperado que divirjam.
+        Nota: o bloco "Acessos sem login recente" usa só a data de login. Estes
+        números cruzam login com navegação real, então quem usa logado sem
+        relogar aparece ativo aqui e some de lá. É esperado que divirjam.
       </p>
     </div>
   );

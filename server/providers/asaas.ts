@@ -23,6 +23,7 @@ import {
   revertNonRenewalIntent,
 } from "./shared";
 import { resolveCheckoutPriceCents } from "../lib/coupons";
+import { recordCreatorEvent } from "../lib/creatorEvents";
 import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
@@ -334,12 +335,16 @@ async function createCheckout(
   // PRECO FINAL pela funcao unica (server/lib/coupons.ts), a mesma aritmetica
   // que o frontend usa na previa. Antes daqui a cobranca herdava o preco CHEIO
   // e a tela mostrava o descontado.
-  const { finalCents, appliedCouponCode } = await resolveCheckoutPriceCents({
-    userId: input.user.id,
-    planId: input.planId,
-    couponCode: input.couponCode,
-    isFirstPurchase,
-  });
+  const { finalCents, appliedCouponCode, validAffiliateCode } =
+    await resolveCheckoutPriceCents({
+      userId: input.user.id,
+      planId: input.planId,
+      // Renovacao e sempre preco cheio. O input interno da rota ja chega sem
+      // codigos; estas guardas mantem a regra dentro do provider tambem.
+      couponCode: input.internalRenewal ? "" : input.couponCode,
+      affiliateCode: input.internalRenewal ? "" : input.affiliateCode,
+      isFirstPurchase,
+    });
 
   // PISO DO ASAAS. Cobranca abaixo de R$ 5,00 e recusada por eles, e um cupom
   // agressivo o bastante derruba o semestral abaixo disso. Recusar aqui, ANTES
@@ -364,7 +369,9 @@ async function createCheckout(
       provider: PROVIDER,
       provider_subscription_id: null,
       provider_customer_id: null,
-      affiliate_code: input.affiliateCode || null,
+      // Codigo canonico da linha ativa. O valor bruto do navegador nao vira
+      // atribuicao nem comissao.
+      affiliate_code: validAffiliateCode || null,
       // O cupom APROVADO, nao o bruto do cliente: a ativacao conta resgate a
       // partir deste campo, e contar resgate de cupom que nao descontou nada
       // corromperia `times_redeemed`.
@@ -384,6 +391,21 @@ async function createCheckout(
     );
     throw createError(500, "db_error", "Erro ao registrar a cobrança.", {
       cause: insertError,
+    });
+  }
+
+  // EVENTO de checkout do creator quando o codigo de afiliado foi APROVADO pelo
+  // resolver (que so aprova em primeira compra). Diferente do cartao e do
+  // boleto, o Pix NAO tem o contador `trials` ao lado: `trials` so e somado no
+  // checkout da Stripe, entao a serie de checkouts Pix nao tem par no contador.
+  if (validAffiliateCode) {
+    await recordCreatorEvent({
+      eventType: "checkout",
+      affiliateCode: validAffiliateCode,
+      userId: input.user.id,
+      subscriptionId: created.id,
+      planId: plan.id,
+      paymentMethod: "pix",
     });
   }
 
@@ -464,6 +486,31 @@ async function createCheckout(
       );
     }
     throw err;
+  }
+
+  // (4) VENCIMENTO E FATURA, best-effort e FORA do try acima. Uma coluna que
+  // ainda nao existe (o codigo sobe antes da migration) nao pode cancelar uma
+  // venda: no mesmo update da amarracao, o erro de coluna cairia no `catch`
+  // que cancela a linha e deixaria a cobranca viva no Asaas sem linha no
+  // banco. Sem Sentry de proposito: na janela de deploy isto falharia em todo
+  // checkout Pix, e o ruido esperado afogaria o resto.
+  try {
+    const { error: pixMetaError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        pix_due_date: charge.dueDate ?? null,
+        pix_invoice_url: charge.invoiceUrl ?? null,
+      })
+      .eq("id", created.id);
+    if (pixMetaError) {
+      console.warn(
+        `[asaas/checkout] vencimento e fatura nao gravados na linha ${created.id} (cobranca ${charge.id}): ${pixMetaError.code} ${pixMetaError.message}`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[asaas/checkout] vencimento e fatura nao gravados na linha ${created.id} (cobranca ${charge.id}): ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   return {
@@ -1170,6 +1217,11 @@ async function activateOnPayment(args: {
     revenueCents: paidAmountCentsFromAsaas(event) ?? undefined,
     sourceEvent: { id: eventId, type: eventType, subscriptionId: chargeId },
     prevStatus: "pending",
+    subscriptionId: row.id,
+    planId: result.out_plan_id,
+    // Este provedor so cria linha de Pix (o checkout grava payment_method
+    // 'pix'), a mesma premissa do `oneOffAccessDays(planCode, "pix")` acima.
+    paymentMethod: "pix",
   });
 
   // LEDGER POR ULTIMO, e NAO LANCA. A ordem e a postura de erro sao deliberadas:
@@ -1632,6 +1684,8 @@ export type PagamentoDoAsaas = {
   valueCents: number | null;
   /** Vencimento da cobranca, `YYYY-MM-DD`. O prazo que governa o QR. */
   dueDate: string | null;
+  /** Fatura hospedada da cobranca; o lembrete de Pix a oferece como saida. */
+  invoiceUrl: string | null;
   refunds: EstornoDoAsaas[];
   /** Cobranca removida no Asaas. So `true` literal conta; ausente vira `false`. */
   deleted: boolean;
@@ -1642,6 +1696,7 @@ type AsaasPaymentBody = {
   status?: unknown;
   value?: unknown;
   dueDate?: unknown;
+  invoiceUrl?: unknown;
   refunds?: unknown;
   deleted?: unknown;
 };
@@ -1674,6 +1729,10 @@ function pagamentoDoAsaas(corpo: AsaasPaymentBody | null): PagamentoDoAsaas {
     status: typeof corpo?.status === "string" ? corpo.status : null,
     valueCents: centavosAsaas(corpo?.value),
     dueDate: typeof corpo?.dueDate === "string" ? corpo.dueDate : null,
+    invoiceUrl:
+      typeof corpo?.invoiceUrl === "string" && corpo.invoiceUrl
+        ? corpo.invoiceUrl
+        : null,
     refunds,
     deleted: corpo?.deleted === true,
   };

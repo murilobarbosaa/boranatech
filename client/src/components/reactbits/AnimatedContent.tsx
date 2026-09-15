@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { entrada } from "@/lib/entradaEstatica";
 
 interface AnimatedContentProps {
   children: ReactNode;
@@ -46,7 +47,7 @@ export default function AnimatedContent({
   return (
     <motion.div
       className={className}
-      initial={initial}
+      initial={entrada(initial)}
       animate={target}
       transition={{ duration, delay, ease: "easeOut" }}
     >

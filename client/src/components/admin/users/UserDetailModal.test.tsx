@@ -211,7 +211,8 @@ describe("toast para ACAO, inline para CARREGAMENTO", () => {
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
-    fireEvent.click(screen.getByRole("button", { name: "Tornar influencer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tornar creator" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Influencer" }));
     fireEvent.click(screen.getByRole("button", { name: "Conceder" }));
 
     await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
@@ -224,7 +225,8 @@ describe("toast para ACAO, inline para CARREGAMENTO", () => {
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
-    fireEvent.click(screen.getByRole("button", { name: "Tornar influencer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tornar creator" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Influencer" }));
     fireEvent.click(screen.getByRole("button", { name: "Conceder" }));
 
     await waitFor(() =>
@@ -262,7 +264,7 @@ describe("rodape de acoes", () => {
 
     const rodape = document.querySelector("footer") as HTMLElement;
     expect(
-      within(rodape).getByRole("button", { name: "Tornar influencer" }),
+      within(rodape).getByRole("button", { name: "Tornar creator" }),
     ).toBeTruthy();
   });
 
@@ -1229,6 +1231,29 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     expect(screen.queryByTestId("aviso-influencer")).toBeNull();
   });
 
+  it("o aviso NOMEIA a concessao: influencer e afiliado, cada um o seu", async () => {
+    const casos: Array<[string, string]> = [
+      ["influencer", "influencer"],
+      ["both", "influencer"],
+      ["afiliado", "afiliado"],
+      ["both_afiliado", "afiliado"],
+    ];
+    for (const [origem, nome] of casos) {
+      rotearCancel({
+        detalhe: detalhe({
+          subscription: ASSINATURA,
+          pro_source: origem,
+          is_pro: true,
+        }),
+      });
+      await abrirCancelamento();
+      const aviso = screen.getByTestId("aviso-influencer").textContent ?? "";
+      expect(aviso, origem).toContain(`Esta conta também tem acesso de ${nome}.`);
+      expect(aviso, origem).toContain(`revogue a concessão de ${nome}.`);
+      cleanup();
+    }
+  });
+
   it("motivo vazio bloqueia a confirmação e não chama a rota", async () => {
     rotearCancel();
     await abrirCancelamento();
@@ -1547,7 +1572,10 @@ describe("reembolso (Fatia 7)", () => {
   it("com INFLUENCER, o passo 2 avisa que o Pro sobrevive à revogação", async () => {
     rotearRefund(compraRef(), {
       detalhe: detalhe({
+        // `kind` vem no detalhe desde o lote 01. Sem ele o aviso diz
+        // "creator", de proposito: nao inventa o tipo.
         influencer: {
+          kind: "influencer",
           granted_at: "2026-01-01T00:00:00Z",
           note: null,
           granted_by_name: "Ana",
@@ -1566,6 +1594,32 @@ describe("reembolso (Fatia 7)", () => {
     expect(
       (await screen.findByTestId("aviso-assinatura")).textContent,
     ).toContain("influencer");
+  });
+
+  it("com AFILIADO, o passo 2 nomeia a concessao de afiliado", async () => {
+    rotearRefund(compraRef(), {
+      detalhe: detalhe({
+        influencer: {
+          kind: "afiliado",
+          granted_at: "2026-01-01T00:00:00Z",
+          note: null,
+          granted_by_name: "Ana",
+          granted_by_email: null,
+        },
+      }),
+    });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(await screen.findByRole("button", { name: "Reembolsar" }));
+    fireEvent.change(await screen.findByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    const aviso =
+      (await screen.findByTestId("aviso-assinatura")).textContent ?? "";
+    expect(aviso).toContain("concessão de afiliado");
+    expect(aviso).not.toContain("influencer");
   });
 
   it("o botão só libera quando o valor é DIGITADO corretamente", async () => {
@@ -2293,6 +2347,52 @@ describe("revogação avulsa de acesso Pro", () => {
   it("NÃO avisa quando pro_source é subscription", async () => {
     await abrir();
     expect(screen.queryByTestId("aviso-influencer")).toBeNull();
+  });
+
+  it("o aviso NOMEIA a concessao, inclusive afiliado e both_afiliado", async () => {
+    const casos: Array<[string, string]> = [
+      ["influencer", "influencer"],
+      ["both", "influencer"],
+      ["afiliado", "afiliado"],
+      ["both_afiliado", "afiliado"],
+    ];
+    for (const [origem, nome] of casos) {
+      await abrir({
+        detalhe: detalhe({
+          subscription: ASSINATURA_ATIVA,
+          paid_total_cents: 14874,
+          is_pro: true,
+          pro_source: origem,
+        }),
+      });
+      expect(
+        screen.getByTestId("aviso-influencer").textContent,
+        origem,
+      ).toContain(`Esta conta também tem acesso de ${nome}.`);
+      cleanup();
+    }
+  });
+
+  it("afiliado no RESULTADO: o toast de erro nomeia a concessao de afiliado", async () => {
+    await abrir({
+      detalhe: detalhe({
+        subscription: ASSINATURA_ATIVA,
+        paid_total_cents: 14874,
+        is_pro: true,
+        pro_source: "both_afiliado",
+      }),
+      post: { data: { revoked: true, still_pro_via_influencer: true } },
+    });
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    await waitFor(() => expect(toastSpy.erro).toHaveBeenCalled());
+    expect(String(toastSpy.erro.mock.calls[0][0])).toContain(
+      "CONTINUA Pro pela concessão de afiliado.",
+    );
   });
 
   it("influencer no RESULTADO vira toast de erro, não de sucesso", async () => {

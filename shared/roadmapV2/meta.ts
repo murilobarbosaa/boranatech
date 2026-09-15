@@ -11,6 +11,8 @@ export type RoadmapMeta = {
   title: string;
   level: string;
   description: string;
+  // Resumo de uma linha do card da vitrine, quando a trilha declara um.
+  summary?: string;
   languages?: RoadmapLanguage[];
   // sections.length da trilha.
   sectionCount: number;

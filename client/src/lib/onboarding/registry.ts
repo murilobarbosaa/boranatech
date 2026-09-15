@@ -60,11 +60,13 @@ const FLUXO = (detalhe: string): RouteOnboarding => ({
 export const NON_ROUTE_KEYS = ["/acesso"] as const;
 
 /**
- * Numero de <Route> declarados em App.tsx: 95 com `path` + 1 catch-all sem
+ * Numero de <Route> declarados em App.tsx: 96 com `path` + 1 catch-all sem
  * `path` (a chave "*" aqui embaixo). Mesmo contrato de EXPECTED_TABLE_COUNT:
  * mudar este numero e ato deliberado, no commit que cria ou remove a rota.
+ * 96 -> 97 com `/creator` (painel de creator, lote 03), MEDIDO pelo proprio
+ * `registry.exaustivo.test.ts`, que leu 97 no App.tsx.
  */
-export const EXPECTED_APP_ROUTE_COUNT = 96;
+export const EXPECTED_APP_ROUTE_COUNT = 97;
 
 export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
   "/": {
@@ -72,6 +74,12 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     load: () => import("./steps/home"),
   },
   "/creators": { type: "pendente" },
+  // Painel de creator. Sem guia por decisao de produto tomada na revisao do
+  // lote 03 (2026-09-14).
+  "/creator": {
+    type: "sem-onboarding",
+    motivo: "painel restrito a creators, sem guia por decisao de produto",
+  },
   "/areas": {
     type: "onboarding",
     load: () => import("./steps/areas"),

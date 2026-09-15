@@ -4,6 +4,8 @@ import {
   getPlanChargeValue,
   type PlanId,
 } from "../../shared/planPricing";
+import { createError } from "../middleware/error";
+import { erroEncadeavel } from "./supabaseError";
 
 // Validacao de cupom de marketing, compartilhada entre a rota publica
 // (GET /api/coupons/:code) e o checkout (providers/stripe.ts), para o client e
@@ -35,16 +37,21 @@ interface CouponRow {
   applicable_plans: string[] | null;
 }
 
-// Regras (todas precisam passar): existe, status active, dentro da janela
-// valid_from/valid_until, times_redeemed < max_redemptions (quando definido) e,
-// quando planId e informado, o plano esta em applicable_plans (null = todos).
-// Retorna null para QUALQUER falha, sem distinguir o motivo (anti-oraculo).
-// Cupom nunca derruba fluxo: erro de banco loga e retorna null, sem throw.
-export async function findValidCoupon(
+interface ValidAffiliate {
+  code: string;
+  discount_percent: number;
+}
+
+type CouponLookup =
+  | { kind: "valid"; coupon: ValidCoupon }
+  | { kind: "invalid" }
+  | { kind: "db_error"; error: unknown };
+
+async function lookupCoupon(
   code: string,
   opts: { planId?: string } = {},
-): Promise<ValidCoupon | null> {
-  if (!isValidCouponCode(code)) return null;
+): Promise<CouponLookup> {
+  if (!isValidCouponCode(code)) return { kind: "invalid" };
 
   const { data, error } = await supabaseAdmin
     .from("coupons")
@@ -55,43 +62,80 @@ export async function findValidCoupon(
     .eq("status", "active")
     .maybeSingle();
 
-  if (error) {
-    console.error("[coupons] Erro ao buscar cupom", error);
-    return null;
-  }
-  if (!data) return null;
+  if (error) return { kind: "db_error", error };
+  if (!data) return { kind: "invalid" };
 
   const coupon = data as CouponRow;
   const nowMs = Date.now();
-  if (coupon.valid_from && new Date(coupon.valid_from).getTime() > nowMs) {
-    return null;
-  }
-  if (coupon.valid_until && new Date(coupon.valid_until).getTime() <= nowMs) {
-    return null;
-  }
   if (
-    coupon.max_redemptions !== null &&
-    coupon.times_redeemed >= coupon.max_redemptions
+    (coupon.valid_from && new Date(coupon.valid_from).getTime() > nowMs) ||
+    (coupon.valid_until && new Date(coupon.valid_until).getTime() <= nowMs) ||
+    (coupon.max_redemptions !== null &&
+      coupon.times_redeemed >= coupon.max_redemptions) ||
+    (opts.planId &&
+      coupon.applicable_plans &&
+      !coupon.applicable_plans.includes(opts.planId))
   ) {
-    return null;
-  }
-  if (
-    opts.planId &&
-    coupon.applicable_plans &&
-    !coupon.applicable_plans.includes(opts.planId)
-  ) {
-    return null;
+    return { kind: "invalid" };
   }
 
   return {
-    code: coupon.code,
-    discount_percent: coupon.discount_percent,
-    applicable_plans: coupon.applicable_plans,
+    kind: "valid",
+    coupon: {
+      code: coupon.code,
+      discount_percent: coupon.discount_percent,
+      applicable_plans: coupon.applicable_plans,
+    },
+  };
+}
+
+// Regras (todas precisam passar): existe, status active, dentro da janela
+// valid_from/valid_until, times_redeemed < max_redemptions (quando definido) e,
+// quando planId e informado, o plano esta em applicable_plans (null = todos).
+// Retorna null para QUALQUER falha, sem distinguir o motivo (anti-oraculo).
+// Cupom nunca derruba fluxo: erro de banco loga e retorna null, sem throw.
+export async function findValidCoupon(
+  code: string,
+  opts: { planId?: string } = {},
+): Promise<ValidCoupon | null> {
+  const result = await lookupCoupon(code, opts);
+  if (result.kind === "db_error") {
+    console.error("[coupons] Erro ao buscar cupom", result.error);
+    return null;
+  }
+  return result.kind === "valid" ? result.coupon : null;
+}
+
+async function findValidAffiliate(
+  code: string,
+): Promise<ValidAffiliate | null> {
+  if (!isValidCouponCode(code)) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from("affiliates")
+    .select("code, discount_percent")
+    .eq("code", code)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw createError(
+      500,
+      "db_error",
+      "Não foi possível validar o desconto. Tente novamente.",
+      { cause: erroEncadeavel(error) },
+    );
+  }
+  if (!data) return null;
+
+  return {
+    code: data.code,
+    discount_percent: data.discount_percent,
   };
 }
 
 /**
- * PRECO FINAL DO CHECKOUT, em centavos: base do plano mais cupom validado.
+ * PRECO FINAL DO CHECKOUT, em centavos: base do plano mais promocao validada.
  *
  * POR QUE ESTA FUNCAO PRECISOU EXISTIR. No fluxo da Stripe a validacao e nossa
  * (`findValidCoupon` acima) mas a ARITMETICA e deles: a sessao recebe
@@ -109,41 +153,120 @@ export async function findValidCoupon(
  * resultado: e a mesma implementacao, entao tela e cobranca nao podem divergir
  * por arredondamento.
  *
- * REGRAS DE ELEGIBILIDADE IDENTICAS as do fluxo Stripe, e pela mesma razao de
- * sempre: duas regras do mesmo desconto divergem na primeira correcao. Cupom so
- * na PRIMEIRA compra, e so se `findValidCoupon` aprovar (ativo, dentro da janela,
- * com resgates disponiveis e aplicavel ao plano).
+ * REGRAS COMERCIAIS IDENTICAS as do fluxo Stripe: cupom aplicavel ganha do
+ * afiliado, os dois valem apenas na primeira compra e nunca se somam. Cupom
+ * valido fora do plano nao se torna invalido: ele apenas cede ao afiliado.
  *
- * CUPOM NUNCA IMPEDE A COMPRA: qualquer recusa segue com o preco cheio e
- * `appliedCouponCode` vazio, exatamente como a Stripe faz. Isso importa para o
- * rastro: quem nao descontou nada nao pode contar resgate na ativacao.
+ * Codigo enviado e depois recusado BLOQUEIA o Pix. A tela ja o apresentou como
+ * promocao valida; cobrar cheio silenciosamente repetiria o incidente que este
+ * resolver existe para impedir. A rota publica continua anti-oraculo e devolve
+ * null para qualquer motivo por meio de `findValidCoupon`.
  */
 export async function resolveCheckoutPriceCents(input: {
   userId: string;
   planId: PlanId;
   /** Ja normalizado (uppercase/trim); "" quando ausente. */
   couponCode: string;
+  /** Ja normalizado (uppercase/trim); "" quando ausente. */
+  affiliateCode: string;
   /** Injetado para nao acoplar este modulo a providers/shared.ts. */
   isFirstPurchase: (userId: string) => Promise<boolean>;
-}): Promise<{ finalCents: number; appliedCouponCode: string }> {
+}): Promise<{
+  finalCents: number;
+  appliedCouponCode: string;
+  validAffiliateCode: string;
+}> {
   const baseCents = Math.round(getPlanChargeValue(input.planId) * 100);
-  if (!input.couponCode) {
-    return { finalCents: baseCents, appliedCouponCode: "" };
+  if (!input.couponCode && !input.affiliateCode) {
+    return {
+      finalCents: baseCents,
+      appliedCouponCode: "",
+      validAffiliateCode: "",
+    };
   }
 
   const primeira = await input.isFirstPurchase(input.userId);
-  if (!primeira) return { finalCents: baseCents, appliedCouponCode: "" };
+  if (!primeira) {
+    throw createError(
+      422,
+      "promotion_first_purchase_only",
+      "Este desconto é válido somente na primeira compra.",
+    );
+  }
 
-  const coupon = await findValidCoupon(input.couponCode, {
-    planId: input.planId,
-  });
-  if (!coupon) return { finalCents: baseCents, appliedCouponCode: "" };
+  let validCoupon: ValidCoupon | null = null;
+  if (input.couponCode) {
+    // Sem `planId` de proposito: expirado/inativo/esgotado e uma promocao que
+    // deixou de existir e BLOQUEIA a cobranca. Um cupom ainda valido mas fora
+    // deste plano nao bloqueia; nesse caso o frontend mostra o afiliado (ou o
+    // preco cheio), e o resolver segue a mesma precedencia.
+    const result = await lookupCoupon(input.couponCode);
+    if (result.kind === "db_error") {
+      throw createError(
+        500,
+        "db_error",
+        "Não foi possível validar o desconto. Tente novamente.",
+        { cause: erroEncadeavel(result.error) },
+      );
+    }
+    if (result.kind === "invalid") {
+      throw createError(
+        422,
+        "coupon_unavailable",
+        "Este cupom não está mais disponível.",
+      );
+    }
+    if (
+      !result.coupon.applicable_plans ||
+      result.coupon.applicable_plans.includes(input.planId)
+    ) {
+      validCoupon = result.coupon;
+    }
+  }
+
+  let validAffiliate: ValidAffiliate | null = null;
+  if (input.affiliateCode) {
+    try {
+      validAffiliate = await findValidAffiliate(input.affiliateCode);
+    } catch (error) {
+      // O cupom ja determinou o preco. O afiliado agora serve somente para
+      // atribuicao, e o Stripe segue a compra quando esta consulta falha.
+      if (!validCoupon) throw error;
+      console.error(
+        `[checkout/price] afiliado ${input.affiliateCode} nao foi validado para atribuicao; ` +
+          "o cupom aplicavel permanece no preco:",
+        error,
+      );
+    }
+    if (!validAffiliate) {
+      if (!validCoupon) {
+        throw createError(
+          422,
+          "affiliate_unavailable",
+          "Este desconto de afiliado não está mais disponível.",
+        );
+      }
+      console.warn(
+        `[checkout/price] afiliado ${input.affiliateCode} invalido ou inativo; ` +
+          "o cupom aplicavel permanece no preco, sem atribuicao.",
+      );
+    }
+  }
+
+  const discountPercent =
+    validCoupon?.discount_percent ?? validAffiliate?.discount_percent;
 
   return {
-    finalCents: discountedPriceCents(baseCents, coupon.discount_percent),
+    finalCents:
+      discountPercent === undefined
+        ? baseCents
+        : discountedPriceCents(baseCents, discountPercent),
     // So o codigo APROVADO viaja adiante. O bruto do cliente nunca vira
     // `coupon_code` na linha, senao a ativacao contaria resgate de um cupom que
     // nao descontou nada.
-    appliedCouponCode: coupon.code,
+    appliedCouponCode: validCoupon?.code ?? "",
+    // Afiliacao e atribuicao, nao uma segunda promocao: persiste mesmo quando o
+    // cupom ganha no preco, sem somar percentuais.
+    validAffiliateCode: validAffiliate?.code ?? "",
   };
 }

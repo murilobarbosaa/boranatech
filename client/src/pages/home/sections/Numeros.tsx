@@ -9,6 +9,8 @@ import {
 } from "framer-motion";
 import { LEVEL_QUESTION_COUNT } from "@/lib/quizMeta";
 import { dictionaryTermsCount, roadmapsCount } from "@/lib/countsGenerated";
+import { entrada } from "@/lib/entradaEstatica";
+import { movimentoContinuo } from "@/lib/movimentoContinuo";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -126,7 +128,7 @@ function StatBlock({
   return (
     <motion.div
       ref={cardRef}
-      initial={{ opacity: 0, y: 30 }}
+      initial={entrada({ opacity: 0, y: 30 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, delay: index * 0.15 }}
@@ -171,6 +173,7 @@ function StatBlock({
 // =========================================
 
 function BackgroundDecoration() {
+  const reduzirMovimento = useReducedMotion();
   return (
     <>
       {/* Blob amber topo esquerdo */}
@@ -185,11 +188,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
-        animate={{
-          x: [0, 60, -30, 0],
-          y: [0, 40, -20, 0],
-          opacity: [0.4, 0.6, 0.5, 0.4],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 60, -30, 0],
+            y: [0, 40, -20, 0],
+            opacity: [0.4, 0.6, 0.5, 0.4],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 20,
           repeat: Infinity,
@@ -210,11 +216,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
-        animate={{
-          x: [0, -40, 30, 0],
-          y: [0, 50, -30, 0],
-          opacity: [0.3, 0.5, 0.4, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, -40, 30, 0],
+            y: [0, 50, -30, 0],
+            opacity: [0.3, 0.5, 0.4, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 24,
           repeat: Infinity,
@@ -236,11 +245,14 @@ function BackgroundDecoration() {
             "radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 60%)",
           filter: "blur(70px)",
         }}
-        animate={{
-          x: [0, 50, -50, 0],
-          y: [0, -30, 40, 0],
-          opacity: [0.3, 0.5, 0.3, 0.3],
-        }}
+        animate={movimentoContinuo(
+          {
+            x: [0, 50, -50, 0],
+            y: [0, -30, 40, 0],
+            opacity: [0.3, 0.5, 0.3, 0.3],
+          },
+          reduzirMovimento,
+        )}
         transition={{
           duration: 26,
           repeat: Infinity,
@@ -265,7 +277,7 @@ export default function Numeros() {
       <div className="relative z-10 mx-auto max-w-7xl px-4">
         <div className="text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -275,7 +287,7 @@ export default function Numeros() {
           </motion.p>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={entrada({ opacity: 0, y: 20 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -299,7 +311,7 @@ export default function Numeros() {
         </div>
 
         <motion.p
-          initial={{ opacity: 0 }}
+          initial={entrada({ opacity: 0 })}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, delay: 0.8 }}

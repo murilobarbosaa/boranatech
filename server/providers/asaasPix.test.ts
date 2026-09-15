@@ -38,6 +38,7 @@ const estado = vi.hoisted(() => ({
 
   /** Linhas devolvidas por leitura, por tabela. */
   linhaSubscription: null as Record<string, unknown> | null,
+  subscriptionLookupError: null as { message: string } | null,
   ativas: [] as unknown[],
   pixPendentes: [] as unknown[],
   plano: { id: "plan-anual", code: "pro_annual", name: "Pro Anual" } as Record<
@@ -50,6 +51,7 @@ const estado = vi.hoisted(() => ({
   eventosVistos: new Set<string>(),
   /** Linha de coupons devolvida por findValidCoupon. */
   cupom: null as Record<string, unknown> | null,
+  cupomError: null as { message: string } | null,
   /** CPF gravado em profiles. CPF valido de teste (digitos verificadores ok). */
   cpfDoPerfil: "52998224725" as string | null,
   /** Intencao de nao renovar ja existente, para o caso idempotente. */
@@ -58,9 +60,20 @@ const estado = vi.hoisted(() => ({
   emails: [] as Array<Record<string, unknown>>,
   /** Linha de affiliates devolvida na busca por codigo. */
   afiliado: { id: "aff-1" } as Record<string, unknown> | null,
+  afiliadoError: null as { message: string } | null,
   /** Resultado da RPC de activation. */
   activation: null as unknown,
   activationError: null as { code?: string; message: string } | null,
+  /**
+   * Erro que um update em `subscriptions` devolve, decidido pela CARGA. Nulo
+   * (o padrao) mantem o duble como sempre foi: update sem erro nenhum.
+   */
+  falhaUpdateSubscriptions: null as
+    | ((carga: Record<string, unknown>) => {
+        code: string;
+        message: string;
+      } | null)
+    | null,
 }));
 
 vi.mock("../lib/env", () => ({
@@ -139,14 +152,18 @@ vi.mock("../lib/supabaseAdmin", () => {
     q.maybeSingle = async () => {
       if (tabela === "plans") return { data: estado.plano, error: null };
       if (tabela === "affiliates")
-        return { data: estado.afiliado, error: null };
-      if (tabela === "coupons") return { data: estado.cupom, error: null };
+        return { data: estado.afiliado, error: estado.afiliadoError };
+      if (tabela === "coupons")
+        return { data: estado.cupom, error: estado.cupomError };
       if (tabela === "profiles")
         return { data: { gender: null, cpf: estado.cpfDoPerfil }, error: null };
       if (tabela === "subscription_cancellations")
         return { data: estado.intencaoExistente, error: null };
       if (tabela === "subscriptions")
-        return { data: estado.linhaSubscription, error: null };
+        return {
+          data: estado.linhaSubscription,
+          error: estado.subscriptionLookupError,
+        };
       return { data: null, error: null };
     };
     q.single = async () => {
@@ -171,6 +188,26 @@ vi.mock("../lib/supabaseAdmin", () => {
           filtros: [] as unknown[],
         };
         estado.escritas.push(escrita);
+        if (
+          tabela === "subscriptions" &&
+          op === "update" &&
+          estado.falhaUpdateSubscriptions
+        ) {
+          // So com a falha ligada: devolve o erro que o PostgREST daria para
+          // ESTA carga. Desligada, o caminho abaixo segue identico ao de antes.
+          const erro = estado.falhaUpdateSubscriptions(
+            carga as Record<string, unknown>,
+          );
+          const encadeavel: Record<string, unknown> = {
+            eq: (coluna: string, valor: unknown) => {
+              escrita.filtros.push([coluna, valor]);
+              return encadeavel;
+            },
+            then: (r: (v: unknown) => unknown) =>
+              Promise.resolve({ data: null, error: erro }).then(r),
+          };
+          return encadeavel;
+        }
         if (tabela === "admin_refunds" && op === "update") {
           // Encadeavel proprio: guarda os `eq` desta escrita para o teste
           // conferir QUAL linha o update mira.
@@ -266,15 +303,18 @@ function limpar() {
   estado.rpcCalls = [];
   estado.capturas = [];
   estado.linhaSubscription = null;
+  estado.subscriptionLookupError = null;
   estado.ativas = [];
   estado.pixPendentes = [];
   estado.plano = { id: "plan-anual", code: "pro_annual", name: "Pro Anual" };
   estado.novaLinhaId = "row-1";
   estado.afiliado = { id: "aff-1" };
+  estado.afiliadoError = null;
   estado.emails = [];
   estado.intencaoExistente = null;
   estado.cpfDoPerfil = "52998224725";
   estado.cupom = null;
+  estado.cupomError = null;
   estado.eventosVistos = new Set();
   estado.activation = [
     {
@@ -287,6 +327,7 @@ function limpar() {
     },
   ];
   estado.activationError = null;
+  estado.falhaUpdateSubscriptions = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -436,6 +477,121 @@ describe("ordem das escritas: linha local ANTES da cobranca remota", () => {
         (e.carga as Record<string, unknown>).status === "canceled",
     );
     expect(cancelamento).toBeDefined();
+  });
+});
+
+/**
+ * VENCIMENTO E FATURA PERSISTIDOS, sem arriscar a venda.
+ *
+ * O caso que importa e o segundo: entre o deploy do codigo e a aplicacao da
+ * migration, o PostgREST recusa a coluna com PGRST204. Se a gravacao estivesse
+ * no mesmo update da amarracao, o `catch` de `createCheckout` cancelaria a
+ * linha e deixaria uma cobranca viva no Asaas sem linha no banco: a pessoa
+ * pagaria e nao receberia nada.
+ */
+describe("persistencia do vencimento e da fatura da cobranca", () => {
+  beforeEach(() => {
+    limpar();
+    estado.asaasResposta["/payments"] = {
+      id: COBRANCA,
+      invoiceUrl: "https://asaas.test/i/123",
+      dueDate: "2026-09-14",
+    };
+  });
+
+  function updatesDeSubscriptions() {
+    return estado.escritas
+      .filter((e) => e.tabela === "subscriptions" && e.operacao === "update")
+      .map((e) => e.carga as Record<string, unknown>);
+  }
+
+  it("grava vencimento e fatura num update SEPARADO do de amarracao", async () => {
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    // Lista exata: duas chamadas, nesta ordem, e nenhuma com os quatro campos.
+    expect(updatesDeSubscriptions()).toEqual([
+      { provider_subscription_id: COBRANCA, provider_customer_id: "cus_1" },
+      {
+        pix_due_date: "2026-09-14",
+        pix_invoice_url: "https://asaas.test/i/123",
+      },
+    ]);
+  });
+
+  it("coluna ainda inexistente (PGRST204) NAO derruba o checkout nem cancela a linha", async () => {
+    estado.falhaUpdateSubscriptions = (carga) =>
+      "pix_due_date" in carga
+        ? {
+            code: "PGRST204",
+            message:
+              "Could not find the 'pix_due_date' column of 'subscriptions' in the schema cache",
+          }
+        : null;
+
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(r.dueDate).toBe("2026-09-14");
+    // A linha continua `pending`: nenhum update a levou para `canceled`.
+    expect(updatesDeSubscriptions().some((c) => c.status === "canceled")).toBe(
+      false,
+    );
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("row-1"));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(COBRANCA),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("PGRST204"),
+    );
+    // Sem Sentry: na janela de deploy isto dispararia em todo checkout Pix.
+    expect(estado.capturas).toEqual([]);
+  });
+
+  it("amarracao falhando continua cancelando a linha e lancando, como antes", async () => {
+    estado.falhaUpdateSubscriptions = (carga) =>
+      "provider_subscription_id" in carga
+        ? {
+            code: "57014",
+            message: "canceling statement due to statement timeout",
+          }
+        : null;
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ code: "db_error" });
+
+    const updates = updatesDeSubscriptions();
+    expect(updates.some((c) => c.status === "canceled")).toBe(true);
+    expect(updates.some((c) => "pix_due_date" in c)).toBe(false);
+    expect(estado.capturas.map((c) => c.mensagem)).toContain(
+      "asaas_link_cobranca_falhou",
+    );
+  });
+
+  it("dueDate e invoiceUrl ausentes na resposta gravam null, sem quebrar", async () => {
+    estado.asaasResposta["/payments"] = { id: COBRANCA };
+
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(updatesDeSubscriptions()[1]).toEqual({
+      pix_due_date: null,
+      pix_invoice_url: null,
+    });
+  });
+
+  it("renovacao (internalRenewal) grava do mesmo jeito, sem ramo especial", async () => {
+    estado.ativas = [{ id: "sub-viva" }];
+
+    await asaasProvider.createCheckout({
+      ...checkoutInput("pro_annual"),
+      internalRenewal: true,
+    } as Parameters<typeof asaasProvider.createCheckout>[0]);
+
+    expect(updatesDeSubscriptions()[1]).toEqual({
+      pix_due_date: "2026-09-14",
+      pix_invoice_url: "https://asaas.test/i/123",
+    });
   });
 });
 
@@ -671,6 +827,29 @@ describe("webhook: comissao de afiliado", () => {
     );
     expect(incrementos).toHaveLength(1);
     expect(incrementos[0].args.p_revenue_cents).toBe(22200);
+  });
+
+  it("venda por Pix grava o evento sale com payment_method pix", async () => {
+    estado.afiliado = { id: "aff-1", commission_percent: 30 };
+
+    await processAsaasEvent(eventoDePagamento());
+
+    const eventos = estado.escritas.filter(
+      (e) => e.tabela === "creator_events",
+    );
+    expect(eventos).toHaveLength(1);
+    // 30 por cento de 22200 = 6660, a mesma conta do SQL.
+    expect(eventos[0].carga).toEqual({
+      affiliate_id: "aff-1",
+      event_type: "sale",
+      user_id: USER,
+      subscription_id: "row-1",
+      plan_id: "plan-anual",
+      payment_method: "pix",
+      revenue_cents: 22200,
+      commission_cents: 6660,
+      metadata: {},
+    });
   });
 });
 
@@ -1291,12 +1470,26 @@ function cupomDe(percent: number) {
   };
 }
 
+function afiliadoDe(percent: number, code = "AFILIADO") {
+  return { id: "aff-1", code, discount_percent: percent };
+}
+
 function comCupom(planId: string, code: string) {
   return {
     user: { id: USER, email: "pessoa@exemplo.com" },
     planId,
     affiliateCode: "",
     couponCode: code,
+    paymentMethod: "pix",
+  } as unknown as Parameters<typeof asaasProvider.createCheckout>[0];
+}
+
+function comAfiliado(planId: string, code: string) {
+  return {
+    user: { id: USER, email: "pessoa@exemplo.com" },
+    planId,
+    affiliateCode: code,
+    couponCode: "",
     paymentMethod: "pix",
   } as unknown as Parameters<typeof asaasProvider.createCheckout>[0];
 }
@@ -1341,20 +1534,21 @@ describe("o valor da cobranca respeita o cupom", () => {
     );
   });
 
-  it("cupom INVALIDO nao derruba a compra: cobra cheio e nao grava o codigo", async () => {
-    // Mesma regra do fluxo Stripe: cupom nunca impede a assinatura.
+  it("cupom INVALIDO bloqueia antes da cobranca em vez de cobrar cheio", async () => {
     estado.cupom = null;
 
-    await asaasProvider.createCheckout(comCupom("pro_annual", "NAOEXISTE"));
+    await expect(
+      asaasProvider.createCheckout(comCupom("pro_annual", "NAOEXISTE")),
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      code: "coupon_unavailable",
+    });
 
-    expect(valorCobradoCents()).toBe(
-      Math.round(PLAN_PRICING.pro_annual.total * 100),
-    );
-    const insert = estado.escritas.find((e) => e.operacao === "insert");
-    expect((insert!.carga as Record<string, unknown>).coupon_code).toBeNull();
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
   });
 
-  it("NAO e primeira compra: cupom nao aplica, igual a Stripe", async () => {
+  it("NAO e primeira compra: informa a inelegibilidade antes de cobrar", async () => {
     // `isFirstPurchase` acha uma sub ja ativada.
     estado.linhaSubscription = {
       id: "sub-velha",
@@ -1362,11 +1556,254 @@ describe("o valor da cobranca respeita o cupom", () => {
     };
     estado.cupom = cupomDe(90);
 
-    await asaasProvider.createCheckout(comCupom("pro_annual", "PROMO"));
+    await expect(
+      asaasProvider.createCheckout(comCupom("pro_annual", "PROMO")),
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      code: "promotion_first_purchase_only",
+    });
 
-    expect(valorCobradoCents()).toBe(
-      Math.round(PLAN_PRICING.pro_annual.total * 100),
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+});
+
+describe("o valor da cobranca respeita o afiliado", () => {
+  beforeEach(limpar);
+
+  it("20 por cento no anual: envia 177,60 ao Asaas, nao 222,00", async () => {
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await asaasProvider.createCheckout(comAfiliado("pro_annual", "AFILIADO20"));
+
+    expect(valorCobradoCents()).toBe(17760);
+  });
+
+  it("33 por cento no mensal usa o arredondamento compartilhado em centavos", async () => {
+    estado.afiliado = afiliadoDe(33, "AFILIADO33");
+
+    const result = await asaasProvider.createCheckout(
+      comAfiliado("pro_monthly", "AFILIADO33"),
     );
+
+    expect(valorCobradoCents()).toBe(2003);
+    expect(result.amountCents).toBe(2003);
+  });
+
+  it("desconto de afiliado abaixo do piso bloqueia antes da row e do Asaas", async () => {
+    // 84 por cento de desconto em 2990 resulta em 478 centavos.
+    estado.afiliado = afiliadoDe(84, "AFILIADO84");
+
+    await expect(
+      asaasProvider.createCheckout(comAfiliado("pro_monthly", "AFILIADO84")),
+    ).rejects.toMatchObject({ code: "valor_minimo_pix" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("cupom aplicavel ganha no preco e o afiliado canonico segue na atribuicao", async () => {
+    estado.cupom = cupomDe(30);
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await asaasProvider.createCheckout({
+      ...comAfiliado("pro_annual", "AFILIADO20"),
+      couponCode: "PROMO",
+    });
+
+    expect(valorCobradoCents()).toBe(15540);
+    const insert = estado.escritas.find((e) => e.operacao === "insert")!;
+    expect(insert.carga).toMatchObject({
+      coupon_code: "PROMO",
+      affiliate_code: "AFILIADO20",
+    });
+  });
+
+  it("cupom aplicavel nao e bloqueado por afiliado invalido usado so para atribuicao", async () => {
+    estado.cupom = cupomDe(30);
+    estado.afiliado = null;
+
+    await asaasProvider.createCheckout({
+      ...comAfiliado("pro_annual", "INATIVO"),
+      couponCode: "PROMO",
+    });
+
+    expect(valorCobradoCents()).toBe(15540);
+    const insert = estado.escritas.find((e) => e.operacao === "insert")!;
+    expect(insert.carga).toMatchObject({
+      coupon_code: "PROMO",
+      affiliate_code: null,
+    });
+  });
+
+  it("cupom aplicavel sobrevive a falha da atribuicao, igual ao Stripe", async () => {
+    estado.cupom = cupomDe(30);
+    estado.afiliadoError = { message: "banco indisponivel" };
+
+    await asaasProvider.createCheckout({
+      ...comAfiliado("pro_annual", "AFILIADO20"),
+      couponCode: "PROMO",
+    });
+
+    expect(valorCobradoCents()).toBe(15540);
+    const insert = estado.escritas.find((e) => e.operacao === "insert")!;
+    expect(insert.carga).toMatchObject({
+      coupon_code: "PROMO",
+      affiliate_code: null,
+    });
+  });
+
+  it("cupom valido fora do plano cai no afiliado, sem gravar resgate do cupom", async () => {
+    estado.cupom = {
+      ...cupomDe(30),
+      applicable_plans: ["pro_semiannual"],
+    };
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await asaasProvider.createCheckout({
+      ...comAfiliado("pro_annual", "AFILIADO20"),
+      couponCode: "PROMO",
+    });
+
+    expect(valorCobradoCents()).toBe(17760);
+    const insert = estado.escritas.find((e) => e.operacao === "insert")!;
+    expect(insert.carga).toMatchObject({
+      coupon_code: null,
+      affiliate_code: "AFILIADO20",
+    });
+  });
+
+  it("afiliado inexistente ou inativo bloqueia sem criar row ou cobranca", async () => {
+    estado.afiliado = null;
+
+    await expect(
+      asaasProvider.createCheckout(comAfiliado("pro_annual", "INATIVO")),
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      code: "affiliate_unavailable",
+    });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("afiliado nao se aplica a quem ja realizou uma compra", async () => {
+    estado.linhaSubscription = {
+      id: "sub-velha",
+      current_period_start: "2026-01-01",
+    };
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await expect(
+      asaasProvider.createCheckout(comAfiliado("pro_annual", "AFILIADO20")),
+    ).rejects.toMatchObject({ code: "promotion_first_purchase_only" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("erro ao consultar afiliado falha fechado e nao toca o provedor", async () => {
+    estado.afiliadoError = { message: "banco indisponivel" };
+
+    await expect(
+      asaasProvider.createCheckout(comAfiliado("pro_annual", "AFILIADO20")),
+    ).rejects.toMatchObject({ statusCode: 500, code: "db_error" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("erro ao consultar cupom falha fechado e nao toca o provedor", async () => {
+    estado.cupomError = { message: "banco indisponivel" };
+
+    await expect(
+      asaasProvider.createCheckout(comCupom("pro_annual", "PROMO")),
+    ).rejects.toMatchObject({ statusCode: 500, code: "db_error" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("erro ao consultar elegibilidade falha fechado e nao toca o provedor", async () => {
+    estado.subscriptionLookupError = { message: "banco indisponivel" };
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await expect(
+      asaasProvider.createCheckout(comAfiliado("pro_annual", "AFILIADO20")),
+    ).rejects.toMatchObject({ statusCode: 500, code: "db_error" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("cupom expirado nao vira fallback silencioso para o afiliado", async () => {
+    estado.cupom = {
+      ...cupomDe(30),
+      valid_until: "2020-01-01T00:00:00.000Z",
+    };
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+
+    await expect(
+      asaasProvider.createCheckout({
+        ...comAfiliado("pro_annual", "AFILIADO20"),
+        couponCode: "PROMO",
+      }),
+    ).rejects.toMatchObject({ code: "coupon_unavailable" });
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("o valor devolvido ao modal e o valor descontado confirmado pelo Asaas", async () => {
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+    estado.asaasResposta = {
+      "/customers?": { data: [{ id: "cus_1" }] },
+      "/payments": {
+        id: COBRANCA,
+        value: 177.6,
+        invoiceUrl: "https://asaas.test/i/123",
+      },
+    };
+
+    const result = await asaasProvider.createCheckout(
+      comAfiliado("pro_annual", "AFILIADO20"),
+    );
+
+    expect(valorCobradoCents()).toBe(17760);
+    expect(result.amountCents).toBe(17760);
+  });
+
+  it("o valor descontado pago e persistido no ledger em centavos", async () => {
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
+    estado.asaasResposta = {
+      "/customers?": { data: [{ id: "cus_1" }] },
+      "/payments": { id: COBRANCA, value: 177.6 },
+    };
+
+    const result = await asaasProvider.createCheckout(
+      comAfiliado("pro_annual", "AFILIADO20"),
+    );
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: "AFILIADO20",
+      coupon_code: null,
+    };
+
+    await processAsaasEvent(
+      eventoDePagamento({
+        payment: { value: 177.6, netValue: 173.32 },
+      }),
+    );
+
+    const ledger = estado.escritas.find(
+      (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+    )!;
+    expect(valorCobradoCents()).toBe(17760);
+    expect(result.amountCents).toBe(17760);
+    expect(ledger.carga).toMatchObject({ gross_cents: 17760 });
   });
 });
 
@@ -1440,12 +1877,17 @@ describe("piso do Asaas", () => {
   });
 
   it("exatamente no piso passa: a recusa e ABAIXO, nao no limite", async () => {
-    // 12900 menos 96 por cento da 516, acima de 500.
-    estado.cupom = cupomDe(96);
-
-    await asaasProvider.createCheckout(comCupom("pro_semiannual", "PROMO"));
-
-    expect(valorCobradoCents()).toBe(516);
+    // Nenhum preco atual combinado com percentual inteiro resulta em 500.
+    // Ajustar temporariamente a fonte de preco permite exercitar a fronteira
+    // real do provider sem testar apenas uma funcao de comparacao isolada.
+    const original = PLAN_PRICING.pro_monthly.total;
+    PLAN_PRICING.pro_monthly.total = 5;
+    try {
+      await asaasProvider.createCheckout(checkoutInput("pro_monthly"));
+      expect(valorCobradoCents()).toBe(500);
+    } finally {
+      PLAN_PRICING.pro_monthly.total = original;
+    }
   });
 });
 
@@ -1995,6 +2437,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 1290,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [
         {
           status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
@@ -2020,6 +2463,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 3000,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [],
       deleted: false,
     });
@@ -2035,6 +2479,24 @@ describe("lerPagamento", () => {
     };
     const p = await lerPagamento("pay_x");
     expect(p.dueDate).toBe("2026-09-08");
+  });
+
+  it("invoiceUrl da cobranca vem junto; ausente vira null", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": {
+        status: "PENDING",
+        value: 29.9,
+        invoiceUrl: "https://www.asaas.com/i/abc",
+      },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBe(
+      "https://www.asaas.com/i/abc",
+    );
+
+    estado.asaasResposta = {
+      "/payments/pay_x": { status: "PENDING", value: 29.9 },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBeNull();
   });
 
   it("o id vai ESCAPADO na URL", async () => {
@@ -2434,10 +2896,13 @@ describe("checkout Pix de RENOVACAO (internalRenewal)", () => {
     );
   });
 
-  it("renovacao NAO aplica cupom, mesmo com codigo no input: cobra o preco cheio", async () => {
+  it("renovacao NAO aplica promocao, mesmo com codigos no input: cobra cheio", async () => {
     estado.cupom = { code: "DESC90", discount_percent: 90, active: true };
+    estado.afiliado = afiliadoDe(20, "AFILIADO20");
 
-    await asaasProvider.createCheckout(renovacao({ couponCode: "DESC90" }));
+    await asaasProvider.createCheckout(
+      renovacao({ couponCode: "DESC90", affiliateCode: "AFILIADO20" }),
+    );
 
     const post = estado.asaas.find(
       (c) => c.method === "POST" && c.caminho === "/payments",
@@ -2449,6 +2914,7 @@ describe("checkout Pix de RENOVACAO (internalRenewal)", () => {
       (e) => e.tabela === "subscriptions" && e.operacao === "insert",
     )!;
     expect((insert.carga as Record<string, unknown>).coupon_code).toBeNull();
+    expect((insert.carga as Record<string, unknown>).affiliate_code).toBeNull();
   });
 });
 

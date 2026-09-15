@@ -1,11 +1,20 @@
-import { useEffect } from "react";
 import { LogOut } from "lucide-react";
+
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface SignOutConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void> | void;
   isLoading?: boolean;
+  /**
+   * Classes extras do conteudo e do overlay, para o call site que precisa subir
+   * o empilhamento. Existe por causa do admin, cujo header e `z-[1000]` e cujas
+   * outras modais usam `z-[2000]`. Sem elas, a modal fica exatamente como era.
+   */
+  contentClassName?: string;
+  overlayClassName?: string;
 }
 
 export function SignOutConfirmModal({
@@ -13,42 +22,35 @@ export function SignOutConfirmModal({
   onClose,
   onConfirm,
   isLoading,
+  contentClassName,
+  overlayClassName,
 }: SignOutConfirmModalProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isLoading) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, isLoading, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-      onClick={() => {
-        if (!isLoading) onClose();
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isLoading) onClose();
       }}
     >
-      <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="signout-modal-title"
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        overlayClassName={cn(
+          "bg-slate-950/60 backdrop-blur-sm",
+          overlayClassName,
+        )}
+        className={cn(
+          "block max-w-[min(28rem,calc(100%-2rem))] rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] sm:max-w-md",
+          contentClassName,
+        )}
       >
         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-slate-100">
           <LogOut className="h-5 w-5 text-slate-700" strokeWidth={2.5} />
         </div>
 
-        <h2
-          id="signout-modal-title"
-          className="font-display text-2xl font-black text-slate-950"
-        >
+        <DialogTitle className="font-display text-2xl font-black text-slate-950">
           Sair da conta?
-        </h2>
+        </DialogTitle>
         <p className="mt-2 text-sm font-semibold text-slate-600">
           Você precisará entrar de novo da próxima vez.
         </p>
@@ -71,7 +73,7 @@ export function SignOutConfirmModal({
             {isLoading ? "Saindo..." : "Sim, sair"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

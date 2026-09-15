@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Pagina principal das Entrevistas no molde Pro (PortfolioAnalisar): a arena
 // e a pagina inteira (cenario vivo, header integrado, timeline + vitrine,
@@ -55,7 +56,7 @@ export default function Entrevistas() {
               o precedente do Portfolio (la ele so aparece no resultado, como
               Nova analise); esta pagina so tem estado de entrada. */}
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10"

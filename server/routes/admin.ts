@@ -21,6 +21,15 @@ import {
   getFinanceSummary,
   getFinanceTimeseries,
 } from "../lib/financeMetrics";
+import {
+  getHonestFinanceDashboard,
+  resolveHonestFinanceAllPeriod,
+  resolveHonestFinancePeriod,
+} from "../lib/honestFinance";
+import {
+  ADMIN_FINANCE_CONTRACT_VERSION,
+  parseAdminFinanceContract,
+} from "../../shared/adminFinance";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   contarAtividadeAgora,
@@ -39,6 +48,16 @@ import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
+import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
+import { listarCreatorsDoQuadro, resumoDoQuadro } from "../lib/creatorBoard";
+import {
+  montarPainelDoCreator,
+  parseJanelaDoPainel,
+} from "../lib/creatorDashboard";
+import {
+  isCreatorBoardKind,
+  isCreatorBoardStatus,
+} from "../../shared/creatorDashboard";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { withRedisOpTimeout } from "../lib/redisOpTimeout";
@@ -67,6 +86,11 @@ import {
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
 import {
+  creatorKindOf,
+  isCreatorKind,
+  type CreatorKind,
+} from "../lib/creatorKind";
+import {
   totaisPagosPorUsuario,
   type DeclaracaoDeDevolucao,
   type LinhaFinanceira,
@@ -92,6 +116,7 @@ import {
   LASTRO_ANALISES_MAX,
   LASTRO_JANELA_DIAS,
 } from "../../shared/linkedin/lastro";
+import { isAttentionContractV3 } from "../../shared/adminAttention";
 import {
   agregarResumos,
   readQualitative,
@@ -118,7 +143,25 @@ import {
   resolverJanela,
   rotuloDeIntervalo,
 } from "../lib/overviewWindow";
-import { coletarTagueado, coletarTudo, paginateRange } from "../lib/paginate";
+import {
+  coletarTagueado,
+  coletarTudo,
+  coletarTudoProvandoTotal,
+  paginateRange,
+} from "../lib/paginate";
+import {
+  analyzePaymentMethods,
+  pageMethodTransactions,
+  type MethodFinanceRow,
+  type PaymentMethodFilter,
+} from "../lib/financePaymentMethods";
+import {
+  PAYMENT_METHOD_SCAN_LIMIT,
+  verifiedMethodScan,
+} from "../lib/verifiedMethodScan";
+import { createVerifiedDatasetCache } from "../lib/verifiedDatasetCache";
+import type { PaymentMethodEvidence } from "../lib/registeredPayments";
+import { PaymentMethodSummarySchema } from "../../shared/adminFinanceMethods";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -150,6 +193,7 @@ import {
   type RefundRow,
 } from "../lib/userAuditHistory";
 import { requireAdmin, requireAuth } from "../middleware/auth";
+import { observeAdminCapability } from "../middleware/adminRbacObserve";
 import { createError, type AppError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
 import bugsAdminRouter from "./adminBugs";
@@ -162,6 +206,7 @@ const router = Router();
 
 router.use(requireAuth);
 router.use(requireAdmin);
+router.use(observeAdminCapability);
 
 // Campanhas de e-mail pra waitlist (aba Emails). Depois dos guards de admin.
 router.use("/email-campaigns", emailCampaignsRouter);
@@ -339,6 +384,9 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "notes",
     "commission_due_cents",
     "commission_paid_cents",
+    // Dono do codigo (20260913120000). Validado em validarDonoDoAfiliado
+    // antes de chegar ao banco.
+    "user_id",
   ],
   // times_redeemed fica de fora de proposito: e contador do webhook
   // (increment_coupon_redemption), somente leitura no admin.
@@ -536,22 +584,25 @@ async function contarProPorOrigem(): Promise<ProSourceTally> {
     assinaturas.push(row);
   }
 
-  const influencers = new Set<string>();
-  for await (const row of paginateRange<{ user_id: string | null }>(
+  const creators = new Map<string, CreatorKind>();
+  for await (const row of paginateRange<{
+    user_id: string | null;
+    kind: string | null;
+  }>(
     (from, to) =>
       supabaseAdmin
-        .from("influencers")
-        .select("user_id")
+        .from("creators")
+        .select("user_id, kind")
         .is("revoked_at", null)
         .order("id", { ascending: true })
         .range(from, to),
-    { errorLabel: "pro tally influencers" },
+    { errorLabel: "pro tally creators" },
   )) {
-    if (row.user_id) influencers.add(row.user_id);
+    if (row.user_id) creators.set(row.user_id, creatorKindOf(row.kind));
   }
 
   return tallyProSources(
-    buildEnrichmentIndex(assinaturas, influencers, new Date()),
+    buildEnrichmentIndex(assinaturas, creators, new Date()),
   );
 }
 
@@ -1395,6 +1446,7 @@ router.get("/overview", async (req, res, next) => {
             acessoPro: {
               bySubscription: proTally.bySubscription,
               byInfluencer: proTally.byInfluencer,
+              byAfiliado: proTally.byAfiliado,
               both: proTally.both,
               total: proTally.total,
             },
@@ -1562,7 +1614,7 @@ router.get("/paid-funnel", async (_req, res, next) => {
 //
 // ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo
 // mecanismo de cache, com o mesmo TTL de 60s e CHAVES DISTINTAS:
-// `admincache:overview-series:<janela>` aqui, `admincache:overview:<janela>` la.
+// `admincache:overview-series:v3:<janela>` aqui, `admincache:overview:<janela>` la.
 // Duas chaves de proposito, porque sao dois payloads; o que precisa coincidir e
 // a duracao, para os cards e as series na mesma tela nunca descreverem instantes
 // diferentes por mais de um minuto.
@@ -1578,29 +1630,46 @@ router.get("/paid-funnel", async (_req, res, next) => {
 // SO TABELAS LOCAIS. Ver o cabecalho de server/lib/overviewSeries.ts.
 const OVERVIEW_SERIES_CACHE_TTL_S = 60;
 
+export async function carregarOverviewSeries(windowBruta: unknown) {
+  const janela = resolverJanela(parseOverviewWindow(windowBruta));
+  const { result, computedAt } = await getOrCompute(
+    `admincache:overview-series:v3:${janela.window}`,
+    OVERVIEW_SERIES_CACHE_TTL_S,
+    async () => ({
+      result: await montarSeriesDaVisao(janela),
+      computedAt: new Date().toISOString(),
+    }),
+  );
+  return {
+    data: {
+      ...result,
+      window: janela.window,
+      windowLabel: rotuloDeIntervalo(
+        janela.primeiroDiaCivil,
+        janela.ultimoDiaCivil,
+      ),
+      tz: OVERVIEW_TZ_LABEL,
+    },
+    computedAt,
+  };
+}
+
+export function overviewSeriesContractRequested(value: unknown): boolean {
+  return value === "3";
+}
+
 router.get("/overview-series", async (req, res, next) => {
   try {
-    const janela = resolverJanela(parseOverviewWindow(req.query.window));
-    const { result, computedAt } = await getOrCompute(
-      `admincache:overview-series:${janela.window}`,
-      OVERVIEW_SERIES_CACHE_TTL_S,
-      async () => ({
-        result: await montarSeriesDaVisao(janela),
-        computedAt: new Date().toISOString(),
-      }),
-    );
-    res.json({
-      data: {
-        ...result,
-        window: janela.window,
-        windowLabel: rotuloDeIntervalo(
-          janela.primeiroDiaCivil,
-          janela.ultimoDiaCivil,
+    if (!overviewSeriesContractRequested(req.query.contract)) {
+      return next(
+        createError(
+          409,
+          "overview_series_contract_mismatch",
+          "Contrato da Visão incompatível. Atualize a página.",
         ),
-        tz: OVERVIEW_TZ_LABEL,
-      },
-      computedAt,
-    });
+      );
+    }
+    res.json(await carregarOverviewSeries(req.query.window));
   } catch (err) {
     next(err);
   }
@@ -1624,42 +1693,90 @@ const ATENCAO_CACHE_TTL_S = 60;
 // cache repetida a mao e o desenho em que uma das pontas erra uma letra e a
 // invalidacao passa a apagar coisa nenhuma, em silencio.
 //
-// v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos novos. Sem
-// o bump, o admin continuaria lendo do Redis, ate o TTL, um payload da forma
-// antiga, e o painel novo renderizaria sem os destinos internos sem nada
-// acusar. Chave nova invalida por construcao.
-const ATENCAO_CACHE_KEY = "admincache:attention:v2";
+// v3: o payload passou a usar fatos locais, estados por fonte e acoes fechadas.
+// Sem o bump, o admin poderia ler do Redis um payload anterior e atribuir a ele
+// uma semantica que nao possui. Chave nova invalida por construcao.
+const ATENCAO_CACHE_KEY = "admincache:attention:v3";
 
-router.get("/attention", async (_req, res, next) => {
-  try {
-    const { result, computedAt } = await getOrCompute(
-      ATENCAO_CACHE_KEY,
-      ATENCAO_CACHE_TTL_S,
-      async () => ({
-        result: await montarPainelDeAtencao(),
-        computedAt: new Date().toISOString(),
-      }),
+export function attentionContractRequested(value: unknown): boolean {
+  return value === "3";
+}
+
+export function attentionRefreshRequested(value: unknown): boolean | null {
+  if (value === undefined) return false;
+  if (value === "1") return true;
+  return null;
+}
+
+function assertAttentionContractV3(value: unknown) {
+  if (!isAttentionContractV3(value)) {
+    throw createError(
+      500,
+      "attention_contract_invalid",
+      "O painel de atenção produziu um contrato inválido.",
     );
-    res.json({ data: result, computedAt });
+  }
+}
+
+export async function carregarAtencaoV3(options?: {
+  refresh?: boolean;
+  compute?: typeof montarPainelDeAtencao;
+}) {
+  const { result } = await getOrCompute(
+    ATENCAO_CACHE_KEY,
+    ATENCAO_CACHE_TTL_S,
+    async () => {
+      const result = await (options?.compute ?? montarPainelDeAtencao)();
+      assertAttentionContractV3(result);
+      return { result, computedAt: result.computedAt };
+    },
+    { refresh: options?.refresh === true },
+  );
+  assertAttentionContractV3(result);
+  return { data: result, computedAt: result.computedAt };
+}
+
+export async function attentionV3Handler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    if (!attentionContractRequested(req.query.contract)) {
+      return next(
+        createError(
+          409,
+          "attention_contract_mismatch",
+          "Contrato do painel de atenção incompatível. Atualize a página.",
+        ),
+      );
+    }
+    const refresh = attentionRefreshRequested(req.query.refresh);
+    if (refresh === null) {
+      return next(
+        createError(
+          400,
+          "attention_refresh_invalid",
+          "Parâmetro de atualização inválido.",
+        ),
+      );
+    }
+    res.json(await carregarAtencaoV3({ refresh }));
   } catch (err) {
     next(err);
   }
-});
+}
+
+router.get("/attention", attentionV3Handler);
 
 /**
  * Pagamentos orfaos ainda em aberto, TODOS eles.
  *
- * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. Porque o
- * painel mostra MENOS do que existe, e o corte e deliberado la: em
- * `server/lib/atencaoNecessaria.ts:634` ele pula quem nao tem
- * `expected_provider_subscription_id`, e em `:635` pula quem nao passa em
- * `orfaoAindaPedeAcao`. Os dois filtros fazem sentido para uma lista de
- * "aja agora": sem a chave esperada nao ha deep link para a Stripe, e o segundo
- * evita repetir um caso que ja se resolveu por outro caminho. O efeito colateral
- * e que as linhas descartadas ficavam SEM NENHUMA superficie: existiam na
- * tabela, ninguem as via, e nao havia como carimba-las como tratadas. Esta rota
- * e o lugar dessas, e por isso ela nao herda filtro nenhum: o unico criterio e
- * `resolved_at is null`.
+ * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. O painel
+ * e uma fila resumida, enquanto esta rota sustenta a lista operacional completa
+ * e seu detalhe. Ambos leem todos os casos localmente abertos; esta rota tambem
+ * fornece os campos protegidos necessarios para a tela financeira. Ela nao
+ * herda outro filtro: o unico criterio e `resolved_at is null`.
  *
  * SEM CACHE, ao contrario da `/attention`. Aquela responde "o que precisa de
  * atencao agora" e tolera 60s de atraso; esta e a lista sobre a qual se age, e
@@ -2611,12 +2728,9 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
 
 router.get("/me", async (req, res, next) => {
   try {
-    const { data: role } = await supabaseAdmin
-      .from("admin_roles")
-      .select("role, created_at")
-      .eq("user_id", req.user!.id)
-      .single();
-    res.json({ data: { user: req.user, role: role?.role || "editor" } });
+    res.json({
+      data: { user: req.user, role: req.adminPrincipal!.context.meRole },
+    });
   } catch (err) {
     next(err);
   }
@@ -2687,6 +2801,38 @@ router.get("/content/:type/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * Dono do codigo de afiliado (`affiliates.user_id`, migration 20260913120000).
+ *
+ * `null` desvincula. Qualquer outro valor precisa ser o `user_id` de um perfil
+ * que existe: a FK aponta para auth.users, e sem esta checagem um uuid
+ * inventado chegaria ao banco e voltaria como 23503, que esta rota transforma
+ * num 500 generico, em vez de um 400 que diz o que houve. Valor que nem e uuid
+ * nao pode ser dono de nada, entao recebe o mesmo 400.
+ */
+async function validarDonoDoAfiliado(valor: unknown): Promise<AppError | null> {
+  if (valor === null) return null;
+  const naoEncontrado = createError(
+    400,
+    "user_not_found",
+    // TODO(Ana)
+    "Usuário dono do código não encontrado.",
+  );
+  if (typeof valor !== "string" || !UUID_RE.test(valor)) return naoEncontrado;
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", valor)
+    .maybeSingle();
+  if (error)
+    return dbError(
+      "affiliate owner lookup",
+      error,
+      "Erro ao validar o dono do código.",
+    );
+  return data ? null : naoEncontrado;
+}
+
 router.post("/content/:type", async (req, res, next) => {
   try {
     const { type } = req.params;
@@ -2700,6 +2846,11 @@ router.post("/content/:type", async (req, res, next) => {
       req.body as Record<string, unknown>,
       allowedFields,
     );
+
+    if (type === "affiliates" && "user_id" in payload) {
+      const erroDono = await validarDonoDoAfiliado(payload.user_id);
+      if (erroDono) return next(erroDono);
+    }
 
     const { data, error } = await supabaseAdmin
       .from(tabelaDe(type))
@@ -2751,6 +2902,11 @@ router.patch("/content/:type/:id", async (req, res, next) => {
       allowedFields,
     );
     delete updates.slug;
+
+    if (type === "affiliates" && "user_id" in updates) {
+      const erroDono = await validarDonoDoAfiliado(updates.user_id);
+      if (erroDono) return next(erroDono);
+    }
 
     if (Object.keys(updates).length === 0)
       return next(
@@ -3010,7 +3166,10 @@ router.get("/fiscal-invoices", async (req, res, next) => {
 
     const status = String(req.query.status ?? "");
     const precisaRevisao = req.query.precisa_revisao === "true";
-    const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 100);
+    const limit = Math.min(
+      parseInt(String(req.query.limit ?? "50"), 10) || 50,
+      100,
+    );
     const offset = parseInt(String(req.query.offset ?? "0"), 10) || 0;
 
     let query = supabaseAdmin
@@ -3227,6 +3386,8 @@ router.get("/users", async (req, res, next) => {
       filterRaw === "pro" ||
       filterRaw === "not_pro" ||
       filterRaw === "influencers" ||
+      filterRaw === "afiliados" ||
+      filterRaw === "creators" ||
       filterRaw === "ativo"
         ? filterRaw
         : "all";
@@ -3292,39 +3453,53 @@ router.get("/users", async (req, res, next) => {
       // (`= any('{}')` e falso); lista vazia em `not_pro` nao filtra nada
       // (`not false`). Os dois espelham o comportamento anterior.
       excluirIds = filter === "not_pro";
-    } else if (filter === "influencers") {
-      // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
+    } else if (
+      filter === "influencers" ||
+      filter === "creators" ||
+      filter === "afiliados"
+    ) {
+      // Creator = concessao ATIVA (revoked_at null; o indice unico parcial
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
       // PAGINADO pelo mesmo motivo do filtro Pro: o conjunto E o filtro.
-      const { data: infRows, error: infError } = await coletarTagueado<{
+      //
+      // `creators` devolve os dois kinds; `influencers` e `afiliados` restringem
+      // ao kind. Ate o lote 04 o chip "Influencers" era o unico filtro de
+      // concessao da tela e `influencers` devolvia os dois; com o chip
+      // "Creators" existindo, cada chip filtra o que o rotulo diz.
+      const kindDoFiltro =
+        filter === "afiliados"
+          ? "afiliado"
+          : filter === "influencers"
+            ? "influencer"
+            : null;
+      const { data: creatorRows, error: creatorError } = await coletarTagueado<{
         user_id: string | null;
-      }>(
-        (from, to) =>
-          supabaseAdmin
-            .from("influencers")
-            .select("user_id")
-            .is("revoked_at", null)
-            .order("id", { ascending: true })
-            .range(from, to),
-        "users influencer filter",
-      );
-      if (infError)
+      }>((from, to) => {
+        const ativos = supabaseAdmin
+          .from("creators")
+          .select("user_id")
+          .is("revoked_at", null);
+        return (kindDoFiltro ? ativos.eq("kind", kindDoFiltro) : ativos)
+          .order("id", { ascending: true })
+          .range(from, to);
+      }, "users creator filter");
+      if (creatorError)
         return next(
           dbError(
-            "users influencer filter",
-            infError,
+            "users creator filter",
+            creatorError,
             "Erro ao buscar usuários.",
           ),
         );
-      const influencerIds = Array.from(
+      const creatorIds = Array.from(
         new Set(
-          (infRows || [])
+          (creatorRows || [])
             .map((row) => row.user_id)
             .filter((id): id is string => Boolean(id)),
         ),
       );
       // Lista vazia -> zero linhas, exatamente o esperado.
-      idsFiltro = influencerIds;
+      idsFiltro = creatorIds;
     }
 
     // UMA ida ao banco para a pagina inteira, contagem inclusa.
@@ -3390,17 +3565,20 @@ router.get("/users", async (req, res, next) => {
           }
           return (subs || []) as SubscriptionRow[];
         },
-        byInfluencer: async (ids) => {
-          const { data: infs, error: infsError } = await supabaseAdmin
-            .from("influencers")
-            .select("user_id")
+        byCreator: async (ids) => {
+          const { data: creators, error: creatorsError } = await supabaseAdmin
+            .from("creators")
+            .select("user_id, kind")
             .is("revoked_at", null)
             .in("user_id", ids);
-          if (infsError) {
-            listError = infsError.message;
+          if (creatorsError) {
+            listError = creatorsError.message;
             return [];
           }
-          return (infs || []).map((row) => row.user_id);
+          return (creators || []).map((row) => ({
+            user_id: row.user_id as string,
+            kind: creatorKindOf(row.kind),
+          }));
         },
       },
       new Date(),
@@ -3580,11 +3758,11 @@ router.get("/users/:id", async (req, res, next) => {
         .from("finance_transactions")
         .select("type, gross_cents")
         .eq("user_id", uid),
-      // Concessao de influencer ATIVA (revoked_at null); o indice unico parcial
+      // Concessao de creator ATIVA (revoked_at null); o indice unico parcial
       // garante no maximo uma.
       supabaseAdmin
-        .from("influencers")
-        .select("id, granted_at, granted_by, note")
+        .from("creators")
+        .select("id, granted_at, granted_by, note, kind")
         .eq("user_id", uid)
         .is("revoked_at", null)
         .maybeSingle(),
@@ -3663,7 +3841,12 @@ router.get("/users/:id", async (req, res, next) => {
         : "inactive";
 
     // Nome/email de quem concedeu, para o modal mostrar "concedido por".
+    //
+    // A chave da resposta continua `influencer` neste lote, com o `kind`
+    // dentro: e o nome que o bundle em execucao le. Renomear a chave e
+    // expand/contract, e fica para o lote que troca a tela.
     let influencer: {
+      kind: CreatorKind;
       granted_at: string | null;
       note: string | null;
       granted_by_name: string | null;
@@ -3684,6 +3867,7 @@ router.get("/users/:id", async (req, res, next) => {
           ),
         );
       influencer = {
+        kind: creatorKindOf(influencerResult.data.kind),
         granted_at: influencerResult.data.granted_at ?? null,
         note: influencerResult.data.note ?? null,
         granted_by_name: granter?.name ?? null,
@@ -3777,7 +3961,10 @@ router.get("/users/:id", async (req, res, next) => {
         )
       : false;
     const proPorInfluencer = influencer !== null;
-    const proSource = resolveProSource(assinaturaDaPro, proPorInfluencer);
+    const proSource = resolveProSource(
+      assinaturaDaPro,
+      influencer?.kind ?? null,
+    );
 
     const { cpf, avatar_url, avatar_mode, avatar_moderation_status, ...rest } =
       data;
@@ -3906,11 +4093,26 @@ router.post("/users/:id/influencer", async (req, res, next) => {
         ),
       );
     }
-    const noteRaw = (req.body as { note?: unknown } | undefined)?.note;
+    const body = req.body as { note?: unknown; kind?: unknown } | undefined;
+    const noteRaw = body?.note;
     const note = typeof noteRaw === "string" ? noteRaw.trim() : "";
+    // kind OBRIGATORIO e sem default: um default aqui faria um client que
+    // esqueceu o campo conceder influencer sem ninguem decidir. O caminho
+    // continua /influencer neste lote; o lote da tela renomeia junto.
+    const kind = body?.kind;
+    if (!isCreatorKind(kind)) {
+      return next(
+        createError(
+          400,
+          "invalid_creator_kind",
+          // TODO(Ana)
+          "Tipo de creator inválido. Use influencer ou afiliado.",
+        ),
+      );
+    }
 
     const { data: existing, error: existingError } = await supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .select("id, granted_at, note")
       .eq("user_id", uid)
       .is("revoked_at", null)
@@ -3932,11 +4134,14 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       .insert({
         actor_user_id: req.user!.id,
         action: "grant",
+        // resource_type continua "influencer_access" para os dois kinds neste
+        // lote (o historico ja gravado e o client o conhecem por esse nome). O
+        // kind vai no after_json: content_audit_logs nao tem coluna `details`.
         resource_type: "influencer_access",
         resource_id: uid,
         resource_slug: null,
         before_json: null,
-        after_json: { note: note || null },
+        after_json: { note: note || null, kind },
       });
     if (auditError) {
       console.error("[admin] influencer grant audit failed:", auditError);
@@ -3950,13 +4155,12 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       );
     }
 
-    const { error: insertError } = await supabaseAdmin
-      .from("influencers")
-      .insert({
-        user_id: uid,
-        granted_by: req.user!.id,
-        note: note || null,
-      });
+    const { error: insertError } = await supabaseAdmin.from("creators").insert({
+      user_id: uid,
+      granted_by: req.user!.id,
+      note: note || null,
+      kind,
+    });
     if (insertError) {
       // 23505 = corrida com outra concessao simultanea: o estado final e o
       // desejado (uma concessao ativa), responde como idempotencia.
@@ -3972,8 +4176,10 @@ router.post("/users/:id/influencer", async (req, res, next) => {
       );
     }
 
-    // Efeito imediato: derruba o cache Redis do status Pro (TTL 60s).
+    // Efeito imediato: derruba o cache Redis do status Pro e o do status de
+    // creator (os dois com TTL 60s).
     await invalidateProStatusCache(uid);
+    await invalidateCreatorStatusCache(uid);
     res.status(201).json({ data: { granted: true } });
   } catch (err) {
     next(err);
@@ -3997,8 +4203,8 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     }
 
     const { data: active, error: activeError } = await supabaseAdmin
-      .from("influencers")
-      .select("id, granted_at, granted_by, note")
+      .from("creators")
+      .select("id, granted_at, granted_by, note, kind")
       .eq("user_id", uid)
       .is("revoked_at", null)
       .maybeSingle();
@@ -4033,6 +4239,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
           granted_at: active.granted_at,
           granted_by: active.granted_by,
           note: active.note,
+          kind: active.kind,
         },
         after_json: null,
       });
@@ -4049,7 +4256,7 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .update({
         revoked_at: new Date().toISOString(),
         revoked_by: req.user!.id,
@@ -4066,9 +4273,114 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
       );
 
     await invalidateProStatusCache(uid);
+    await invalidateCreatorStatusCache(uid);
     res.json({ data: { revoked: true } });
   } catch (err) {
     next(err);
+  }
+});
+
+// QUADRO DE CREATORS (lote 02). Leitura pura; as agregacoes moram no banco
+// (server/lib/creatorBoard.ts). `/creators/resumo` e declarada ANTES de
+// `/creators/:userId`: na ordem inversa, "resumo" casaria como userId e
+// responderia 400 de uuid invalido.
+router.get("/creators", async (req, res, next) => {
+  try {
+    const status = req.query.status ?? "active";
+    const kind = req.query.kind ?? "all";
+    // Filtro invalido e 400, nunca o padrao em silencio: o admin que pediu
+    // "revogados" e recebeu "ativos" leria a lista errada.
+    if (!isCreatorBoardStatus(status)) {
+      return next(
+        createError(
+          400,
+          "invalid_status",
+          // TODO(Ana)
+          "Status inválido. Use active, revoked ou all.",
+        ),
+      );
+    }
+    if (!isCreatorBoardKind(kind)) {
+      return next(
+        createError(
+          400,
+          "invalid_creator_kind",
+          // TODO(Ana)
+          "Tipo de creator inválido. Use influencer, afiliado ou all.",
+        ),
+      );
+    }
+    const { page, pageSize } = parsePageParams(
+      req.query as Record<string, unknown>,
+    );
+
+    let pagina;
+    try {
+      pagina = await listarCreatorsDoQuadro({ status, kind, page, pageSize });
+    } catch (err) {
+      return next(
+        // TODO(Ana)
+        dbError("creators board", err, "Erro ao buscar creators."),
+      );
+    }
+    res.json({ data: pagina });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/creators/resumo", async (_req, res, next) => {
+  try {
+    const resumo = await resumoDoQuadro();
+    res.json({ data: resumo });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creators resumo", err, "Erro ao buscar o resumo de creators."),
+    );
+  }
+});
+
+// Painel de qualquer creator, na visao admin: o mesmo montador do
+// /api/creator/me, mais e-mail, notas internas e granted_by. Abre tambem o de
+// quem ja foi revogado (com revoked_at preenchido); 404 so para quem nunca
+// teve concessao.
+router.get("/creators/:userId", async (req, res, next) => {
+  const uid = req.params.userId;
+  if (!UUID_RE.test(uid)) {
+    return next(
+      createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+    );
+  }
+  const janela = parseJanelaDoPainel(req.query.janela);
+  if (!janela) {
+    return next(
+      createError(
+        400,
+        "invalid_janela",
+        // TODO(Ana)
+        "Janela inválida. Use 7d, 30d, 90d ou all.",
+      ),
+    );
+  }
+  try {
+    const resultado = await montarPainelDoCreator(uid, janela, "admin");
+    if (!resultado.ok) {
+      return next(
+        createError(
+          404,
+          "creator_not_found",
+          // TODO(Ana)
+          "Este usuário nunca teve acesso de creator.",
+        ),
+      );
+    }
+    res.json({ data: resultado.painel });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creator painel", err, "Erro ao carregar o painel do creator."),
+    );
   }
 });
 
@@ -4095,10 +4407,14 @@ async function lerDeclaracoesDeDevolucao(
   return { ok: true, linhas: (data || []) as DeclaredRefund[] };
 }
 
-/** Concessão de influencer ativa. Ortogonal à assinatura: revogar uma não toca a outra. */
+/**
+ * Concessão de creator ativa, de QUALQUER kind. Ortogonal à assinatura: revogar
+ * uma não toca a outra. O nome e o campo `still_pro_via_influencer` da resposta
+ * ficam como estão neste lote (contrato lido pelo bundle em execução).
+ */
 async function temInfluencerAtivo(uid: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
-    .from("influencers")
+    .from("creators")
     .select("id")
     .eq("user_id", uid)
     .is("revoked_at", null)
@@ -5793,7 +6109,7 @@ router.post("/users/:id/email", async (req, res, next) => {
 // afirmada por teste contra a de /api/me.
 //
 // Nao invalida o cache de status Pro: nenhum destes campos entra no
-// is_user_pro (que olha subscriptions e influencers). Se um dia entrar, a
+// is_user_pro (que olha subscriptions e creators). Se um dia entrar, a
 // invalidacao vai aqui.
 router.patch("/users/:id", async (req, res, next) => {
   try {
@@ -6511,6 +6827,35 @@ function expenseRowFromInput(
 
 router.get("/finance/summary", async (req, res, next) => {
   try {
+    // Contrato opt-in e versionado. Chamadores ADM-001/002 sem `contract`
+    // continuam recebendo exatamente o payload legado abaixo. O painel honesto
+    // nunca cai silenciosamente nesse payload: versão ausente/desconhecida é
+    // recusada pelo parser compartilhado no servidor e no cliente.
+    if (req.query.contract === "honest-v1") {
+      const period =
+        req.query.preset === "all"
+          ? await resolveHonestFinanceAllPeriod(
+              req.query as Record<string, unknown>,
+            )
+          : resolveHonestFinancePeriod(req.query as Record<string, unknown>);
+      const cacheKey =
+        `admincache:finance:honest:v${ADMIN_FINANCE_CONTRACT_VERSION}` +
+        `:from=${period.from}&to=${period.toExclusive}`;
+      const cached = await getOrCompute(
+        cacheKey,
+        FINANCE_CACHE_TTL_S,
+        async () =>
+          parseAdminFinanceContract(
+            await getHonestFinanceDashboard({ period }),
+          ),
+        { refresh: wantsFresh(req.query as Record<string, unknown>) },
+      );
+      // Valida também cache hit. Cache incompatível falha explicitamente e
+      // nunca é reinterpretado como zero/lista vazia ou payload legado.
+      res.json({ data: parseAdminFinanceContract(cached) });
+      return;
+    }
+
     const now = new Date();
     const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const from = parseDateParam(req.query.from, defFrom);
@@ -6551,6 +6896,143 @@ router.get("/finance/timeseries", async (req, res, next) => {
   }
 });
 
+const paymentMethodDatasetCache = createVerifiedDatasetCache<
+  Awaited<ReturnType<typeof readPaymentMethodDataset>>
+>(45_000, 2);
+
+async function readPaymentMethodDataset(from: string, toExclusive: string) {
+  const [rows, evidence] = await Promise.all([
+    verifiedMethodScan<MethodFinanceRow>(async (start, end) => {
+      return supabaseAdmin
+        .from("finance_transactions")
+        .select(
+          "id, provider, provider_transaction_id, stripe_charge_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, created_at, user_id, plan_code",
+          { count: "exact" },
+        )
+        .gte("occurred_at", from)
+        .lt("occurred_at", toExclusive)
+        .order("occurred_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(start, end);
+    }, "rows"),
+    verifiedMethodScan<PaymentMethodEvidence & { id: string }>(
+      async (start, end) => {
+        return supabaseAdmin
+          .from("subscriptions")
+          .select("id, provider, provider_subscription_id, payment_method", {
+            count: "exact",
+          })
+          .eq("provider", "asaas")
+          .not("provider_subscription_id", "is", null)
+          .order("id", { ascending: true })
+          .range(start, end);
+      },
+      "evidence",
+    ),
+  ]);
+  const analysis = analyzePaymentMethods({
+    rows,
+    evidence,
+    cutoff: toExclusive,
+  });
+  const { rowIdsByMethod: _rowIdsByMethod, ...publicAnalysis } = analysis;
+  PaymentMethodSummarySchema.parse(publicAnalysis);
+  return {
+    rows,
+    evidenceCount: evidence.length,
+    analysis,
+  };
+}
+
+async function verifyPaymentMethodCounts(
+  from: string,
+  toExclusive: string,
+  dataset: Awaited<ReturnType<typeof readPaymentMethodDataset>>,
+) {
+  const [finance, evidence] = await Promise.all([
+    supabaseAdmin
+      .from("finance_transactions")
+      .select("id", { count: "exact", head: true })
+      .gte("occurred_at", from)
+      .lt("occurred_at", toExclusive),
+    supabaseAdmin
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("provider", "asaas")
+      .not("provider_subscription_id", "is", null),
+  ]);
+  for (const [kind, result] of [
+    ["rows", finance],
+    ["evidence", evidence],
+  ] as const) {
+    if (
+      result.error ||
+      !Number.isSafeInteger(result.count) ||
+      result.count! < 0
+    ) {
+      throw createError(
+        503,
+        "finance_method_count_unavailable",
+        "Contagem dos meios indisponível.",
+      );
+    }
+    if (result.count! > PAYMENT_METHOD_SCAN_LIMIT) {
+      throw createError(
+        503,
+        kind === "rows"
+          ? "finance_method_scan_limit"
+          : "finance_method_evidence_limit",
+        "O filtro por meio excede o limite seguro de leitura local.",
+      );
+    }
+  }
+  return (
+    finance.count === dataset.rows.length &&
+    evidence.count === dataset.evidenceCount
+  );
+}
+
+function loadPaymentMethodDataset(
+  from: string,
+  toExclusive: string,
+  fresh = false,
+) {
+  return paymentMethodDatasetCache.get(
+    `${from}|${toExclusive}`,
+    () => readPaymentMethodDataset(from, toExclusive),
+    fresh,
+    (dataset) => verifyPaymentMethodCounts(from, toExclusive, dataset),
+  );
+}
+
+router.get("/finance/payment-methods", async (req, res, next) => {
+  try {
+    const from = typeof req.query.from === "string" ? req.query.from : "";
+    const toExclusive =
+      typeof req.query.toExclusive === "string" ? req.query.toExclusive : "";
+    if (
+      !Number.isFinite(Date.parse(from)) ||
+      !Number.isFinite(Date.parse(toExclusive)) ||
+      Date.parse(from) >= Date.parse(toExclusive)
+    ) {
+      throw createError(
+        400,
+        "invalid_finance_method_period",
+        "Período financeiro inválido.",
+      );
+    }
+    const { analysis } = await loadPaymentMethodDataset(
+      new Date(from).toISOString(),
+      new Date(toExclusive).toISOString(),
+      wantsFresh(req.query as Record<string, unknown>),
+    );
+    const { rowIdsByMethod: _rowIdsByMethod, ...publicAnalysis } = analysis;
+    res.json({ data: PaymentMethodSummarySchema.parse(publicAnalysis) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/finance/transactions", async (req, res, next) => {
   try {
     const { page, pageSize } = parsePageParams(
@@ -6559,6 +7041,124 @@ router.get("/finance/transactions", async (req, res, next) => {
     const rangeFrom = (page - 1) * pageSize;
     const rangeTo = rangeFrom + pageSize - 1;
 
+    if (
+      req.query.method !== undefined &&
+      typeof req.query.method !== "string"
+    ) {
+      throw createError(
+        400,
+        "invalid_payment_method",
+        "Meio de pagamento inválido.",
+      );
+    }
+    const method = typeof req.query.method === "string" ? req.query.method : "";
+    if (method && !["pix", "card", "boleto", "unknown"].includes(method)) {
+      throw createError(
+        400,
+        "invalid_payment_method",
+        "Meio de pagamento inválido.",
+      );
+    }
+    if (method) {
+      for (const [name, minimum, maximum] of [
+        ["page", 1, 20_001],
+        ["pageSize", 1, 100],
+      ] as const) {
+        const raw = req.query[name];
+        if (
+          raw !== undefined &&
+          (typeof raw !== "string" ||
+            !/^\d{1,6}$/.test(raw) ||
+            Number(raw) < minimum ||
+            Number(raw) > maximum)
+        ) {
+          throw createError(
+            400,
+            "invalid_finance_method_pagination",
+            "Paginação financeira inválida.",
+          );
+        }
+      }
+      const from = typeof req.query.from === "string" ? req.query.from : "";
+      const toExclusive =
+        typeof req.query.toExclusive === "string" ? req.query.toExclusive : "";
+      if (
+        !Number.isFinite(Date.parse(from)) ||
+        !Number.isFinite(Date.parse(toExclusive)) ||
+        Date.parse(from) >= Date.parse(toExclusive)
+      ) {
+        throw createError(
+          400,
+          "invalid_finance_method_period",
+          "Período financeiro inválido.",
+        );
+      }
+      if (
+        req.query.currency !== undefined &&
+        typeof req.query.currency !== "string"
+      ) {
+        throw createError(400, "invalid_currency", "Moeda inválida.");
+      }
+      const currency =
+        typeof req.query.currency === "string"
+          ? req.query.currency.trim().toUpperCase()
+          : "";
+      if (currency && !/^[A-Z]{3}$/.test(currency))
+        throw createError(400, "invalid_currency", "Moeda inválida.");
+      if (req.query.type !== undefined && typeof req.query.type !== "string") {
+        throw createError(
+          400,
+          "invalid_finance_method_type",
+          "Tipo financeiro inválido.",
+        );
+      }
+      const type = typeof req.query.type === "string" ? req.query.type : "";
+      if (
+        type &&
+        !["charge", "refund", "adjustment", "dispute", "payout"].includes(type)
+      ) {
+        throw createError(
+          400,
+          "invalid_finance_method_type",
+          "Tipo financeiro inválido.",
+        );
+      }
+      const { rows, analysis } = await loadPaymentMethodDataset(
+        new Date(from).toISOString(),
+        new Date(toExclusive).toISOString(),
+        wantsFresh(req.query as Record<string, unknown>),
+      );
+      const matchingIds =
+        analysis.rowIdsByMethod[method as PaymentMethodFilter];
+      const filtered = pageMethodTransactions({
+        rows,
+        matchingIds,
+        currency,
+        type,
+        page,
+        pageSize,
+      });
+      res.json({
+        data: {
+          rows: filtered.rows.map(
+            ({
+              user_id: _userId,
+              provider_transaction_id: _providerId,
+              stripe_charge_id: _chargeId,
+              created_at: _createdAt,
+              ...row
+            }) => row,
+          ),
+          total: filtered.total,
+          page,
+          pageSize,
+          filterContractVersion: 1,
+          appliedMethod: method,
+        },
+      });
+      return;
+    }
+
     let query = supabaseAdmin
       .from("finance_transactions")
       .select(
@@ -6566,19 +7166,59 @@ router.get("/finance/transactions", async (req, res, next) => {
         { count: "exact" },
       )
       .order("occurred_at", { ascending: false })
-      .range(rangeFrom, rangeTo);
+      .order("id", { ascending: false });
 
     const typeFilter = typeof req.query.type === "string" ? req.query.type : "";
     if (typeFilter) query = query.eq("type", typeFilter);
+    const currencyFilter =
+      typeof req.query.currency === "string"
+        ? req.query.currency.trim().toUpperCase()
+        : "";
+    if (currencyFilter && !/^[A-Z]{3}$/.test(currencyFilter)) {
+      throw createError(400, "invalid_currency", "Moeda inválida.");
+    }
+    if (currencyFilter) query = query.ilike("currency", currencyFilter);
+    if (typeof req.query.from === "string") {
+      const from = new Date(req.query.from);
+      if (Number.isNaN(from.getTime())) {
+        throw createError(400, "invalid_from", "Início do período inválido.");
+      }
+      query = query.gte("occurred_at", from.toISOString());
+    }
+    if (typeof req.query.toExclusive === "string") {
+      const toExclusive = new Date(req.query.toExclusive);
+      if (Number.isNaN(toExclusive.getTime())) {
+        throw createError(400, "invalid_to", "Fim do período inválido.");
+      }
+      query = query.lt("occurred_at", toExclusive.toISOString());
+    }
 
-    const { data, count, error } = await query;
+    const { data, count, error } = await query.range(rangeFrom, rangeTo);
     if (error)
       return next(
         dbError("finance transactions", error, "Erro ao buscar transações."),
       );
+    if (!Array.isArray(data) || !Number.isSafeInteger(count) || count! < 0) {
+      throw createError(
+        500,
+        "finance_transactions_contract_error",
+        "O extrato financeiro retornou uma contagem incompatível.",
+      );
+    }
+    const ids = data.map((row) => row.id);
+    if (
+      ids.some((id) => typeof id !== "string") ||
+      new Set(ids).size !== ids.length
+    ) {
+      throw createError(
+        500,
+        "finance_transactions_duplicate_row",
+        "O extrato financeiro retornou linhas repetidas.",
+      );
+    }
 
     res.json({
-      data: { rows: data ?? [], total: count ?? 0, page, pageSize },
+      data: { rows: data, total: count, page, pageSize },
     });
   } catch (err) {
     next(err);
@@ -6949,7 +7589,62 @@ router.get("/affiliates-stats", async (_req, res, next) => {
         dbError("affiliates", error, "Erro ao buscar afiliados."),
       );
 
-    res.json({ data: data || [] });
+    // DONO DO CODIGO (affiliates.user_id). affiliates aponta para auth.users,
+    // nao para profiles, entao o join implicito do PostgREST nao alcanca o
+    // nome: e uma segunda consulta, de custo fixo, so com os ids que existem.
+    // Falha aqui derruba a rota, pelo mesmo criterio da consulta acima: um
+    // dono sem nome na tela seria lido como codigo sem dono.
+    const linhas = data || [];
+    const donos = Array.from(
+      new Set(
+        linhas
+          .map((linha) => linha.user_id)
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    );
+    const perfilPorDono = new Map<
+      string,
+      { name: string | null; email: string | null }
+    >();
+    if (donos.length > 0) {
+      const { data: perfis, error: perfisError } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, name, email")
+        .in("user_id", donos);
+      if (perfisError)
+        return next(
+          // TODO(Ana)
+          dbError(
+            "affiliates owners",
+            perfisError,
+            "Erro ao buscar afiliados.",
+          ),
+        );
+      for (const perfil of (perfis ?? []) as Array<{
+        user_id: string;
+        name: string | null;
+        email: string | null;
+      }>) {
+        perfilPorDono.set(perfil.user_id, {
+          name: perfil.name ?? null,
+          email: perfil.email ?? null,
+        });
+      }
+    }
+
+    res.json({
+      data: linhas.map((linha) => {
+        // `?? null`: antes da migration a coluna nao existe e o `*` nao a traz.
+        const dono = typeof linha.user_id === "string" ? linha.user_id : null;
+        const perfil = dono ? perfilPorDono.get(dono) : undefined;
+        return {
+          ...linha,
+          user_id: dono,
+          owner_name: perfil?.name ?? null,
+          owner_email: perfil?.email ?? null,
+        };
+      }),
+    });
   } catch (err) {
     next(err);
   }

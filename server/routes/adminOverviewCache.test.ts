@@ -109,7 +109,12 @@ import {
   criarSupabaseDouble,
   type RespostaTabela,
 } from "./adminUsersHarness.test";
-import adminRouter from "./admin";
+import adminRouter, {
+  attentionContractRequested,
+  attentionRefreshRequested,
+  attentionV3Handler,
+  carregarAtencaoV3,
+} from "./admin";
 import { criarClienteAdmin } from "./adminTestClient";
 
 const chamarAdmin = criarClienteAdmin(adminRouter);
@@ -119,7 +124,7 @@ function base(over: Record<string, RespostaTabela> = {}) {
     {
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 40 },
       subscriptions: { rows: [] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
@@ -216,5 +221,131 @@ describe("cache do GET /overview", () => {
       segunda.body.data.windowLabel,
     );
     expect(segunda.body.data.windowLabel).toBe(primeira.body.data.windowLabel);
+  });
+});
+
+describe("cache do GET /attention v3", () => {
+  it("negocia somente o contrato 3", () => {
+    expect(attentionContractRequested("3")).toBe(true);
+    expect(attentionContractRequested(undefined)).toBe(false);
+    expect(attentionContractRequested("2")).toBe(false);
+    expect(attentionRefreshRequested(undefined)).toBe(false);
+    expect(attentionRefreshRequested("1")).toBe(true);
+    expect(attentionRefreshRequested("true")).toBeNull();
+    expect(attentionRefreshRequested(["1"])).toBeNull();
+  });
+
+  it("usa a chave v3, preserva computedAt e reutiliza só a resposta válida", async () => {
+    base();
+    const first = await carregarAtencaoV3();
+    const second = await carregarAtencaoV3();
+    expect(second.data.computedAt).toBe(first.data.computedAt);
+    expect(second.computedAt).toBe(first.computedAt);
+    expect(redis.sets).toEqual(["admincache:attention:v3"]);
+    expect(redis.gets).not.toContain("admincache:attention:v2");
+  });
+
+  it("refresh pula a leitura, recomputa e substitui o cache", async () => {
+    base();
+    const first = await carregarAtencaoV3();
+    const getsBefore = redis.gets.length;
+    const computedAt = new Date(
+      Date.parse(first.data.computedAt) + 1_000,
+    ).toISOString();
+    const compute = vi.fn(async () => ({
+      ...first.data,
+      computedAt,
+    }));
+    const refreshed = await carregarAtencaoV3({ refresh: true, compute });
+    expect(compute).toHaveBeenCalledOnce();
+    expect(redis.gets).toHaveLength(getsBefore);
+    expect(redis.sets).toEqual([
+      "admincache:attention:v3",
+      "admincache:attention:v3",
+    ]);
+    expect(refreshed.data.computedAt).toBe(computedAt);
+    expect(redis.loja.get("admincache:attention:v3")).toContain(computedAt);
+  });
+
+  it("falha ou contrato inválido no refresh preserva a entrada anterior", async () => {
+    base();
+    await carregarAtencaoV3();
+    const key = "admincache:attention:v3";
+    const before = redis.loja.get(key);
+    const setsBefore = redis.sets.length;
+
+    await expect(
+      carregarAtencaoV3({
+        refresh: true,
+        compute: async () => {
+          throw new Error("falha local");
+        },
+      }),
+    ).rejects.toThrow("falha local");
+    expect(redis.loja.get(key)).toBe(before);
+    expect(redis.sets).toHaveLength(setsBefore);
+
+    await expect(
+      carregarAtencaoV3({
+        refresh: true,
+        compute: async () => ({ contractVersion: 3 }) as never,
+      }),
+    ).rejects.toMatchObject({ code: "attention_contract_invalid" });
+    expect(redis.loja.get(key)).toBe(before);
+    expect(redis.sets).toHaveLength(setsBefore);
+  });
+
+  it("recusa uma entrada de cache semanticamente incompleta", async () => {
+    redis.loja.set(
+      "admincache:attention:v3",
+      JSON.stringify({
+        result: { contractVersion: 3, items: [], sources: [] },
+        computedAt: "2026-09-11T10:00:00Z",
+      }),
+    );
+    await expect(carregarAtencaoV3()).rejects.toMatchObject({
+      code: "attention_contract_invalid",
+    });
+    expect(redis.sets).toHaveLength(0);
+  });
+
+  it("exercita negociação e resposta do handler real sem abrir socket", async () => {
+    base();
+    const json = vi.fn();
+    const next = vi.fn();
+    await attentionV3Handler(
+      { query: { contract: "2" } } as never,
+      { json } as never,
+      next,
+    );
+    expect(json).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "attention_contract_mismatch" }),
+    );
+
+    next.mockClear();
+    await attentionV3Handler(
+      { query: { contract: "3" } } as never,
+      { json } as never,
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ contractVersion: 3 }),
+      }),
+    );
+
+    json.mockClear();
+    next.mockClear();
+    await attentionV3Handler(
+      { query: { contract: "3", refresh: ["1"] } } as never,
+      { json } as never,
+      next,
+    );
+    expect(json).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "attention_refresh_invalid" }),
+    );
   });
 });

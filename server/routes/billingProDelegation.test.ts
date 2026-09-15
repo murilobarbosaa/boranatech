@@ -73,7 +73,7 @@ vi.mock("../lib/supabaseAdmin", () => {
           return { data: estado.expiradaRecente, error: null };
         return { data: estado.subscription, error: null };
       }
-      if (tabela === "influencers")
+      if (tabela === "creators")
         return { data: estado.influencer, error: null };
       if (tabela === "plans") return { data: estado.planoFree, error: null };
       return { data: null, error: null };

@@ -71,10 +71,88 @@ function rotearFetch(handlers: Record<string, unknown>) {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  window.history.replaceState(null, "", "/admin?section=usuarios");
 });
 
 afterEach(() => {
   cleanup();
+});
+
+describe("UsersDashboard: deep link contextual", () => {
+  const USER_ID = "11111111-1111-4111-8111-111111111111";
+
+  it("abre o UUID da URL em F5 e remove somente user ao fechar", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/admin?section=usuarios&window=30d&user=${USER_ID}`,
+    );
+    rotearFetch({
+      "/users?": listPayload([]),
+      [`/users/${USER_ID}`]: {
+        ...DETALHE,
+        data: { ...DETALHE.data, user_id: USER_ID },
+      },
+    });
+    render(<UsersDashboard />);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toContain("window=30d");
+    expect(window.location.search).not.toContain("user=");
+  });
+
+  it("rejeita ID inválido sem abrir outro usuário", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/admin?section=usuarios&user=nao-e-uuid",
+    );
+    rotearFetch({ "/users?": listPayload([]) });
+    render(<UsersDashboard />);
+    expect(await screen.findByTestId("users-context-error")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("mantém o modal controlado quando o UUID não existe", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/admin?section=usuarios&user=${USER_ID}`,
+    );
+    fetchMock.mockImplementation((path: string) =>
+      path.startsWith("/users?")
+        ? Promise.resolve(listPayload([]))
+        : Promise.reject(new Error("Usuário não encontrado.")),
+    );
+    render(<UsersDashboard />);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(
+      await screen.findAllByText("Usuário não encontrado."),
+    ).not.toHaveLength(0);
+  });
+
+  it("acompanha voltar e avançar sem abrir o usuário anterior", async () => {
+    rotearFetch({
+      "/users?": listPayload([]),
+      [`/users/${USER_ID}`]: {
+        ...DETALHE,
+        data: { ...DETALHE.data, user_id: USER_ID },
+      },
+    });
+    render(<UsersDashboard />);
+    window.history.pushState(
+      null,
+      "",
+      `/admin?section=usuarios&user=${USER_ID}`,
+    );
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+
+    window.history.pushState(null, "", "/admin?section=usuarios");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
 });
 
 describe("UsersDashboard: lista", () => {
@@ -109,7 +187,7 @@ describe("UsersDashboard: lista", () => {
     });
   });
 
-  it("os 5 filtros continuam existindo, com os mesmos valores enviados a API", async () => {
+  it("os 7 filtros existem, com os valores enviados a API", async () => {
     rotearFetch({ "/users?": listPayload([]) });
 
     render(<UsersDashboard />);
@@ -120,7 +198,9 @@ describe("UsersDashboard: lista", () => {
       ["Todos", null],
       ["Assinantes", "filter=pro"],
       ["Sem assinatura", "filter=not_pro"],
+      ["Creators", "filter=creators"],
       ["Influencers", "filter=influencers"],
+      ["Afiliados", "filter=afiliados"],
       ["Ativo", "filter=ativo"],
     ];
 

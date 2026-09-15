@@ -18,6 +18,7 @@ import ProGate from "@/components/pro/ProGate";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { entrada } from "@/lib/entradaEstatica";
 
 type ComparisonCategory = "faculdades" | "cursos" | "areas" | "plataformas";
 type ComparisonItem = {
@@ -993,7 +994,7 @@ export default function Comparador() {
             {/* PASSO 1: escolher a subarea (controle unico) */}
             {/* TODO(Ana): revisar copy dos passos do comparador */}
             <motion.div
-              initial={reduce ? false : { opacity: 0, y: 12 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 12 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.4 }}
@@ -1022,7 +1023,7 @@ export default function Comparador() {
                       type="button"
                       onClick={() => setComparisonKind(g.id)}
                       aria-pressed={active}
-                      initial={reduce ? false : { opacity: 0, y: 10 }}
+                      initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{
@@ -1206,7 +1207,7 @@ export default function Comparador() {
               {[left, right].map((item) => (
                 <motion.article
                   key={item.id}
-                  initial={reduce ? false : { opacity: 0, y: 8 }}
+                  initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
                   className="card-brutal rounded-2xl bg-white p-6"

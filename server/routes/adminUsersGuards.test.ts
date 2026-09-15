@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
+const adminRoleDb = vi.hoisted(() => ({
+  result: {
+    data: [] as Array<{ role: unknown }> | null,
+    error: null as unknown,
+  },
+}));
+
 /**
  * GUARDA DE AUTORIZAÇÃO das rotas do admin.
  *
@@ -50,7 +57,14 @@ vi.mock("../lib/env", () => ({
 }));
 vi.mock("../lib/supabaseAdmin", () => ({
   supabaseAdmin: {
-    from: () => ({}),
+    from: (table: string) => {
+      if (table !== "admin_roles") return {};
+      const chain = {
+        select: () => chain,
+        eq: async () => adminRoleDb.result,
+      };
+      return chain;
+    },
     auth: { admin: {} },
     rpc: async () => ({}),
   },
@@ -143,7 +157,15 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // as duas partem de bases distintas. O valor abaixo foi MEDIDO no router
 // mesclado por `rotasDeclaradas().length`, que devolveu 64, e o teste de
 // posicao acima, que e o que autoriza subir o numero, esta verde para todas.
-const EXPECTED_ROUTE_COUNT = 64;
+//
+// 64 -> 67 em 2026-09-14 (creators, lote 02), com `GET /admin/creators`,
+// `GET /admin/creators/resumo` e `GET /admin/creators/:userId`. Valor MEDIDO
+// por `rotasDeclaradas().length`, nao somado. As tres sao declaradas depois da
+// revogacao de influencer, portanto abaixo dos dois `router.use` do topo, e os
+// testes de posicao acima conferem isso. `/creators/:userId` expoe e-mail e
+// notas internas: estar atras das duas guardas e o requisito, nao detalhe.
+// 67 -> 68 em ADM-D01-D04-P1: GET /finance/payment-methods.
+const EXPECTED_ROUTE_COUNT = 68;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -199,6 +221,31 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
     // adicionou precisa olhar para as guardas antes de subir o número. Alterar
     // este valor é ato deliberado, no mesmo commit da rota.
     expect(rotasDeclaradas()).toHaveLength(EXPECTED_ROUTE_COUNT);
+  });
+
+  it("as rotas de creators estão todas na lista derivada do router", () => {
+    // As tres do quadro de creators (lote 02). `/creators/:userId` expoe e-mail
+    // e notas internas; o teste de posicao acima e o que prova que ela esta
+    // atras das duas guardas, e este fixa que nenhuma rota de creators sumiu
+    // ou apareceu sem alguem olhar.
+    const deCreators = rotasDeclaradas()
+      .filter((r) => r.caminho.startsWith("/creators"))
+      .map((r) => `${r.metodo} ${r.caminho}`)
+      .sort();
+    expect(deCreators).toEqual([
+      "GET /creators",
+      "GET /creators/:userId",
+      "GET /creators/resumo",
+    ]);
+  });
+
+  it("/creators/resumo é declarada ANTES de /creators/:userId", () => {
+    // Na ordem inversa, "resumo" casaria como :userId e o card do topo do
+    // quadro responderia 400 de uuid invalido.
+    const caminhos = rotasDeclaradas().map((r) => r.caminho);
+    expect(caminhos.indexOf("/creators/resumo")).toBeLessThan(
+      caminhos.indexOf("/creators/:userId"),
+    );
   });
 
   it("as rotas de usuário estão todas na lista derivada do router", () => {
@@ -274,11 +321,7 @@ describe("as guardas em si recusam quem não deve passar", () => {
   });
 
   it("token de NÃO-admin: requireAdmin devolve 403", async () => {
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
-      data: false,
-      error: null,
-    });
+    adminRoleDb.result = { data: [], error: null };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
       status: 403,
@@ -287,21 +330,14 @@ describe("as guardas em si recusam quem não deve passar", () => {
   });
 
   it("token de admin: requireAdmin deixa passar", async () => {
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
-      data: true,
-      error: null,
-    });
+    adminRoleDb.result = { data: [{ role: "editor" }], error: null };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({});
   });
 
-  it("erro na RPC de admin vira 403, nunca liberação", async () => {
+  it("erro na leitura de admin_roles vira 403, nunca liberação", async () => {
     // Fail-closed: falha de infra não pode virar acesso.
-    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
-    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => {
-      throw new Error("banco fora do ar");
-    };
+    adminRoleDb.result = { data: null, error: new Error("banco fora do ar") };
 
     expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
       status: 403,

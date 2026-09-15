@@ -29,20 +29,21 @@ export type ProStatusSets = {
   everPaid: Set<string>;
 };
 
-// Influencers ATIVOS (revoked_at null): Pro vitalicio sem assinatura, mesmo
-// ramo que a migration 20260716130100 adicionou ao is_user_pro. Entram no
-// conjunto active; como nunca pagaram, NAO entram em everPaid (a exclusao de
-// never_pro acontece na tabela-verdade, que exige !active).
-async function fetchActiveInfluencerUserIds(): Promise<string[]> {
+// Creators ATIVOS (revoked_at null), de QUALQUER kind: Pro vitalicio sem
+// assinatura, mesmo ramo que is_user_pro le (migration 20260913120000, que
+// renomeou influencers para creators). Afiliado entra igual a influencer.
+// Entram no conjunto active; como nunca pagaram, NAO entram em everPaid (a
+// exclusao de never_pro acontece na tabela-verdade, que exige !active).
+async function fetchActiveCreatorUserIds(): Promise<string[]> {
   const ids: string[] = [];
   for await (const row of paginateRange<{ user_id: string }>(
     (from, to) =>
       supabaseAdmin
-        .from("influencers")
+        .from("creators")
         .select("user_id")
         .is("revoked_at", null)
         .range(from, to),
-    { errorLabel: "Falha ao buscar influencers", pageSize: DB_PAGE },
+    { errorLabel: "Falha ao buscar creators", pageSize: DB_PAGE },
   )) {
     ids.push(row.user_id as string);
   }
@@ -62,9 +63,7 @@ export async function fetchProStatusSets(): Promise<ProStatusSets> {
     throw new Error(`Falha ao buscar planos: ${plansError.message}`);
   }
   const paidPlanIds = new Set(
-    (plans ?? [])
-      .filter((plan) => plan.code !== "free")
-      .map((plan) => plan.id),
+    (plans ?? []).filter((plan) => plan.code !== "free").map((plan) => plan.id),
   );
 
   const active = new Set<string>();
@@ -97,10 +96,10 @@ export async function fetchProStatusSets(): Promise<ProStatusSets> {
     }
   }
 
-  // Influencer ativo entra so em active (Pro vitalicio sem pagamento); NUNCA em
-  // payingActive, que e o conjunto do paying_pro.
-  const influencerIds = await fetchActiveInfluencerUserIds();
-  influencerIds.forEach((id) => active.add(id));
+  // Creator ativo (influencer ou afiliado) entra so em active (Pro vitalicio
+  // sem pagamento); NUNCA em payingActive, que e o conjunto do paying_pro.
+  const creatorIds = await fetchActiveCreatorUserIds();
+  creatorIds.forEach((id) => active.add(id));
 
   return { active, payingActive, pastDue, everPaid };
 }
@@ -120,16 +119,17 @@ export type ProStatusFlags = {
 export async function fetchProStatusFlagsForUser(
   userId: string,
 ): Promise<ProStatusFlags> {
-  const [subsResult, influencerResult] = await Promise.all([
+  const [subsResult, creatorResult] = await Promise.all([
     supabaseAdmin
       .from("subscriptions")
       .select("status, current_period_end, plans!inner(code)")
       .eq("user_id", userId)
       .neq("plans.code", "free"),
-    // Influencer ativo = active, mesma regra do fetchProStatusSets. O indice
-    // unico parcial garante no maximo uma linha ativa por usuario.
+    // Creator ativo (qualquer kind) = active, mesma regra do
+    // fetchProStatusSets. O indice unico parcial garante no maximo uma linha
+    // ativa por usuario.
     supabaseAdmin
-      .from("influencers")
+      .from("creators")
       .select("id")
       .eq("user_id", userId)
       .is("revoked_at", null)
@@ -140,12 +140,12 @@ export async function fetchProStatusFlagsForUser(
       `Falha ao buscar assinaturas do usuário: ${subsResult.error.message}`,
     );
   }
-  if (influencerResult.error) {
+  if (creatorResult.error) {
     throw new Error(
-      `Falha ao buscar influencer do usuário: ${influencerResult.error.message}`,
+      `Falha ao buscar concessão de creator do usuário: ${creatorResult.error.message}`,
     );
   }
-  const isInfluencer = influencerResult.data !== null;
+  const isCreator = creatorResult.data !== null;
   const flags: ProStatusFlags = {
     active: false,
     payingActive: false,
@@ -163,9 +163,9 @@ export async function fetchProStatusFlagsForUser(
       flags.pastDue = true;
     }
   }
-  // active = pagante vigente OU influencer (is_user_pro); payingActive fica so
-  // com o pagamento, sem o influencer.
-  flags.active = flags.payingActive || isInfluencer;
+  // active = pagante vigente OU creator (is_user_pro); payingActive fica so
+  // com o pagamento, sem a concessao.
+  flags.active = flags.payingActive || isCreator;
   return flags;
 }
 

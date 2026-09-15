@@ -89,8 +89,12 @@ function parseColumnsFromTypes(): Map<string, Set<string>> {
  * `pnpm db:types`.
  */
 const TABELAS_PENDENTES: string[] = [
-  // Vazia: a migration 20260730160000 foi aplicada e os tipos regenerados,
-  // então admin_refunds saiu daqui. É o estado normal.
+  // Criada em `20260913120000_creators_and_creator_events.sql`, ja aplicada em
+  // producao, mas `pnpm db:types` nao foi rodado depois, entao os tipos ainda
+  // nao a conhecem. O painel de creator (server/lib/creatorDashboard.ts) le
+  // ultimo clique, ultima venda e o primeiro evento direto dela. Sai daqui
+  // junto com o rename de creators quando os tipos forem regenerados.
+  "creator_events",
 ];
 
 function colunasDeCreateTable(tabela: string): Set<string> | null {
@@ -134,6 +138,46 @@ for (const tabela of TABELAS_PENDENTES) {
   if (COLUNAS_POR_TABELA.has(tabela)) continue;
   const cols = colunasDeCreateTable(tabela);
   if (cols) COLUNAS_POR_TABELA.set(tabela, cols);
+}
+
+/**
+ * Tabelas RENOMEADAS por migration ainda não refletida nos tipos.
+ *
+ * O nome novo herda as colunas que os tipos conhecem sob o nome velho, e o nome
+ * velho SAI do mapa: um `.from("influencers")` esquecido no código depois do
+ * rename precisa quebrar aqui, como quebraria no banco, e não passar calado por
+ * estar nos tipos antigos. Coluna acrescentada pela mesma migration entra por
+ * `COLUNAS_PENDENTES`, conferida contra o `ADD COLUMN`.
+ *
+ * Conferida, não confiada: a entrada só vale se alguma migration do repositório
+ * declarar o `RENAME TO` daquele par. Esvaziar esta lista é o normal depois de
+ * aplicar a migration e rodar `pnpm db:types`.
+ */
+export const TABELAS_RENOMEADAS_PENDENTES: Array<{ de: string; para: string }> =
+  [
+    // 20260913120000_creators_and_creator_events.sql
+    { de: "influencers", para: "creators" },
+  ];
+
+export function renameDeclaradoEmMigration(de: string, para: string): boolean {
+  const dir = resolve(process.cwd(), "supabase/migrations");
+  const re = new RegExp(
+    `ALTER TABLE\\s+(?:IF EXISTS\\s+)?(?:ONLY\\s+)?(?:public\\.)?"?${de}"?\\s+RENAME TO\\s+"?${para}"?`,
+    "i",
+  );
+  for (const arquivo of readdirSync(dir)) {
+    if (!arquivo.endsWith(".sql")) continue;
+    if (re.test(readFileSync(resolve(dir, arquivo), "utf8"))) return true;
+  }
+  return false;
+}
+
+for (const { de, para } of TABELAS_RENOMEADAS_PENDENTES) {
+  const cols = COLUNAS_POR_TABELA.get(de);
+  if (!cols || COLUNAS_POR_TABELA.has(para)) continue;
+  if (!renameDeclaradoEmMigration(de, para)) continue;
+  COLUNAS_POR_TABELA.set(para, cols);
+  COLUNAS_POR_TABELA.delete(de);
 }
 
 /** Colunas de relacionamento que o PostgREST aceita no select e não são colunas. */
@@ -190,6 +234,20 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
+  // Declaradas em `20260912120000_add_pix_reminder_columns_to_subscriptions.sql`
+  // e gravadas por `createCheckout` (server/providers/asaas.ts) num update
+  // best-effort. A migration e de aplicacao manual pela Ana e o codigo sobe
+  // antes dela, entao os tipos ainda nao as conhecem.
+  { tabela: "subscriptions", coluna: "pix_due_date" },
+  { tabela: "subscriptions", coluna: "pix_invoice_url" },
+  // Mesma migration. Escrita pelo cron do lembrete de Pix pendente
+  // (`rodarLembretesPix`, server/routes/cron.ts) ao marcar o estagio enviado.
+  { tabela: "subscriptions", coluna: "pix_reminders_sent" },
+  // Declarada em `20260913120000_creators_and_creator_events.sql`, a mesma que
+  // renomeia influencers para creators (ver TABELAS_RENOMEADAS_PENDENTES). A
+  // migration e de aplicacao manual pela Ana.
+  { tabela: "creators", coluna: "kind" },
+  { tabela: "affiliates", coluna: "user_id" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
@@ -279,7 +337,7 @@ export type RespostaTabela = {
   count?: number;
 };
 
-type Chamada = {
+export type Chamada = {
   table: string;
   op: "select" | "insert" | "update" | "delete" | "upsert";
   colunas: string[];
@@ -438,7 +496,19 @@ export function simularListagemDeUsuarios(
 }
 
 export function criarSupabaseDouble(
-  respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
+  /**
+   * A forma de funcao recebe a CHAMADA (filtros, ordem, colunas) ja montada, e
+   * e resolvida no momento do await, depois de todos os `.eq`/`.is`/`.in`.
+   * Existe para a rota que faz VARIAS consultas a mesma tabela com filtros
+   * diferentes (o painel de creator le `creator_events` tres vezes: primeiro
+   * evento, ultimo clique, ultima venda): sem ela as tres recebiam as mesmas
+   * linhas, e o teste nao conseguia distinguir uma consulta da outra. Quem
+   * ignora o argumento continua funcionando como antes.
+   */
+  respostas: Record<
+    string,
+    RespostaTabela | ((chamada: Chamada) => RespostaTabela)
+  >,
   authAdmin: Record<string, unknown> = {},
   rpcImpl: (nome: string, args: unknown) => Promise<unknown> = async () => ({
     data: null,
@@ -475,7 +545,7 @@ export function criarSupabaseDouble(
     }
   }
 
-  function resolver(table: string): RespostaTabela {
+  function resolver(table: string, chamada: Chamada): RespostaTabela {
     const r = respostas[table];
     if (r === undefined) {
       throw new Error(
@@ -483,7 +553,7 @@ export function criarSupabaseDouble(
           `Registre a resposta no teste ou corrija a rota.`,
       );
     }
-    return typeof r === "function" ? r() : r;
+    return typeof r === "function" ? r(chamada) : r;
   }
 
   function makeQuery(
@@ -581,7 +651,7 @@ export function criarSupabaseDouble(
     q.limit = () => q;
 
     function resultado() {
-      const r = resolver(table);
+      const r = resolver(table, chamada);
       if (r.error) return { data: null, error: r.error, count: null };
       const todas = r.rows ?? [];
       // O total do count é o do CONJUNTO, não o da página: é assim que o
@@ -652,6 +722,54 @@ export function criarSupabaseDouble(
     chamadas,
     rpcCalls,
     de: (table: string) => chamadas.filter((c) => c.table === table),
+  };
+}
+
+/**
+ * Responder que APLICA os filtros e a ordem da chamada sobre `linhas`.
+ *
+ * Para a rota que consulta a MESMA tabela mais de uma vez com filtros
+ * diferentes (o painel de creator le `creator_events` como primeiro evento,
+ * ultimo clique e ultima venda). Simula so `eq`, `is` e `in`, e a ordem por
+ * coluna com direcao. Qualquer outro filtro LANCA: um responder que ignorasse
+ * um filtro desconhecido devolveria linhas que o banco nao devolveria, e o
+ * teste passaria sobre uma consulta errada.
+ */
+export function respostaQueFiltra(
+  linhas: LinhaQualquer[],
+): (chamada: Chamada) => RespostaTabela {
+  return (chamada) => {
+    const filtradas = linhas.filter((linha) =>
+      chamada.filtros.every((f) => {
+        const valor = linha[f.coluna] ?? null;
+        if (f.tipo === "eq" || f.tipo === "is") return valor === f.valor;
+        if (f.tipo === "in") {
+          return Array.isArray(f.valor) && f.valor.includes(valor);
+        }
+        throw new Error(
+          `[double] respostaQueFiltra nao simula o filtro "${f.tipo}"`,
+        );
+      }),
+    );
+    const ordenadas = [...filtradas].sort((a, b) => {
+      for (const { coluna, ascending } of chamada.ordemDetalhe) {
+        const va = a[coluna] ?? null;
+        const vb = b[coluna] ?? null;
+        if (va === vb) continue;
+        // NULLS LAST na crescente e NULLS FIRST na decrescente, como o Postgres.
+        if (va === null) return ascending ? 1 : -1;
+        if (vb === null) return ascending ? -1 : 1;
+        const cmp =
+          typeof va === "number" && typeof vb === "number"
+            ? va - vb
+            : String(va) < String(vb)
+              ? -1
+              : 1;
+        return ascending ? cmp : -cmp;
+      }
+      return 0;
+    });
+    return { rows: ordenadas };
   };
 }
 

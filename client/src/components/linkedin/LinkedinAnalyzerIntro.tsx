@@ -5,6 +5,7 @@ import { FAIXA_UI } from "@/components/linkedin/faixaUi";
 import { FAIXA_LABELS, faixaFromScore } from "@shared/linkedin/schema";
 import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
 import { cn } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Estado de entrada do Analisador de LinkedIn (L3): linha do tempo compacta
 // de 3 passos + VITRINE ilustrativa do resultado + pills de beneficios, no
@@ -73,7 +74,7 @@ export function HowItWorksTimeline() {
           return (
             <motion.li
               key={step}
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: Math.min(i * 0.08, 0.3) }}
@@ -114,7 +115,7 @@ function ShowcaseCard({
 }) {
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.12, 0.36) }}
@@ -234,7 +235,7 @@ export function BenefitPills() {
       {BENEFIT_PILLS.map((pill, i) => (
         <motion.span
           key={pill.label}
-          initial={reduce ? false : { opacity: 0, y: 10 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.3, delay: Math.min(i * 0.06, 0.3) }}

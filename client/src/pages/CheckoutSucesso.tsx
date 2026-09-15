@@ -31,7 +31,8 @@ import { greet } from "@shared/greeting";
 // Resultado: admin e influencer viam "Aê, Pro!" sem nunca ter havido cobranca, e
 // todo teste de checkout feito com essas contas nascia invalido. Assinatura real e
 // o UNICO caso que confirma pagamento; admin/influencer ganham tela propria.
-type AccessSource = "subscription" | "influencer" | "admin" | null;
+// "afiliado" e o outro kind de concessao de creator e segue o influencer.
+type AccessSource = "subscription" | "influencer" | "afiliado" | "admin" | null;
 
 export default function CheckoutSucesso() {
   const { loading, refreshSubscription, subscription } = useSubscription();
@@ -96,7 +97,10 @@ export default function CheckoutSucesso() {
   // reordenada. Admin ou influencer QUE PAGARAM continuam vendo o sucesso.
   const paidAccess = !!payload?.status && payload.status !== "free";
   const grantedAccess =
-    !paidAccess && (accessSource === "admin" || accessSource === "influencer");
+    !paidAccess &&
+    (accessSource === "admin" ||
+      accessSource === "influencer" ||
+      accessSource === "afiliado");
 
   const isLoadingScreen = checking || loading;
   const showSuccess = paidAccess;
@@ -251,7 +255,10 @@ export default function CheckoutSucesso() {
                   }}
                   className="inline-flex"
                 >
-                  <Check className="h-12 w-12 text-[var(--bnt-ink)]" strokeWidth={3} />
+                  <Check
+                    className="h-12 w-12 text-[var(--bnt-ink)]"
+                    strokeWidth={3}
+                  />
                 </motion.span>
               )}
             </div>

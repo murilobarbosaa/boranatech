@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Execucao } from "./verifyQuizPoolByExecution.mts";
 import { toOpenAIStrictSchema } from "../server/lib/openaiStrictSchema";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
+import type { QuizQuestion } from "../shared/roadmapQuiz/types";
 import {
   buildCodeRules,
   buildQuestionSchema,
@@ -9,12 +10,22 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeRuleWarnings,
+  codeQuotaWarnings,
   codeTypeViolations,
+  dependsOnExternal,
   execViolations,
+  externalDependency,
   type GeneratedQuestion,
   missingCodeCount,
+  MAX_QUOTA_PER_SECTION,
   normalizeGeneratedQuestion,
+  noRunnerWarnings,
+  poolGateViolations,
   type SectionMaterial,
+  sectionQuotaWarnings,
+  sectionQuotas,
+  toGeneratedQuestion,
 } from "./quizPoolGeneration.mts";
 
 // Literais escritos a mao. A fixture de trilha e minima: o que importa para o
@@ -750,6 +761,18 @@ describe("codeTypeViolations", () => {
     expect(v[0]).toContain("tipos diferentes");
   });
 
+  it("duas de codigo de tipos diferentes sem completar acusa a completar", () => {
+    const v = codeTypeViolations([de("erro"), de("saida"), gerada()], 2);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("completar");
+  });
+
+  it("duas de codigo com uma completar passa", () => {
+    expect(
+      codeTypeViolations([de("erro"), de("completar"), gerada()], 2),
+    ).toEqual([]);
+  });
+
   it("saida acima da metade acusa", () => {
     const v = codeTypeViolations(
       [de("saida"), de("saida"), de("saida"), de("erro"), de("completar")],
@@ -861,5 +884,712 @@ describe("execViolations com executor stub", () => {
       executarPor,
     );
     expect(v).toEqual([]);
+  });
+});
+
+describe("dependsOnExternal", () => {
+  it("python: import da biblioteca padrao permitida nao e externo", () => {
+    expect(
+      dependsOnExternal("import json\nprint(json.dumps([1]))", ["python"]),
+    ).toBe(false);
+    expect(
+      dependsOnExternal("from collections import Counter", ["python"]),
+    ).toBe(false);
+  });
+
+  it("python: pacote de fora e modulo fora da lista sao externos", () => {
+    expect(dependsOnExternal("import requests", ["python"])).toBe(true);
+    expect(dependsOnExternal("from os import path", ["python"])).toBe(true);
+    expect(dependsOnExternal("import random", ["python"])).toBe(true);
+  });
+
+  it("python: open continua externo", () => {
+    expect(
+      dependsOnExternal("with open('a.txt') as f:\n  pass", ["python"]),
+    ).toBe(true);
+  });
+
+  it("js: qualquer import, export, require e fetch sao externos", () => {
+    expect(dependsOnExternal("import x from './x.js';", ["js"])).toBe(true);
+    expect(dependsOnExternal("export const a = 1;", ["js"])).toBe(true);
+    expect(dependsOnExternal("import json", ["js"])).toBe(true);
+    expect(dependsOnExternal("const fs = require('fs');", ["js"])).toBe(true);
+    expect(dependsOnExternal("console.log(1);", ["js"])).toBe(false);
+  });
+
+  it("bash: nada e externo", () => {
+    expect(dependsOnExternal("import foo\nexport PATH=1", ["bash"])).toBe(
+      false,
+    );
+  });
+});
+
+describe("sectionQuotas: teto flexivel por secao", () => {
+  const secao = (title: string, folhas: number): SectionMaterial => ({
+    title,
+    leaves: Array.from({ length: folhas }, (_, i) => ({
+      id: `${title}.f${i}`,
+      title: `Folha ${i}`,
+      description: "",
+      content: "",
+    })),
+  });
+  const tres = [secao("a", 5), secao("b", 5), secao("c", 5)];
+  const duas = [secao("a", 5), secao("b", 5)];
+  const uma = [secao("unica", 10)];
+
+  it("sem o parametro, as cotas de hoje, byte a byte", () => {
+    expect(sectionQuotas(tres, 15)).toEqual([5, 5, 5]);
+    expect(sectionQuotas(duas, 15)).toEqual([8, 7]);
+    expect(sectionQuotas(uma, 15)).toEqual([15]);
+    expect(sectionQuotaWarnings(tres, 15)).toEqual([]);
+  });
+
+  it("tres secoes com teto 7 somam 15 sem passar do teto e sem aviso", () => {
+    const quotas = sectionQuotas(tres, 15, MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
+    expect(Math.max(...quotas)).toBeLessThanOrEqual(MAX_QUOTA_PER_SECTION);
+    expect(sectionQuotaWarnings(tres, 15, MAX_QUOTA_PER_SECTION)).toEqual([]);
+  });
+
+  it("duas secoes nao comportam 15 com teto 7: mantem a cota alta e avisa", () => {
+    const quotas = sectionQuotas(duas, 15, MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
+    expect(Math.max(...quotas)).toBe(8);
+    const avisos = sectionQuotaWarnings(duas, 15, MAX_QUOTA_PER_SECTION);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("cota 8");
+    expect(avisos[0]).toContain("acima do teto de 7");
+  });
+
+  it("uma secao com folhas de sobra fica com o alvo inteiro e avisa", () => {
+    expect(sectionQuotas(uma, 15, MAX_QUOTA_PER_SECTION)).toEqual([15]);
+    const avisos = sectionQuotaWarnings(uma, 15, MAX_QUOTA_PER_SECTION);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("cota 15");
+  });
+
+  it("secao gorda cede o excedente para as magras quando ha folga", () => {
+    const quotas = sectionQuotas(
+      [secao("gorda", 12), secao("magra", 3), secao("outra", 3)],
+      15,
+      MAX_QUOTA_PER_SECTION,
+    );
+    expect(quotas[0]).toBe(MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
+  });
+});
+
+describe("buildCodeRules: exemplo de completar na linguagem da trilha", () => {
+  it("python usa atribuicao sem const", () => {
+    const texto = buildCodeRules(["python"]);
+    expect(texto).toContain("x = ____");
+    expect(texto).not.toContain("const");
+  });
+
+  it("js mantem o exemplo de hoje, byte a byte", () => {
+    expect(buildCodeRules(["js"])).toContain(
+      "- Exemplo de completar: trecho const x = ____; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.",
+    );
+  });
+
+  it("linguagem sem forma propria nao ganha exemplo em sintaxe de js", () => {
+    const regras = buildCodeRules(["dockerfile"]);
+    expect(regras).not.toContain("const x = ____;");
+    expect(regras).not.toContain("Exemplo de completar");
+  });
+
+  it("bash ganha exemplo de comando de Git com o prefixo $ da convencao", () => {
+    const regras = buildCodeRules(["bash"]);
+    expect(regras).toContain(
+      '- Exemplo de completar: trecho $ git ____ -m "ajusta o titulo" com alternativas commit, add, push e status. NUNCA git commit -m "ajusta o titulo" como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.',
+    );
+    expect(regras).not.toContain("const x = ____;");
+    expect(regras).not.toContain("x = 1");
+  });
+
+  it("variedade marca completar como obrigatoria com 2 ou mais de codigo", () => {
+    expect(buildCodeRules(["python"])).toContain(
+      "em secao com 2 ou mais perguntas de codigo, pelo menos uma e completar (obrigatoria)",
+    );
+  });
+});
+
+describe("portao final: adaptador e rotulo por id", () => {
+  const completar: QuizQuestion = {
+    id: "python-ini-14",
+    nivel: "iniciante",
+    pergunta: "Qual valor completa a lacuna?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    tipo: "completar",
+    codigo: { linguagem: "python", trecho: "x = ____\nprint(x)" },
+    alternativasCodigo: true,
+  };
+  const conceito: QuizQuestion = {
+    id: "python-ini-13",
+    nivel: "iniciante",
+    pergunta: "O que e uma variavel?",
+    alternativas: { a: "Um nome", b: "Um laco", c: "Um tipo", d: "Um erro" },
+    correta: "a",
+    explicacao: "Guarda um valor.",
+    fonte: "basico.variaveis",
+  };
+  const erro: QuizQuestion = {
+    ...conceito,
+    id: "python-int-02",
+    nivel: "intermediario",
+    tipo: "erro",
+    codigo: { linguagem: "python", trecho: "print(1)", saidaEsperada: "2" },
+  };
+
+  it("adaptador converte pergunta de codigo na GeneratedQuestion equivalente", () => {
+    expect(toGeneratedQuestion(completar)).toEqual({
+      pergunta: "Qual valor completa a lacuna?",
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      correta: "a",
+      explicacao: "Porque sim.",
+      fonte: "basico.variaveis",
+      tipo: "completar",
+      codigo: { linguagem: "python", trecho: "x = ____\nprint(x)" },
+      alternativasCodigo: true,
+    });
+  });
+
+  it("adaptador e normalizeGeneratedQuestion fazem ida e volta", () => {
+    for (const q of [completar, conceito, erro]) {
+      expect(
+        normalizeGeneratedQuestion(toGeneratedQuestion(q), q.id, q.nivel),
+      ).toEqual(q);
+    }
+  });
+
+  it("violacao de regra sai rotulada com o id, nao com o indice", () => {
+    const semLacuna: QuizQuestion = {
+      ...completar,
+      codigo: { linguagem: "python", trecho: "x = 1\nprint(x)" },
+    };
+    const v = poolGateViolations([conceito, semLacuna], [], ["python"], null);
+    expect(v).toContain(
+      "python-ini-14 (fonte basico.variaveis): completar exige exatamente uma lacuna ____ (encontradas 0)",
+    );
+    expect(v.join("\n")).not.toMatch(/pergunta \d+ \(fonte/);
+  });
+
+  it("violacao de execucao sai rotulada com o id", () => {
+    const saida: QuizQuestion = {
+      ...conceito,
+      id: "js-av-07",
+      nivel: "avancado",
+      tipo: "saida",
+      codigo: { linguagem: "js", trecho: "console.log(3);" },
+      alternativas: { a: "2", b: "3", c: "4", d: "5" },
+      alternativasCodigo: true,
+    };
+    const executarPor = (linguagem: string) =>
+      linguagem === "js"
+        ? (): Execucao => ({ status: 0, stdout: "3", erro: "", timeout: false })
+        : null;
+    const v = poolGateViolations([saida], [], ["js"], executarPor);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatch(/^js-av-07 \(fonte basico.variaveis\): obtido="3"/);
+  });
+
+  it("variedade roda por secao, com a cota da secao e o rotulo dela", () => {
+    const erro2: QuizQuestion = { ...erro, id: "python-int-03" };
+    const secoes = [
+      {
+        label: "intermediario / Erros",
+        codeQuota: 2,
+        ids: ["python-int-02", "python-int-03"],
+      },
+    ];
+    const v = poolGateViolations([erro, erro2], secoes, ["python"], null);
+    expect(v).toContain(
+      "intermediario / Erros: variedade: as 2 perguntas de codigo precisam ser de tipos diferentes (vieram 2 de erro)",
+    );
+  });
+
+  it("pool limpa nao acusa nada", () => {
+    expect(
+      poolGateViolations(
+        [conceito, completar],
+        [{ label: "iniciante / X", codeQuota: 1, ids: ["python-ini-14"] }],
+        ["python"],
+        null,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("externalDependency: o motivo, nao so o sim ou nao", () => {
+  it("import de modulo da lista em python nao e dependencia", () => {
+    expect(
+      externalDependency("import json\nprint(json.dumps([1]))", ["python"]),
+    ).toBeNull();
+  });
+
+  it("import de pacote de fora nomeia o pacote", () => {
+    expect(externalDependency("import requests", ["python"])).toContain(
+      "requests",
+    );
+  });
+
+  it("open nomeia o arquivo como motivo, nao o import", () => {
+    const motivo = externalDependency(
+      "import json\nwith open('a.json') as f:\n  print(json.load(f))",
+      ["python"],
+    );
+    expect(motivo).toContain("open");
+    expect(motivo).not.toContain("import");
+  });
+
+  it("a violacao de trecho nao autocontido traz o motivo especifico", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          codigo: {
+            linguagem: "python",
+            trecho: "with open('a.txt') as f:\n  print(f.read())",
+          },
+          alternativas: { a: "1", b: "2", c: "3", d: "4" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["python"],
+    );
+    const linha = v.find((x) => x.includes("autocontido"));
+    expect(linha).toContain("open");
+    expect(linha).not.toContain("import, require, fetch ou arquivo");
+  });
+});
+
+describe("buildCodeRules: imports e arquivo em python", () => {
+  it("python nao diz sem import e explica o import da lista e o JSON sobre texto", () => {
+    const regras = buildCodeRules(["python"]);
+    expect(regras).not.toContain("sem import, require");
+    expect(regras).toContain("o import aparece no proprio trecho");
+    expect(regras).toContain("json.dumps e json.loads");
+  });
+
+  it("js mantem a regra de autocontido de hoje, byte a byte", () => {
+    expect(buildCodeRules(["js"])).toContain(
+      "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+    );
+  });
+});
+
+describe("codigo no enunciado: exemplo negativo e nota de correcao", () => {
+  it("python traz o exemplo proibido ao lado do certo", () => {
+    const regras = buildCodeRules(["python"]);
+    expect(regras).toContain("PROIBIDO (codigo no enunciado)");
+    expect(regras).toContain("print(len('abc'))");
+    expect(regras).toContain("O que este codigo imprime?");
+  });
+
+  it("bash traz o exemplo proibido com comando de Git ao lado do certo", () => {
+    const regras = buildCodeRules(["bash"]);
+    expect(regras).toContain("PROIBIDO (codigo no enunciado)");
+    expect(regras).toContain('codigo.trecho "$ git status"');
+    expect(regras).toContain(
+      "Num repositorio sem alteracoes, o que este comando imprime?",
+    );
+    expect(regras).not.toContain("print(len('abc'))");
+  });
+
+  it("pergunta bash com o comando do trecho no enunciado reprova", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          pergunta:
+            "O que $ git status imprime num repositorio sem alteracoes?",
+          codigo: { linguagem: "bash", trecho: "$ git status" },
+          alternativas: {
+            a: "nothing to commit, working tree clean",
+            b: "Already up to date.",
+            c: "Everything up-to-date",
+            d: "fatal: not a git repository",
+          },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["bash"],
+    );
+    expect(v.some((x) => x.includes("pergunta contem codigo"))).toBe(true);
+  });
+
+  it("js nao ganha o exemplo: o prompt dela fica como esta", () => {
+    expect(buildCodeRules(["js"])).not.toContain(
+      "PROIBIDO (codigo no enunciado)",
+    );
+  });
+
+  it("a violacao manda mover o codigo e reescrever a pergunta", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          pergunta: "O que imprime print(len('abc'))?",
+          codigo: { linguagem: "python", trecho: "print(len('abc'))" },
+          alternativas: { a: "2", b: "3", c: "4", d: "abc" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["python"],
+    );
+    const linha = v.find((x) => x.includes("pergunta contem codigo"));
+    expect(linha).toContain(
+      "mova o codigo para codigo.trecho e reescreva a pergunta sem ele",
+    );
+  });
+});
+
+describe("codeQuotaWarnings: cota de codigo por nivel no portao", () => {
+  const pergunta = (
+    id: string,
+    nivel: QuizQuestion["nivel"],
+    codigo: boolean,
+  ): QuizQuestion => ({
+    id,
+    nivel,
+    pergunta: "Qual?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    ...(codigo
+      ? {
+          tipo: "saida" as const,
+          codigo: { linguagem: "python", trecho: "print(1)" },
+          alternativasCodigo: true as const,
+        }
+      : {}),
+  });
+
+  it("nivel com menos codigo que a cota somada vira aviso com os dois numeros", () => {
+    const qs = [
+      pergunta("python-av-01", "avancado", true),
+      pergunta("python-av-02", "avancado", true),
+      pergunta("python-av-03", "avancado", false),
+      pergunta("python-av-04", "avancado", true),
+      pergunta("python-av-05", "avancado", true),
+      pergunta("python-av-06", "avancado", true),
+      pergunta("python-av-07", "avancado", false),
+    ];
+    const secoes = [
+      {
+        label: "avancado / A",
+        codeQuota: 3,
+        ids: ["python-av-01", "python-av-02", "python-av-03"],
+      },
+      {
+        label: "avancado / B",
+        codeQuota: 4,
+        ids: ["python-av-04", "python-av-05", "python-av-06", "python-av-07"],
+      },
+    ];
+    expect(codeQuotaWarnings(qs, secoes)).toEqual([
+      "nivel avancado: 5 perguntas de codigo de 7 previstas",
+    ]);
+  });
+
+  it("nivel que fecha a cota nao avisa", () => {
+    const qs = [
+      pergunta("python-ini-01", "iniciante", true),
+      pergunta("python-ini-02", "iniciante", false),
+    ];
+    expect(
+      codeQuotaWarnings(qs, [
+        {
+          label: "iniciante / A",
+          codeQuota: 1,
+          ids: ["python-ini-01", "python-ini-02"],
+        },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("folhas elegiveis para codigo", () => {
+  const saidaPy = (fonte: string) =>
+    gerada({
+      fonte,
+      tipo: "saida",
+      codigo: { linguagem: "python", trecho: "print(1)" },
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      alternativasCodigo: true,
+    });
+
+  it("o prompt restringe o codigo as elegiveis quando alguma folha nao e", () => {
+    const texto = buildUserPrompt(trilha, "iniciante", secao, 5, null, 2, [
+      "basico.variaveis",
+    ]);
+    expect(texto).toContain(
+      "Perguntas de codigo APENAS sobre: basico.variaveis. As demais fontes recebem perguntas de conceito.",
+    );
+  });
+
+  it("com todas as folhas elegiveis a linha nao aparece", () => {
+    const texto = buildUserPrompt(trilha, "iniciante", secao, 5, null, 2, [
+      "basico.variaveis",
+      "basico.tipos",
+    ]);
+    expect(texto).not.toContain("APENAS sobre");
+  });
+
+  it("pergunta de codigo com fonte inelegivel viola, com a nota de troca", () => {
+    const v = codeRuleViolations(
+      [saidaPy("basico.variaveis")],
+      ["python"],
+      undefined,
+      ["basico.tipos"],
+    );
+    expect(v.some((l) => l.includes("troque o tipo para conceito"))).toBe(true);
+  });
+
+  it("sem a lista de elegiveis, e em conceito, nao ha essa violacao", () => {
+    expect(
+      codeRuleViolations([saidaPy("basico.variaveis")], ["python"]).some((l) =>
+        l.includes("troque o tipo"),
+      ),
+    ).toBe(false);
+    expect(
+      codeRuleViolations([gerada()], ["python"], undefined, ["basico.tipos"]),
+    ).toEqual([]);
+  });
+
+  it("o portao acusa a inelegivel pelo id quando a secao traz as elegiveis", () => {
+    const q: QuizQuestion = {
+      id: "python-int-05",
+      nivel: "intermediario",
+      pergunta: "O que este codigo imprime?",
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      correta: "a",
+      explicacao: "Porque sim.",
+      fonte: "basico.variaveis",
+      tipo: "saida",
+      codigo: { linguagem: "python", trecho: "print(1)" },
+      alternativasCodigo: true,
+    };
+    const v = poolGateViolations(
+      [q],
+      [
+        {
+          label: "intermediario / X",
+          codeQuota: 1,
+          ids: ["python-int-05"],
+          eligible: ["basico.tipos"],
+        },
+      ],
+      ["python"],
+      null,
+    );
+    expect(
+      v.some((l) =>
+        l.startsWith(
+          "python-int-05 (fonte basico.variaveis): pergunta de codigo sobre passo sem trecho autocontido",
+        ),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("noRunnerWarnings: trechos que a execucao nao cobre", () => {
+  const codigo = (id: string, linguagem: string): QuizQuestion => ({
+    id,
+    nivel: "iniciante",
+    pergunta: "O que acontece?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    tipo: "saida",
+    codigo: { linguagem, trecho: "echo 1" },
+    alternativasCodigo: true,
+  });
+  const conceito: QuizQuestion = {
+    id: "git-ini-09",
+    nivel: "iniciante",
+    pergunta: "O que e um commit?",
+    alternativas: {
+      a: "Um retrato",
+      b: "Um branch",
+      c: "Um remoto",
+      d: "Um merge",
+    },
+    correta: "a",
+    explicacao: "Guarda o estado.",
+    fonte: "basico.variaveis",
+  };
+
+  it("conta por linguagem sem runner e diz que a revisao humana e obrigatoria", () => {
+    expect(
+      noRunnerWarnings([
+        codigo("git-ini-01", "bash"),
+        codigo("git-ini-02", "bash"),
+        codigo("py-ini-01", "python"),
+        conceito,
+      ]),
+    ).toEqual([
+      "2 trechos de bash sem runner: verificacao por execucao NAO cobre estes; revisao humana obrigatoria",
+    ]);
+  });
+
+  it("pool so com linguagem que executa nao avisa nada", () => {
+    expect(noRunnerWarnings([codigo("py-ini-01", "python"), conceito])).toEqual(
+      [],
+    );
+  });
+
+  it("execViolations pula o trecho sem runner em vez de inventar veredito", () => {
+    const executarPor = (linguagem: string) =>
+      linguagem === "js"
+        ? () => ({ status: 0, stdout: "", erro: "", timeout: false })
+        : null;
+    expect(
+      execViolations(
+        [toGeneratedQuestion(codigo("git-ini-01", "bash"))],
+        ["bash"],
+        executarPor,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("saidaEsperada condicionada: schema, regra e prompt", () => {
+  const ids = ["basico.variaveis", "basico.tipos"];
+  const resposta = (linguagem: string, saidaEsperada?: string) => ({
+    questions: [
+      {
+        pergunta: "Qual e o defeito deste codigo?",
+        alternativas: {
+          a: "Falta fechar a tag",
+          b: "Nada",
+          c: "Aspas",
+          d: "Ponto",
+        },
+        correta: "a",
+        explicacao: "A tag p nao fecha.",
+        fonte: "basico.variaveis",
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      },
+    ],
+  });
+
+  it("schema de html aceita erro sem saidaEsperada", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["html"]).safeParse(resposta("html"))
+        .success,
+    ).toBe(true);
+  });
+
+  it("schema de js continua exigindo saidaEsperada e o JSON dele nao muda", () => {
+    expect(
+      buildQuestionSchema(ids, 1, 1, ["js"]).safeParse(resposta("js")).success,
+    ).toBe(false);
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["js"])),
+      ),
+    ).toBe(
+      JSON.stringify(toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1))),
+    );
+  });
+
+  it("schema strict de html nao pede saidaEsperada", () => {
+    expect(
+      JSON.stringify(
+        toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1, ["html"])),
+      ),
+    ).not.toContain("saidaEsperada");
+  });
+
+  it("regra de codigo: html sem campo passa, html vazio viola, js sem campo viola", () => {
+    const erroEm = (linguagem: string, saidaEsperada?: string) =>
+      gerada({
+        tipo: "erro",
+        codigo: {
+          linguagem,
+          trecho: "<p>oi</p",
+          ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+        },
+        alternativasCodigo: false,
+      });
+    const deSaida = (v: string[]) =>
+      v.filter((l) => l.includes("saidaEsperada"));
+    expect(deSaida(codeRuleViolations([erroEm("html")], ["html"]))).toEqual([]);
+    expect(
+      deSaida(codeRuleViolations([erroEm("html", " ")], ["html"])).some((l) =>
+        l.includes("vazia"),
+      ),
+    ).toBe(true);
+    expect(deSaida(codeRuleViolations([erroEm("js")], ["js"]))).toHaveLength(1);
+  });
+
+  it("prompt de html explica que erro nao traz saidaEsperada; o de js fica igual", () => {
+    const html = buildCodeRules(["html"]);
+    expect(html).not.toContain("- erro traz codigo.saidaEsperada");
+    expect(html).toContain("erro sem saidaEsperada");
+    expect(buildCodeRules(["js"])).toContain(
+      "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo",
+    );
+  });
+});
+
+describe("FRASE_RE vira aviso em linguagem de saida de ferramenta", () => {
+  const saidaEm = (linguagem: string, alternativa: string) =>
+    gerada({
+      tipo: "saida",
+      codigo: { linguagem, trecho: "git pull" },
+      alternativas: {
+        a: alternativa,
+        b: "error: failed",
+        c: "fatal: no",
+        d: "Merge made",
+      },
+      alternativasCodigo: true,
+    });
+  const erroEm = (linguagem: string, saidaEsperada: string) =>
+    gerada({
+      tipo: "erro",
+      codigo: { linguagem, trecho: "git pul", saidaEsperada },
+      alternativasCodigo: false,
+    });
+  const deFrase = (v: string[]) => v.filter((l) => l.includes("frase"));
+
+  it("bash: saida de terminal com ponto final nao reprova, vira aviso", () => {
+    const q = saidaEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    const avisos = codeRuleWarnings([q], ["bash"]);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("revisao humana");
+  });
+
+  it("bash: saidaEsperada que parece frase tambem vira aviso", () => {
+    const q = erroEm("bash", "Already up to date.");
+    expect(deFrase(codeRuleViolations([q], ["bash"]))).toEqual([]);
+    expect(codeRuleWarnings([q], ["bash"])).toHaveLength(1);
+  });
+
+  it("html continua reprovando alternativa de saida em prosa", () => {
+    const q = saidaEm("html", "O titulo aparece em negrito.");
+    expect(deFrase(codeRuleViolations([q], ["html"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["html"])).toEqual([]);
+  });
+
+  it("js continua reprovando e nao avisa nada", () => {
+    const q = saidaEm("js", "O codigo imprime 50.");
+    expect(deFrase(codeRuleViolations([q], ["js"]))).toHaveLength(1);
+    expect(codeRuleWarnings([q], ["js"])).toEqual([]);
   });
 });

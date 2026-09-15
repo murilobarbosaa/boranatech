@@ -48,6 +48,7 @@ import {
   type IaQuizOpcao,
   type IaTool,
 } from "@/lib/iaGuideData";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("violet");
 
@@ -101,7 +102,7 @@ const tabCounts: Record<string, number | undefined> = {
 };
 
 const fadeUp = {
-  initial: { opacity: 0, y: 14 },
+  initial: entrada({ opacity: 0, y: 14 }),
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-60px" },
   transition: { duration: 0.3 },

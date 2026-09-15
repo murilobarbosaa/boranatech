@@ -17,7 +17,10 @@ import {
 import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { detectarChargesSemDono, LOOKUPS_REAIS } from "../lib/chargeSemDono";
-import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
+import {
+  fetchSuppressedEmailSet,
+  reconcileEmailCampaignBatches,
+} from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { reconcileFiscalInvoices } from "../lib/fiscalReconcile";
 import {
@@ -28,6 +31,7 @@ import {
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
+import { normalizarDataPix, relogioDeBrasilia } from "../lib/pixVencimento";
 import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -36,6 +40,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
+import { lerPagamento } from "../providers/asaas";
 import { getStripeSubscriptionState } from "../providers/stripe";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import { metodoDaRenovacao } from "../../shared/renewalMethod";
@@ -635,6 +640,85 @@ export function decidirLembrete(args: {
   };
 }
 
+export type DecisaoPix =
+  | { tipo: "enviar"; estagio: "p1" | "p0"; variant: "aberto" | "vence_hoje" }
+  | { tipo: "pular"; motivo: string };
+
+/**
+ * Idade minima para o `p1`. Medido: de 32 Pix confirmados, 29 cairam em ate 15
+ * minutos da criacao, 1 entre 1h e 6h e 2 acima de 20h. Depois de duas horas o
+ * abandono ja aconteceu, e esperar mais gasta a janela util da cobranca.
+ */
+const PIX_LEMBRETE_IDADE_MINIMA_MS = 2 * 60 * 60 * 1000;
+/** Janela de envio em Brasilia, em minutos desde a meia-noite: [09h00, 21h00). */
+const PIX_LEMBRETE_INICIO_MIN = 9 * 60;
+const PIX_LEMBRETE_FIM_MIN = 21 * 60;
+
+/**
+ * O instante cai na janela de envio do lembrete de Pix, em Brasilia?
+ *
+ * Uma copia so da regra: `decidirLembretePix` e o corte de `rodarLembretesPix`
+ * chamam esta funcao. Com a comparacao repetida nos dois, a correcao de um
+ * limite aplicada num lugar deixaria o outro errado.
+ */
+export function dentroDaJanelaPix(agoraMs: number): boolean {
+  const { minutos } = relogioDeBrasilia(agoraMs);
+  return minutos >= PIX_LEMBRETE_INICIO_MIN && minutos < PIX_LEMBRETE_FIM_MIN;
+}
+
+/**
+ * Qual lembrete de Pix pendente sai AGORA, se algum. Pura, para o teste afirmar
+ * a tabela.
+ *
+ * `p1` (variante `aberto`) com pelo menos duas horas de vida e antes do dia do
+ * vencimento; `p0` (`vence_hoje`) no dia do vencimento, a qualquer hora da
+ * janela, com PRIORIDADE sobre o `p1` e sobre a idade minima. A cobranca segue
+ * pagavel o dia inteiro: o PAYMENT_OVERDUE foi medido chegando entre 03h e 04h
+ * do dia SEGUINTE nos 13 casos observados.
+ *
+ * Um estagio por execucao e sem retroatividade, como `decidirLembrete`: quem
+ * chega ao dia do vencimento sem o `p1` recebe so o `p0`.
+ *
+ * A JANELA MORA AQUI, e nao na expressao cron, para ser testavel. O limite de
+ * 21h e exclusivo. Todo relogio e o de Brasilia (`relogioDeBrasilia`), nunca o
+ * do processo, que em producao roda em UTC.
+ */
+export function decidirLembretePix(args: {
+  criadaEmIso: string;
+  pixDueDate: string | null;
+  jaEnviados: string[];
+  agoraMs: number;
+}): DecisaoPix {
+  const vencimento = normalizarDataPix(args.pixDueDate);
+  if (!vencimento) return { tipo: "pular", motivo: "sem_vencimento" };
+
+  if (!dentroDaJanelaPix(args.agoraMs)) {
+    return { tipo: "pular", motivo: "fora_do_horario" };
+  }
+  const { dia: hoje } = relogioDeBrasilia(args.agoraMs);
+
+  // `YYYY-MM-DD` ordena como texto.
+  if (hoje > vencimento) return { tipo: "pular", motivo: "vencida" };
+  if (hoje === vencimento) {
+    return args.jaEnviados.includes("p0")
+      ? { tipo: "pular", motivo: "ja_enviado" }
+      : { tipo: "enviar", estagio: "p0", variant: "vence_hoje" };
+  }
+
+  const criadaMs = Date.parse(args.criadaEmIso);
+  // Sem saber a idade, nao ha como respeitar a idade minima: nao envia.
+  if (!Number.isFinite(criadaMs)) {
+    return { tipo: "pular", motivo: "criacao_ilegivel" };
+  }
+  if (args.agoraMs - criadaMs < PIX_LEMBRETE_IDADE_MINIMA_MS) {
+    return { tipo: "pular", motivo: "muito_recente" };
+  }
+  if (args.jaEnviados.includes("p1")) {
+    return { tipo: "pular", motivo: "ja_enviado" };
+  }
+  return { tipo: "enviar", estagio: "p1", variant: "aberto" };
+}
+
 const COLUNAS_DE_LEMBRETE =
   "id, user_id, current_period_end, renewal_reminders_sent, plan_id, payment_method";
 
@@ -1094,6 +1178,341 @@ router.post(
     } catch (err) {
       await recordCronRun({
         jobName: "expire-pending-boletos",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+/**
+ * Ids por consulta de assinantes. O filtro `in` vai na URL do PostgREST, e uma
+ * lista longa demais estoura o limite de tamanho dela; 100 uuids ficam bem
+ * abaixo.
+ */
+const PIX_ASSINANTES_POR_BLOCO = 100;
+
+/**
+ * Divide a lista em blocos de ate `tamanho`, na ordem. Local de proposito: o
+ * `chunk` de server/lib/searchIndex.ts e privado daquele modulo.
+ */
+function emBlocos<T>(itens: T[], tamanho: number): T[][] {
+  const blocos: T[][] = [];
+  for (let i = 0; i < itens.length; i += tamanho) {
+    blocos.push(itens.slice(i, i + tamanho));
+  }
+  return blocos;
+}
+
+const COLUNAS_PIX_PENDENTE =
+  "id, user_id, plan_id, created_at, provider_subscription_id, pix_due_date, pix_invoice_url, pix_reminders_sent";
+
+type LinhaPixPendente = {
+  id: string;
+  user_id: string;
+  plan_id: string | null;
+  created_at: string;
+  provider_subscription_id: string | null;
+  pix_due_date: string | null;
+  pix_invoice_url: string | null;
+  pix_reminders_sent: string[] | null;
+};
+
+export type ResultadoLembretesPix = {
+  /** Estado da flag nesta execucao. `false` e rodada de observacao. */
+  ligado: boolean;
+  candidatos: number;
+  enviados: number;
+  /** Com a flag desligada: o que TERIA saido, por estagio. */
+  enviaria: { p1: number; p0: number };
+  falhas: number;
+  backfills: number;
+  /** Contagem por motivo de quem ficou sem lembrete. */
+  pulados: Record<string, number>;
+};
+
+/**
+ * A rodada do lembrete de Pix pendente, separada da rota para ser exercitada
+ * com dubles.
+ *
+ * SELECAO PELO BANCO, DECISAO FINAL PELO ASAAS. Cada candidata e relida em
+ * `lerPagamento` e so segue com `status === "PENDING"`: em 2026-09-03 a fila de
+ * webhooks do Asaas ficou 12 horas parada com um PAYMENT_RECEIVED real preso
+ * atras, e uma linha `pending` no banco nao prova que a pessoa nao pagou.
+ * Leitura indisponivel nao envia e conta falha.
+ *
+ * ASSINANTE NAO RECEBE. O `internalRenewal` cria uma linha pending/pix/manual
+ * identica a de compra, e quem renova ja recebe a regua de renovacao; sem este
+ * guard levaria um segundo e-mail com texto de primeira compra. A checagem e
+ * UMA consulta para todos os candidatos, antes do laco.
+ *
+ * FLAG DESLIGADA (`pixRemindersEnabled`, o padrao) e rodada de observacao: tudo
+ * e lido e decidido, e o que sairia vai para `enviaria`, sem enfileirar nem
+ * marcar nada. E o que o primeiro deploy registra no cron_run_logs.
+ */
+export async function rodarLembretesPix(
+  agora: Date,
+): Promise<ResultadoLembretesPix> {
+  const r: ResultadoLembretesPix = {
+    ligado: env.pixRemindersEnabled,
+    candidatos: 0,
+    enviados: 0,
+    enviaria: { p1: 0, p0: 0 },
+    falhas: 0,
+    backfills: 0,
+    pulados: {},
+  };
+  const pular = (motivo: string) => {
+    r.pulados[motivo] = (r.pulados[motivo] ?? 0) + 1;
+  };
+
+  // PAGINADO: caminho de ENVIO. Truncar deixaria de lembrar quem esta no fim da
+  // lista e o cron terminaria reportando sucesso.
+  const { data, error } = await coletarTagueado<LinhaPixPendente>(
+    (fromRow, toRow) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(COLUNAS_PIX_PENDENTE)
+        .eq("provider", "asaas")
+        .eq("payment_method", "pix")
+        .eq("status", "pending")
+        .order("id", { ascending: true })
+        .range(fromRow, toRow),
+    "pix-pending-reminders pendentes",
+  );
+  if (error) throw new Error(error.message);
+  const linhas = data ?? [];
+  r.candidatos = linhas.length;
+  if (linhas.length === 0) return r;
+
+  // CORTE DE HORARIO ANTES DE TUDO QUE CUSTA. A selecao acima fica de fora: e
+  // uma consulta ao nosso banco, e o numero de candidatos e o que a rodada de
+  // observacao precisa ver. Ler o Asaas custa uma chamada externa POR LINHA, e
+  // fora da janela a resposta nao tem uso nenhum, porque tudo acabaria em
+  // `fora_do_horario`. Supressao, assinantes, planos e backfill tambem ficam
+  // para as rodadas dentro da janela.
+  if (!dentroDaJanelaPix(agora.getTime())) {
+    r.pulados.fora_do_horario = linhas.length;
+    return r;
+  }
+
+  const suprimidos = await fetchSuppressedEmailSet();
+
+  // EM BLOCOS: a lista de ids vai na URL do PostgREST, e numa consulta so ela
+  // estouraria o limite de tamanho quando as cobrancas abertas passassem de
+  // uma centena. O erro derrubaria a rodada inteira e ninguem receberia nada.
+  const userIds = Array.from(new Set(linhas.map((l) => l.user_id)));
+  const assinantes = new Set<string>();
+  for (const bloco of emBlocos(userIds, PIX_ASSINANTES_POR_BLOCO)) {
+    const { data: ativas, error: ativasError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id")
+      .in("user_id", bloco)
+      .in("status", ["active", "trialing"]);
+    // Fail-closed em QUALQUER bloco: sem saber quem ja assina, mandar texto de
+    // compra para um assinante e o erro que este guard existe para evitar.
+    if (ativasError) {
+      throw new Error(
+        `pix-pending-reminders: leitura de assinantes falhou: ${ativasError.message}`,
+      );
+    }
+    for (const a of (ativas ?? []) as Array<{ user_id: string }>) {
+      assinantes.add(a.user_id);
+    }
+  }
+
+  const planCodeById = new Map<string, string>();
+  const { data: plans } = await supabaseAdmin.from("plans").select("id, code");
+  for (const p of (plans ?? []) as Array<{ id: string; code: string }>) {
+    planCodeById.set(p.id, p.code);
+  }
+
+  for (const linha of linhas) {
+    try {
+      const chargeId = linha.provider_subscription_id;
+      if (!chargeId) {
+        pular("sem_cobranca");
+        continue;
+      }
+      if (assinantes.has(linha.user_id)) {
+        pular("ja_assinante");
+        continue;
+      }
+
+      let pagamento: Awaited<ReturnType<typeof lerPagamento>>;
+      try {
+        pagamento = await lerPagamento(chargeId);
+      } catch (err) {
+        r.falhas++;
+        console.error(
+          `[cron/pix-pending-reminders] leitura da cobranca ${chargeId} falhou (linha ${linha.id}); nao envia:`,
+          err,
+        );
+        continue;
+      }
+      if (pagamento.status !== "PENDING") {
+        pular("nao_esta_mais_pendente");
+        continue;
+      }
+
+      // BACKFILL OPORTUNISTA: a leitura ja aconteceu, entao o vencimento e a
+      // fatura que faltam na linha (as criadas antes do lote 2) sao gravados de
+      // graca. Best-effort, no mesmo espirito de createCheckout: a decisao usa
+      // o valor LIDO, mesmo que a gravacao falhe.
+      const vencimentoLido = normalizarDataPix(pagamento.dueDate);
+      const backfill: Record<string, string> = {};
+      if (!linha.pix_due_date && vencimentoLido) {
+        backfill.pix_due_date = vencimentoLido;
+      }
+      if (!linha.pix_invoice_url && pagamento.invoiceUrl) {
+        backfill.pix_invoice_url = pagamento.invoiceUrl;
+      }
+      if (Object.keys(backfill).length > 0) {
+        try {
+          const { error: backfillError } = await supabaseAdmin
+            .from("subscriptions")
+            .update(backfill)
+            .eq("id", linha.id);
+          if (backfillError) {
+            console.warn(
+              `[cron/pix-pending-reminders] backfill nao gravado na linha ${linha.id}: ${backfillError.message}`,
+            );
+          } else {
+            r.backfills++;
+          }
+        } catch (err) {
+          console.warn(
+            `[cron/pix-pending-reminders] backfill nao gravado na linha ${linha.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
+      const vencimento = normalizarDataPix(linha.pix_due_date) ?? vencimentoLido;
+      if (!vencimento) {
+        pular("sem_vencimento");
+        continue;
+      }
+      const jaEnviados = linha.pix_reminders_sent ?? [];
+      const decisao = decidirLembretePix({
+        criadaEmIso: linha.created_at,
+        pixDueDate: vencimento,
+        jaEnviados,
+        agoraMs: agora.getTime(),
+      });
+      if (decisao.tipo === "pular") {
+        pular(decisao.motivo);
+        continue;
+      }
+
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
+        linha.user_id,
+      );
+      const emailTo = authData?.user?.email;
+      if (!emailTo) {
+        pular("sem_email");
+        continue;
+      }
+      if (suprimidos.has(emailTo.toLowerCase())) {
+        pular("suprimido");
+        continue;
+      }
+
+      // VALOR DA COBRANCA, lido no Asaas, e nunca o do plano: com cupom os dois
+      // divergem. Sem numero, nao envia: preco inventado num e-mail de cobranca
+      // e pior que e-mail nenhum.
+      const amountCents = pagamento.valueCents;
+      if (amountCents === null) {
+        pular("sem_valor");
+        continue;
+      }
+      const planCode = linha.plan_id
+        ? planCodeById.get(linha.plan_id)
+        : undefined;
+      if (!planCode || !isPlanId(planCode)) {
+        pular("plano_desconhecido");
+        continue;
+      }
+
+      if (!r.ligado) {
+        r.enviaria[decisao.estagio]++;
+        continue;
+      }
+
+      const name = String(
+        authData?.user?.user_metadata?.name ||
+          emailTo.split("@")[0] ||
+          "assinante",
+      );
+      await enqueueEmail(
+        {
+          type: "pix_pending_reminder",
+          to: emailTo,
+          name,
+          subscriptionId: linha.id,
+          variant: decisao.variant,
+          planName: PLAN_PRICING[planCode].label,
+          amountCents,
+          dueDate: vencimento,
+          payUrl: `${env.appPublicUrl}/perfil?pix=abrir`,
+          invoiceUrl: linha.pix_invoice_url ?? pagamento.invoiceUrl ?? null,
+        },
+        { jobId: `pix-lembrete:${linha.id}:${decisao.estagio}` },
+      );
+
+      // MARCA SO DEPOIS de o enqueue ser aceito. O `jobId` acima existe para o
+      // caso em que o enqueue foi aceito e ESTA marcacao falhou: a proxima
+      // execucao tenta o mesmo estagio e o BullMQ recusa a duplicata enquanto o
+      // job estiver retido. O buraco e a falha dupla: o envio esgota as
+      // tentativas (job falho fica retido 30 dias, e o mesmo `jobId` e ignorado
+      // em silencio nesse periodo) E a marcacao falha. Ai o lembrete some sem
+      // rastro. E raro e preferivel a um e-mail duplicado, mas nao pode ser
+      // invisivel: o `duplicata_possivel` no log e o unico sinal de que aquele
+      // par linha e estagio ficou num estado ambiguo.
+      const { error: markError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({ pix_reminders_sent: [...jaEnviados, decisao.estagio] })
+        .eq("id", linha.id);
+      if (markError) {
+        console.error(
+          `[cron/pix-pending-reminders] duplicata_possivel: estagio ${decisao.estagio} enfileirado e NAO marcado na linha ${linha.id} (${markError.message}).`,
+        );
+        r.falhas++;
+        continue;
+      }
+      r.enviados++;
+    } catch (err) {
+      r.falhas++;
+      console.error(
+        `[cron/pix-pending-reminders] falha na linha ${linha.id}:`,
+        err,
+      );
+    }
+  }
+
+  return r;
+}
+
+// Lembrete de Pix pendente: e-mail para quem gerou um Pix e nao pagou. Nasce
+// DESLIGADO (`pixRemindersEnabled`); desligado, so observa. De hora em hora, e
+// a janela de envio (09h a 21h de Brasilia) mora em `decidirLembretePix`.
+router.post(
+  "/pix-pending-reminders",
+  withCronLock("pix-pending-reminders", 600, async (_req, res, next) => {
+    const startedAt = new Date();
+    try {
+      const r = await rodarLembretesPix(new Date());
+      await recordCronRun({
+        jobName: "pix-pending-reminders",
+        status: r.falhas > 0 ? "partial" : "success",
+        startedAt,
+        payload: r,
+      });
+      res.json({ data: r });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "pix-pending-reminders",
         status: "error",
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),

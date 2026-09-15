@@ -37,6 +37,7 @@ import {
   RefreshCcw,
   Send,
   ShieldCheck,
+  Sparkles,
   SquareKanban,
   Star,
   Tag,
@@ -70,7 +71,6 @@ const TasksDashboard = lazyWithRetry(
   () => import("@/components/admin/tasks/TasksDashboard"),
 );
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
-import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,10 +79,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
-import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashboard";
-import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
+import { formatMoneyMetric } from "@/components/admin/FinanceDashboard";
+import { FinanceWorkspace } from "@/components/admin/FinanceWorkspace";
+import { useHonestFinance } from "@/components/admin/useHonestFinance";
+import { clearAttentionContext } from "@/components/admin/adminContext";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
+import { CreatorsSection } from "@/components/admin/creators/CreatorsSection";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
 import { SignupChart } from "@/components/admin/overview/SignupChart";
@@ -93,27 +95,26 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
-import { detalheDeReceitaPorProvider } from "@/components/admin/overview/receitaPorProviderCopy";
 import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
+import { useAttentionData } from "@/components/admin/overview/useAttentionData";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import { FunnelDigest } from "@/components/admin/overview/FunnelDigest";
 import { MetricSparkline } from "@/components/admin/overview/MetricSparkline";
 import {
   CostVsRevenueChart,
-  ProConversionsChart,
+  hasOverviewPaymentsContract,
+  RegisteredPaymentsChart,
   serieDe,
+  type RegisteredPaymentsData,
 } from "@/components/admin/overview/SeriesCharts";
 import { ToolUsagePanel } from "@/components/admin/overview/ToolUsagePanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
-import {
-  SubscribersSummary,
-  SubscribersTable,
-} from "@/components/admin/SubscribersTable";
+import { SubscribersSummary } from "@/components/admin/SubscribersTable";
 import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
@@ -126,6 +127,7 @@ import {
 } from "@/constants/avatarOptions";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
+import { diaBrasilia, somarDiaCivil } from "@shared/brasiliaDay";
 import {
   applyNamePlaceholder,
   applyUnsubscribeUrl,
@@ -254,6 +256,10 @@ type AffiliateRecord = {
   commission_due_cents: number;
   commission_paid_cents: number;
   notes?: string | null;
+  /** Dono do código (affiliates.user_id). Opcional: backend anterior não envia. */
+  user_id?: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
 };
 
 type AffiliateEditForm = {
@@ -308,6 +314,7 @@ type AdminSectionId =
   | "financeiro"
   | "ia"
   | "afiliados"
+  | "creators"
   | "emails"
   | "notificacoes"
   | "vagas"
@@ -346,7 +353,9 @@ type OverviewData = {
     acessoPro: {
       bySubscription: number;
       byInfluencer: number;
-      /** Interseção dos dois ramos. `bySubscription` e `byInfluencer` a INCLUEM. */
+      /** Opcional: backend anterior à concessão de afiliado não envia. */
+      byAfiliado?: number;
+      /** Interseção da assinatura com QUALQUER concessão. `bySubscription`, `byInfluencer` e `byAfiliado` a INCLUEM. */
       both: number;
       /** União deduplicada. É este o headline: somar as parcelas conta `both` duas vezes. */
       total: number;
@@ -408,6 +417,7 @@ type OverviewData = {
 
 /** O que GET /admin/overview-series devolve. Ver server/lib/overviewSeries.ts. */
 type SeriesData = {
+  contractVersion: 3;
   series: Array<{
     chave: string;
     rotulo: string;
@@ -416,6 +426,7 @@ type SeriesData = {
     pontos: Array<{ date: string; value: number | null; partial: boolean }>;
     total: number | null;
   }>;
+  pagamentos: RegisteredPaymentsData;
   funil: {
     passos: Array<{
       chave: string;
@@ -424,8 +435,13 @@ type SeriesData = {
       taxaSobreAnterior: number | null;
     }>;
     destaque: string | null;
-    anterior: { cadastro: number; pro: number; proComUso: number } | null;
+    anterior: null;
     motivoSemDelta: string;
+    limiteTemporalDosInicios: string;
+    consultaIniciadaEm: string;
+    consultaConcluidaEm: string;
+    semanticaUso: string;
+    cadastrosComMenosDe7Dias: number;
   };
   ferramentas: Array<{
     tool: string;
@@ -435,21 +451,6 @@ type SeriesData = {
   }>;
   windowLabel: string;
   tz: string;
-};
-
-/** O que GET /admin/attention devolve. Ver server/lib/atencaoNecessaria.ts. */
-type AttentionData = {
-  itens: Array<{
-    tipo: string;
-    chave: string;
-    severidade: "critico" | "atencao";
-    titulo: string;
-    detalhe: string;
-    valorCents?: number;
-    url: string;
-  }>;
-  fontesIndisponiveis: string[];
-  janelaDias: number;
 };
 
 // De /dashboard sobrou o registro de auditoria. Os contadores foram podados na
@@ -659,49 +660,6 @@ type PosthogState =
   | { state: "error"; reason: string; httpStatus?: number }
   | { state: "ok"; hasData: boolean; stats: PosthogStats };
 
-type PlanMrr = {
-  code: string;
-  name: string | null;
-  count: number;
-  mrrCents: number;
-};
-
-type MrrSnapshot = {
-  mrrCents: number;
-  arpuCents: number | null;
-  activeCount: number;
-  trialingCount: number;
-  byPlan: PlanMrr[];
-};
-
-// Contexto que ACOMPANHA o churn e nao entra nele. Opcional em ambos os ramos
-// porque na janela de deploy o frontend novo fala com o backend antigo, que nao
-// manda estes campos.
-type ChurnContext = {
-  scheduledNotCounted?: number;
-  revertedInWindow?: number;
-  orphanCancellations?: number;
-};
-
-type ChurnSnapshot =
-  | ({
-      status: "insufficient_data";
-      reason: string;
-      windowDays: number;
-      canceledInWindow?: number;
-      activeAtStart?: number;
-    } & ChurnContext)
-  | ({
-      status: "ok";
-      windowDays: number;
-      churnRate: number;
-      canceledInWindow: number;
-      activeAtStart: number;
-      ltvCents: number | null;
-    } & ChurnContext);
-
-type BillingMetricsData = { mrr: MrrSnapshot; churn: ChurnSnapshot };
-
 type ContentItem = {
   id: string;
   slug?: string;
@@ -787,24 +745,23 @@ export const metricCards: MetricCard[] = [
   },
   {
     key: "mrr",
-    label: "Receita recorrente",
+    label: "Valor mensal de catálogo",
     value: "0",
-    detail: "MRR das assinaturas ativas",
+    detail: "Preço vigente mensalizado dos acessos ativos",
     icon: <DollarSign className="h-6 w-6" />,
-    color: "bg-emerald-600 text-white",
+    color: "bg-amber-100 text-slate-950",
   },
   {
-    // ESTE SLOT E "Receita no período", nao "Chamadas de IA".
+    // ESTE SLOT LEVA AO CAIXA HONESTO, nao "Chamadas de IA".
     //
     // O `useMemo` sempre sobrescreveu o label deste slot, e a base ficou
     // descrevendo outra metrica (registros em `ai_usage_logs`). Enquanto isso
     // durou, o payload sem `cards` desenhava um card fantasma, com assunto e
     // icone que nao existem na tela carregada.
     key: "receita_periodo",
-    label: "Receita no período",
-    value: "0",
-    // TODO(Ana)
-    detail: "Cobranças na janela selecionada",
+    label: "Caixa registrado por moeda",
+    value: "Indisponível",
+    detail: "O agregado legado sem moeda não é exibido",
     icon: <DollarSign className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
@@ -813,9 +770,9 @@ export const metricCards: MetricCard[] = [
     // "Cursos cadastrados" saiu daqui: inventário não sustenta decisão, e era o
     // único número da página que ninguém usava para agir. Este é o oposto: muda
     // sozinho, tem data marcada e ainda dá para agir.
-    label: "Receita em risco",
+    label: "Acessos em atenção",
     value: "0",
-    detail: "Saídas agendadas e pagamentos em atraso",
+    detail: "Equivalente de catálogo de saídas e atrasos",
     icon: <TrendingDown className="h-6 w-6" />,
     color: "bg-rose-600 text-white",
   },
@@ -892,6 +849,12 @@ export const adminNavItems: AdminNavItem[] = [
     href: "#afiliados",
     label: "Afiliados",
     icon: <Handshake className="h-4 w-4" />,
+  },
+  {
+    href: "#creators",
+    // TODO(Ana)
+    label: "Creators",
+    icon: <Sparkles className="h-4 w-4" />,
   },
   {
     href: "#emails",
@@ -1174,82 +1137,6 @@ function PublishBadge({ published }: { published?: boolean }) {
 
 // Ausencia como estado VISIVEL e nomeado, nunca 0 nem traco.
 // TODO(Ana): revisar copy de "Dados insuficientes" e as explicacoes.
-function InsufficientDataBlock({
-  label,
-  explanation,
-}: {
-  label: string;
-  explanation: string;
-}) {
-  return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-400 bg-slate-50 p-4">
-      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
-      <p className="font-display text-lg font-black text-slate-700">
-        Dados insuficientes
-      </p>
-      <p className="mt-1 text-xs font-semibold text-slate-500">{explanation}</p>
-    </div>
-  );
-}
-
-function MetricTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-      <p className="text-xs font-black uppercase text-violet-700">{label}</p>
-      <p className="font-display text-2xl font-black text-slate-950">{value}</p>
-      {hint ? (
-        <p className="mt-1 text-xs font-semibold text-slate-500">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function formatPercent1(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-// TODO(Ana): revisar as explicacoes de churn insuficiente.
-/**
- * Agendados e revertidos, ao lado do churn.
- *
- * Nao renderiza nada quando o backend nao manda os campos (janela de deploy) nem
- * quando ambos sao zero: bloco vazio ocupando espaco e ruido, e um "0 agendados"
- * so vale quando ha algo a comparar.
- */
-function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
-  const agendados = churn.scheduledNotCounted;
-  const revertidos = churn.revertedInWindow;
-  if (agendados === undefined && revertidos === undefined) return null;
-  if (!agendados && !revertidos) return null;
-
-  return (
-    <>
-      {agendados ? (
-        <MetricTile
-          label="Saídas agendadas"
-          value={String(agendados)}
-          hint="Já avisaram que saem. Fora do churn: viram receita em risco."
-        />
-      ) : null}
-      {revertidos ? (
-        <MetricTile
-          label="Cancelamentos revertidos"
-          value={String(revertidos)}
-          hint="Pediram para sair e desistiram, na janela."
-        />
-      ) : null}
-    </>
-  );
-}
-
 /**
  * Um card da Visão.
  *
@@ -1282,7 +1169,8 @@ function MetricCardView({
   destaque?: boolean;
 }) {
   // RODAPÉ ANCORADO NA BASE, e só quando existe. Card sem sparkline e sem Δ
-  // (hoje "Assinantes Pro" e "Receita em risco") não ganha um rodapé vazio: o
+  // (hoje "Assinantes Pro", "Caixa registrado por moeda" e "Acessos em
+  // atenção") não ganha um rodapé vazio: o
   // conteúdo fica no topo, alinhado com os vizinhos, que é o desejado.
   const rodape =
     metric.sparkline || metric.change ? (
@@ -1359,20 +1247,130 @@ function MetricCardView({
   );
 }
 
-function churnInsufficientReason(reason: string): string {
-  switch (reason) {
-    case "subscription_base_younger_than_window":
-      return "Base de assinaturas ainda nova demais para calcular churn de 30 dias.";
-    case "no_active_subscribers_at_window_start":
-      return "Não havia assinantes ativos no início da janela para calcular churn.";
-    // Estado que existe para NAO virar "0%". Nenhuma assinatura chegou ao fim do
-    // periodo, entao ninguem teve a chance de sair: zero aqui seria ausencia de
-    // medicao disfarcada de medicao.
-    case "no_subscription_period_ended":
-      return "Nenhuma assinatura chegou ao fim do período ainda: não há saída possível para medir.";
-    default:
-      return "Dados insuficientes para calcular churn.";
-  }
+function OverviewFinancialCard({
+  overview,
+  overviewWindow,
+  onNavigate,
+}: {
+  overview: OverviewData | null;
+  overviewWindow: OverviewWindow;
+  onNavigate: (filter: {
+    preset: "all" | "custom";
+    customFrom?: string;
+    customTo?: string;
+  }) => void;
+}) {
+  const hasBoundedPeriod =
+    overviewWindow !== "all" &&
+    Boolean(overview?.windowFirstDay && overview?.windowLastDay);
+  const customFrom = hasBoundedPeriod ? overview!.windowFirstDay! : undefined;
+  const customTo = hasBoundedPeriod
+    ? somarDiaCivil(overview!.windowLastDay, -1)
+    : undefined;
+  const hasCompleteDays =
+    overviewWindow === "all" ||
+    Boolean(customFrom && customTo && customFrom <= customTo);
+  const finance = useHonestFinance(
+    {
+      // A Visão inclui hoje; o caixa mantém o início selecionado e exclui
+      // somente o dia corrente, que ainda não está completo.
+      preset: overviewWindow === "all" ? "all" : "custom",
+      customFrom,
+      customTo,
+    },
+    { enabled: hasCompleteDays },
+  );
+  const brl = finance.data?.cash.currencies.find(
+    (bucket) => bucket.currency === "BRL",
+  );
+  const otherCurrencies =
+    finance.data?.cash.currencies.some((bucket) => bucket.currency !== "BRL") ??
+    false;
+  const period = finance.data
+    ? `${new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
+        new Date(`${finance.data.period.startDay}T00:00:00Z`),
+      )} a ${new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
+        new Date(`${finance.data.period.endDayInclusive}T00:00:00Z`),
+      )} · ${finance.data.period.timezone} · Hoje excluído`
+    : overviewWindow === "all"
+      ? "Histórico financeiro local até ontem; hoje excluído"
+      : customFrom && customTo
+        ? `${customFrom} a ${customTo} · Hoje excluído`
+        : "Não há dia encerrado neste período";
+  const financeCoverage = finance.error
+    ? "Financeiro indisponível"
+    : finance.data
+      ? finance.data.status === "available"
+        ? "Cobertura disponível"
+        : finance.data.status === "partial"
+          ? "Cobertura parcial"
+          : finance.data.status === "not_collected"
+            ? "Dados não coletados"
+            : "Cobertura indisponível"
+      : finance.loading
+        ? "Carregando cobertura"
+        : "Período financeiro indisponível";
+
+  return (
+    <article
+      data-testid="overview-finance-card"
+      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5"
+    >
+      <span className="flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 bg-pink-600 text-white shadow-[3px_3px_0_var(--bnt-shadow)]">
+        <DollarSign className="h-6 w-6" />
+      </span>
+      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
+        Caixa líquido registrado
+      </p>
+      <p className="font-display mt-1 text-5xl font-black text-slate-950">
+        {brl
+          ? formatMoneyMetric(brl.calculableNet)
+          : finance.loading
+            ? "…"
+            : "Indisponível"}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-slate-600">
+        {brl ? (
+          <>
+            {formatMoneyMetric(brl.positiveEntries)} entradas ·{" "}
+            {formatMoneyMetric(brl.refunds)} reembolsos ·{" "}
+            {formatMoneyMetric(brl.fees)} taxas
+          </>
+        ) : finance.error ? (
+          "A falha desta leitura não afeta os demais indicadores."
+        ) : overviewWindow === "all" ? (
+          "Histórico local ainda não disponível; nenhum zero foi criado."
+        ) : (
+          "Nenhum subtotal BRL foi informado; não foi criado R$ 0."
+        )}
+      </p>
+      {otherCurrencies ? (
+        <p className="mt-2 text-xs font-black text-amber-800">
+          Há movimentos em outras moedas.
+        </p>
+      ) : null}
+      <p className="mt-3 text-xs font-bold text-slate-500">
+        {period} · {financeCoverage}
+      </p>
+      <button
+        type="button"
+        onClick={() =>
+          onNavigate(
+            overviewWindow === "all"
+              ? { preset: "all" }
+              : {
+                  preset: "custom",
+                  customFrom: finance.data?.period.startDay ?? customFrom,
+                  customTo: finance.data?.period.endDayInclusive ?? customTo,
+                },
+          )
+        }
+        className="mt-auto pt-3 text-left text-sm font-black text-violet-700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+      >
+        Ver financeiro
+      </button>
+    </article>
+  );
 }
 
 // PostHog como quatro telas DISTINTAS (not_configured / error / ok-sem-dados /
@@ -1423,99 +1421,6 @@ function PosthogStateNotice({ state }: { state: PosthogState | null }) {
       <p className="mt-1 text-sm font-semibold text-slate-500">
         Sem eventos neste recorte no período.
       </p>
-    </div>
-  );
-}
-
-// Painel de metricas de cobranca (MRR, ARPU, churn, LTV, distribuicao por plano).
-// Erro e ausencia sao estados visiveis: nunca renderiza 0 nem valor inventado.
-// TODO(Ana): revisar labels e hints das metricas de cobranca.
-function BillingMetricsPanel({
-  loading,
-  error,
-  metrics,
-}: {
-  loading: boolean;
-  error: string | null;
-  metrics: BillingMetricsData | null;
-}) {
-  if (loading) return <LoadingBlock />;
-  if (error) return <ErrorBlock message={error} />;
-  if (!metrics) return <LoadingBlock />;
-
-  const { mrr, churn } = metrics;
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MetricTile
-          label="MRR"
-          value={formatCents(mrr.mrrCents)}
-          hint={`${mrr.activeCount} ativos, ${mrr.trialingCount} em trial`}
-        />
-        {mrr.arpuCents === null ? (
-          <InsufficientDataBlock
-            label="ARPU"
-            explanation="Sem assinantes ativos para calcular ARPU."
-          />
-        ) : (
-          <MetricTile
-            label="ARPU"
-            value={formatCents(mrr.arpuCents)}
-            hint="Receita média por assinante ativo"
-          />
-        )}
-        {churn.status === "insufficient_data" ? (
-          <InsufficientDataBlock
-            label={`Churn (${churn.windowDays}d)`}
-            explanation={churnInsufficientReason(churn.reason)}
-          />
-        ) : (
-          <MetricTile
-            label={`Churn (${churn.windowDays}d)`}
-            value={formatPercent1(churn.churnRate)}
-            hint={`${churn.canceledInWindow} de ${churn.activeAtStart} no início da janela`}
-          />
-        )}
-        {/* Agendados e revertidos vem ao LADO do churn, nunca somados nele. Sem
-            estes dois, "0% de churn" com nove saidas marcadas leria como
-            "ninguem quer sair". Aparecem nos dois desfechos (ok e insuficiente)
-            porque informam igual nos dois. */}
-        <ChurnContextTiles churn={churn} />
-        {churn.status === "ok" && churn.ltvCents !== null ? (
-          <MetricTile
-            label="LTV"
-            value={formatCents(churn.ltvCents)}
-            hint="ARPU dividido pelo churn"
-          />
-        ) : (
-          <InsufficientDataBlock
-            label="LTV"
-            explanation="LTV precisa de ARPU e churn maior que zero."
-          />
-        )}
-      </div>
-      {mrr.byPlan.length ? (
-        <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-          <p className="border-b-2 border-slate-900 bg-slate-50 px-4 py-2 text-xs font-black uppercase text-slate-600">
-            Distribuição por plano
-          </p>
-          <ul className="divide-y divide-slate-200">
-            {mrr.byPlan.map((plan) => (
-              <li
-                key={plan.code}
-                className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
-              >
-                <span className="font-black text-slate-900">
-                  {plan.name ?? plan.code}
-                </span>
-                <span className="font-semibold text-slate-600">
-                  {plan.count} · {formatCents(plan.mrrCents)}/mês
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1580,13 +1485,13 @@ function AdminShell({
             </Link>
 
             {session ? (
-              <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 px-2 py-2 lg:flex">
+              <nav className="hidden min-w-0 flex-1 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-2 lg:flex">
                 {adminNavItems.map((item) => (
                   <button
                     key={item.href}
                     type="button"
                     onClick={(event) => handleSectionClick(event, item.href)}
-                    className={`nav-pill inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:text-slate-950 ${
+                    className={`nav-pill inline-flex shrink-0 items-center gap-1 px-2 py-1.5 text-[11px] font-bold hover:text-slate-950 xl:gap-1.5 xl:px-3 xl:text-xs ${
                       activeSection === item.href.replace("#", "")
                         ? "nav-pill-active text-slate-950"
                         : "text-slate-700"
@@ -6140,7 +6045,10 @@ function ContentAdminSection() {
                   exatamente o que esta ali. Nao inventamos um numero (era o que
                   `total ?? 0` faria); dizemos que ele nao veio.
                 */}
-                {!loading && !loadError && total === null && items.length > 0 ? (
+                {!loading &&
+                !loadError &&
+                total === null &&
+                items.length > 0 ? (
                   <div className="border-b-2 border-slate-900 bg-slate-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
                     Mostrando {items.length} registros. O total no banco não foi
                     informado, então esta lista pode não ser tudo. Use a busca
@@ -6407,11 +6315,6 @@ export default function Admin() {
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
-  const [billingMetrics, setBillingMetrics] =
-    useState<BillingMetricsData | null>(null);
-  const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
-    null,
-  );
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
@@ -6423,7 +6326,6 @@ export default function Admin() {
   const [posthogLoading, setPosthogLoading] = useState(true);
   const [churnLoading, setChurnLoading] = useState(true);
   const [affiliatesStatsLoading, setAffiliatesStatsLoading] = useState(true);
-  const [billingLoading, setBillingLoading] = useState(true);
   // Aba derivada DIRETO da URL (?section=), fonte unica: sem estado espelhado,
   // entao nao ha loop URL<->estado. F5, voltar/avancar e colar link leem daqui;
   // /admin sem ?section cai em "visao-geral" e nao reescreve a URL.
@@ -6465,7 +6367,7 @@ export default function Admin() {
       // UMA secao so (filtros, quadro e tarefa da aba de Tarefas). A lista mora
       // em taskViewState, junto de onde essas chaves sao lidas e escritas: uma
       // copia aqui divergiria no primeiro filtro novo, e em silencio.
-      const params = new URLSearchParams(
+      const params = clearAttentionContext(
         limparChavesDeSecao(window.location.search),
       );
       params.set("section", section);
@@ -6486,13 +6388,26 @@ export default function Admin() {
   const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
   const [seriesLoading, setSeriesLoading] = useState(true);
   const [seriesError, setSeriesError] = useState<string | null>(null);
-  const [attention, setAttention] = useState<AttentionData | null>(null);
-  const [attentionLoading, setAttentionLoading] = useState(true);
-  const [attentionError, setAttentionError] = useState<string | null>(null);
+  const {
+    data: attention,
+    loading: attentionLoading,
+    error: attentionError,
+    refresh: refreshAttention,
+  } = useAttentionData(activeSection === "visao-geral");
 
   const overviewWindow = parseOverviewWindow(
     new URLSearchParams(search).get("window"),
   );
+  const [todayForOverview, setTodayForOverview] = useState(
+    () => diaBrasilia(new Date().toISOString()) ?? "",
+  );
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = diaBrasilia(new Date().toISOString()) ?? "";
+      setTodayForOverview((previous) => (previous === next ? previous : next));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const setOverviewWindow = useCallback(
     (proxima: OverviewWindow) => {
       const params = new URLSearchParams(window.location.search);
@@ -6528,7 +6443,7 @@ export default function Admin() {
     return () => {
       cancelled = true;
     };
-  }, [overviewWindow]);
+  }, [overviewWindow, todayForOverview]);
 
   // PRESENCA, com efeito e ritmo PROPRIOS.
   //
@@ -6536,18 +6451,12 @@ export default function Admin() {
   // janela, e presenca e estado ATUAL. Acoplar os dois faria "online agora"
   // mudar ao trocar para "ultimos 7 dias", o que nao quer dizer nada, e refaria
   // a query HogQL a cada mexida no seletor.
-  //
-  // 60s e o intervalo de RENOVACAO da tela; o cache da rota (30s) e que limita a
-  // carga real no PostHog quando ha varias abas abertas.
   useEffect(() => {
     let cancelled = false;
     const buscar = () => {
       adminFetch("/online-now")
         .then((json) => {
           if (cancelled) return;
-          // Payload degradado (sem `data`) e FALHA, nao sucesso vazio: sem esta
-          // guarda o card ficaria "carregando" para sempre, que e o unico estado
-          // do resolver que nao diz nada a quem le.
           setOnlineNow((json.data as OnlineNowData) ?? { state: "error" });
         })
         .catch(() => {
@@ -6570,9 +6479,14 @@ export default function Admin() {
     let cancelled = false;
     setSeriesLoading(true);
     setSeriesError(null);
-    adminFetch(`/overview-series?window=${overviewWindow}`)
+    adminFetch(`/overview-series?window=${overviewWindow}&contract=3`)
       .then((json) => {
         if (cancelled) return;
+        if (!hasOverviewPaymentsContract(json.data)) {
+          throw new Error(
+            "Contrato de pagamentos incompatível. Atualize a página após a conclusão do deploy.",
+          );
+        }
         setSeriesData(json.data as SeriesData);
       })
       .catch((err: unknown) => {
@@ -6588,7 +6502,7 @@ export default function Admin() {
     return () => {
       cancelled = true;
     };
-  }, [overviewWindow]);
+  }, [overviewWindow, todayForOverview]);
 
   // ATENCAO NECESSARIA: estado proprio, e NAO segue o seletor.
   //
@@ -6596,32 +6510,6 @@ export default function Admin() {
   // tem janela propria declarada pelo servidor (`janelaDias`). Fazer trocar de 7
   // para 30 refazer esta chamada mudaria o rotulo sem mudar o conteudo, que e a
   // mesma armadilha do funil.
-  useEffect(() => {
-    let cancelled = false;
-    setAttentionLoading(true);
-    setAttentionError(null);
-    adminFetch("/attention")
-      .then((json) => {
-        if (cancelled) return;
-        setAttention(json.data as AttentionData);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        // Falha vira ESTADO de erro. Um painel vazio aqui diria "tudo em ordem"
-        // sobre uma medicao que nao aconteceu.
-        setAttention(null);
-        setAttentionError(
-          err instanceof Error ? err.message : "Erro ao carregar.",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setAttentionLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
@@ -6709,7 +6597,6 @@ export default function Admin() {
       setPosthogLoading(true);
       setChurnLoading(true);
       setAffiliatesStatsLoading(true);
-      setBillingLoading(true);
 
       // Mesmas promises tagueadas de antes (falha vira estado de erro da secao,
       // nunca zeros). A diferenca: cada uma aplica SEU estado no proprio .then
@@ -6801,21 +6688,6 @@ export default function Admin() {
           error:
             err instanceof Error ? err.message : "Erro ao carregar afiliados.",
         }));
-      // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
-      // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
-      const billingPromise = adminFetch("/billing-metrics")
-        .then((json) => ({
-          ok: true as const,
-          data: json.data as BillingMetricsData,
-        }))
-        .catch((err: unknown) => ({
-          ok: false as const,
-          error:
-            err instanceof Error
-              ? err.message
-              : "Erro ao carregar métricas de cobrança.",
-        }));
-
       // De /dashboard so sobra `recent_audit`: os contadores morreram junto com
       // os blocos que os exibiam (ver a poda do servidor no commit seguinte).
       void dashboardPromise.then((dashboardResult) => {
@@ -6878,18 +6750,6 @@ export default function Admin() {
         }
         setAffiliatesStatsLoading(false);
       });
-      void billingPromise.then((billingMetricsResult) => {
-        if (cancelled) return;
-        if (billingMetricsResult.ok) {
-          setBillingMetrics(billingMetricsResult.data);
-          setBillingMetricsError(null);
-        } else {
-          setBillingMetrics(null);
-          setBillingMetricsError(billingMetricsResult.error);
-        }
-        setBillingLoading(false);
-      });
-
       // Mantido o Promise.all: mesmo paralelismo, e o await preserva o contrato
       // de "conclui quando tudo terminou" para o caller (resolve()). Os .then
       // acima ja aplicaram cada estado; aqui so aguardamos o conjunto.
@@ -6899,7 +6759,6 @@ export default function Admin() {
         posthogPromise,
         churnPromise,
         affiliatesPromise,
-        billingPromise,
       ]);
     };
 
@@ -6960,8 +6819,6 @@ export default function Admin() {
           setChurnError(null);
           setAffiliates([]);
           setAffiliatesError(null);
-          setBillingMetrics(null);
-          setBillingMetricsError(null);
           setAccessState("forbidden");
         });
     };
@@ -7238,14 +7095,14 @@ export default function Admin() {
         label: "Assinantes Pro",
         value: formatCount(c.acessoPro.bySubscription),
         detail: [
-          // CONCESSÃO PURA: `byInfluencer` inclui quem também paga, e essas
-          // pessoas já estão no headline. Subtrair `both` é o que faz a linha
-          // dizer "+N" de verdade, sem recontar ninguém.
-          `+${formatCount(Math.max(c.acessoPro.byInfluencer - c.acessoPro.both, 0))} só por concessão`,
+          // CONCESSÃO PURA: `byInfluencer` e `byAfiliado` incluem quem também
+          // paga, e essas pessoas já estão no headline. Subtrair `both` (que é
+          // a interseção com QUALQUER concessão) é o que faz a linha dizer
+          // "+N" de verdade, sem recontar ninguém.
+          `+${formatCount(Math.max(c.acessoPro.byInfluencer + (c.acessoPro.byAfiliado ?? 0) - c.acessoPro.both, 0))} só por concessão`,
           `${formatCount(c.acessoPro.total)} com acesso no total`,
-          // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
-          // de propósito. Somá-lo ao número de pagantes faria o card divergir do
-          // MRR no primeiro trial.
+          // TRIALING FORA DO HEADLINE: trial não paga. Somá-lo ao número de
+          // pagantes faria o card afirmar uma relação financeira inexistente.
           c.mrr.trialingCount > 0 ? `${c.mrr.trialingCount} em trial` : null,
         ]
           .filter(Boolean)
@@ -7255,35 +7112,20 @@ export default function Admin() {
       {
         ...metricCards[3],
         value: formatCents(c.mrr.value),
-        detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
-        // ARPU como LINHA SECUNDÁRIA (D9), não card novo: é uma divisão do que
-        // já está no card. `arpuCents` é null sem assinante ativo, ausência.
-        secundaria:
-          c.mrr.arpuCents !== null
-            ? `ARPU ${formatCents(c.mrr.arpuCents)} por assinante`
-            : null,
+        detail: `Preço vigente mensalizado de ${formatCount(c.mrr.activeCount)} acessos ativos, automáticos e manuais (estado atual)`,
+        secundaria: "Não é valor contratado nem dinheiro recebido",
         sparkline: spark("mrrCents", "up_bom"),
         destino: "financeiro",
       },
       {
         ...metricCards[4],
-        label: "Receita no período",
-        value: formatCents(c.receita.value),
-        // BRUTO como principal (base do Simples) e LÍQUIDO ao lado: bruto
-        // sozinho afirma uma receita que não entrou. Os três números já eram
-        // calculados no mesmo laço e dois eram descartados.
-        detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
-        // QUEBRA POR PROVEDOR como linha secundária, não como card novo: é uma
-        // divisão do número que já está no card, mesma decisão do ARPU no MRR.
-        // Ela some sozinha quando não há dois provedores com receita, e some na
-        // janela de deploy contra o backend antigo. Ver o cabeçalho do helper.
-        // TODO(Ana)
-        secundaria: detalheDeReceitaPorProvider(
-          c.receita.porProvider,
-          formatCents,
-        ),
-        sparkline: spark("receitaBrutaCents", "up_bom"),
-        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        label: "Caixa registrado por moeda",
+        value: "Indisponível",
+        detail:
+          "O agregado legado não declara moeda nem cobertura; valores confiáveis ficam separados na aba Financeiro.",
+        secundaria: undefined,
+        sparkline: undefined,
+        change: undefined,
         destino: "financeiro",
       },
       {
@@ -7293,8 +7135,8 @@ export default function Admin() {
         // quem tem plano anual. A unidade é a diferença entre um número certo e
         // um número entendido.
         value: `${formatCents(c.receitaEmRisco.mrrCents)}/mês`,
-        // BREAKDOWN em vez do "% do MRR". O percentual respondia "quanto disso é
-        // grande", e o card já mostra o valor; a pergunta que sobra é O QUE
+        // BREAKDOWN em vez de percentual sobre o valor de catálogo. O card já
+        // mostra o valor; a pergunta que sobra é O QUE
         // fazer, e as duas metades pedem ações opostas (reter quem agendou saída,
         // recuperar a cobrança de quem está em atraso).
         //
@@ -7718,40 +7560,74 @@ export default function Admin() {
         onClose={() => setLogoutModalOpen(false)}
         onConfirm={handleLogout}
         isLoading={loggingOut}
+        contentClassName="z-[2000]"
+        overlayClassName="z-[2000]"
       />
-      <section className="hero-pattern border-b-2 border-slate-900 py-10">
+      <section
+        className={`hero-pattern border-b-2 border-slate-900 ${activeSection === "financeiro" ? "py-5 sm:py-6" : "py-10"}`}
+      >
         <div className="container">
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div
+            className={
+              activeSection === "financeiro"
+                ? "flex flex-wrap items-end justify-between gap-3"
+                : "grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end"
+            }
+          >
             <div>
-              <p className="social-badge mb-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wide">
+              <p
+                className={
+                  activeSection === "financeiro"
+                    ? "mb-2 inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-violet-800"
+                    : "social-badge mb-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wide"
+                }
+              >
                 <LayoutDashboard className="h-4 w-4" />
                 painel admin
               </p>
-              <h1 className="font-display text-4xl font-black text-slate-950 lg:text-6xl">
-                Centro de comando do BORA NA TECH?
+              <h1
+                className={`font-display font-black text-slate-950 ${activeSection === "financeiro" ? "text-3xl lg:text-4xl" : "text-4xl lg:text-6xl"}`}
+              >
+                {activeSection === "financeiro"
+                  ? "Centro de comando"
+                  : "Centro de comando do BORA NA TECH?"}
               </h1>
-              <p className="mt-4 max-w-3xl text-base font-semibold leading-relaxed text-slate-700">
-                Visão executiva e operacional para acompanhar crescimento,
-                receita, uso de IA, engajamento, saúde do sistema e gargalos do
-                funil.
+              <p
+                className={
+                  activeSection === "financeiro"
+                    ? "mt-1 max-w-2xl text-sm font-semibold text-slate-600"
+                    : "mt-4 max-w-3xl text-base font-semibold leading-relaxed text-slate-700"
+                }
+              >
+                {activeSection === "financeiro"
+                  ? "Indicadores executivos e operação da plataforma."
+                  : "Visão executiva e operacional para acompanhar crescimento, receita, uso de IA, engajamento, saúde do sistema e gargalos do funil."}
               </p>
             </div>
-            <div className="card-brutal rounded-3xl bg-white p-4">
-              <p className="text-xs font-black uppercase text-slate-500">
-                central admin
+            {activeSection === "financeiro" ? (
+              <p className="text-xs font-bold text-slate-500">
+                Atualizado às {loadedAt}
               </p>
-              <p className="font-display text-xl font-black text-slate-950">
-                Dados separados por seção
-              </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Carregado às {loadedAt}
-              </p>
-            </div>
+            ) : (
+              <div className="card-brutal rounded-3xl bg-white p-4">
+                <p className="text-xs font-black uppercase text-slate-500">
+                  central admin
+                </p>
+                <p className="font-display text-xl font-black text-slate-950">
+                  Dados separados por seção
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  Carregado às {loadedAt}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="section-alt py-10">
+      <section
+        className={`section-alt ${activeSection === "financeiro" ? "py-6 sm:py-8" : "py-10"}`}
+      >
         {/* `lg:max-w-none` neutraliza SO o teto de largura do `.container`,
             preservando o `mx-auto` (que vira no-op sem teto) e o padding
             lateral, que continua sendo o respiro padrao da pagina.
@@ -7805,32 +7681,48 @@ export default function Admin() {
               ) : overviewError ? (
                 <ErrorBlock message={overviewError} />
               ) : (
-                // ALCANCE LIMITADO, e a limitação é declarada: este boundary
-                // pega erro DENTRO do MetricCardView, mas NÃO pega o `useMemo`
-                // que monta `adminMetricCards`, porque ele roda no corpo do
-                // Admin, acima daqui. Foi lá que estava o defeito nº 8 da
-                // varredura, e quem o contém é a guarda de `overview.cards`, não
-                // este boundary. Mover a derivação para dentro de um componente
-                // filho resolveria de verdade, e é reestruturação, não fatia
-                // curta.
                 <BlocoBoundary nome="Cards do período">
                   <div className="space-y-5">
-                    {/* LINHA 1: os três principais, maiores. */}
                     <div
                       data-testid="cards-principais"
                       className="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
                     >
-                      {cardsPrincipais.map((metric) => (
-                        <MetricCardView
-                          key={metric.key}
-                          metric={metric}
-                          destaque
-                          onNavigate={setActiveSection}
-                        />
-                      ))}
+                      {cardsPrincipais.map((metric) =>
+                        metric.key === "receita_periodo" ? (
+                          <BlocoBoundary
+                            key={metric.key}
+                            nome="Caixa líquido registrado"
+                          >
+                            <OverviewFinancialCard
+                              overview={overview}
+                              overviewWindow={overviewWindow}
+                              onNavigate={(filter) => {
+                                const params = new URLSearchParams(
+                                  window.location.search,
+                                );
+                                params.set("section", "financeiro");
+                                params.delete("financeView");
+                                params.set("financePeriod", filter.preset);
+                                if (filter.customFrom)
+                                  params.set("financeFrom", filter.customFrom);
+                                else params.delete("financeFrom");
+                                if (filter.customTo)
+                                  params.set("financeTo", filter.customTo);
+                                else params.delete("financeTo");
+                                setLocation(`/admin?${params.toString()}`);
+                              }}
+                            />
+                          </BlocoBoundary>
+                        ) : (
+                          <MetricCardView
+                            key={metric.key}
+                            metric={metric}
+                            destaque
+                            onNavigate={setActiveSection}
+                          />
+                        ),
+                      )}
                     </div>
-                    {/* LINHA 2: os quatro de detalhe, compactos. Empilham no
-                        mobile pelo mesmo mecanismo da linha de cima. */}
                     <div
                       data-testid="cards-secundarios"
                       className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
@@ -7859,13 +7751,8 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
-              {/* FUNIL DIGERIDO substitui o `PaidFunnel`.
-                  O bloco antigo vinha do PostHog e mostrava contagens; este vem
-                  de tabelas locais e mostra TAXAS entre etapas adjacentes, que e
-                  a pergunta ("onde vaza?"). As etapas sao verificaveis no banco:
-                  cadastro (profiles) -> ativacao (ai_usage_logs) -> Pro
-                  (subscriptions). Nao comeca em visitantes porque nao existe
-                  fonte local de visitante. */}
+              {/* Funil de coorte local: cadastro -> pagamento registrado -> uso
+                  de IA success cujo registro começou depois do pagamento. */}
               <div className="grid gap-6">
                 <BlocoBoundary nome="Funil principal">
                   <FunnelDigest
@@ -7882,9 +7769,9 @@ export default function Admin() {
 
               {/* GRAFICOS NOVOS da Fase 4, no mesmo frame dos dois de cima. */}
               <div className="grid gap-6 xl:grid-cols-2">
-                <BlocoBoundary nome="Conversões Pro por dia">
-                  <ProConversionsChart
-                    series={seriesData?.series}
+                <BlocoBoundary nome="Pagamentos registrados por dia">
+                  <RegisteredPaymentsChart
+                    pagamentos={seriesData?.pagamentos}
                     erro={seriesError}
                     carregando={seriesLoading}
                   />
@@ -7942,6 +7829,7 @@ export default function Admin() {
                     data={attention}
                     loading={attentionLoading}
                     error={attentionError}
+                    onRefresh={() => void refreshAttention()}
                   />
                 </BlocoBoundary>
               </div>
@@ -7996,13 +7884,28 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
+          {activeSection === "creators" ? (
+            <AdminSection
+              id="creators"
+              // TODO(Ana)
+              eyebrow="influencers e afiliados"
+              icon={<Sparkles className="h-4 w-4" />}
+              // TODO(Ana)
+              title="Creators"
+              // TODO(Ana)
+              subtitle="Quem tem concessão de creator, os códigos de cada um e os números de cliques, vendas e comissão."
+            >
+              <CreatorsSection />
+            </AdminSection>
+          ) : null}
+
           {activeSection === "retencao" ? (
             <AdminSection
               id="retencao"
-              eyebrow="retenção e churn"
+              eyebrow="uso e cancelamentos observados"
               icon={<RefreshCcw className="h-4 w-4" />}
-              title="Quem fica, quem cancela e quem está em risco"
-              subtitle="Monitore cohorts, motivos de cancelamento, assinantes sem login e distribuição de dias desde o último acesso."
+              title="Uso recente e cancelamentos registrados"
+              subtitle="Sinais operacionais de navegação, motivos registrados e dias desde o último acesso. Não mede logo churn nem churn de receita."
             >
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <article className="card-brutal overflow-hidden rounded-3xl bg-white">
@@ -8021,7 +7924,7 @@ export default function Admin() {
                   </article>
                   <article className="card-brutal rounded-3xl bg-rose-50 p-6">
                     <h3 className="font-display text-2xl font-black text-slate-950">
-                      Usuários em risco
+                      Acessos sem login recente
                     </h3>
                     <div className="mt-4">
                       {churnLoading ? (
@@ -8032,7 +7935,8 @@ export default function Admin() {
                         // TODO(Ana): copy de fallback do erro de churn.
                         <ErrorBlock
                           message={
-                            churnError ?? "Erro ao carregar risco de churn."
+                            churnError ??
+                            "Erro ao carregar acessos sem login recente."
                           }
                         />
                       ) : churnRiskUsers.length ? (
@@ -8056,7 +7960,8 @@ export default function Admin() {
                                 </span>
                               </div>
                               <p className="mt-3 text-sm font-black text-slate-700">
-                                MRR: {formatCurrency(riskUser.mrr)}
+                                Valor mensal de catálogo associado:{" "}
+                                {formatCurrency(riskUser.mrr)}
                               </p>
                             </div>
                           ))}
@@ -8064,7 +7969,7 @@ export default function Admin() {
                       ) : (
                         <div className="rounded-2xl border-2 border-slate-900 bg-white p-4">
                           <p className="font-display text-lg font-black text-slate-950">
-                            Nenhum assinante Pro em risco no momento
+                            Nenhum acesso Pro sem login recente
                           </p>
                           <p className="mt-2 text-sm font-semibold text-slate-500">
                             Todos os assinantes ativos consultados fizeram login
@@ -8085,107 +7990,14 @@ export default function Admin() {
               eyebrow="financeiro"
               icon={<DollarSign className="h-4 w-4" />}
               title="Financeiro"
-              subtitle="Resultado de caixa (entrou, saiu, lucro) separado das métricas de recorrência (MRR, ARPU, churn). São coisas diferentes."
+              subtitle="Caixa registrado e acessos atuais, com cobertura e limitações explícitas. Métricas contratuais ausentes não aparecem como zero."
             >
-              {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
-              {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
-              <FinanceDashboard refreshKey={financeRefreshKey} />
-
-              {/* NOTAS FISCAIS (NFS-e). Fica no financeiro porque o que ele
-                  mostra e obrigacao sobre o dinheiro que entrou, e os dois
-                  estados que exigem acao humana nao aparecem em lugar nenhum
-                  fora daqui. */}
-              <div className="mt-10">
-                {/* TODO(Ana): titulo e paragrafo do bloco de notas fiscais. */}
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Notas fiscais
-                </h2>
-                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Emissão automática por cobrança confirmada. Bloqueadas
-                  dependem do cadastro fiscal do assinante; as marcadas para
-                  revisão vieram de reembolso parcial ou cancelamento recusado
-                  pela prefeitura.
-                </p>
-                <FiscalInvoicesDashboard />
-              </div>
-
-              {/* DESPESAS (CRUD manual, cambio travado no lancamento) */}
-              <div className="mt-10">
-                {/* TODO(Ana): titulo e subtitulo do bloco de despesas. */}
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Despesas
-                </h2>
-                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Lance cobranças recorrentes e gastos pontuais. Moeda
-                  estrangeira trava o câmbio (PTAX) na data do lançamento.
-                </p>
-                <ExpensesManager
-                  onChanged={() => setFinanceRefreshKey((k) => k + 1)}
-                />
-              </div>
-
-              {/* PAGAMENTOS SEM ASSINATURA. Fica no Financeiro, e nao na Visao,
-                  porque a acao aqui e sobre dinheiro de uma pessoa especifica, e
-                  quem abre esta secao ja esta no contexto de conferir caixa. O
-                  painel de Atencao continua apontando os casos criticos; a
-                  diferenca e que la e um aviso e aqui e onde se resolve. */}
-              <OrphanPaymentsPanel />
-
-              {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
-              <div className="mt-12 border-t-4 border-slate-900 pt-8">
-                {/* TODO(Ana): titulo e subtitulo do bloco de recorrencia. */}
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Recorrência e assinantes
-                </h2>
-                <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Métricas de assinatura (MRR, ARPU, churn) e comissões de
-                  afiliados. Diferente do resultado de caixa acima: aqui é o
-                  recorrente projetado, não o dinheiro que efetivamente entrou.
-                </p>
-
-                <div className="mt-5 grid gap-6 xl:grid-cols-3">
-                  <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                    {/* TODO(Ana): titulo do bloco de metricas de cobranca. */}
-                    <h3 className="font-display text-2xl font-black">
-                      MRR, ARPU e churn
-                    </h3>
-                    <div className="mt-4">
-                      <BillingMetricsPanel
-                        loading={billingLoading}
-                        error={billingMetricsError}
-                        metrics={billingMetrics}
-                      />
-                    </div>
-                  </article>
-                  <article className="card-brutal rounded-3xl bg-white p-6">
-                    <h3 className="font-display text-2xl font-black">
-                      Afiliados externos
-                    </h3>
-                    <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        Comissões a pagar
-                      </p>
-                      <p className="font-display mt-1 text-2xl font-black text-slate-950">
-                        {formatCents(affiliateTotals.commissionDue)}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-500">
-                        {formatCount(affiliateTotals.sales)} vendas atribuídas
-                      </p>
-                    </div>
-                  </article>
-                </div>
-
-                <div className="mt-8">
-                  {/* TODO(Ana): titulo e subtitulo da tabela de assinantes. */}
-                  <h3 className="font-display text-2xl font-black text-slate-950">
-                    Assinantes
-                  </h3>
-                  <p className="mb-4 mt-1 text-sm font-semibold text-slate-600">
-                    Lista completa de assinaturas, com filtros e paginação.
-                  </p>
-                  <SubscribersTable />
-                </div>
-              </div>
+              <FinanceWorkspace
+                refreshKey={financeRefreshKey}
+                onExpenseChanged={() =>
+                  setFinanceRefreshKey((current) => current + 1)
+                }
+              />
             </AdminSection>
           ) : null}
 
@@ -8743,6 +8555,19 @@ export default function Admin() {
                                           {affiliate.discount_percent}% desconto
                                           • {affiliate.commission_percent}%
                                           comissão • {affiliate.status}
+                                        </p>
+                                        <p
+                                          data-testid={`afiliado-dono-${affiliate.code}`}
+                                          className="mt-1 text-xs font-bold text-slate-600"
+                                        >
+                                          {/* TODO(Ana) */}
+                                          {affiliate.user_id
+                                            ? `Dono: ${
+                                                affiliate.owner_name ||
+                                                affiliate.owner_email ||
+                                                affiliate.user_id
+                                              }`
+                                            : "Sem dono"}
                                         </p>
                                       </div>
                                       <div className="flex flex-wrap gap-2 sm:justify-end">

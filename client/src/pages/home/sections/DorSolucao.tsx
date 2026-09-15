@@ -6,6 +6,7 @@ import SecaoDecorada, {
   VIEWPORT_ENTRADA,
   type OrbSpec,
 } from "../SecaoDecorada";
+import { entrada } from "@/lib/entradaEstatica";
 
 /**
  * Dois orbs, mais fracos que os do Pro.
@@ -66,7 +67,7 @@ export default function DorSolucao() {
     >
       <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5 }}
@@ -78,7 +79,7 @@ export default function DorSolucao() {
         </motion.div>
         <motion.h2
           id="dor-solucao-title"
-          initial={reduce ? false : { opacity: 0, y: 20 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.6, delay: 0.1 }}
@@ -93,7 +94,7 @@ export default function DorSolucao() {
           {DORES.map((dor, index) => (
             <motion.li
               key={dor}
-              initial={reduce ? false : { opacity: 0, y: 20 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={VIEWPORT_ENTRADA}
               transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -113,7 +114,7 @@ export default function DorSolucao() {
         </ul>
 
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
+          initial={entrada(reduce ? false : { opacity: 0, y: 20 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5, delay: 0.15 }}

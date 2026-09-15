@@ -46,6 +46,7 @@ import {
   type CareerPlanSummary,
   type FxRate,
 } from "@/services/careerPlanService";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("amber");
 
@@ -877,7 +878,7 @@ export default function PlanoCarreira() {
           {/* Cabecalho integrado, presente em todos os estados. */}
           {/* TODO(Ana): validar copy do hero (diferenciar do Roadmap com IA, que responde o que estudar) */}
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10"
@@ -929,7 +930,7 @@ export default function PlanoCarreira() {
                 nao pode empurrar o layout de forma grosseira. */}
             {showingPlan && shown ? (
               <motion.div
-                initial={reduce ? false : { opacity: 0, height: 0 }}
+                initial={entrada(reduce ? false : { opacity: 0, height: 0 })}
                 animate={{ opacity: 1, height: "auto" }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className="overflow-hidden"

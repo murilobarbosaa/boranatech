@@ -73,11 +73,25 @@ describe("avisoDeAcesso", () => {
     expect(a.exigeAcaoManual).toBe(false);
   });
 
-  it("revogado COM influencer: exige ação, porque a pessoa continua Pro", () => {
+  it("revogado COM concessão: exige ação, porque a pessoa continua Pro", () => {
     const a = avisoDeAcesso(acesso({ still_pro_via_influencer: true }))!;
     expect(a.mensagem).toContain("CONTINUA Pro");
-    expect(a.mensagem).toContain("influencer");
     expect(a.exigeAcaoManual).toBe(true);
+  });
+
+  it("nomeia o tipo da concessão quando a tela o conhece, e diz creator quando não", () => {
+    const comConcessao = acesso({ still_pro_via_influencer: true });
+    expect(avisoDeAcesso(comConcessao, "influencer")!.mensagem).toContain(
+      "pela concessão de influencer",
+    );
+    expect(avisoDeAcesso(comConcessao, "afiliado")!.mensagem).toContain(
+      "pela concessão de afiliado",
+    );
+    // O servidor diz que há concessão, não qual: sem o tipo, nada de inventar
+    // "influencer" para quem pode ser afiliado.
+    expect(avisoDeAcesso(comConcessao)!.mensagem).toContain(
+      "pela concessão de creator",
+    );
   });
 
   it("sem assinatura: estado neutro, não falha", () => {

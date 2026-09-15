@@ -1,0 +1,274 @@
+{
+  "contractVersion": 1,
+  "status": "partial",
+  "computedAt": "2026-09-14T12:00:00.000Z",
+  "period": {
+    "preset": "custom",
+    "startDay": "2026-09-01",
+    "endDayInclusive": "2026-09-01",
+    "from": "2026-09-01T03:00:00.000Z",
+    "toExclusive": "2026-09-02T03:00:00.000Z",
+    "timezone": "America/Sao_Paulo",
+    "basis": "complete_calendar_days"
+  },
+  "cash": {
+    "status": "partial",
+    "source": "finance_transactions",
+    "coverage": {
+      "localRowsRead": 2,
+      "canonicalTransactions": 2,
+      "duplicateRowsIgnored": 0,
+      "paymentIdentitiesFromAdm001": 1,
+      "reconciledWithProviders": false,
+      "transactionalSnapshot": false,
+      "externalCoverage": "not_collected"
+    },
+    "freshness": "2026-09-02T12:00:00.000Z",
+    "currencies": [
+      {
+        "currency": "BRL",
+        "positiveEntries": {
+          "status": "partial",
+          "valueCents": 10000,
+          "currency": "BRL",
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": ["Não representa dados reais."]
+        },
+        "refunds": {
+          "status": "partial",
+          "valueCents": 1000,
+          "currency": "BRL",
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": ["Não representa dados reais."]
+        },
+        "fees": {
+          "status": "partial",
+          "valueCents": 500,
+          "currency": "BRL",
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": ["Não representa dados reais."]
+        },
+        "calculableNet": {
+          "status": "partial",
+          "valueCents": 8500,
+          "currency": "BRL",
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": ["Não representa dados reais."]
+        },
+        "payments": {
+          "status": "partial",
+          "value": 1,
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": []
+        },
+        "identifiedPeople": {
+          "status": "partial",
+          "value": 1,
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": []
+        },
+        "transactionsWithoutPerson": {
+          "status": "partial",
+          "value": 0,
+          "sources": ["finance_transactions"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": []
+        },
+        "series": [
+          {
+            "day": "2026-09-01",
+            "positiveEntriesCents": 10000,
+            "refundsCents": 1000,
+            "feesCents": 500,
+            "calculableNetCents": 8500
+          }
+        ]
+      }
+    ],
+    "registeredPayments": {
+      "status": "partial",
+      "value": 1,
+      "sources": ["finance_transactions"],
+      "coverage": "fixture sintética parcial; definição ADM-001",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Não prova cobertura integral dos provedores."]
+    },
+    "registeredPaymentPeople": {
+      "status": "partial",
+      "value": 1,
+      "sources": ["finance_transactions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "registeredPaymentsWithoutPerson": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["finance_transactions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "excludedTransactions": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["finance_transactions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "conflictingIdentities": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["finance_transactions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "exclusionsByReason": {
+      "unsupportedType": 0,
+      "unsupportedProvider": 0,
+      "missingIdentity": 0,
+      "invalidAmount": 0,
+      "invalidCurrency": 0,
+      "invalidInstant": 0,
+      "outsidePeriod": 0,
+      "economicConflict": 0
+    },
+    "limitations": [
+      "EXEMPLO EXCLUSIVAMENTE SINTÉTICO; não representa dados reais, não possui cobertura externa nem fotografia transacional."
+    ]
+  },
+  "accesses": {
+    "status": "partial",
+    "source": "subscriptions",
+    "coverage": {
+      "localRowsRead": 3,
+      "transactionalSnapshot": false,
+      "historicalContractCoverage": "unavailable",
+      "peopleWithConflictingAccesses": 0
+    },
+    "freshness": "2026-09-02T12:00:00.000Z",
+    "automaticActive": {
+      "status": "partial",
+      "value": 1,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Não prova pagamento."]
+    },
+    "manualPrepaidActive": {
+      "status": "partial",
+      "value": 1,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Não é recorrência."]
+    },
+    "trialing": {
+      "status": "partial",
+      "value": 1,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Não é cliente pagante."]
+    },
+    "unclassified": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "conflictingPeople": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Nenhuma subscription é escolhida silenciosamente."]
+    },
+    "scheduledCancellation": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": ["Acesso permanece atual até current_period_end."]
+    },
+    "catalogMonthlyValues": [
+      {
+        "currency": "BRL",
+        "automaticActive": {
+          "status": "partial",
+          "valueCents": 2990,
+          "currency": "BRL",
+          "sources": ["subscriptions", "shared/planPricing.ts"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": [
+            "Preço vigente de catálogo; não representa valor contratado ou recebido."
+          ]
+        },
+        "manualPrepaidActive": {
+          "status": "partial",
+          "valueCents": 2990,
+          "currency": "BRL",
+          "sources": ["subscriptions", "shared/planPricing.ts"],
+          "coverage": "fixture exclusivamente sintética",
+          "freshness": "2026-09-02T12:00:00.000Z",
+          "limitations": [
+            "Equivalente de catálogo do acesso pré-pago; não é recorrência."
+          ]
+        }
+      }
+    ],
+    "catalogValueExclusions": {
+      "status": "partial",
+      "value": 0,
+      "sources": ["subscriptions"],
+      "coverage": "fixture sintética parcial",
+      "freshness": "2026-09-02T12:00:00.000Z",
+      "limitations": []
+    },
+    "limitations": ["Preço vigente não é obrigação contratual."]
+  },
+  "unavailableIndicators": [
+    {
+      "names": [
+        "MRR contratual",
+        "ARR",
+        "New MRR",
+        "Expansion MRR",
+        "Contraction MRR",
+        "Reactivation MRR",
+        "Churned MRR",
+        "NRR",
+        "churn de receita",
+        "logo churn",
+        "LTV"
+      ],
+      "status": "unavailable",
+      "value": null,
+      "sources": ["subscriptions", "finance_transactions"],
+      "coverage": "Fatos contratuais históricos não existem.",
+      "freshness": null,
+      "limitations": ["Não mensurável com confiabilidade."],
+      "requiredFacts": ["obrigação e ciclo contratual imutáveis"]
+    }
+  ]
+}

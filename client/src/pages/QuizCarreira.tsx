@@ -46,6 +46,7 @@ import {
   QUIZ_RESULT_SESSION_KEY,
   type PersistQuizPayload,
 } from "@/services/careerQuizService";
+import { entrada } from "@/lib/entradaEstatica";
 
 type QuizPhase =
   | "objective"
@@ -741,7 +742,7 @@ function ObjectiveScreen({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
@@ -806,7 +807,7 @@ function ObjectiveScreen({
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
             <motion.p
-              initial={{ opacity: 0, y: -8 }}
+              initial={entrada({ opacity: 0, y: -8 })}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
               className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
@@ -822,7 +823,7 @@ function ObjectiveScreen({
             </motion.p>
 
             <motion.h1
-              initial={{ opacity: 0, y: 12 }}
+              initial={entrada({ opacity: 0, y: 12 })}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.1 }}
               className="font-display font-black leading-[1.02] tracking-tight text-slate-950"
@@ -838,7 +839,7 @@ function ObjectiveScreen({
             </p>
 
             <motion.p
-              initial={{ opacity: 0 }}
+              initial={entrada({ opacity: 0 })}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.3 }}
               className="mt-6 inline-flex items-center gap-2 font-mono text-sm font-black uppercase tracking-wider text-violet-700"
@@ -854,7 +855,7 @@ function ObjectiveScreen({
           </div>
 
           <motion.div
-            initial={{ opacity: 0, x: 24 }}
+            initial={entrada({ opacity: 0, x: 24 })}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
             className="flex flex-col items-center gap-3 lg:items-start"
@@ -866,7 +867,7 @@ function ObjectiveScreen({
               <AnimatePresence mode="wait">
                 <motion.span
                   key={areaAtual}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={entrada({ opacity: 0, y: 10 })}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
@@ -890,7 +891,7 @@ function ObjectiveScreen({
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={entrada({ opacity: 0, y: 16 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.25 }}
           className="mt-10 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-6"
@@ -951,7 +952,7 @@ function ObjectiveScreen({
                 key={t.id}
                 type="button"
                 onClick={() => onSelect(t.id)}
-                initial={{ opacity: 0, y: 16 }}
+                initial={entrada({ opacity: 0, y: 16 })}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
                 whileHover={{ scale: 1.02, y: -4 }}
@@ -1029,7 +1030,7 @@ function AreaPreview() {
           return (
             <motion.span
               key={nome}
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={entrada({ opacity: 0, scale: 0.9 })}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25, delay: 0.2 + idx * 0.03 }}
               className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs font-bold text-slate-950"
@@ -1070,7 +1071,7 @@ function IntroScreen({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
@@ -1168,7 +1169,7 @@ function LevelRevealScreen({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={entrada({ opacity: 0, y: 20 })}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
@@ -1180,7 +1181,7 @@ function LevelRevealScreen({
       </p>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
+        initial={entrada({ opacity: 0, scale: 0.96 })}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         className="relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-7 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-9"
@@ -1222,7 +1223,7 @@ function LevelRevealScreen({
           {meta.doing.map((item, idx) => (
             <motion.li
               key={item}
-              initial={{ opacity: 0, x: -12 }}
+              initial={entrada({ opacity: 0, x: -12 })}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.25 + idx * 0.1 }}
               className="flex items-start gap-3 rounded-2xl border-2 border-slate-300 bg-white px-4 py-3"
@@ -1300,7 +1301,7 @@ function QuestionScreen({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 50 }}
+      initial={entrada({ opacity: 0, x: 50 })}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -1339,7 +1340,7 @@ function QuestionScreen({
               type="button"
               onClick={() => handleClick(idx)}
               disabled={transitioning}
-              initial={{ opacity: 0, y: 12 }}
+              initial={entrada({ opacity: 0, y: 12 })}
               animate={{ opacity: dimmed ? 0.4 : 1, y: 0 }}
               transition={{
                 y: {
@@ -1462,7 +1463,7 @@ function ProgressBar({
               style={{
                 background: `linear-gradient(90deg, ${accent}, #FFB800)`,
               }}
-              initial={{ width: 0 }}
+              initial={entrada({ width: 0 })}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
             />
@@ -1480,7 +1481,7 @@ function ProgressBar({
 function CompletingScreen({ accent }: { accent: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={entrada({ opacity: 0 })}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}

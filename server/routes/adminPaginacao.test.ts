@@ -121,6 +121,92 @@ function montar(
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+
+describe("GET /finance/transactions com meio comprovado", () => {
+  it("filtra o conjunto inteiro antes da página e confirma o filtro aplicado", async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `tx${String(index).padStart(2, "0")}`,
+      provider: "asaas",
+      provider_transaction_id: `pay${index}`,
+      stripe_charge_id: null,
+      type: "charge",
+      gross_cents: 10_000,
+      fee_cents: 0,
+      net_cents: 10_000,
+      currency: index === 0 ? "USD" : "BRL",
+      occurred_at: "2026-09-01T12:00:00.000Z",
+      created_at: "2026-09-01T12:00:01.000Z",
+      user_id: `person${index}`,
+      plan_code: "pro",
+    }));
+    const evidence = rows.map((row, index) => ({
+      id: `sub${String(index).padStart(2, "0")}`,
+      provider: "asaas",
+      provider_subscription_id: row.provider_transaction_id,
+      payment_method: index === 0 || index === 29 ? "pix" : "card",
+    }));
+    montar(
+      { finance_transactions: { rows }, subscriptions: { rows: evidence } },
+      10,
+    );
+    const base =
+      "/finance/transactions?method=pix&from=2026-09-01T03%3A00%3A00.000Z&toExclusive=2026-09-02T03%3A00%3A00.000Z";
+    const first = await chamarAdmin(
+      "GET",
+      `${base}&fresh=1&page=1&pageSize=1&type=charge&currency=BRL`,
+    );
+    expect(first.status).toBe(200);
+    expect(first.body.data).toMatchObject({
+      total: 1,
+      page: 1,
+      pageSize: 1,
+      filterContractVersion: 1,
+      appliedMethod: "pix",
+      rows: [expect.objectContaining({ id: "tx29" })],
+    });
+    const callsAfterColdRead = estado.double.chamadas.length;
+    const later = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=charge&currency=USD`,
+    );
+    expect(later.status).toBe(200);
+    expect(later.body.data).toMatchObject({
+      total: 1,
+      rows: [expect.objectContaining({ id: "tx00" })],
+    });
+    expect(estado.double.chamadas.length - callsAfterColdRead).toBe(2);
+    const wrongType = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=refund&currency=USD`,
+    );
+    expect(wrongType.status).toBe(200);
+    expect(wrongType.body.data.total).toBe(0);
+    expect(first.body.data.rows[0].user_id).toBeUndefined();
+    expect(first.body.data.rows[0].provider_transaction_id).toBeUndefined();
+    const unknownParam = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=charge&currency=BRL&notAFilter=pix`,
+    );
+    expect(unknownParam.status).toBe(200);
+    expect(unknownParam.body.data.rows).toEqual(first.body.data.rows);
+    expect((await chamarAdmin("GET", `${base}&page=1evil`)).status).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&type=payout_failure`)).status,
+    ).toBe(400);
+    expect(
+      (await chamarAdmin("GET", base.replace("method=pix", "method=untrusted")))
+        .status,
+    ).toBe(400);
+    expect((await chamarAdmin("GET", `${base}&method=card`)).status).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&currency=BRL&currency=USD`)).status,
+    ).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&type=charge&type=refund`)).status,
+    ).toBe(400);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1005,7 +1091,7 @@ describe("GET /overview", () => {
     montar({
       profiles: { rows: [], count: 100 },
       subscriptions: { rows: [assinatura()] },
-      influencers: { rows: [] },
+      creators: { rows: [] },
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
@@ -1161,7 +1247,7 @@ describe("GET /overview", () => {
   });
 
   it("acesso Pro traz os dois ramos separados", async () => {
-    base({ influencers: { rows: [{ user_id: "u9" }] } });
+    base({ creators: { rows: [{ user_id: "u9", kind: "influencer" }] } });
     const r = await chamarAdmin("GET", "/overview");
     expect(r.body.data.cards.acessoPro).toMatchObject({
       bySubscription: 1,
@@ -1171,6 +1257,8 @@ describe("GET /overview", () => {
   });
 
   it("cada card decide o Δ pela SUA série", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-14T12:00:00-03:00"));
     // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
     // (não sustenta). Uma regra global da página erraria em um dos dois.
     //

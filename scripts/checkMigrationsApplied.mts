@@ -112,6 +112,35 @@ const CREATE_TABLE_RE =
 // falso positivo e ninguem confia mais nele.
 const DROP_TABLE_RE =
   /drop\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+// "alter table [if exists] [only] public.<velho> rename to <novo>": a tabela
+// muda de nome e continua existindo. Sem isto, a 20260913120000 (influencers
+// vira creators) deixaria `influencers` no conjunto declarado, e o guard
+// acusaria como AUSENTE uma tabela que existe com outro nome, enquanto
+// `creators`, que nenhum `create table` declara, ficaria fora da verificacao.
+// So casa rename da TABELA: `rename column` e `rename constraint` tem outra
+// palavra entre `rename` e `to`, e nao entram.
+const RENAME_TABLE_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?\s+rename\s+to\s+"?([a-z0-9_]+)"?/gi;
+// Deteccao ampla do mesmo rename, para o guard de cobertura: um rename que o
+// regex especifico nao le (outro schema, nome sem schema) derruba o script em
+// vez de deixar a tabela velha viva no conjunto.
+const ANY_RENAME_TABLE_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?[^\s;]+\s+rename\s+to\s/gi;
+// VIEWS: "create [or replace] view public.<nome>" e "drop view [if exists]".
+// O PostgREST expoe view do mesmo jeito que expoe tabela, e o guard de
+// existencia (GET que devolve PGRST205) vale para as duas, entao elas entram no
+// MESMO conjunto declarado. Sem isto, a view de compatibilidade da
+// 20260913120000 (public.influencers sobre public.creators) apareceria como
+// DRIFT na direcao inversa: exposta pelo PostgREST e nao declarada.
+// Materializada fica fora do regex especifico de proposito (nenhuma migration
+// cria uma); se alguma criar, o guard de cobertura abaixo derruba o script em
+// vez de deixa-la passar calada.
+const CREATE_VIEW_RE =
+  /create\s+(?:or\s+replace\s+)?view\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+const DROP_VIEW_RE =
+  /drop\s+view\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+const ANY_CREATE_VIEW_RE =
+  /create\s+(?:or\s+replace\s+)?(?:\w+\s+)*?view\s+[^\s(;]+/gi;
 // Deteccao ampla, so para conferir COBERTURA do parser: pega qualquer
 // "create ... table" e compara com o que o regex especifico conseguiu ler.
 const ANY_CREATE_TABLE_RE =
@@ -235,7 +264,19 @@ const naoReconhecidasOutras: string[] = [];
 // foi medido no estado mesclado (ver o relatorio do Lote C2-REV2).
 // 85 desde 20260906120000_create_project_submissions.sql. Numero MEDIDO com
 // `pnpm check:migrations --declared`, nao somado.
-const EXPECTED_TABLE_COUNT = 85;
+// 86 desde 20260913120000_creators_and_creator_events.sql, MEDIDO com
+// `--declared`: cria creator_events. A mesma migration renomeia influencers para
+// creators, e o rename NAO muda o total (sai um nome, entra outro); quem garante
+// isso e o RENAME_TABLE_RE, sem o qual o conjunto teria as duas e acusaria
+// influencers como ausente no banco.
+// 87 desde a view de compatibilidade public.influencers, na MESMA migration,
+// MEDIDO com `--declared`: view passou a entrar no conjunto declarado (o
+// PostgREST a expoe como expoe tabela). EXPECTED_RLS_COUNT NAO sobe junto,
+// porque view nao tem RLS propria; a leitura anonima dela e verificada a parte.
+// 86 desde 20260914120000_drop_influencers_view.sql, MEDIDO com `--declared`:
+// a view de compatibilidade cai e sai do conjunto pelo DROP_VIEW_RE. RLS nao
+// muda pelo mesmo motivo de nao ter subido.
+const EXPECTED_TABLE_COUNT = 86;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -254,7 +295,10 @@ const EXPECTED_TABLE_COUNT = 85;
 // depois do merge. Valor abaixo medido, nao somado.
 // 85 desde 20260906120000_create_project_submissions.sql, medido com
 // `--declared` no mesmo commit da migration.
-const EXPECTED_RLS_COUNT = 85;
+// 86 desde 20260913120000_creators_and_creator_events.sql, medido com
+// `--declared`: creator_events declara RLS. A marca de RLS de influencers MUDA
+// de nome junto com a tabela (creators), e por isso nao conta duas vezes.
+const EXPECTED_RLS_COUNT = 86;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -320,7 +364,12 @@ const EXPECTED_RLS_COUNT = 85;
 // mudou: 37, esperado 35". Os dois 35 eram sobre conjuntos DIFERENTES, e a
 // uniao deles tem duas funcoes a mais. Aceitar o 35 por concordancia teria
 // deixado o guard verde sobre um conjunto que nao e o que ele conta.
-const EXPECTED_FUNCTION_COUNT = 37;
+// 40 desde 20260914120100_creator_events_daily.sql, que cria TRES de uma vez:
+// creator_events_daily, admin_creators_page e creators_board_summary. Valor
+// MEDIDO com `--declared`, nao somado. As tres devolvem TABLE e o PostgREST as
+// expoe em /rpc/, entao entram nas verificaveis por REST e o contador de
+// trigger abaixo NAO sobe.
+const EXPECTED_FUNCTION_COUNT = 40;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
@@ -425,6 +474,10 @@ function conferirCoberturaSimples(
 // Ordem lexicografica dos arquivos = ordem cronologica das migrations (prefixo
 // timestamp), entao criar e dropar na sequencia reproduz o estado final.
 const declared = new Set<string>();
+// Subconjunto de `declared` que e VIEW. Existe so para a verificacao de
+// leitura anonima: view nao tem RLS propria, entao nao entra em rlsDeclarada e,
+// sem este conjunto, ficaria fora de qualquer checagem de exposicao.
+const viewsDeclaradas = new Set<string>();
 const naoReconhecidas: string[] = [];
 for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
@@ -438,36 +491,80 @@ for (const file of readdirSync(migrationsDir)
   // terminava com x REMOVIDO do conjunto declarado. Foi assim que
   // `email_campaign_record_result` apareceu como "existe no banco e ninguem
   // declara": ela e declarada, o parser e que desfazia a declaracao.
+  // RENAME entra na MESMA sequencia de origem que create e drop: e um drop do
+  // nome velho seguido de um create do novo, no ponto do arquivo em que
+  // acontece. `exigirDeclarada` e para o conjunto de TABELAS: renomear uma
+  // tabela que nenhuma migration anterior declarou e drift, e vira item nao
+  // reconhecido (aborta), em vez de o nome novo entrar em silencio. Para o
+  // conjunto de RLS o rename so MOVE a marca, se ela existir.
+  // `criar` e `dropar` aceitam LISTA de regex para que tabela e view entrem na
+  // MESMA sequencia de origem: a 20260913120000 renomeia a tabela influencers
+  // e em seguida cria uma view com o mesmo nome, e aplicar as duas familias em
+  // passadas separadas repetiria o defeito ja catalogado de aplicar todos os
+  // CREATE antes de todos os DROP.
   const aplicarEmOrdem = (
     conjunto: Set<string>,
-    criar: RegExp,
-    dropar: RegExp,
+    criar: RegExp | RegExp[],
+    dropar: RegExp | RegExp[],
     aoCriar?: (nome: string, indice: number) => void,
+    renomear?: { re: RegExp; exigirDeclarada: boolean },
   ) => {
-    const eventos = [
-      ...[...sql.matchAll(criar)].map((m) => ({
+    type Evento = {
+      pos: number;
+      nome: string;
+      novo: string;
+      tipo: "criar" | "dropar" | "renomear";
+    };
+    const casar = (re: RegExp | RegExp[]) =>
+      (Array.isArray(re) ? re : [re]).flatMap((r) => [...sql.matchAll(r)]);
+    const eventos: Evento[] = [
+      ...casar(criar).map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
+        novo: "",
         tipo: "criar" as const,
       })),
-      ...[...sql.matchAll(dropar)].map((m) => ({
+      ...casar(dropar).map((m) => ({
         pos: m.index ?? 0,
         nome: m[1].toLowerCase(),
+        novo: "",
         tipo: "dropar" as const,
+      })),
+      ...(renomear ? [...sql.matchAll(renomear.re)] : []).map((m) => ({
+        pos: m.index ?? 0,
+        nome: m[1].toLowerCase(),
+        novo: m[2].toLowerCase(),
+        tipo: "renomear" as const,
       })),
     ].sort((a, b) => a.pos - b.pos);
     for (const e of eventos) {
       if (e.tipo === "criar") {
         conjunto.add(e.nome);
         aoCriar?.(e.nome, e.pos);
-      } else {
+      } else if (e.tipo === "dropar") {
         conjunto.delete(e.nome);
+      } else if (conjunto.has(e.nome)) {
+        conjunto.delete(e.nome);
+        conjunto.add(e.novo);
+      } else if (renomear?.exigirDeclarada) {
+        naoReconhecidas.push(
+          `${file}: rename de public.${e.nome} para ${e.novo}, mas nenhuma migration anterior declara public.${e.nome}`,
+        );
       }
     }
   };
 
   const reconhecidas = [...sql.matchAll(CREATE_TABLE_RE)];
-  aplicarEmOrdem(declared, CREATE_TABLE_RE, DROP_TABLE_RE);
+  const renomeiosLidos = [...sql.matchAll(RENAME_TABLE_RE)];
+  const viewsLidas = [...sql.matchAll(CREATE_VIEW_RE)];
+  aplicarEmOrdem(
+    declared,
+    [CREATE_TABLE_RE, CREATE_VIEW_RE],
+    [DROP_TABLE_RE, DROP_VIEW_RE],
+    undefined,
+    { re: RENAME_TABLE_RE, exigirDeclarada: true },
+  );
+  aplicarEmOrdem(viewsDeclaradas, CREATE_VIEW_RE, DROP_VIEW_RE);
   // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
   const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
   const nomesFuncao = new Set<string>();
@@ -489,7 +586,10 @@ for (const file of readdirSync(migrationsDir)
     }
   }
   const rlsLidas = [...sql.matchAll(ENABLE_RLS_RE)];
-  aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE);
+  aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE, undefined, {
+    re: RENAME_TABLE_RE,
+    exigirDeclarada: false,
+  });
   conferirCoberturaSimples(
     rlsLidas.length,
     sql,
@@ -528,6 +628,12 @@ for (const file of readdirSync(migrationsDir)
   conferirCobertura(fnLidas, ANY_CREATE_FUNCTION_RE, "create function");
   conferirCobertura(polLidas, ANY_CREATE_POLICY_RE, "create policy");
   conferirCobertura(idxLidos, ANY_CREATE_INDEX_RE, "create index");
+  conferirCobertura(
+    renomeiosLidos,
+    ANY_RENAME_TABLE_RE,
+    "alter table ... rename to",
+  );
+  conferirCobertura(viewsLidas, ANY_CREATE_VIEW_RE, "create view");
 
   // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
   const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
@@ -590,6 +696,9 @@ if (MODO_DECLARADO) {
   );
   console.log(
     `  funcoes declaradas: ${funcoesDeclaradas.size} (EXPECTED_FUNCTION_COUNT = ${EXPECTED_FUNCTION_COUNT}) ${funcoesDeclaradas.size === EXPECTED_FUNCTION_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  views declaradas:   ${[...viewsDeclaradas].filter((v) => declared.has(v)).length} (ja contadas nas tabelas declaradas; sem RLS propria)`,
   );
   // Uma tabela por argumento `--tabela=<nome>`: responde pertinencia sem
   // despejar as 85 na tela.
@@ -811,6 +920,45 @@ const ASSERCOES: AssercaoComportamental[] = [
         "roadmap-intake-chat",
       ]),
   },
+  {
+    // 20260913120000_creators_and_creator_events.sql faz `create or replace`
+    // de is_user_pro para ler public.creators, e a verificacao por nome nao
+    // enxerga isso. O que se afirma e o que distingue os dois corpos DEPOIS do
+    // rename: o corpo antigo le public.influencers, que deixou de existir, e
+    // passa a FALHAR em toda chamada (inclusive a de um uuid qualquer), o que
+    // aparece aqui como "sem veredito". O corpo novo responde false para um
+    // uuid sem assinatura e sem concessao. Pega a migration aplicada pela
+    // metade (rename sem o replace), que derrubaria o Pro de todo mundo.
+    // STABLE e so leitura: chamar contra producao nao escreve nada.
+    funcao: "is_user_pro",
+    args: { p_user_id: "00000000-0000-0000-0000-000000000000" },
+    descricao:
+      "le public.creators e nega Pro a um uuid sem assinatura e sem concessao",
+    verificar: (resultado) =>
+      resultado === false
+        ? null
+        : `esperava false, veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
+  },
+  {
+    // 20260914120100_creator_events_daily.sql. A verificacao por nome prova que
+    // a funcao existe; esta prova que ela e CHAMAVEL pelo service_role com a
+    // assinatura que o painel usa (array de uuid, duas timestamptz) e que a
+    // lista vazia de codigos devolve lista vazia, nunca a tabela inteira. Um
+    // `any('{}')` trocado por um filtro opcional devolveria linhas aqui.
+    // STABLE e so leitura: chamar contra producao nao escreve nada.
+    funcao: "creator_events_daily",
+    args: {
+      p_affiliate_ids: [],
+      p_from: "2000-01-01T00:00:00Z",
+      p_to: "2100-01-01T00:00:00Z",
+    },
+    descricao:
+      "devolve zero linhas para uma lista vazia de codigos em qualquer janela",
+    verificar: (resultado) =>
+      Array.isArray(resultado) && resultado.length === 0
+        ? null
+        : `esperava [], veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
+  },
 ];
 
 async function chamarRpc(
@@ -938,6 +1086,11 @@ const COLUNAS_ESPERADAS: Record<string, string[]> = {
     // 20260804140000_add_precisa_revisao_to_fiscal_invoices.sql
     "precisa_revisao",
   ],
+  // 20260912120000_add_pix_reminder_columns_to_subscriptions.sql
+  subscriptions: ["pix_due_date", "pix_invoice_url", "pix_reminders_sent"],
+  // 20260913120000_creators_and_creator_events.sql
+  creators: ["kind"],
+  affiliates: ["user_id"],
 };
 
 /**
@@ -1314,6 +1467,35 @@ if (!anonKey) {
   } else if (recursosNaoDeclarados.length > 0) {
     console.log(
       `[checkMigrationsApplied] direcao inversa da RLS: as ${recursosNaoDeclarados.length} tabela(s) nao declaradas NAO sao legiveis pela chave anon.`,
+    );
+  }
+
+  // VIEWS DECLARADAS: nao tem RLS propria, entao nao estao em `rlsVivas` e
+  // ficariam fora de toda verificacao de leitura anonima. O criterio e o
+  // estrito das nao declaradas: nenhuma view deste projeto e publica (a unica
+  // que existiu, public.influencers, era de compatibilidade, revogava anon e
+  // caiu em 20260914120000), entao QUALQUER leitura anon bem-sucedida e achado,
+  // inclusive com zero linhas. Com zero views declaradas o laco nao roda, e a
+  // verificacao volta a valer sozinha para a proxima view que alguem criar.
+  const viewsExpostas: string[] = [];
+  const viewsVivas = [...viewsDeclaradas].filter((v) => declared.has(v)).sort();
+  for (const view of viewsVivas) {
+    const comAnon = await contarLinhas(view, anonKey);
+    if (comAnon.tipo === "ok") {
+      viewsExpostas.push(`${view} (anon leu, ${comAnon.n} linha(s) visiveis)`);
+    } else if (comAnon.tipo === "erro") {
+      inconclusivas.push(`${view} (view, ${comAnon.detalhe})`);
+    }
+  }
+  if (viewsExpostas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${viewsExpostas.length} view(s) declaradas estao LEGIVEIS pela chave anon:`,
+    );
+    for (const e of viewsExpostas) console.error(`  VIEW EXPOSTA: public.${e}`);
+  } else if (viewsVivas.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] as ${viewsVivas.length} view(s) declaradas NAO sao legiveis pela chave anon.`,
     );
   }
   console.log(

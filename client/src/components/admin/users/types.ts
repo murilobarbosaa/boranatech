@@ -62,7 +62,9 @@ export type UserListFilter =
   | "all"
   | "pro"
   | "not_pro"
+  | "creators"
   | "influencers"
+  | "afiliados"
   | "ativo";
 
 // O que a UI CONSOME de GET /users/:id (CPF ja mascarado; sem campos de
@@ -130,6 +132,10 @@ export type UserDetail = {
   // Concessao de influencer ATIVA (null quando nao e influencer). Acesso Pro
   // vitalicio sem assinatura, ortogonal a subscription: os dois podem coexistir.
   influencer: {
+    // Kind da concessao de creator ("influencer" ou "afiliado"). Opcional e
+    // `string`: backend anterior nao envia, e um kind novo nao pode quebrar o
+    // bundle em execucao.
+    kind?: string | null;
     granted_at: string | null;
     note: string | null;
     granted_by_name: string | null;

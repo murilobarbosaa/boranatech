@@ -16,6 +16,7 @@ import { FROM_MONTHLY_LABEL } from "@shared/planPricing";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { entrada } from "@/lib/entradaEstatica";
 
 type ConstellationStar = {
   id: string;
@@ -142,7 +143,7 @@ function ProPitchVariant() {
       <div className="container relative z-10">
         <div className="mx-auto max-w-3xl text-center">
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={entrada({ opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -153,7 +154,7 @@ function ProPitchVariant() {
 
           <motion.h2
             id="pro-pitch-title"
-            initial={{ opacity: 0, y: 16 }}
+            initial={entrada({ opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -168,7 +169,7 @@ function ProPitchVariant() {
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={entrada({ opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -185,7 +186,7 @@ function ProPitchVariant() {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={entrada({ opacity: 0, y: 16 })}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6, delay: 0.3 }}
@@ -232,7 +233,7 @@ function ProThankYouVariant() {
       <div className="container relative z-10">
         <div className="mx-auto max-w-3xl text-center">
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={entrada({ opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
@@ -243,7 +244,7 @@ function ProThankYouVariant() {
 
           <motion.h2
             id="pro-thanks-title"
-            initial={{ opacity: 0, y: 16 }}
+            initial={entrada({ opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -258,7 +259,7 @@ function ProThankYouVariant() {
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0 }}
+            initial={entrada({ opacity: 0 })}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -274,7 +275,7 @@ function ProThankYouVariant() {
             return (
               <motion.div
                 key={tool.href}
-                initial={{ opacity: 0, y: 16 }}
+                initial={entrada({ opacity: 0, y: 16 })}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.4, delay: 0.2 + idx * 0.08 }}
@@ -382,7 +383,7 @@ function Constellation() {
               }
               strokeWidth={isActive ? 3 : 1.5}
               strokeDasharray={isActive ? "0" : "4 4"}
-              initial={reduce ? false : { opacity: 0 }}
+              initial={entrada(reduce ? false : { opacity: 0 })}
               whileInView={reduce ? undefined : { opacity: 1 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{
@@ -428,7 +429,7 @@ function Constellation() {
               onClick={() =>
                 setHovered((prev) => (prev === star.id ? null : star.id))
               }
-              initial={reduce ? false : { opacity: 0, scale: 0 }}
+              initial={entrada(reduce ? false : { opacity: 0, scale: 0 })}
               whileInView={reduce ? undefined : { opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{

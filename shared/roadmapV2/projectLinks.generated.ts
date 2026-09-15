@@ -150,6 +150,20 @@ export const projectTrailLinks: Record<
     {
       "slug": "javascript",
       "nodeId": "projeto.cli"
+    },
+    {
+      "slug": "python",
+      "nodeId": "projeto.cli"
+    },
+    {
+      "slug": "git",
+      "nodeId": "projeto.cli"
+    }
+  ],
+  "landing-page-pessoal": [
+    {
+      "slug": "html",
+      "nodeId": "projeto.pagina"
     }
   ]
 };

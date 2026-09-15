@@ -22,6 +22,7 @@ import {
   TIER_WEIGHTS,
   type LinkedinAnalysisResponse,
 } from "@shared/linkedin/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("sky");
 
@@ -205,7 +206,7 @@ export default function LinkedinScoreHero({
               </p>
             ) : null}
             <motion.span
-              initial={reduce ? false : { opacity: 0, scale: 1.6 }}
+              initial={entrada(reduce ? false : { opacity: 0, scale: 1.6 })}
               animate={{ opacity: 1, scale: 1 }}
               transition={
                 reduce

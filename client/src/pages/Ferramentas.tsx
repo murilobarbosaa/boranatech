@@ -37,6 +37,7 @@ import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn, youtubeEmbedUrl } from "@/lib/utils";
 import { devTools, setupGuides } from "@/lib/careerToolsData";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("orange");
 
@@ -443,7 +444,7 @@ export default function Ferramentas() {
       />
       <div className="print:hidden">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={entrada({ opacity: 0, y: 16 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
@@ -630,7 +631,7 @@ export default function Ferramentas() {
                   return (
                     <motion.article
                       key={tool.name}
-                      initial={{ opacity: 0, y: 12 }}
+                      initial={entrada({ opacity: 0, y: 12 })}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
                         duration: 0.3,
