@@ -7,8 +7,9 @@ import { cleanup, render, within } from "@testing-library/react";
  * Os grupos saem de trailGroups, derivado do meta: o teste usa o meta real,
  * entao afirma o estado do registro de hoje (JavaScript e Python em
  * linguagens, Git em ferramentas) e quebra se uma trilha registrada sumir da
- * vitrine. Tambem afirma que os grupos vem depois das carreiras e que o card
- * de carreira nao mudou.
+ * vitrine. Tambem afirma a ordem curada da vitrine (carreiras, linguagens,
+ * ferramentas e as areas por ultimo, Lote 03b) e que o card de carreira nao
+ * mudou.
  */
 vi.mock("@/components/Layout", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -112,17 +113,23 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
     }
   });
 
-  it("os grupos vem depois das carreiras", () => {
+  it("ordem curada: carreiras, linguagens, ferramentas e as areas por ultimo", () => {
     const { container, getByRole } = render(<RoadmapsV2Index />);
     const carreiras = getByRole("heading", { name: "Trilhas de carreira" });
     const linguagens = grupo(container, "linguagem");
     const ferramentas = grupo(container, "ferramenta");
+    const areas = grupo(container, "area");
     expect(
       carreiras.compareDocumentPosition(linguagens) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       linguagens.compareDocumentPosition(ferramentas) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Lote 03b: as areas deixaram de abrir a pagina e passaram a fecha-la.
+    expect(
+      ferramentas.compareDocumentPosition(areas) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
