@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { ReactNode } from "react";
 import {
   cleanup,
@@ -28,6 +30,7 @@ type PropsDoView = {
   janela: string;
   onJanelaChange: (janela: "7d" | "30d" | "90d" | "all") => void;
   visao: string;
+  identidade?: string;
 };
 
 const estado = vi.hoisted(() => ({
@@ -36,7 +39,14 @@ const estado = vi.hoisted(() => ({
     painel: unknown;
     janela: string;
     visao: string;
+    identidade: string | undefined;
   },
+}));
+
+// Sonda: se a pagina voltar a importar o fundo decorado, ele aparece na tela
+// com este test id. A leitura da fonte, no teste, cobre o import.
+vi.mock("@/components/profile/ProfileBackground", () => ({
+  ProfileBackground: () => <div data-testid="profile-background" />,
 }));
 
 vi.mock("@/components/Layout", () => ({
@@ -56,6 +66,7 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
       painel: props.painel,
       janela: props.janela,
       visao: props.visao,
+      identidade: props.identidade,
     };
     return (
       <div data-testid="view">
@@ -203,5 +214,72 @@ describe("pagina /creator", () => {
     montar();
     await screen.findByTestId("creator-erro");
     expect(screen.queryByTestId("view")).toBeNull();
+  });
+});
+
+describe("pagina /creator: estrutura do admin", () => {
+  function faixa(): HTMLElement | null {
+    return screen
+      .getByRole("heading", { level: 1, name: "Painel de Creator" })
+      .closest("section");
+  }
+
+  it("carregando: faixa hero-pattern com o h1, corpo section-alt, sem identidade", () => {
+    estado.fetch = vi.fn(() => new Promise(() => {}));
+    montar();
+    expect(faixa()?.className).toContain("hero-pattern");
+    expect(faixa()?.nextElementSibling?.className).toContain("section-alt");
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+  });
+
+  it("erro: a mesma faixa, o erro dentro do corpo e sem identidade", async () => {
+    estado.fetch = vi.fn(async () => {
+      throw new AdminApiError("Erro ao carregar o painel.", 500, "db_error");
+    });
+    montar();
+    const erro = await screen.findByTestId("creator-erro");
+    expect(faixa()?.className).toContain("hero-pattern");
+    expect(erro.closest("section")?.className).toContain("section-alt");
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+  });
+
+  it("nao creator: a mesma faixa, o cartao dentro do corpo e sem identidade", async () => {
+    estado.fetch = vi.fn(async () => {
+      throw new AdminApiError(
+        "Acesso de creator necessário.",
+        403,
+        "not_creator",
+      );
+    });
+    montar();
+    const tela = await screen.findByTestId("creator-nao-creator");
+    expect(faixa()?.className).toContain("hero-pattern");
+    expect(tela.parentElement?.closest("section")?.className).toContain(
+      "section-alt",
+    );
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+  });
+
+  it("ok: a identidade mora na faixa, com o nome, e a view recebe identidade externa", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    const view = await screen.findByTestId("view");
+    const identidade = screen.getByTestId("creator-identidade");
+    expect(faixa()?.contains(identidade)).toBe(true);
+    expect(identidade.textContent).toContain("Ana Creator");
+    expect(view.closest("section")?.className).toContain("section-alt");
+    expect(estado.props?.identidade).toBe("externa");
+  });
+
+  it("o fundo decorado do /perfil nao e renderizado nem importado", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.queryByTestId("profile-background")).toBeNull();
+    const fonte = readFileSync(
+      resolve(import.meta.dirname, "Creator.tsx"),
+      "utf8",
+    );
+    expect(fonte).not.toContain("ProfileBackground");
   });
 });

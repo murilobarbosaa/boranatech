@@ -4,37 +4,23 @@ import { Check, Copy, Ticket } from "lucide-react";
 import { formatarCentavos } from "@/lib/formatarCentavos";
 import type { CreatorDashboardCodigo } from "@shared/creatorDashboard";
 
-// O CODIGO DO CREATOR EM FORMATO DE CUPOM: fundo amarelo da marca, borda e
-// sombra duras do resto do site, e os dois recortes semicirculares nas laterais
-// (a tecnica de "ticket", o unico ornamento que nao existe em outra pagina).
-// A esquerda o codigo e os selos, a direita o link com o botao de copiar,
-// separados por uma linha tracejada; embaixo, os quatro numeros do codigo.
+// O CODIGO DO CREATOR NA FORMA DO POSTER DE ASSINATURA DO /perfil: borda da
+// tinta, sombra dura e o gradiente `--bnt-ticket-pro` numa camada atras do
+// conteudo. Nenhum ornamento proprio: sem recortes, sem listras e sem as
+// estrelas do /perfil. A esquerda o codigo e os chips, a direita o link com o
+// botao de copiar; embaixo, depois do divisor tracejado, os quatro numeros.
 //
-// TEMA ESCURO SEM VARIANTE DE TINTA: `bg-[var(--brand-yellow)]` casa o
-// "contexto amarelo" do index.css, que no `.dark` devolve a paleta clara aos
-// descendentes, entao texto, bordas e o botao escuro continuam iguais. So o
-// fundo fecha um tom, para `--brand-yellow-deep`.
-//
-// O RECORTE e um circulo na cor da pagina (`--brand-cream`, que acompanha o
-// tema) centrado na borda externa. So a metade de DENTRO tem contorno: o
-// circulo gira 45 graus com duas bordas coloridas, e o arco colorido cai
-// exatamente na metade que fica sobre o cupom. Sem `overflow-hidden` no cupom
-// de proposito: ele recortaria o circulo no limite do padding e a borda reta
-// passaria por cima do recorte.
+// TEMA ESCURO SEM VARIANTE: `--bnt-ticket-pro` tem par no `.dark` (o gradiente
+// ambar escuro do /perfil), e os chips brancos viram `--bnt-surface` pelo
+// mecanismo do site.
 
 const ICONE = "h-3.5 w-3.5";
 
-const SELO =
-  "inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-xs font-black";
-
 const ROTULO =
-  "flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.2em] text-amber-950";
+  "flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700";
 
-const RECORTE_ESQUERDO =
-  "before:absolute before:-left-4 before:top-1/2 before:h-7 before:w-7 before:-translate-y-1/2 before:rotate-45 before:rounded-full before:border-2 before:border-transparent before:border-r-slate-950 before:border-t-slate-950 before:bg-[var(--brand-cream)]";
-
-const RECORTE_DIREITO =
-  "after:absolute after:-right-4 after:top-1/2 after:h-7 after:w-7 after:-translate-y-1/2 after:rotate-45 after:rounded-full after:border-2 after:border-transparent after:border-b-slate-950 after:border-l-slate-950 after:bg-[var(--brand-cream)]";
+const CHIP =
+  "rounded-full border-2 border-slate-900 bg-white px-2.5 py-0.5 text-xs font-black text-slate-900";
 
 function inteiro(valor: number): string {
   return valor.toLocaleString("pt-BR");
@@ -118,79 +104,84 @@ export function CupomDoCodigo({
   return (
     <article
       data-testid={`creator-codigo-${codigo.code}`}
-      className="rounded-3xl border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[4px_4px_0_var(--bnt-shadow)] dark:bg-[var(--brand-yellow-deep)]"
+      className="relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
     >
       <div
-        data-testid={`creator-cupom-corpo-${codigo.code}`}
-        className={`relative grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] ${RECORTE_ESQUERDO} ${RECORTE_DIREITO}`}
-      >
-        <div className="p-5 sm:p-6">
-          <p className={ROTULO}>
-            <Ticket aria-hidden="true" className={ICONE} />
-            {/* TODO(Ana) */}
-            Cupom
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="font-mono text-3xl font-black tracking-wider text-slate-950 sm:text-4xl">
+        aria-hidden="true"
+        data-testid={`creator-cupom-fundo-${codigo.code}`}
+        className="absolute inset-0 z-0"
+        style={{ background: "var(--bnt-ticket-pro)" }}
+      />
+
+      <div className="relative z-10">
+        <div className="md:grid md:grid-cols-[1fr_minmax(0,1.2fr)] md:gap-8">
+          <div>
+            <p className={ROTULO}>
+              <Ticket aria-hidden="true" className={ICONE} />
+              {/* TODO(Ana) */}
+              cupom
+            </p>
+            <p className="font-display mt-2 break-all text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-4xl md:text-5xl">
               {codigo.code}
             </p>
-            {codigo.status !== "active" ? (
-              <span className="rounded-full border-2 border-slate-950 bg-white px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-slate-950">
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={CHIP}>
                 {/* TODO(Ana) */}
-                Pausado
+                {codigo.discount_percent > 0
+                  ? `${percentual(codigo.discount_percent)} de desconto para quem usar`
+                  : "Sem desconto para quem usar"}
               </span>
+              <span className={CHIP}>
+                {/* TODO(Ana) */}
+                {`Comissão de ${percentual(codigo.commission_percent)}`}
+              </span>
+              {codigo.status !== "active" ? (
+                <span
+                  data-testid={`creator-codigo-pausado-${codigo.code}`}
+                  className="rounded-full border-2 border-rose-700 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-800"
+                >
+                  {/* TODO(Ana) */}
+                  Pausado
+                </span>
+              ) : null}
+            </div>
+            {visao === "admin" && codigo.notes ? (
+              <p
+                data-testid={`creator-codigo-notas-${codigo.code}`}
+                className="mt-3 rounded-xl border-2 border-dashed border-slate-950 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              >
+                {codigo.notes}
+              </p>
             ) : null}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span
-              className={`${SELO} border-emerald-700 bg-emerald-50 text-emerald-900`}
-            >
+
+          <div className="mt-6 md:mt-0">
+            <p className={ROTULO}>
               {/* TODO(Ana) */}
-              {codigo.discount_percent > 0
-                ? `${percentual(codigo.discount_percent)} de desconto para quem usar`
-                : "Sem desconto para quem usar"}
-            </span>
-            <span
-              className={`${SELO} border-violet-700 bg-violet-50 text-violet-900`}
-            >
-              {/* TODO(Ana) */}
-              {`Comissão de ${percentual(codigo.commission_percent)}`}
-            </span>
-          </div>
-          {visao === "admin" && codigo.notes ? (
-            <p
-              data-testid={`creator-codigo-notas-${codigo.code}`}
-              className="mt-3 rounded-xl border-2 border-dashed border-slate-950 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-            >
-              {codigo.notes}
+              seu link
             </p>
-          ) : null}
-        </div>
-
-        <div className="border-t-2 border-dashed border-slate-950 p-5 sm:p-6 md:border-l-2 md:border-t-0">
-          <p className={ROTULO}>
-            {/* TODO(Ana) */}
-            Seu link
-          </p>
-          <CampoDoLink link={codigo.link} />
-        </div>
-      </div>
-
-      <dl
-        data-testid={`creator-cupom-numeros-${codigo.code}`}
-        className="grid grid-cols-2 gap-y-3 rounded-b-[1.375rem] border-t-2 border-slate-950 bg-[var(--brand-yellow-soft)] py-3 sm:grid-cols-4 sm:divide-x-2 sm:divide-slate-950"
-      >
-        {numeros.map((item) => (
-          <div key={item.rotulo} className="px-4">
-            <dt className="text-[11px] font-black uppercase tracking-wide text-slate-600">
-              {item.rotulo}
-            </dt>
-            <dd className="font-display text-lg font-black tabular-nums text-slate-950">
-              {item.valor}
-            </dd>
+            <CampoDoLink link={codigo.link} />
           </div>
-        ))}
-      </dl>
+        </div>
+
+        <div className="my-6 border-t-2 border-dashed border-amber-200" />
+
+        <dl
+          data-testid={`creator-cupom-numeros-${codigo.code}`}
+          className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+        >
+          {numeros.map((item) => (
+            <div key={item.rotulo}>
+              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                {item.rotulo}
+              </dt>
+              <dd className="font-display mt-1 text-xl font-black tabular-nums text-slate-950">
+                {item.valor}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </article>
   );
 }

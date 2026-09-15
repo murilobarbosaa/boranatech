@@ -5,41 +5,7 @@ import {
   useTransform,
 } from "framer-motion";
 
-type Intensidade = "padrao" | "alta";
-
-type Orbes = { violeta: string; ambar: string; esmeralda: string };
-
-// INTENSIDADE: o /perfil usa o padrao, com os orbes de sempre. O /creator pede
-// `alta`: orbes mais presentes e nas cores da marca, por token (violeta,
-// amarelo e o verde-agua do grafico), para acompanhar o tema. Os tokens sao
-// custom properties do `:root` do index.css, e nao `--color-*` do Tailwind, que
-// o v4 so emite quando alguma classe as usa: um var() sem definicao pintaria o
-// orbe transparente, sem erro.
-export const ORBES_DO_FUNDO: Record<Intensidade, Orbes> = {
-  padrao: {
-    violeta:
-      "radial-gradient(ellipse, rgba(139, 92, 246, 0.45) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 75%)",
-    ambar:
-      "radial-gradient(ellipse, rgba(251, 191, 36, 0.40) 0%, rgba(251, 191, 36, 0.15) 50%, transparent 75%)",
-    esmeralda:
-      "radial-gradient(ellipse, rgba(52, 211, 153, 0.35) 0%, rgba(52, 211, 153, 0.12) 50%, transparent 75%)",
-  },
-  alta: {
-    violeta:
-      "radial-gradient(ellipse, color-mix(in oklch, var(--brand-violet) 55%, transparent) 0%, color-mix(in oklch, var(--brand-violet) 20%, transparent) 50%, transparent 75%)",
-    ambar:
-      "radial-gradient(ellipse, color-mix(in oklch, var(--brand-yellow) 60%, transparent) 0%, color-mix(in oklch, var(--brand-yellow) 22%, transparent) 50%, transparent 75%)",
-    esmeralda:
-      "radial-gradient(ellipse, color-mix(in oklch, var(--chart-3) 50%, transparent) 0%, color-mix(in oklch, var(--chart-3) 18%, transparent) 50%, transparent 75%)",
-  },
-};
-
-export function ProfileBackground({
-  intensidade = "padrao",
-}: {
-  intensidade?: Intensidade;
-}) {
-  const orbes = ORBES_DO_FUNDO[intensidade];
+export function ProfileBackground() {
   const { scrollY } = useScroll();
   const prefersReducedMotion = useReducedMotion();
 
@@ -110,7 +76,6 @@ export function ProfileBackground({
     <div
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       aria-hidden="true"
-      data-intensidade={intensidade}
     >
       <div className="absolute inset-0 bg-[var(--brand-cream)]" />
 
@@ -126,7 +91,8 @@ export function ProfileBackground({
         <div
           className="h-full w-full rounded-[50%]"
           style={{
-            background: orbes.violeta,
+            background:
+              "radial-gradient(ellipse, rgba(139, 92, 246, 0.45) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 75%)",
             filter: "blur(60px)",
           }}
         />
@@ -139,7 +105,8 @@ export function ProfileBackground({
         <div
           className="h-full w-full rounded-[50%]"
           style={{
-            background: orbes.ambar,
+            background:
+              "radial-gradient(ellipse, rgba(251, 191, 36, 0.40) 0%, rgba(251, 191, 36, 0.15) 50%, transparent 75%)",
             filter: "blur(70px)",
           }}
         />
@@ -157,7 +124,8 @@ export function ProfileBackground({
         <div
           className="h-full w-full rounded-[50%]"
           style={{
-            background: orbes.esmeralda,
+            background:
+              "radial-gradient(ellipse, rgba(52, 211, 153, 0.35) 0%, rgba(52, 211, 153, 0.12) 50%, transparent 75%)",
             filter: "blur(65px)",
           }}
         />
