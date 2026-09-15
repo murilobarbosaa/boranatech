@@ -469,18 +469,13 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     expect(screen.queryByText(frase)).toBeNull();
   });
 
-  it("dois codigos ficam em duas colunas; um codigo ocupa a largura inteira", () => {
+  it("dois codigos empilham em uma coluna, um cupom embaixo do outro", () => {
     desenhar(painelBase());
-    expect(
-      screen.getByTestId("creator-codigo-ANA30").parentElement?.className,
-    ).toContain("md:grid-cols-2");
-    cleanup();
-    const p = painelBase();
-    p.codigos = [p.codigos[0]];
-    desenhar(p);
-    expect(
-      screen.getByTestId("creator-codigo-ANA30").parentElement?.className,
-    ).not.toContain("md:grid-cols-2");
+    const lista = screen.getByTestId("creator-codigo-ANA30").parentElement;
+    expect(lista?.contains(screen.getByTestId("creator-codigo-ANAYT"))).toBe(
+      true,
+    );
+    expect(lista?.className).not.toContain("grid-cols-2");
   });
 });
 

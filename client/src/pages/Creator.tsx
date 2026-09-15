@@ -24,7 +24,9 @@ import {
 //
 // FUNDO E CONTAINER sao os do /perfil (ProfileBackground e o mesmo wrapper):
 // e a outra pagina de conta com fundo decorado, e o /creator segue ela em vez
-// de inventar um terceiro fundo.
+// de inventar um terceiro fundo, so com os orbes na intensidade alta. O
+// `overflow-x-clip` segura a faixa listrada do cabecalho, que sangra alem do
+// cartao, sem abrir rolagem lateral no celular.
 
 type Estado =
   | { tipo: "carregando" }
@@ -83,8 +85,8 @@ export default function Creator() {
     <Layout>
       {/* TODO(Ana) */}
       <SEO title="Painel de Creator" url="/creator" noindex />
-      <div className="relative isolate min-h-screen">
-        <ProfileBackground />
+      <div className="relative isolate min-h-screen overflow-x-clip">
+        <ProfileBackground intensidade="alta" />
         <div className="container relative space-y-6 py-8 md:space-y-8 md:py-12">
           <h1 className="font-display text-3xl font-black text-slate-950 md:text-4xl">
             {/* TODO(Ana) */}

@@ -1,10 +1,7 @@
-import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   BadgeCheck,
   CalendarDays,
-  Check,
-  Copy,
   DollarSign,
   Hourglass,
   Link2Off,
@@ -20,6 +17,7 @@ import {
   ComposedChart,
   Legend,
   Line,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -37,6 +35,8 @@ import {
 } from "@/components/admin/overview/chartMath";
 import { relativeTime } from "@/components/admin/tasks/relativeTime";
 import { CreatorMetricTile } from "@/components/creator/CreatorMetricTile";
+import { CupomDoCodigo } from "@/components/creator/CupomDoCodigo";
+import type { TagPalette } from "@/lib/tagPalette";
 import {
   diaBrasilia,
   formatarDiaCivil,
@@ -45,7 +45,6 @@ import {
 } from "@shared/brasiliaDay";
 import type {
   CreatorDashboard,
-  CreatorDashboardCodigo,
   CreatorDashboardJanela,
   CreatorDashboardSerieDia,
   CreatorEventosSomas,
@@ -87,6 +86,19 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
 ];
 
 const ICONE = "h-3.5 w-3.5";
+
+// Um par pastel de tagPalette.ts por tile (fundo -200, tinta -900), seis
+// familias diferentes. Strings literais: o Tailwind so emite classe escrita.
+const TOM_CLIQUES: TagPalette = { bg: "bg-sky-200", text: "text-sky-900" };
+const TOM_VENDAS: TagPalette = { bg: "bg-violet-200", text: "text-violet-900" };
+const TOM_CONVERSAO: TagPalette = { bg: "bg-teal-200", text: "text-teal-900" };
+const TOM_RECEITA: TagPalette = { bg: "bg-amber-200", text: "text-amber-900" };
+const TOM_A_RECEBER: TagPalette = { bg: "bg-pink-200", text: "text-pink-900" };
+const TOM_PAGA: TagPalette = { bg: "bg-lime-200", text: "text-lime-900" };
+
+// Opacidade da base das barras: o gradiente vertical sai da cor da serie no
+// topo e desbota ate aqui.
+const BASE_DA_BARRA = 0.35;
 
 const SELO =
   "inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-xs font-black";
@@ -182,134 +194,6 @@ function TituloDeSecao({
   );
 }
 
-function CampoDoLink({ link }: { link: string }) {
-  const [estado, setEstado] = useState<"parado" | "copiado" | "falhou">(
-    "parado",
-  );
-
-  useEffect(() => {
-    if (estado !== "copiado") return;
-    const timer = setTimeout(() => setEstado("parado"), 2000);
-    return () => clearTimeout(timer);
-  }, [estado]);
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(link);
-      setEstado("copiado");
-    } catch {
-      setEstado("falhou");
-    }
-  }
-
-  return (
-    <div className="mt-3">
-      <div className="flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-50 py-1.5 pl-3 pr-1.5">
-        <span className="min-w-0 flex-1 break-all font-mono text-xs font-bold text-slate-700 sm:text-sm">
-          {link}
-        </span>
-        <button
-          type="button"
-          onClick={() => void copiar()}
-          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
-        >
-          {estado === "copiado" ? (
-            <Check className={ICONE} />
-          ) : (
-            <Copy className={ICONE} />
-          )}
-          {/* TODO(Ana) */}
-          {estado === "copiado" ? "Copiado" : "Copiar"}
-        </button>
-      </div>
-      {estado === "falhou" ? (
-        <p className="mt-1.5 text-xs font-bold text-rose-700">
-          {/* TODO(Ana) */}
-          Não deu para copiar. Selecione o link e copie à mão.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function CartaoDoCodigo({
-  codigo,
-  visao,
-}: {
-  codigo: CreatorDashboardCodigo;
-  visao: Visao;
-}) {
-  const numeros = [
-    // TODO(Ana)
-    { rotulo: "Cliques", valor: inteiro(codigo.clicks) },
-    // TODO(Ana)
-    { rotulo: "Vendas", valor: inteiro(codigo.sales) },
-    // TODO(Ana)
-    { rotulo: "Receita", valor: formatarCentavos(codigo.revenue_cents) },
-    {
-      // TODO(Ana)
-      rotulo: "A receber",
-      valor: formatarCentavos(codigo.commission_due_cents),
-    },
-  ];
-
-  return (
-    <article
-      data-testid={`creator-codigo-${codigo.code}`}
-      className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="font-mono text-2xl font-black tracking-wider text-slate-950 sm:text-3xl">
-          {codigo.code}
-        </p>
-        {codigo.status !== "active" ? (
-          <span className="rounded-full border-2 border-amber-600 bg-amber-50 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-amber-900">
-            {/* TODO(Ana) */}
-            Pausado
-          </span>
-        ) : null}
-      </div>
-
-      <CampoDoLink link={codigo.link} />
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className={`${SELO} border-emerald-700 bg-emerald-50 text-emerald-900`}>
-          {/* TODO(Ana) */}
-          {codigo.discount_percent > 0
-            ? `${percentual(codigo.discount_percent)} de desconto para quem usar`
-            : "Sem desconto para quem usar"}
-        </span>
-        <span className={`${SELO} border-violet-700 bg-violet-50 text-violet-900`}>
-          {/* TODO(Ana) */}
-          {`Comissão de ${percentual(codigo.commission_percent)}`}
-        </span>
-      </div>
-
-      <dl className="mt-4 grid grid-cols-2 gap-y-3 rounded-2xl border-2 border-slate-200 bg-slate-50 py-3 sm:grid-cols-4 sm:divide-x-2 sm:divide-slate-200">
-        {numeros.map((item) => (
-          <div key={item.rotulo} className="px-3">
-            <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
-              {item.rotulo}
-            </dt>
-            <dd className="font-black tabular-nums text-slate-950">
-              {item.valor}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      {visao === "admin" && codigo.notes ? (
-        <p
-          data-testid={`creator-codigo-notas-${codigo.code}`}
-          className="mt-3 rounded-xl border-2 border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600"
-        >
-          {codigo.notes}
-        </p>
-      ) : null}
-    </article>
-  );
-}
-
 function SeletorDeJanela({
   janela,
   onChange,
@@ -369,6 +253,49 @@ export function serieParaGrafico(
   }));
 }
 
+/** Gradiente vertical da barra: a cor da serie no topo, desbotada na base. */
+function GradienteDaBarra({ id, cor }: { id: string; cor: string }) {
+  return (
+    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" style={{ stopColor: cor }} />
+      <stop
+        offset="100%"
+        style={{ stopColor: cor, stopOpacity: BASE_DA_BARRA }}
+      />
+    </linearGradient>
+  );
+}
+
+/**
+ * O gradiente entra pelo `shape`, e nao pelo `fill` da Bar: a legenda e o
+ * tooltip leem a cor da serie do `fill`, e um `url(#...)` ali apagaria a cor
+ * deles.
+ */
+function barraComGradiente(id: string) {
+  return function BarraComGradiente(props: unknown) {
+    const { x, y, width, height, radius } = props as {
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      radius?: number | [number, number, number, number];
+    };
+    return (
+      <Rectangle
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        radius={radius}
+        fill={`url(#${id})`}
+      />
+    );
+  };
+}
+
+const BARRA_CLIQUES = barraComGradiente("creator-barra-cliques");
+const BARRA_VENDAS = barraComGradiente("creator-barra-vendas");
+
 function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
   const curta = dados.length < DIAS_MINIMOS_PARA_LINHA;
   const temVendas = dados.some((dia) => dia.sales > 0);
@@ -386,6 +313,10 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
         <ResponsiveContainer width="100%" height="100%">
           {curta ? (
             <BarChart data={dados} margin={MARGEM_DO_GRAFICO}>
+              <defs>
+                <GradienteDaBarra id="creator-barra-cliques" cor="var(--chart-1)" />
+                <GradienteDaBarra id="creator-barra-vendas" cor="var(--chart-3)" />
+              </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
@@ -416,6 +347,7 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
                 // TODO(Ana)
                 name="Cliques"
                 fill="var(--chart-1)"
+                shape={BARRA_CLIQUES}
                 radius={[6, 6, 0, 0]}
                 maxBarSize={56}
                 isAnimationActive={false}
@@ -425,6 +357,7 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
                 // TODO(Ana)
                 name="Vendas"
                 fill="var(--chart-3)"
+                shape={BARRA_VENDAS}
                 radius={[6, 6, 0, 0]}
                 maxBarSize={56}
                 isAnimationActive={false}
@@ -663,7 +596,21 @@ export function CreatorDashboardView({
 
   return (
     <div data-testid="creator-painel" className="space-y-6 md:space-y-8">
-      <section className="card-brutal rounded-3xl bg-white p-6 md:p-8">
+      <div className="relative isolate">
+      <div
+        aria-hidden="true"
+        data-testid="creator-faixa"
+        className="absolute -inset-x-4 top-1/2 -z-10 h-24 -translate-y-1/2 border-y-2 border-slate-950 bg-[var(--brand-yellow)] bg-[repeating-linear-gradient(45deg,var(--brand-yellow-soft-deep)_0_10px,transparent_10px_20px)] sm:-inset-x-6 md:h-28"
+      />
+      <section className="card-brutal relative rounded-3xl bg-white p-6 md:p-8">
+        <span
+          aria-hidden="true"
+          data-testid="creator-etiqueta"
+          className="absolute -right-3 -top-4 rotate-6 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1 font-display text-xs font-black uppercase tracking-widest text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
+        >
+          {/* TODO(Ana) */}
+          Creator
+        </span>
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar
             name={nome}
@@ -672,7 +619,7 @@ export function CreatorDashboardView({
             size="xl"
           />
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
+            <p className="font-mono text-[11px] font-black uppercase tracking-[0.22em] text-amber-800">
               {/* TODO(Ana) */}
               Creator da Bora na Tech
             </p>
@@ -723,6 +670,7 @@ export function CreatorDashboardView({
           </div>
         </div>
       </section>
+      </div>
 
       {codigos.length === 0 ? (
         <section
@@ -764,6 +712,7 @@ export function CreatorDashboardView({
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <CreatorMetricTile
                   testId="creator-tile-cliques"
+                  tom={TOM_CLIQUES}
                   icone={<MousePointerClick className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Cliques"
@@ -771,6 +720,7 @@ export function CreatorDashboardView({
                 />
                 <CreatorMetricTile
                   testId="creator-tile-vendas"
+                  tom={TOM_VENDAS}
                   icone={<ShoppingBag className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Vendas"
@@ -778,6 +728,7 @@ export function CreatorDashboardView({
                 />
                 <CreatorMetricTile
                   testId="creator-tile-conversao"
+                  tom={TOM_CONVERSAO}
                   icone={<Percent className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Conversão"
@@ -796,6 +747,7 @@ export function CreatorDashboardView({
                 />
                 <CreatorMetricTile
                   testId="creator-tile-receita"
+                  tom={TOM_RECEITA}
                   icone={<DollarSign className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Receita gerada"
@@ -803,6 +755,7 @@ export function CreatorDashboardView({
                 />
                 <CreatorMetricTile
                   testId="creator-tile-a-receber"
+                  tom={TOM_A_RECEBER}
                   icone={<Hourglass className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Comissão a receber"
@@ -810,6 +763,7 @@ export function CreatorDashboardView({
                 />
                 <CreatorMetricTile
                   testId="creator-tile-paga"
+                  tom={TOM_PAGA}
                   icone={<BadgeCheck className={ICONE} />}
                   // TODO(Ana)
                   rotulo="Comissão paga"
@@ -828,11 +782,9 @@ export function CreatorDashboardView({
                 {/* TODO(Ana) */}
                 Seus links
               </TituloDeSecao>
-              <div
-                className={`grid gap-4 ${codigos.length > 1 ? "md:grid-cols-2" : ""}`}
-              >
+              <div className="grid gap-5">
                 {codigos.map((codigo) => (
-                  <CartaoDoCodigo
+                  <CupomDoCodigo
                     key={codigo.id}
                     codigo={codigo}
                     visao={visao}
