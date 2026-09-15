@@ -555,20 +555,31 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
     ).toBe("2");
   });
 
-  it("so vendas: sem selo de cliques, e todo clique do grafico ausente", () => {
+  it("so vendas: cliques ausentes so ANTES do inicio da medicao", () => {
+    // O marco de cliques e o inicio global da medicao (deploy do lote 01,
+    // 14/09 02:10 em Brasilia). Os dias 12 e 13 nao eram medidos; 14 e 15 ja
+    // eram, e o zero deles e zero de verdade, mesmo sem clique nenhum.
     const p = painelBase();
-    p.eventos.clicks_since = null;
-    p.eventos.events_since = null;
+    p.eventos.clicks_since = "2026-09-14T05:10:00Z";
+    p.eventos.events_since = "2026-09-14T05:10:00Z";
     p.eventos.sales_since = "2026-07-10T15:00:00Z";
+    p.eventos.serie = [
+      { dia: "2026-09-12", ...ZERO, sales: 1 },
+      { dia: "2026-09-13", ...ZERO },
+      { dia: "2026-09-14", ...ZERO },
+      { dia: "2026-09-15", ...ZERO },
+    ];
     desenhar(p);
     expect(screen.queryByTestId("creator-sem-eventos")).toBeNull();
-    expect(screen.queryByTestId("creator-cliques-desde")).toBeNull();
+    expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
+      "Cliques desde 14/09/2026",
+    );
     expect(screen.getByTestId("creator-vendas-desde").textContent).toBe(
       "Vendas desde 10/07/2026",
     );
     expect(
       screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
-    ).toBe("7");
+    ).toBe("2");
   });
 
   it("JANELA DE DEPLOY: o backend anterior, sem os marcos novos, ainda desenha a serie", () => {

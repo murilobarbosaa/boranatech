@@ -350,12 +350,13 @@ export type PontoDoGrafico = Omit<CreatorDashboardSerieDia, "clicks"> & {
 };
 
 /**
- * Dias ANTERIORES ao marco de cliques viram `clicks: null`. O servidor manda 0
- * nesses dias (a serie comeca no primeiro evento de qualquer tipo, e com o
- * backfill de vendas isso pode ser meses antes do primeiro clique), e um 0
- * desenhado diria "ninguem clicou" onde a verdade e "nao se media". Null o
- * recharts desenha como ausencia: sem barra, e um vao na linha. Sem marco
- * nenhum (nenhum clique gravado), todos os dias ficam null. Vendas nao mudam.
+ * Dias ANTERIORES ao marco de cliques viram `clicks: null`. O marco e o inicio
+ * global da medicao (INICIO_MEDICAO_CLIQUES). O servidor manda 0 nesses dias (a
+ * serie comeca no primeiro evento de qualquer tipo, e com o backfill de vendas
+ * isso pode ser meses antes da medicao de cliques), e um 0 desenhado diria
+ * "ninguem clicou" onde a verdade e "nao se media". Null o recharts desenha como
+ * ausencia: sem barra, e um vao na linha. Sem marco (payload sem o campo e sem
+ * o alias), todos os dias ficam null. Vendas nao mudam.
  */
 export function serieParaGrafico(
   serie: CreatorDashboardSerieDia[],

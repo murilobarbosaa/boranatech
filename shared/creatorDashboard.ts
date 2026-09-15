@@ -99,6 +99,15 @@ export type CreatorBoardResumo = {
 // PAINEL (GET /api/creator/me e /api/admin/creators/:userId)
 // ---------------------------------------------------------------------------
 
+/**
+ * INICIO GLOBAL DA MEDICAO DE CLIQUES: o deploy do lote 01 (commit d6a0b93c),
+ * quando `creator_events` passou a receber cliques. E o marco de cliques de
+ * TODO creator, e nao o primeiro clique de cada um: entre este instante e o
+ * primeiro clique de um creator, zero clique e zero de verdade (a medicao ja
+ * existia), e antes dele nao ha medicao nenhuma.
+ */
+export const INICIO_MEDICAO_CLIQUES = "2026-09-14T05:10:00Z";
+
 /** Somas de eventos num intervalo (de `creator_events`, nunca dos contadores). */
 export type CreatorEventosSomas = {
   clicks: number;
@@ -159,9 +168,8 @@ export type CreatorDashboard = {
   /** De creator_events. Cada tipo de evento vale a partir do proprio marco. */
   eventos: {
     /**
-     * Instante do primeiro CLIQUE gravado para estes codigos, ou null. Clique so
-     * e registrado desde o lote 01 (2026-09-14): antes deste marco a serie de
-     * cliques e AUSENCIA de medicao, e nao zero.
+     * `INICIO_MEDICAO_CLIQUES` quando o creator tem codigo; null sem codigo.
+     * Antes deste marco a serie de cliques e AUSENCIA de medicao, e nao zero.
      */
     clicks_since: string | null;
     /**

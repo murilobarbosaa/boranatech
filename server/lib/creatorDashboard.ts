@@ -12,6 +12,7 @@ import type {
 } from "../../shared/creatorDashboard";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
+  INICIO_MEDICAO_CLIQUES,
   isCreatorDashboardJanela,
   linkDoCodigo,
 } from "../../shared/creatorDashboard";
@@ -33,10 +34,11 @@ import { supabaseAdmin } from "./supabaseAdmin";
  *   - `totais` e os numeros por codigo vem dos CONTADORES de `affiliates`, a
  *     fonte de verdade desde o inicio;
  *   - `eventos` (serie por dia, periodo, ultimo clique e ultima venda) vem de
- *     `creator_events`. Cliques existem desde 2026-09-14; vendas, desde a
- *     primeira venda com codigo, porque as anteriores a tabela foram
- *     reconstruidas (migration 20260915100000). Por isso ha dois marcos,
- *     `clicks_since` e `sales_since`, e nao um so.
+ *     `creator_events`. Ha dois marcos, e nao um so: `clicks_since` e o
+ *     inicio global da medicao de cliques (`INICIO_MEDICAO_CLIQUES`, o deploy
+ *     do lote 01), igual para todo creator; `sales_since` e a primeira venda
+ *     do creator, que pode ser anterior, porque as vendas de antes da tabela
+ *     foram reconstruidas (migration 20260915100000).
  *
  * CUSTO FIXO: o numero de consultas nao depende de quantos codigos ou eventos o
  * creator tem (nunca N+1). A serie vem agregada do banco
@@ -402,11 +404,11 @@ async function ultimoEvento(
 
 /**
  * Primeiro evento dos codigos: de qualquer tipo (`tipo` null, o inicio da serie)
- * ou de um tipo so (o marco daquele tipo).
+ * ou a primeira venda (o marco de vendas).
  */
 async function primeiroEvento(
   ids: string[],
-  tipo: "click" | "sale" | null,
+  tipo: "sale" | null,
 ): Promise<string | null> {
   const base = supabaseAdmin
     .from("creator_events")
@@ -497,20 +499,25 @@ export async function montarPainelDoCreator(
   // dois marcos: um checkout anterior ao primeiro clique e a primeira venda
   // ficaria fora da serie e do periodo em "all". Os marcos por tipo sao o que
   // o client usa para dizer desde quando cada serie vale.
+  //
+  // O MARCO DE CLIQUES NAO VEM DO BANCO: e o inicio global da medicao, o mesmo
+  // para todo creator com codigo. O primeiro clique de cada um seria o marco
+  // errado: entre o deploy do lote 01 e esse clique, zero clique e zero de
+  // verdade, e desenha-lo como ausente esconderia isso.
+  const clicksSince = ids.length > 0 ? INICIO_MEDICAO_CLIQUES : null;
   let eventsSince: string | null = null;
-  let clicksSince: string | null = null;
   let salesSince: string | null = null;
   let ultimoClickAt: string | null = null;
   let ultimaVendaAt: string | null = null;
   if (ids.length > 0) {
-    [eventsSince, clicksSince, salesSince, ultimoClickAt, ultimaVendaAt] =
-      await Promise.all([
+    [eventsSince, salesSince, ultimoClickAt, ultimaVendaAt] = await Promise.all(
+      [
         primeiroEvento(ids, null),
-        primeiroEvento(ids, "click"),
         primeiroEvento(ids, "sale"),
         ultimoEvento(ids, "click"),
         ultimoEvento(ids, "sale"),
-      ]);
+      ],
+    );
   }
 
   let serie: CreatorDashboardSerieDia[] = [];
