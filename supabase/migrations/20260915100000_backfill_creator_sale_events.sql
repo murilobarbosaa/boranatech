@@ -9,7 +9,7 @@
 --
 -- O QUE CONTA COMO VENDA. Assinatura com `affiliate_code` de um afiliado que
 -- existe (igualdade exata: os codigos sao gravados normalizados em maiusculas,
--- e a leitura de producao de 2026-09-15 achou zero diferencas so de caixa) e
+-- e a leitura de producao de 2026-09-14 achou zero diferencas so de caixa) e
 -- com `current_period_start` preenchido. Nao ha coluna de ativacao em
 -- `subscriptions`; `current_period_start` so e preenchido quando o provedor
 -- confirma pagamento, e a leitura de producao mostrou que ele separa
@@ -174,7 +174,7 @@ COMMIT;
 -- CONFERENCIA (rodar DEPOIS do commit, so leitura):
 --
 -- 1. Quantos eventos o backfill inseriu, quantos sem receita e sem meio.
---    Esperado pela leitura de producao de 2026-09-15: 78 / 1 / 13.
+--    Esperado pela leitura de producao de 2026-09-14: 78 / 1 / 13.
 -- select count(*) as inseridos,
 --        count(*) filter (where metadata ? 'revenue_unknown') as sem_receita,
 --        count(*) filter (where metadata ? 'payment_method_unknown') as sem_meio
