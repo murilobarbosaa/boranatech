@@ -488,6 +488,17 @@ export function FinanceDashboard({
                       {data.cash.coverage.duplicateRowsIgnored}. Reembolsos
                       externos ausentes não são inferidos.
                     </p>
+                    {data.cash.seriesDetail?.status === "unavailable" ? (
+                      <p className="mt-1">
+                        O total cobre todo o intervalo exibido. A série diária
+                        detalhada não foi enviada{" "}
+                        {data.cash.seriesDetail.reason ===
+                        "daily_limit_exceeded"
+                          ? `porque ultrapassa ${data.cash.seriesDetail.maxDailyPoints} pontos`
+                          : "por falha restrita ao detalhe"}
+                        ; nenhuma janela menor substituiu o histórico.
+                      </p>
+                    ) : null}
                     {data.cash.currencies.map((bucket) => (
                       <p key={bucket.currency} className="mt-1">
                         {bucket.currency}:{" "}
