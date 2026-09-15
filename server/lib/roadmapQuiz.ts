@@ -20,9 +20,24 @@ import {
 // Snapshot persistido em roadmap_quiz_attempts.questions: a ordem das
 // perguntas do sorteio e, por pergunta, a ordem de exibicao embaralhada das
 // alternativas. NUNCA contem gabarito.
+//
+// `exibicao` marca a tentativa em que o id que sai pro client e a POSICAO de
+// exibicao, nao a letra do arquivo da pool. Ele existe porque a letra vazava o
+// gabarito: as pools sao desbalanceadas por letra (em gamedev, 35 das 45
+// corretas eram "b"), entao marcar sempre a letra mais frequente aprovava em
+// 86% das tentativas simuladas, contra 0,35% no chute. Com a posicao, que sai
+// de um embaralhamento uniforme, a correta fica uniforme sobre as quatro
+// posicoes qualquer que seja a letra dela no arquivo.
+//
+// O campo e OPCIONAL de proposito: tentativa criada antes do deploy nao o tem
+// e segue com o comportamento antigo (id igual a letra original) ate terminar,
+// para nao corrigir errado quem estava com a prova aberta. Nao ha migration:
+// questions e jsonb e o campo e aditivo. O ARMAZENAMENTO (answers) continua
+// sempre em letra original, nos dois casos.
 export interface AttemptQuestionSnapshot {
   id: string;
   alternativas: QuizAlternativaId[];
+  exibicao?: "posicao";
 }
 
 export type QuizRng = () => number;
@@ -81,7 +96,72 @@ export function drawQuestions(
   return shuffle(selecionadas, rng).map((id) => ({
     id,
     alternativas: shuffle(ALTERNATIVA_IDS, rng),
+    exibicao: "posicao" as const,
   }));
+}
+
+// Letra original -> id de exibicao (a posicao da alternativa no snapshot).
+// Entrada sem `exibicao` e identidade: e a tentativa legada, cujo client ja
+// recebeu os ids originais. Devolve null quando a letra nao esta no snapshot.
+export function idDeExibicao(
+  entry: AttemptQuestionSnapshot,
+  original: QuizAlternativaId,
+): QuizAlternativaId | null {
+  if (entry.exibicao !== "posicao") return original;
+  const posicao = entry.alternativas.indexOf(original);
+  if (posicao < 0) return null;
+  return ALTERNATIVA_IDS[posicao] ?? null;
+}
+
+// Id de exibicao -> letra original, o caminho que TODA resposta vinda do
+// client percorre antes de ser gravada ou corrigida. Devolve null para id fora
+// de a-d e para posicao que o snapshot nao tem; a rota traduz null em 400.
+export function idOriginal(
+  entry: AttemptQuestionSnapshot,
+  exibido: string,
+): QuizAlternativaId | null {
+  const posicao = ALTERNATIVA_IDS.indexOf(exibido as QuizAlternativaId);
+  if (posicao < 0) return null;
+  if (entry.exibicao !== "posicao") return exibido as QuizAlternativaId;
+  return entry.alternativas[posicao] ?? null;
+}
+
+// Mapa inteiro de respostas, exibicao -> original. Devolve null se QUALQUER
+// pergunta ou valor nao converter: resposta que chega errada e recusada, nunca
+// gravada por aproximacao (o valor E a informacao, nao apresentacao).
+export function respostasParaOriginal(
+  snapshot: AttemptQuestionSnapshot[],
+  answers: Record<string, string>,
+): Record<string, QuizAlternativaId> | null {
+  const out: Record<string, QuizAlternativaId> = {};
+  for (const [questionId, valor] of Object.entries(answers)) {
+    const entry = snapshot.find((item) => item.id === questionId);
+    if (!entry) return null;
+    const original = idOriginal(entry, valor);
+    if (!original) return null;
+    out[questionId] = original;
+  }
+  return out;
+}
+
+// Mapa inteiro de respostas, original -> exibicao, para devolver ao client na
+// retomada. Pergunta que nao esta no snapshot, ou valor que nao converte, sai
+// OMITIDA: o client a mostra como nao respondida, que e o unico jeito de
+// degradar sem exibir uma alternativa marcada errada. O armazenamento nao e
+// tocado, entao a correcao continua sobre a letra original gravada.
+export function respostasParaExibicao(
+  snapshot: AttemptQuestionSnapshot[],
+  answers: Record<string, QuizAlternativaId>,
+): Record<string, QuizAlternativaId> {
+  const out: Record<string, QuizAlternativaId> = {};
+  for (const [questionId, valor] of Object.entries(answers)) {
+    const entry = snapshot.find((item) => item.id === questionId);
+    if (!entry) continue;
+    const exibido = idDeExibicao(entry, valor);
+    if (!exibido) continue;
+    out[questionId] = exibido;
+  }
+  return out;
 }
 
 export interface QuestionGrade {
@@ -132,13 +212,57 @@ export function toPublicQuestions(
       id: question.id,
       nivel: question.nivel,
       pergunta: question.pergunta,
+      // O id sai em POSICAO de exibicao (ver AttemptQuestionSnapshot), entao
+      // a letra do arquivo nunca chega ao client. Em tentativa legada
+      // idDeExibicao e identidade e o payload fica igual ao de antes.
       alternativas: entry.alternativas.map((alt) => ({
-        id: alt,
+        id: idDeExibicao(entry, alt) ?? alt,
         texto: question.alternativas[alt],
       })),
       fonte: question.fonte,
       // Campos de pergunta de codigo, so quando presentes: o JSON de pool sem
       // eles continua identico ao de antes.
+      ...(question.tipo ? { tipo: question.tipo } : {}),
+      ...(question.codigo ? { codigo: question.codigo } : {}),
+      ...(question.alternativasCodigo
+        ? { alternativasCodigo: question.alternativasCodigo }
+        : {}),
+    });
+  }
+  return out;
+}
+
+// Revisao completa da tentativa APROVADA: unico fluxo em que correta e
+// explicacao saem do server (regra de revelacao da rota). Pergunta que sumiu
+// do pool (anulada na correcao) e omitida. Vive na lib, e nao na rota, para o
+// teste alcancar os ids sem passar por Express: `correta` e `respostaDoUsuario`
+// tambem saem em id de exibicao, senao a revisao entregaria a letra original e
+// desfaria a correcao deste lote.
+export function buildApprovedReview(
+  pool: QuizPool,
+  snapshot: AttemptQuestionSnapshot[],
+  answers: Record<string, QuizAlternativaId | undefined>,
+) {
+  const out = [];
+  for (const entry of snapshot) {
+    const question = pool.questions.find((q) => q.id === entry.id);
+    if (!question) continue;
+    const resposta = answers[question.id];
+    out.push({
+      id: question.id,
+      pergunta: question.pergunta,
+      alternativas: entry.alternativas.map((alt) => ({
+        id: idDeExibicao(entry, alt) ?? alt,
+        texto: question.alternativas[alt],
+      })),
+      correta: idDeExibicao(entry, question.correta) ?? question.correta,
+      explicacao: question.explicacao,
+      respostaDoUsuario: resposta
+        ? (idDeExibicao(entry, resposta) ?? null)
+        : null,
+      // Campos de pergunta de codigo, so quando presentes (mesmo padrao de
+      // toPublicQuestions); a revisao continua carregando o gabarito porque a
+      // tentativa e aprovada.
       ...(question.tipo ? { tipo: question.tipo } : {}),
       ...(question.codigo ? { codigo: question.codigo } : {}),
       ...(question.alternativasCodigo

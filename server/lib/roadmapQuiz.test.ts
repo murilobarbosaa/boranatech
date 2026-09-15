@@ -5,7 +5,17 @@ import type {
   QuizQuestion,
   QuizTipo,
 } from "../../shared/roadmapQuiz/types";
-import { drawQuestions, gradeAttempt, toPublicQuestions } from "./roadmapQuiz";
+import {
+  buildApprovedReview,
+  drawQuestions,
+  gradeAttempt,
+  idDeExibicao,
+  idOriginal,
+  respostasParaExibicao,
+  respostasParaOriginal,
+  toPublicQuestions,
+  type AttemptQuestionSnapshot,
+} from "./roadmapQuiz";
 
 // rng "sem troca": Math.floor(0.999 * (i + 1)) === i para todo i < 1000, entao
 // o Fisher-Yates de shuffle nao troca nenhuma posicao e a ordem de saida e a
@@ -241,6 +251,9 @@ describe("toPublicQuestions", () => {
       },
     ],
   };
+  // SEM `exibicao`: e o snapshot de uma tentativa criada antes do Lote Q1, e
+  // por isso este bloco descreve o caminho LEGADO, em que o id publico ainda e
+  // a letra do arquivo. O caminho novo esta em "ids de exibicao".
   const snapshot = [
     { id: "conceito-01", alternativas: ["b", "a", "d", "c"] as const },
     { id: "completar-01", alternativas: ["c", "d", "a", "b"] as const },
@@ -284,7 +297,7 @@ describe("toPublicQuestions", () => {
     }
   });
 
-  it("alternativas saem na ordem do snapshot com o texto certo", () => {
+  it("LEGADO: alternativas saem na ordem do snapshot com a letra original", () => {
     const [conceito, completar] = toPublicQuestions(pool, snapshot);
     expect(conceito.alternativas).toEqual([
       { id: "b", texto: "Banco" },
@@ -298,5 +311,218 @@ describe("toPublicQuestions", () => {
       { id: "a", texto: "let" },
       { id: "b", texto: "var" },
     ]);
+  });
+
+  it("com exibicao: mesma ordem de texto, ids pela POSICAO", () => {
+    const comExibicao = snapshot.map((entry) => ({
+      ...entry,
+      exibicao: "posicao" as const,
+    }));
+    const [conceito, completar] = toPublicQuestions(pool, comExibicao);
+    expect(conceito.alternativas).toEqual([
+      { id: "a", texto: "Banco" },
+      { id: "b", texto: "Linguagem" },
+      { id: "c", texto: "Rede" },
+      { id: "d", texto: "Servidor" },
+    ]);
+    expect(completar.alternativas).toEqual([
+      { id: "a", texto: "const" },
+      { id: "b", texto: "static" },
+      { id: "c", texto: "let" },
+      { id: "d", texto: "var" },
+    ]);
+  });
+});
+
+// Lote Q1: o id que sai pro client e a POSICAO de exibicao, nunca a letra do
+// arquivo. O caso que da nome ao bloco e o de uniformidade: ele e a prova de
+// que o vazamento fechou, e so vale acompanhado do controle legado, que mostra
+// o instrumento acusando quando a correcao NAO esta aplicada.
+describe("ids de exibicao", () => {
+  // Pool em que TODA correta e "b": no caminho legado, quem marca "b" acerta
+  // 100%; no caminho novo, a posicao da correta tem que ficar uniforme.
+  const poolViciada: QuizPool = {
+    slug: "viciada",
+    questions: [
+      ...["ini-01", "ini-02", "ini-03", "ini-04", "ini-05"].map((id) => ({
+        id,
+        nivel: "iniciante" as QuizNivel,
+        pergunta: `P ${id}`,
+        alternativas: { a: "A", b: "B", c: "C", d: "D" },
+        correta: "b" as const,
+        explicacao: "E b.",
+        fonte: "s1.f1",
+      })),
+      ...["int-01", "int-02", "int-03", "int-04", "int-05"].map((id) => ({
+        id,
+        nivel: "intermediario" as QuizNivel,
+        pergunta: `P ${id}`,
+        alternativas: { a: "A", b: "B", c: "C", d: "D" },
+        correta: "b" as const,
+        explicacao: "E b.",
+        fonte: "s1.f1",
+      })),
+      ...["av-01", "av-02", "av-03", "av-04", "av-05"].map((id) => ({
+        id,
+        nivel: "avancado" as QuizNivel,
+        pergunta: `P ${id}`,
+        alternativas: { a: "A", b: "B", c: "C", d: "D" },
+        correta: "b" as const,
+        explicacao: "E b.",
+        fonte: "s1.f1",
+      })),
+    ],
+  };
+
+  // rng deterministico proprio (mulberry32): o teste precisa de embaralhamento
+  // de verdade, entao o semTroca das outras fixtures nao serve aqui.
+  function rngDeSemente(n: number) {
+    let a = n >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Distribui as 400 tentativas pela POSICAO publica em que a correta aparece.
+  function posicoesDaCorreta(comExibicao: boolean) {
+    const rng = rngDeSemente(7);
+    const contagem: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 };
+    let total = 0;
+    for (let i = 0; i < 400; i += 1) {
+      const sorteado = drawQuestions(poolViciada, new Set<string>(), rng);
+      const snapshot = comExibicao
+        ? sorteado
+        : sorteado.map(({ id, alternativas }) => ({ id, alternativas }));
+      for (const publica of toPublicQuestions(poolViciada, snapshot)) {
+        const entry = snapshot.find((item) => item.id === publica.id)!;
+        const idPublico = idDeExibicao(entry, "b");
+        expect(idPublico).not.toBeNull();
+        // O id publico tem que apontar para o texto da correta de verdade.
+        expect(
+          publica.alternativas.find((alt) => alt.id === idPublico)!.texto,
+        ).toBe("B");
+        contagem[idPublico!] += 1;
+        total += 1;
+      }
+    }
+    return { contagem, total };
+  }
+
+  it("a posicao da correta fica uniforme mesmo com a pool viciada em b", () => {
+    const { contagem, total } = posicoesDaCorreta(true);
+    for (const letra of ["a", "b", "c", "d"]) {
+      const fracao = contagem[letra] / total;
+      expect(fracao).toBeGreaterThan(0.15);
+      expect(fracao).toBeLessThan(0.35);
+    }
+  });
+
+  it("CONTROLE: sem exibicao, a correta e 'b' em 100% e a assercao acima falharia", () => {
+    const { contagem, total } = posicoesDaCorreta(false);
+    expect(contagem.b).toBe(total);
+    expect(contagem.a + contagem.c + contagem.d).toBe(0);
+    // O instrumento enxerga a diferenca: a mesma faixa do teste anterior
+    // reprova este caminho.
+    expect(contagem.b / total).toBeGreaterThan(0.35);
+  });
+
+  const entry: AttemptQuestionSnapshot = {
+    id: "q1",
+    alternativas: ["c", "a", "d", "b"],
+    exibicao: "posicao",
+  };
+  const entryLegado: AttemptQuestionSnapshot = {
+    id: "q1",
+    alternativas: ["c", "a", "d", "b"],
+  };
+  const poolDeUm: QuizPool = {
+    slug: "um",
+    questions: [
+      {
+        id: "q1",
+        nivel: "iniciante",
+        pergunta: "Qual?",
+        alternativas: {
+          a: "texto A",
+          b: "texto B",
+          c: "texto C",
+          d: "texto D",
+        },
+        correta: "d",
+        explicacao: "E d.",
+        fonte: "s1.f1",
+      },
+    ],
+  };
+
+  it("ida e volta: responder a correta pelo id de exibicao acerta", () => {
+    // "d" original esta na posicao 2, entao o id publico dela e "c".
+    expect(idDeExibicao(entry, "d")).toBe("c");
+    const original = respostasParaOriginal([entry], { q1: "c" });
+    expect(original).toEqual({ q1: "d" });
+    expect(gradeAttempt(poolDeUm, [entry], original!).score).toBe(1);
+  });
+
+  it("ida e volta: qualquer outra posicao erra", () => {
+    for (const exibido of ["a", "b", "d"]) {
+      const original = respostasParaOriginal([entry], { q1: exibido });
+      expect(original).not.toBeNull();
+      expect(gradeAttempt(poolDeUm, [entry], original!).score).toBe(0);
+    }
+  });
+
+  it("legado: sem exibicao as conversoes sao identidade", () => {
+    expect(idDeExibicao(entryLegado, "d")).toBe("d");
+    expect(idOriginal(entryLegado, "d")).toBe("d");
+    expect(respostasParaOriginal([entryLegado], { q1: "d" })).toEqual({
+      q1: "d",
+    });
+    expect(respostasParaExibicao([entryLegado], { q1: "d" })).toEqual({
+      q1: "d",
+    });
+  });
+
+  it("revisao: correta e respostaDoUsuario apontam a posicao do texto certo", () => {
+    const [item] = buildApprovedReview(poolDeUm, [entry], { q1: "d" });
+    expect(item.alternativas.map((alt) => alt.id)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+    const posicaoDoTextoCerto = item.alternativas.find(
+      (alt) => alt.texto === "texto D",
+    )!.id;
+    expect(item.correta).toBe(posicaoDoTextoCerto);
+    expect(item.respostaDoUsuario).toBe(posicaoDoTextoCerto);
+  });
+
+  it("revisao legada mantem a letra original", () => {
+    const [item] = buildApprovedReview(poolDeUm, [entryLegado], { q1: "d" });
+    expect(item.correta).toBe("d");
+    expect(item.respostaDoUsuario).toBe("d");
+    expect(item.alternativas.map((alt) => alt.id)).toEqual([
+      "c",
+      "a",
+      "d",
+      "b",
+    ]);
+  });
+
+  it("retomada: original -> exibicao -> original devolve o mapa de origem", () => {
+    const gravado = { q1: "d" as const };
+    const exibicao = respostasParaExibicao([entry], gravado);
+    expect(exibicao).toEqual({ q1: "c" });
+    expect(respostasParaOriginal([entry], exibicao)).toEqual(gravado);
+  });
+
+  it("entrada invalida devolve null", () => {
+    expect(idOriginal(entry, "e")).toBeNull();
+    expect(idOriginal(entry, "")).toBeNull();
+    expect(respostasParaOriginal([entry], { q1: "e" })).toBeNull();
+    expect(respostasParaOriginal([entry], { inexistente: "a" })).toBeNull();
   });
 });

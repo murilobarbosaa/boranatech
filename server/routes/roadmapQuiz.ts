@@ -19,9 +19,12 @@ import {
 } from "../../shared/roadmapQuiz/types";
 import { roadmapQuizPools } from "../data/roadmapQuizzes";
 import {
+  buildApprovedReview,
   drawQuestions,
   evaluateRetakeGate,
   gradeAttempt,
+  respostasParaExibicao,
+  respostasParaOriginal,
   toPublicQuestions,
   type AttemptQuestionSnapshot,
 } from "../lib/roadmapQuiz";
@@ -74,6 +77,13 @@ const ALTERNATIVA_IDS = new Set(["a", "b", "c", "d"]);
 
 // Valida o body { answers: { questionId: "a".."d" } } contra o snapshot da
 // tentativa: so ids sorteados, so valores a-d. Retorna null se invalido.
+//
+// Os valores que chegam sao IDS DE EXIBICAO (posicao), e saem daqui ja
+// convertidos para a letra original do arquivo, que e o que o banco guarda e
+// o que gradeAttempt corrige. A conversao acontece nesta funcao, e nao em cada
+// rota, para que nenhum caminho de escrita futuro possa esquece-la: as duas
+// rotas que aceitam resposta passam por aqui. Posicao inexistente devolve null,
+// que o chamador traduz em 400 invalid_answers.
 function parseAnswers(
   body: unknown,
   snapshot: AttemptQuestionSnapshot[],
@@ -82,48 +92,13 @@ function parseAnswers(
   const raw = (body as { answers?: unknown }).answers;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const validIds = new Set(snapshot.map((entry) => entry.id));
-  const out: Record<string, QuizAlternativaId> = {};
+  const exibidas: Record<string, string> = {};
   for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!validIds.has(id)) return null;
     if (typeof value !== "string" || !ALTERNATIVA_IDS.has(value)) return null;
-    out[id] = value as QuizAlternativaId;
+    exibidas[id] = value;
   }
-  return out;
-}
-
-// Revisao completa da tentativa APROVADA: unico fluxo em que correta e
-// explicacao saem do server (regra de revelacao). Pergunta que sumiu do pool
-// (anulada na correcao) e omitida da revisao.
-function buildApprovedReview(
-  pool: QuizPool,
-  snapshot: AttemptQuestionSnapshot[],
-  answers: Record<string, QuizAlternativaId | undefined>,
-) {
-  const out = [];
-  for (const entry of snapshot) {
-    const question = pool.questions.find((q) => q.id === entry.id);
-    if (!question) continue;
-    out.push({
-      id: question.id,
-      pergunta: question.pergunta,
-      alternativas: entry.alternativas.map((alt) => ({
-        id: alt,
-        texto: question.alternativas[alt],
-      })),
-      correta: question.correta,
-      explicacao: question.explicacao,
-      respostaDoUsuario: answers[question.id] ?? null,
-      // Campos de pergunta de codigo, so quando presentes (mesmo padrao de
-      // toPublicQuestions); a revisao continua carregando o gabarito porque a
-      // tentativa e aprovada.
-      ...(question.tipo ? { tipo: question.tipo } : {}),
-      ...(question.codigo ? { codigo: question.codigo } : {}),
-      ...(question.alternativasCodigo
-        ? { alternativasCodigo: question.alternativasCodigo }
-        : {}),
-    });
-  }
-  return out;
+  return respostasParaOriginal(snapshot, exibidas);
 }
 
 function attemptSummary(row: AttemptRow) {
@@ -242,7 +217,11 @@ router.post("/:slug/attempts", async (req, res, next) => {
         data: {
           attemptId: active.id,
           questions: toPublicQuestions(pool, active.questions),
-          answers: active.answers ?? {},
+          // O banco guarda letra original; o client so conhece posicao.
+          answers: respostasParaExibicao(
+            active.questions,
+            active.answers ?? {},
+          ),
         },
       });
     }
@@ -313,7 +292,7 @@ router.post("/:slug/attempts", async (req, res, next) => {
           data: {
             attemptId: row.id,
             questions: toPublicQuestions(pool, row.questions),
-            answers: row.answers ?? {},
+            answers: respostasParaExibicao(row.questions, row.answers ?? {}),
           },
         });
       }
