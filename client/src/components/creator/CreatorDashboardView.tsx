@@ -37,7 +37,6 @@ import { relativeTime } from "@/components/admin/tasks/relativeTime";
 import { CreatorIdentidade } from "@/components/creator/CreatorIdentidade";
 import { CreatorMetricCard } from "@/components/creator/CreatorMetricCard";
 import { CupomDoCodigo } from "@/components/creator/CupomDoCodigo";
-import type { TagPalette } from "@/lib/tagPalette";
 import {
   diaBrasilia,
   formatarDiaCivil,
@@ -94,15 +93,6 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
 const ICONE = "h-3.5 w-3.5";
 const ICONE_DO_SELO = "h-4 w-4";
 const ICONE_DO_CARD = "h-6 w-6";
-
-// Um par pastel de tagPalette.ts por tile (fundo -200, tinta -900), seis
-// familias diferentes. Strings literais: o Tailwind so emite classe escrita.
-const TOM_CLIQUES: TagPalette = { bg: "bg-sky-200", text: "text-sky-900" };
-const TOM_VENDAS: TagPalette = { bg: "bg-violet-200", text: "text-violet-900" };
-const TOM_CONVERSAO: TagPalette = { bg: "bg-teal-200", text: "text-teal-900" };
-const TOM_RECEITA: TagPalette = { bg: "bg-amber-200", text: "text-amber-900" };
-const TOM_A_RECEBER: TagPalette = { bg: "bg-pink-200", text: "text-pink-900" };
-const TOM_PAGA: TagPalette = { bg: "bg-lime-200", text: "text-lime-900" };
 
 // Opacidade da base das barras: o gradiente vertical sai da cor da serie no
 // topo e desbota ate aqui.
