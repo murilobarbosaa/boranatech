@@ -23,10 +23,16 @@ describe("LANGUAGE_CAPABILITIES: capacidade por linguagem num lugar so", () => {
     expect(() => runnerFor("cobol")).toThrow(/cobol/);
   });
 
-  it("runner: js no node, python no python3; ts e as linguagens novas sem runner", () => {
+  it("runner: js no node, python no python3, ts no wrapper; marcacao e ferramenta sem runner", () => {
     expect(runnerFor("js")).toEqual({ command: "node", ext: ".mjs" });
     expect(runnerFor("python")).toEqual({ command: "python3", ext: ".py" });
-    ["ts", "bash", "html", "css", "dockerfile"].forEach((lang) =>
+    // Lote 10a: ts saiu da lista dos sem runner. O wrapper confere os tipos
+    // antes de executar, e e por isso que o runner nao e o tsx direto.
+    const ts = runnerFor("ts");
+    expect(ts?.command).toBe("node");
+    expect(ts?.ext).toBe(".ts");
+    expect(ts?.args?.[0]).toMatch(/runTsSnippet\.mjs$/);
+    ["bash", "html", "css", "dockerfile"].forEach((lang) =>
       expect(runnerFor(lang)).toBeNull(),
     );
   });
