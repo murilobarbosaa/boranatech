@@ -85,10 +85,17 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
 
   it("3 cards, com os links certos e na ordem do registro", () => {
     const { container } = render(<RoadmapsV2Index />);
+    // Lote 08: HTML entrou no grupo de linguagens, depois de Python.
     expect(links(grupo(container, "linguagem"))).toEqual([
       "/roadmaps/javascript",
       "/roadmaps/python",
+      "/roadmaps/html",
     ]);
+    // Lote 08: o card de HTML vem depois do de Python, na ordem do registro.
+    const linguagens = links(grupo(container, "linguagem"));
+    expect(linguagens.indexOf("/roadmaps/html")).toBe(
+      linguagens.indexOf("/roadmaps/python") + 1,
+    );
     expect(links(grupo(container, "ferramenta"))).toEqual(["/roadmaps/git"]);
   });
 
@@ -105,7 +112,7 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
     ).toBeTruthy();
     expect(card.getByText("10 etapas")).toBeTruthy();
     expect(card.getByText("44 passos")).toBeTruthy();
-    for (const slug of ["javascript", "python", "git"]) {
+    for (const slug of ["javascript", "python", "git", "html"]) {
       const a = container.querySelector<HTMLElement>(
         `a[href="/roadmaps/${slug}"]`,
       );

@@ -67,9 +67,9 @@ import type {
 // de cada dia sem precisar de vizinho.
 //
 // IDENTIDADE: com `identidade="embutida"` (o padrao, que e o do admin) a view
-// desenha o CreatorIdentidade como primeiro bloco. Com `"externa"` ela nao
-// desenha: a pagina /creator o poe na faixa de topo, ao lado do titulo, com o
-// mesmo componente.
+// desenha o CreatorIdentidade como primeiro bloco. Com `"nenhuma"` ninguem
+// desenha: e a pagina /creator, onde o avatar da propria pessoa ja esta no
+// header do site.
 
 type Visao = "creator" | "admin";
 
@@ -603,7 +603,7 @@ export function CreatorDashboardView({
   janela: CreatorDashboardJanela;
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
   visao: Visao;
-  identidade?: "embutida" | "externa";
+  identidade?: "embutida" | "nenhuma";
 }) {
   const agoraMs = Date.now();
   const { perfil, creator, totais, codigos } = painel;

@@ -449,5 +449,18 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 44,
     "hasProject": true,
     "hasQuiz": true
+  },
+  {
+    "slug": "html",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "HTML do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro arquivo aberto no navegador até formulários, mídia e acessibilidade, com a linguagem que dá estrutura a toda página da web. Conclua uma etapa pra liberar a próxima.",
+    "summary": "A estrutura de toda página da web, do primeiro arquivo ao projeto.",
+    "sectionCount": 10,
+    "stepCount": 42,
+    "hasProject": true,
+    "hasQuiz": true
   }
 ];

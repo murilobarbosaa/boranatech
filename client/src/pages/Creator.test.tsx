@@ -260,15 +260,15 @@ describe("pagina /creator: estrutura do admin", () => {
     expect(screen.queryByTestId("creator-identidade")).toBeNull();
   });
 
-  it("ok: a identidade mora na faixa, com o nome, e a view recebe identidade externa", async () => {
+  it("ok: nenhuma identidade na pagina, e a view recebe identidade nenhuma", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
     montar();
     const view = await screen.findByTestId("view");
-    const identidade = screen.getByTestId("creator-identidade");
-    expect(faixa()?.contains(identidade)).toBe(true);
-    expect(identidade.textContent).toContain("Ana Creator");
+    expect(faixa()?.className).toContain("hero-pattern");
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+    expect(screen.queryByText("Ana Creator")).toBeNull();
     expect(view.closest("section")?.className).toContain("section-alt");
-    expect(estado.props?.identidade).toBe("externa");
+    expect(estado.props?.identidade).toBe("nenhuma");
   });
 
   it("o fundo decorado do /perfil nao e renderizado nem importado", async () => {

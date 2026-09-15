@@ -46,6 +46,7 @@ import {
   capabilityOf,
   type Runner,
 } from "./languageCapabilities.mts";
+import { estruturaHtml } from "./htmlStructure.mts";
 
 const TIMEOUT_MS = 10000;
 const ALTERNATIVAS: QuizAlternativaId[] = ["a", "b", "c", "d"];
@@ -342,18 +343,46 @@ export function resumoCorreta(texto: string): string {
   return linha.length <= 60 ? linha : `${linha.slice(0, 57)}...`;
 }
 
+// Coluna estrutural da tabela (Lote 08): em html, o que o verificador de
+// marcacao diz do trecho. Em "erro", roda sobre o trecho como esta: "limpo"
+// nao invalida a pergunta (o defeito pode ser semantico, como alt ausente ou
+// hierarquia de titulos pulada), mas a tabela humana passa a exigir essa
+// justificativa. Em "completar", roda com a correta na lacuna (precisa sair
+// limpo) e conta quantas das erradas tambem saem limpas, informacao para quem
+// revisa. Linguagem sem verificador estrutural fica com "-".
+function estruturaDaPergunta(question: QuizQuestion): string {
+  const codigo = question.codigo;
+  if (!codigo || codigo.linguagem !== "html") return "-";
+  const avaliar = (texto: string) => {
+    const problemas = estruturaHtml(texto);
+    return problemas.length === 0 ? "limpo" : `acusa: ${problemas[0]}`;
+  };
+  if (question.tipo !== "completar") return avaliar(codigo.trecho);
+  const comCorreta = avaliar(
+    fillGap(codigo.trecho, question.alternativas[question.correta]),
+  );
+  const erradasLimpas = ALTERNATIVAS.filter(
+    (alt) =>
+      alt !== question.correta &&
+      estruturaHtml(fillGap(codigo.trecho, question.alternativas[alt]))
+        .length === 0,
+  ).length;
+  return `${comCorreta} (erradas limpas: ${erradasLimpas}/3)`;
+}
+
 // Tabela da revisao humana obrigatoria (Lote 07, licao do 2c do Lote 06g:
 // 4 de 8 perguntas de erro de Python aprovadas pelo portao estavam
 // semanticamente erradas, e so a leitura lado a lado pegou). Uma linha por
 // pergunta de codigo, nenhuma para conceito: id | tipo | linguagem |
-// executado ou nao-executado | resumo da correta. "executado" vem da
+// executado ou nao-executado | estrutura (ver estruturaDaPergunta) | resumo
+// da correta. "executado" vem da
 // capacidade da linguagem (tem runner), a mesma leitura que decide o SEM
 // RUNNER do relatorio; linguagem fora do mapa lanca, como em runnerFor.
 export function tabelaRevisao(questions: QuizQuestion[]): string[] {
   return questions.filter(isCodeQuestion).map((question) => {
     const linguagem = question.codigo?.linguagem ?? "";
     const execucao = runnerFor(linguagem) ? "executado" : "nao-executado";
-    return `${question.id} | ${question.tipo ?? ""} | ${linguagem} | ${execucao} | ${resumoCorreta(question.alternativas[question.correta])}`;
+    return `${question.id} | ${question.tipo ?? ""} | ${linguagem} | ${execucao} | ${estruturaDaPergunta(question)} | ${resumoCorreta(question.alternativas[question.correta])}`;
   });
 }
 
@@ -402,7 +431,7 @@ async function main() {
   for (const linha of relatorioVerificacao(linhas)) console.log(linha);
   if (process.argv.includes("--tabela-revisao")) {
     console.log(
-      "\ntabela de revisao humana (id | tipo | linguagem | execucao | correta):",
+      "\ntabela de revisao humana (id | tipo | linguagem | execucao | estrutura | correta):",
     );
     for (const linha of tabelaRevisao(pool.questions)) console.log(linha);
   }

@@ -526,14 +526,14 @@ describe("CreatorDashboardView: forma do admin", () => {
   const ESMERALDA = "bg-emerald-600 text-white";
   const CORES = [VIOLETA, CEU, ACENTO, ESMERALDA];
 
-  it("com identidade externa a view nao desenha a identidade, nem na visao admin", () => {
+  it("com identidade nenhuma a view nao desenha a identidade, nem na visao admin", () => {
     render(
       <CreatorDashboardView
         painel={painelAdmin()}
         janela="7d"
         onJanelaChange={onJanelaChange}
         visao="admin"
-        identidade="externa"
+        identidade="nenhuma"
       />,
     );
     expect(screen.queryByTestId("creator-identidade")).toBeNull();
