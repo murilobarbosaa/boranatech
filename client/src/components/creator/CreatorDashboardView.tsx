@@ -20,7 +20,6 @@ import {
   ComposedChart,
   Legend,
   Line,
-  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -67,11 +66,6 @@ import type {
 // SERIE CURTA: com 1 ou 2 dias o grafico vira barras. Uma linha com um ponto so
 // fica um ponto solto no meio do vazio, e a leitura some; barras dizem o valor
 // de cada dia sem precisar de vizinho.
-//
-// PELE: o componente nao sabe de fundo. Cartoes, blocos internos, o botao de
-// copiar e a grade do grafico leem as variaveis `--creator-*`, que so o
-// wrapper do /creator define (index.css, .bnt-creator-pele). No admin elas nao
-// existem e cada uso cai no valor de antes.
 
 type Visao = "creator" | "admin";
 
@@ -93,13 +87,6 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
 ];
 
 const ICONE = "h-3.5 w-3.5";
-
-const CARTAO = "card-brutal bnt-creator-cartao bnt-creator-anel rounded-3xl";
-
-const INSET =
-  "border-[color:var(--creator-inset-border,var(--color-slate-200))] bg-[var(--creator-inset-bg,var(--color-slate-50))]";
-
-const GRADE = "var(--creator-chart-grid, var(--border))";
 
 const SELO =
   "inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-xs font-black";
@@ -217,14 +204,14 @@ function CampoDoLink({ link }: { link: string }) {
 
   return (
     <div className="mt-3">
-      <div className="flex items-center gap-2 rounded-xl border-2 border-[color:var(--creator-inset-border,var(--color-slate-900))] bg-[var(--creator-inset-bg,var(--color-slate-50))] py-1.5 pl-3 pr-1.5">
+      <div className="flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-50 py-1.5 pl-3 pr-1.5">
         <span className="min-w-0 flex-1 break-all font-mono text-xs font-bold text-slate-700 sm:text-sm">
           {link}
         </span>
         <button
           type="button"
           onClick={() => void copiar()}
-          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-[color:var(--creator-button-border,var(--color-slate-900))] bg-[var(--creator-button-bg,var(--color-white))] px-3 py-1.5 text-xs font-black text-[color:var(--creator-button-text,var(--color-slate-900))] [box-shadow:var(--creator-button-shadow,2px_2px_0_var(--bnt-shadow))]"
+          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           {estado === "copiado" ? (
             <Check className={ICONE} />
@@ -269,7 +256,7 @@ function CartaoDoCodigo({
   return (
     <article
       data-testid={`creator-codigo-${codigo.code}`}
-      className={`${CARTAO} p-5 sm:p-6`}
+      className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-mono text-2xl font-black tracking-wider text-slate-950 sm:text-3xl">
@@ -298,9 +285,7 @@ function CartaoDoCodigo({
         </span>
       </div>
 
-      <dl
-        className={`mt-4 grid grid-cols-2 gap-y-3 rounded-2xl border-2 py-3 sm:grid-cols-4 sm:divide-x-2 sm:divide-[color:var(--creator-inset-border,var(--color-slate-200))] ${INSET}`}
-      >
+      <dl className="mt-4 grid grid-cols-2 gap-y-3 rounded-2xl border-2 border-slate-200 bg-slate-50 py-3 sm:grid-cols-4 sm:divide-x-2 sm:divide-slate-200">
         {numeros.map((item) => (
           <div key={item.rotulo} className="px-3">
             <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
@@ -384,53 +369,6 @@ export function serieParaGrafico(
   }));
 }
 
-/**
- * Gradiente vertical das barras, na cor da serie. A base fica com a opacidade
- * de `--creator-bar-base`; sem ela (admin) as duas paradas sao opacas e a
- * barra sai solida como antes.
- */
-function GradienteDaBarra({ id, cor }: { id: string; cor: string }) {
-  return (
-    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" style={{ stopColor: cor }} />
-      <stop
-        offset="100%"
-        style={{ stopColor: cor, stopOpacity: "var(--creator-bar-base, 1)" }}
-      />
-    </linearGradient>
-  );
-}
-
-/**
- * O gradiente entra pelo `shape`, e nao pelo `fill` da Bar: a legenda e o
- * tooltip leem a cor da serie do `fill`, e um `url(#...)` ali apagaria a cor
- * deles.
- */
-function barraComGradiente(id: string) {
-  return function BarraComGradiente(props: unknown) {
-    const { x, y, width, height, radius } = props as {
-      x?: number;
-      y?: number;
-      width?: number;
-      height?: number;
-      radius?: number | [number, number, number, number];
-    };
-    return (
-      <Rectangle
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        radius={radius}
-        fill={`url(#${id})`}
-      />
-    );
-  };
-}
-
-const BARRA_CLIQUES = barraComGradiente("creator-barra-cliques");
-const BARRA_VENDAS = barraComGradiente("creator-barra-vendas");
-
 function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
   const curta = dados.length < DIAS_MINIMOS_PARA_LINHA;
   const temVendas = dados.some((dia) => dia.sales > 0);
@@ -448,21 +386,17 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
         <ResponsiveContainer width="100%" height="100%">
           {curta ? (
             <BarChart data={dados} margin={MARGEM_DO_GRAFICO}>
-              <defs>
-                <GradienteDaBarra id="creator-barra-cliques" cor="var(--chart-1)" />
-                <GradienteDaBarra id="creator-barra-vendas" cor="var(--chart-3)" />
-              </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke={GRADE}
+                stroke="var(--border)"
               />
               <XAxis
                 dataKey="dia"
                 tickFormatter={rotuloDeDia}
                 tick={EIXO}
                 tickLine={false}
-                axisLine={{ stroke: GRADE }}
+                axisLine={{ stroke: "var(--border)" }}
               />
               <YAxis
                 allowDecimals={false}
@@ -482,7 +416,6 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
                 // TODO(Ana)
                 name="Cliques"
                 fill="var(--chart-1)"
-                shape={BARRA_CLIQUES}
                 radius={[6, 6, 0, 0]}
                 maxBarSize={56}
                 isAnimationActive={false}
@@ -492,7 +425,6 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
                 // TODO(Ana)
                 name="Vendas"
                 fill="var(--chart-3)"
-                shape={BARRA_VENDAS}
                 radius={[6, 6, 0, 0]}
                 maxBarSize={56}
                 isAnimationActive={false}
@@ -503,7 +435,7 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke={GRADE}
+                stroke="var(--border)"
               />
               <XAxis
                 dataKey="dia"
@@ -511,7 +443,7 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
                 interval={intervaloDeRotulos(dados.length, 6)}
                 tick={EIXO}
                 tickLine={false}
-                axisLine={{ stroke: GRADE }}
+                axisLine={{ stroke: "var(--border)" }}
               />
               <YAxis
                 yAxisId="cliques"
@@ -670,7 +602,7 @@ function Serie({
         {linhasDoPeriodo.map((linha) => (
           <div
             key={linha.chave}
-            className={`rounded-2xl border-2 px-3 py-2 ${INSET}`}
+            className="rounded-2xl border-2 border-slate-200 bg-slate-50 px-3 py-2"
           >
             <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
               {linha.rotulo}
@@ -731,7 +663,7 @@ export function CreatorDashboardView({
 
   return (
     <div data-testid="creator-painel" className="space-y-6 md:space-y-8">
-      <section className={`${CARTAO} p-6 md:p-8`}>
+      <section className="card-brutal rounded-3xl bg-white p-6 md:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar
             name={nome}
@@ -795,7 +727,7 @@ export function CreatorDashboardView({
       {codigos.length === 0 ? (
         <section
           data-testid="creator-sem-codigo"
-          className="bnt-creator-cartao flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-slate-400 px-6 py-10 text-center"
+          className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-slate-400 bg-white px-6 py-10 text-center"
         >
           <Link2Off aria-hidden="true" className="h-8 w-8 text-slate-400" />
           <p className="font-display text-lg font-black text-slate-950">
@@ -916,7 +848,7 @@ export function CreatorDashboardView({
           >
             <section
               aria-labelledby="creator-serie-titulo"
-              className={`${CARTAO} space-y-4 p-5 sm:p-6`}
+              className="card-brutal space-y-4 rounded-3xl bg-white p-5 sm:p-6"
             >
               <TituloDeSecao id="creator-serie-titulo">
                 {/* TODO(Ana) */}

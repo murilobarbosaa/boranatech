@@ -1339,46 +1339,6 @@
   --bnt-ticket-account: linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%);
 }
 
-/* PELE DO PAINEL DE CREATOR (/creator). A pagina e escura nos dois temas: o
-   wrapper dela leva `.dark` (a paleta invertida do tema, que ja resolve texto,
-   selos e os blocos compartilhados de dentro) e esta classe, que define as
-   variaveis que o CreatorDashboardView e o CreatorMetricTile leem. Fora deste
-   wrapper, como no admin, nenhuma delas existe e cada uso cai no fallback, que
-   e o valor de antes: o admin nao muda.
-   Cor so por token que NAO inverte entre os temas (--bnt-ink-on-accent,
-   --brand-yellow, --brand-yellow-soft, --color-violet-500), para a pele ser a
-   mesma com o site claro ou escuro. O desfoque de fundo so liga do md para
-   cima; no celular o cartao compensa sendo mais opaco. */
-.bnt-creator-pele {
-  --creator-card-bg: color-mix(in oklch, var(--bnt-ink-on-accent) 84%, transparent);
-  --creator-card-border: transparent;
-  --creator-card-border-width: 0px;
-  --creator-card-ring: linear-gradient(
-    135deg,
-    color-mix(in oklch, var(--color-violet-500) 85%, transparent),
-    color-mix(in oklch, var(--brand-yellow) 75%, transparent)
-  );
-  --creator-card-shadow: 0 1.5rem 3rem -1.5rem
-    color-mix(in oklch, var(--bnt-ink-on-accent) 90%, transparent);
-  --creator-card-lift: none;
-  --creator-card-press: none;
-  --creator-inset-bg: color-mix(in oklch, var(--brand-yellow-soft) 5%, transparent);
-  --creator-inset-border: color-mix(in oklch, var(--brand-yellow-soft) 14%, transparent);
-  --creator-chart-grid: color-mix(in oklch, var(--brand-yellow-soft) 12%, transparent);
-  --creator-bar-base: 0.3;
-  --creator-button-bg: var(--brand-yellow);
-  --creator-button-border: var(--brand-yellow);
-  --creator-button-text: var(--bnt-ink-on-accent);
-  --creator-button-shadow: none;
-}
-
-@media (min-width: 48rem) {
-  .bnt-creator-pele {
-    --creator-card-bg: color-mix(in oklch, var(--bnt-ink-on-accent) 70%, transparent);
-    --creator-card-blur: blur(16px);
-  }
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -1475,51 +1435,6 @@
   .card-brutal:active {
     transform: translate(1px, 1px) scale(0.99);
     box-shadow: 2px 2px 0 var(--bnt-shadow);
-  }
-
-  /* Pele do painel de creator: le as variaveis de .bnt-creator-pele. Fora
-     dela (admin), cada fallback e o valor que o elemento ja tinha: bg-white
-     no fundo e, com card-brutal, o proprio card-brutal acima, valor por valor,
-     em borda, sombra e no movimento de hover e active. */
-  .bnt-creator-cartao {
-    background-color: var(--creator-card-bg, var(--color-white));
-    backdrop-filter: var(--creator-card-blur, none);
-  }
-  .card-brutal.bnt-creator-cartao {
-    border-width: var(--creator-card-border-width, 2px);
-    border-color: var(--creator-card-border, var(--bnt-ink));
-    box-shadow: var(--creator-card-shadow, 4px 4px 0 var(--bnt-shadow));
-  }
-  .card-brutal.bnt-creator-cartao:hover {
-    transform: var(--creator-card-lift, translate(-2px, -2px));
-    box-shadow: var(--creator-card-shadow, 6px 6px 0 var(--bnt-shadow));
-  }
-  .card-brutal.bnt-creator-cartao:active {
-    transform: var(--creator-card-press, translate(1px, 1px) scale(0.99));
-    box-shadow: var(--creator-card-shadow, 2px 2px 0 var(--bnt-shadow));
-  }
-  /* Borda de 1px em gradiente, desenhada num pseudo-elemento mascarado para o
-     gradiente nao vazar pelo fundo translucido. Sem --creator-card-ring o
-     pseudo nao pinta nada. */
-  .bnt-creator-anel {
-    position: relative;
-  }
-  .bnt-creator-anel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: var(--creator-card-ring, none);
-    -webkit-mask:
-      linear-gradient(black 0 0) content-box,
-      linear-gradient(black 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(black 0 0) content-box,
-      linear-gradient(black 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
   }
 
   /* Scrollbar fina no tom slate do sistema, para paineis/modais com scroll.
