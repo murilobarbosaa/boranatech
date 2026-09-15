@@ -579,6 +579,46 @@ describe("CreatorDashboardView: forma do admin", () => {
     expect(screen.queryByTestId("creator-sem-pix")).toBeNull();
   });
 
+  it("painel admin com perfil de creator: a identidade mostra a chave mascarada e o Revelar", () => {
+    const p = painelAdmin();
+    p.perfil_creator = {
+      instagram_handle: "ana.cria",
+      tiktok_handle: null,
+      instagram_followers: 12500,
+      tiktok_followers: null,
+      followers_updated_at: "2026-09-14T12:00:00Z",
+      visible_to_creators: false,
+      pix: {
+        tipo: "cpf",
+        mascarada: "***.***.247-**",
+        updated_at: "2026-09-14T12:00:00Z",
+      },
+    };
+    render(
+      <CreatorDashboardView
+        painel={p}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="admin"
+        userId="11111111-1111-1111-1111-111111111111"
+      />,
+    );
+    const identidade = screen.getByTestId("creator-identidade");
+    expect(
+      within(identidade).getByTestId("creator-pix-valor").textContent,
+    ).toBe("***.***.247-**");
+    expect(within(identidade).getByTestId("creator-pix-revelar")).toBeTruthy();
+    expect(
+      within(identidade).getByTestId("creator-instagram").textContent,
+    ).toBe("@ana.cria");
+  });
+
+  it("painel admin sem perfil_creator (backend anterior): nenhuma linha de Pix", () => {
+    desenhar(painelAdmin(), "admin");
+    expect(screen.queryByTestId("creator-pix-admin")).toBeNull();
+    expect(screen.queryByTestId("creator-redes")).toBeNull();
+  });
+
   it("no padrao a view desenha a identidade; na visao admin, com e-mail e revogado", () => {
     desenhar(painelBase(), "creator");
     expect(screen.getByTestId("creator-kind")).toBeTruthy();

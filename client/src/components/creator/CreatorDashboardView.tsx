@@ -600,12 +600,19 @@ export function CreatorDashboardView({
   visao,
   identidade = "embutida",
   semChavePix = false,
+  userId,
 }: {
   painel: CreatorDashboard;
   janela: CreatorDashboardJanela;
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
   visao: Visao;
   identidade?: "embutida" | "nenhuma";
+  /**
+   * De quem e o painel (lote 08). So a aba Creators do admin passa: e o que o
+   * Revelar da chave Pix usa para chamar a rota auditada. O payload do painel
+   * nao traz o user_id, e quem sabe e quem abriu o painel.
+   */
+  userId?: string;
   /**
    * O creator ainda nao cadastrou chave Pix (lote 08). Quem sabe e a pagina
    * /creator, pelo perfil que ela busca a parte; o padrao e false, entao o
@@ -619,7 +626,13 @@ export function CreatorDashboardView({
   return (
     <div data-testid="creator-painel" className="space-y-6 md:space-y-8">
       {identidade === "embutida" ? (
-        <CreatorIdentidade perfil={perfil} creator={creator} visao={visao} />
+        <CreatorIdentidade
+          perfil={perfil}
+          creator={creator}
+          visao={visao}
+          perfilCreator={painel.perfil_creator}
+          userId={userId}
+        />
       ) : null}
 
       {semChavePix && visao === "creator" ? (

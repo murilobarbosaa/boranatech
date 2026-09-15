@@ -42,11 +42,13 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
   CreatorDashboardView: ({
     visao,
     painel,
+    userId,
   }: {
     visao: string;
     painel: { perfil: { name: string | null } };
+    userId?: string;
   }) => (
-    <div data-testid="view-mock" data-visao={visao}>
+    <div data-testid="view-mock" data-visao={visao} data-user-id={userId ?? ""}>
       {painel.perfil.name}
     </div>
   ),
@@ -326,6 +328,52 @@ describe("quadro", () => {
     );
   });
 
+  it("coluna Pix: sem Pix so quando o servidor diz false; vazia quando o campo nao vem", async () => {
+    rotear({
+      pagina: {
+        data: {
+          rows: [
+            item({ tem_pix: false }),
+            item({
+              user_id: UUID_B,
+              name: "Bia Souza",
+              tem_pix: true,
+              instagram_handle: "bia.souza",
+            }),
+            // Backend anterior ao lote 08: sem os dois campos. "Nao sei" nao
+            // e "sem chave".
+            item({ user_id: "c0a8e2f4-1b3d-4e5f-8a9b-0c1d2e3f4a5b" }),
+          ],
+          total: 3,
+          page: 1,
+          pageSize: 25,
+        },
+      },
+    });
+    montar();
+
+    const semPix = await screen.findByTestId(`creators-linha-${UUID_A}`);
+    expect(within(semPix).getByTestId("creators-sem-pix").textContent).toBe(
+      "sem Pix",
+    );
+    expect(within(semPix).queryByTestId("creators-linha-instagram")).toBeNull();
+
+    const comPix = screen.getByTestId(`creators-linha-${UUID_B}`);
+    expect(within(comPix).queryByTestId("creators-sem-pix")).toBeNull();
+    expect(within(comPix).getByTestId("creators-com-pix").textContent).toBe(
+      "cadastrada",
+    );
+    expect(
+      within(comPix).getByTestId("creators-linha-instagram").textContent,
+    ).toBe("Instagram @bia.souza");
+
+    const antigo = screen.getByTestId(
+      "creators-linha-c0a8e2f4-1b3d-4e5f-8a9b-0c1d2e3f4a5b",
+    );
+    expect(within(antigo).queryByTestId("creators-sem-pix")).toBeNull();
+    expect(within(antigo).queryByTestId("creators-com-pix")).toBeNull();
+  });
+
   it("falha do quadro vira erro com tentar de novo, nao lista vazia", async () => {
     rotear({ pagina: new Error("timeout") });
     montar();
@@ -343,6 +391,8 @@ describe("painel de um creator", () => {
 
     const view = await screen.findByTestId("view-mock");
     expect(view.getAttribute("data-visao")).toBe("admin");
+    // O Revelar da chave Pix (lote 08) precisa saber de quem e o painel.
+    expect(view.getAttribute("data-user-id")).toBe(UUID_A);
     expect(view.textContent).toBe("Rafa Lima");
     expect(chamadas()).toContain(`/creators/${UUID_A}?janela=30d`);
     expect(

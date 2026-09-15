@@ -1,7 +1,13 @@
+import { useState } from "react";
+import { toast } from "sonner";
+
 import UserAvatar from "@/components/UserAvatar";
+import { rotuloDoTipoDePix } from "@/components/creator/CreatorPerfilForm";
+import { adminFetch } from "@/lib/adminApi";
 import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
+import type { CreatorPerfilDados } from "@shared/creatorProfile";
 
 // QUEM E O CREATOR: avatar, nome, @handle, kind e desde quando. Hoje so o admin
 // o desenha, dentro do CreatorDashboardView (`identidade="embutida"`), porque la
@@ -11,6 +17,14 @@ import type { CreatorDashboard } from "@shared/creatorDashboard";
 //
 // E-mail e revogacao so na visao admin: o servidor nem os envia na visao
 // creator, e a guarda aqui cobre o payload que vier com eles mesmo assim.
+//
+// PERFIL DE CREATOR (lote 08), so na visao admin: as redes com link, os
+// seguidores declarados com a data, o consentimento, e a linha de Pix com a
+// chave MASCARADA e o Revelar. O Revelar copia o CPF do modal de usuario: chama
+// a rota auditada e mostra a chave inteira ate o painel fechar (a aba monta o
+// painel com `key` do creator, entao fechar desmonta este estado). Sem
+// `perfilCreator` (backend anterior ao lote 08, na janela de deploy), as duas
+// linhas simplesmente nao aparecem.
 
 /** Instante ISO em dd/mm/aaaa, pelo dia civil de Brasilia. */
 function dataCurta(iso: string | null | undefined): string {
@@ -18,17 +32,175 @@ function dataCurta(iso: string | null | undefined): string {
   return dia ? formatarDiaCivil(dia) : "";
 }
 
+function inteiro(valor: number): string {
+  return valor.toLocaleString("pt-BR");
+}
+
+const LINK_DA_REDE =
+  "font-black text-violet-800 underline underline-offset-2 hover:text-violet-900";
+
+function RedesDoCreator({ perfil }: { perfil: CreatorPerfilDados }) {
+  const seguidores: string[] = [];
+  if (perfil.instagram_followers !== null) {
+    // TODO(Ana)
+    seguidores.push(`${inteiro(perfil.instagram_followers)} no Instagram`);
+  }
+  if (perfil.tiktok_followers !== null) {
+    // TODO(Ana)
+    seguidores.push(`${inteiro(perfil.tiktok_followers)} no TikTok`);
+  }
+  const semRede = !perfil.instagram_handle && !perfil.tiktok_handle;
+
+  return (
+    <div
+      data-testid="creator-redes"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+    >
+      {perfil.instagram_handle ? (
+        <a
+          data-testid="creator-instagram"
+          href={`https://www.instagram.com/${perfil.instagram_handle}/`}
+          target="_blank"
+          rel="noreferrer"
+          className={LINK_DA_REDE}
+        >
+          @{perfil.instagram_handle}
+        </a>
+      ) : null}
+      {perfil.tiktok_handle ? (
+        <a
+          data-testid="creator-tiktok"
+          href={`https://www.tiktok.com/@${perfil.tiktok_handle}`}
+          target="_blank"
+          rel="noreferrer"
+          className={LINK_DA_REDE}
+        >
+          @{perfil.tiktok_handle}
+        </a>
+      ) : null}
+      {semRede ? (
+        <span className="text-xs font-bold text-slate-500">
+          {/* TODO(Ana) */}
+          Sem redes informadas
+        </span>
+      ) : null}
+      {seguidores.length > 0 ? (
+        <span
+          data-testid="creator-seguidores"
+          className="text-xs font-bold text-slate-500"
+        >
+          {/* TODO(Ana) */}
+          {`${seguidores.join(", ")}, informados em ${dataCurta(perfil.followers_updated_at)}`}
+        </span>
+      ) : null}
+      {perfil.visible_to_creators ? (
+        <span
+          data-testid="creator-visivel"
+          className="rounded-full border-2 border-emerald-700 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-800"
+        >
+          {/* TODO(Ana) */}
+          visível aos creators
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function PixDoCreator({
+  perfil,
+  userId,
+}: {
+  perfil: CreatorPerfilDados;
+  userId: string | undefined;
+}) {
+  const [revelada, setRevelada] = useState<string | null>(null);
+  const [revelando, setRevelando] = useState(false);
+
+  async function revelar() {
+    if (!userId) return;
+    setRevelando(true);
+    try {
+      const json = await adminFetch(`/creators/${userId}/reveal-pix`, {
+        method: "POST",
+      });
+      setRevelada(json.data?.valor ?? null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : // TODO(Ana)
+            "Erro ao revelar a chave Pix.",
+      );
+    } finally {
+      setRevelando(false);
+    }
+  }
+
+  if (!perfil.pix) {
+    return (
+      <span
+        data-testid="creator-sem-pix-admin"
+        className="rounded-full border-2 border-amber-600 bg-amber-50 px-2 py-0.5 text-[11px] font-black uppercase text-amber-900"
+      >
+        {/* TODO(Ana) */}
+        sem chave Pix
+      </span>
+    );
+  }
+
+  return (
+    <div
+      data-testid="creator-pix-admin"
+      className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4"
+    >
+      <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+        {/* TODO(Ana) */}
+        {`Pix (${rotuloDoTipoDePix(perfil.pix.tipo)})`}
+      </p>
+      <p
+        data-testid="creator-pix-valor"
+        className="mt-1 break-words font-display text-base font-black text-slate-950"
+      >
+        {revelada ?? perfil.pix.mascarada}
+      </p>
+      {!revelada && userId ? (
+        <button
+          type="button"
+          data-testid="creator-pix-revelar"
+          onClick={() => void revelar()}
+          disabled={revelando}
+          className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+        >
+          {/* TODO(Ana) */}
+          {revelando ? "Revelando..." : "Revelar chave Pix"}
+        </button>
+      ) : null}
+      <p className="mt-2 text-xs font-semibold text-slate-500">
+        {/* TODO(Ana) */}
+        Revelar fica registrado: quem revelou, de quem e quando.
+      </p>
+    </div>
+  );
+}
+
 export function CreatorIdentidade({
   perfil,
   creator,
   visao,
+  perfilCreator,
+  userId,
 }: {
   perfil: CreatorDashboard["perfil"];
   creator: CreatorDashboard["creator"];
   visao: "creator" | "admin";
+  /** Perfil de creator do lote 08. So a visao admin o recebe. */
+  perfilCreator?: CreatorPerfilDados;
+  /** Quem e o creator, para o Revelar. So a aba Creators do admin passa. */
+  userId?: string;
 }) {
   // TODO(Ana)
   const nome = perfil.name ?? perfil.handle ?? "Creator";
+  const mostrarPerfil = visao === "admin" && perfilCreator !== undefined;
 
   return (
     <section
@@ -80,6 +252,12 @@ export function CreatorIdentidade({
           </div>
         </div>
       </div>
+      {mostrarPerfil && perfilCreator ? (
+        <div className="mt-4 space-y-3 border-t-2 border-dashed border-slate-300 pt-4">
+          <RedesDoCreator perfil={perfilCreator} />
+          <PixDoCreator perfil={perfilCreator} userId={userId} />
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -302,6 +302,15 @@ function LinhaDoQuadro({
             {item.handle ? (
               <p className="text-xs font-bold text-slate-500">@{item.handle}</p>
             ) : null}
+            {item.instagram_handle ? (
+              <p
+                data-testid="creators-linha-instagram"
+                className="text-xs font-bold text-violet-800"
+              >
+                {/* TODO(Ana) */}
+                {`Instagram @${item.instagram_handle}`}
+              </p>
+            ) : null}
           </div>
         </div>
       </td>
@@ -335,6 +344,25 @@ function LinhaDoQuadro({
             {item.codigos.map((c) => c.code).join(", ")}
           </span>
         )}
+      </td>
+      <td className="px-3 py-3">
+        {item.tem_pix === false ? (
+          <span
+            data-testid="creators-sem-pix"
+            className="rounded-full border-2 border-amber-600 bg-amber-50 px-2 py-0.5 text-[11px] font-black uppercase text-amber-900"
+          >
+            {/* TODO(Ana) */}
+            sem Pix
+          </span>
+        ) : item.tem_pix === true ? (
+          <span
+            data-testid="creators-com-pix"
+            className="text-xs font-bold text-slate-600"
+          >
+            {/* TODO(Ana) */}
+            cadastrada
+          </span>
+        ) : null}
       </td>
       <td className="px-3 py-3 text-right font-bold tabular-nums">
         {inteiro(item.totais.clicks)}
@@ -445,6 +473,7 @@ function Quadro({
               <th className="min-w-[12rem] px-3 py-3">Creator</th>
               <th className="px-3 py-3">Tipo</th>
               <th className="min-w-[10rem] px-3 py-3">Códigos</th>
+              <th className="px-3 py-3">Pix</th>
               <th className="px-3 py-3 text-right">Cliques</th>
               <th className="px-3 py-3 text-right">Vendas</th>
               <th className="px-3 py-3 text-right">Receita</th>
@@ -566,6 +595,7 @@ function PainelDoCreator({ userId }: { userId: string }) {
       janela={janela}
       onJanelaChange={setJanela}
       visao="admin"
+      userId={userId}
     />
   );
 }
