@@ -4,8 +4,8 @@ import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { CreatorBackground } from "@/components/creator/CreatorBackground";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
-import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
@@ -22,9 +22,12 @@ import {
 // O 403 `creator_check_failed` (o servidor nao conseguiu conferir) NAO e "voce
 // nao e creator": cai no erro generico, com "tentar de novo".
 //
-// FUNDO E CONTAINER sao os do /perfil (ProfileBackground e o mesmo wrapper):
-// e a outra pagina de conta com fundo decorado, e o /creator segue ela em vez
-// de inventar um terceiro fundo.
+// FUNDO E PELE PROPRIOS: o /creator e um lugar reservado, e nao a tela de
+// conta, entao tem fundo exclusivo (CreatorBackground) e e escuro nos dois
+// temas. O wrapper leva `.dark`, para tudo que esta dentro ler a paleta
+// invertida do tema, e `.bnt-creator-pele`, que define as variaveis da pele
+// dos cartoes (index.css). O header do site fica fora do wrapper e segue o
+// tema escolhido.
 
 type Estado =
   | { tipo: "carregando" }
@@ -83,8 +86,11 @@ export default function Creator() {
     <Layout>
       {/* TODO(Ana) */}
       <SEO title="Painel de Creator" url="/creator" noindex />
-      <div className="relative isolate min-h-screen">
-        <ProfileBackground />
+      <div
+        data-testid="creator-pagina"
+        className="dark bnt-creator-pele relative isolate min-h-screen"
+      >
+        <CreatorBackground />
         <div className="container relative space-y-6 py-8 md:space-y-8 md:py-12">
           <h1 className="font-display text-3xl font-black text-slate-950 md:text-4xl">
             {/* TODO(Ana) */}
@@ -112,7 +118,7 @@ export default function Creator() {
           ) : estado.tipo === "nao_creator" ? (
             <section
               data-testid="creator-nao-creator"
-              className="card-brutal rounded-3xl bg-white p-6 text-center"
+              className="card-brutal bnt-creator-cartao bnt-creator-anel rounded-3xl p-6 text-center"
             >
               <p className="font-display text-lg font-black text-slate-950">
                 {/* TODO(Ana) */}

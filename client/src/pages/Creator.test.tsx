@@ -132,6 +132,18 @@ afterEach(() => {
 });
 
 describe("pagina /creator", () => {
+  it("pagina escura: o wrapper leva .dark e a pele, com o fundo exclusivo dentro", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    const view = await screen.findByTestId("view");
+    const pagina = screen.getByTestId("creator-pagina");
+    expect(pagina.classList.contains("dark")).toBe(true);
+    expect(pagina.classList.contains("bnt-creator-pele")).toBe(true);
+    expect(pagina.contains(view)).toBe(true);
+    expect(pagina.contains(screen.getByTestId("creator-fundo"))).toBe(true);
+    expect(pagina.contains(screen.getByTestId("creator-fundo-foco"))).toBe(true);
+  });
+
   it("sucesso: busca a janela padrao e entrega o payload ao view", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
     montar();
@@ -163,6 +175,8 @@ describe("pagina /creator", () => {
       "Este painel é para creators da Bora na Tech.",
     );
     expect(within(tela).getByRole("link").getAttribute("href")).toBe("/");
+    expect(tela.className).toContain("bnt-creator-cartao");
+    expect(tela.className).not.toContain("bg-white");
     expect(history).toEqual(["/creator"]);
     expect(screen.queryByTestId("view")).toBeNull();
   });

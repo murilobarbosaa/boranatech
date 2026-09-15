@@ -9,6 +9,11 @@ import type { ReactNode } from "react";
 //
 // `icone` e opcional: o painel do creator passa um por tile; o resumo da aba
 // Creators do admin nao passa, e continua como era.
+//
+// PELE: fundo, borda e sombra leem as variaveis `--creator-*` do wrapper do
+// /creator (index.css, .bnt-creator-pele). O admin nao as define, e cada
+// fallback e a classe de antes (bg-white, border-2 border-slate-900 e a sombra
+// de 3px).
 
 export function CreatorMetricTile({
   rotulo,
@@ -26,7 +31,7 @@ export function CreatorMetricTile({
   return (
     <div
       data-testid={testId}
-      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
+      className="bnt-creator-cartao bnt-creator-anel rounded-2xl border-[length:var(--creator-card-border-width,2px)] border-[color:var(--creator-card-border,var(--color-slate-900))] p-4 [box-shadow:var(--creator-card-shadow,3px_3px_0_var(--bnt-shadow))]"
     >
       <div className="flex items-center gap-1.5">
         {icone ? (
