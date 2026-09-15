@@ -34,7 +34,13 @@ export function financeViewFromSearch(search: string): FinanceView {
     : "resumo";
 }
 
-const FINANCE_PERIODS = ["30d", "90d", "previous_month", "custom"] as const;
+const FINANCE_PERIODS = [
+  "30d",
+  "90d",
+  "previous_month",
+  "custom",
+  "all",
+] as const;
 
 export function financePeriodFromSearch(search: string): FinancePeriodFilter {
   const params = new URLSearchParams(search);

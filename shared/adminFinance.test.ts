@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseAdminFinanceContract } from "./adminFinance";
+import { inicioDoDiaBrasilia, somarDiaCivil } from "./brasiliaDay";
 
 function metric(valueCents: number | null = 1000) {
   return {
@@ -135,6 +136,32 @@ function contract() {
 }
 
 describe("contrato compartilhado do financeiro", () => {
+  it("valida uma série única de Todo histórico local maior que 366 dias", () => {
+    const all = contract();
+    all.period.preset = "all";
+    all.period.startDay = "2025-07-10";
+    all.period.endDayInclusive = "2026-09-13";
+    all.period.from = inicioDoDiaBrasilia(all.period.startDay);
+    all.period.toExclusive = inicioDoDiaBrasilia("2026-09-14");
+    const series = [];
+    for (
+      let day = all.period.startDay;
+      day <= all.period.endDayInclusive;
+      day = somarDiaCivil(day, 1)
+    ) {
+      series.push({
+        day,
+        positiveEntriesCents: day === all.period.startDay ? 1000 : 0,
+        refundsCents: day === all.period.startDay ? 1000 : 0,
+        feesCents: day === all.period.startDay ? 1000 : 0,
+        calculableNetCents: day === all.period.startDay ? 1000 : 0,
+      });
+    }
+    all.cash.currencies[0].series = series;
+    expect(series.length).toBeGreaterThan(366);
+    expect(parseAdminFinanceContract(all).period.preset).toBe("all");
+  });
+
   it("aceita o contrato v1 completo", () => {
     expect(parseAdminFinanceContract(contract()).contractVersion).toBe(1);
   });

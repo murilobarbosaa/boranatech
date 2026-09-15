@@ -4,6 +4,7 @@ import { classifyRegisteredPayments } from "./registeredPayments";
 import {
   analyzeCurrentAccesses,
   analyzeRegisteredCash,
+  resolveHonestFinanceAllPeriod,
   resolveHonestFinancePeriod,
 } from "./honestFinance";
 
@@ -268,6 +269,49 @@ describe("acessos e catálogo", () => {
 });
 
 describe("períodos gerenciais", () => {
+  it("Tudo começa no primeiro movimento financeiro local, sem corte de 366 dias", async () => {
+    const findFirst = () => Promise.resolve("2025-07-10T23:30:00-03:00");
+    const result = await resolveHonestFinanceAllPeriod(
+      { preset: "all", asOfDay: "2026-09-14" },
+      new Date("2026-09-14T12:00:00Z"),
+      findFirst,
+    );
+    expect(result).toMatchObject({
+      preset: "all",
+      startDay: "2025-07-10",
+      endDayInclusive: "2026-09-13",
+      from: "2025-07-10T03:00:00.000Z",
+      toExclusive: "2026-09-14T03:00:00.000Z",
+    });
+  });
+
+  it("Tudo sem fato local não inventa início nem zero", async () => {
+    await expect(
+      resolveHonestFinanceAllPeriod(
+        { preset: "all", asOfDay: "2026-09-14" },
+        new Date("2026-09-14T12:00:00Z"),
+        () => Promise.resolve(null),
+      ),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("Tudo recusa dia de referência obsoleto e limite excedido sem cortar histórico", async () => {
+    await expect(
+      resolveHonestFinanceAllPeriod(
+        { preset: "all", asOfDay: "2026-09-13" },
+        new Date("2026-09-14T12:00:00Z"),
+        () => Promise.resolve("2026-01-01T12:00:00Z"),
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      resolveHonestFinanceAllPeriod(
+        { preset: "all", asOfDay: "2026-09-14" },
+        new Date("2026-09-14T12:00:00Z"),
+        () => Promise.resolve("2010-01-01T12:00:00Z"),
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
   it("usa apenas dias completos de America/Sao_Paulo", () => {
     const result = resolveHonestFinancePeriod(
       { preset: "30d" },

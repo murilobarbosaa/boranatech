@@ -40,6 +40,7 @@ const PRESETS: Array<{ id: FinancePeriodFilter["preset"]; label: string }> = [
   { id: "30d", label: "Últimos 30 dias completos" },
   { id: "90d", label: "Últimos 90 dias completos" },
   { id: "previous_month", label: "Mês anterior" },
+  { id: "all", label: "Todo histórico local" },
   { id: "custom", label: "Personalizado" },
 ];
 
@@ -374,35 +375,12 @@ export function FinanceDashboard({
                       Caixa registrado
                     </h2>
                     <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                      Movimentos presentes em finance_transactions. Não
-                      representa faturamento contábil nem garante cobertura
+                      Valores observados no registro local, separados por moeda.
+                      Não representam faturamento contábil nem cobertura
                       integral.
                     </p>
                   </div>
                   <StatusBadge status={data.cash.status} />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <HonestCard
-                    label="Pagamentos registrados"
-                    value={formatCountMetric(data.cash.registeredPayments)}
-                    explanation="Mesma elegibilidade e identidade canônica da Visão (ADM-001)."
-                    status={data.cash.registeredPayments.status}
-                  />
-                  <HonestCard
-                    label="Pessoas identificadas nos pagamentos"
-                    value={formatCountMetric(data.cash.registeredPaymentPeople)}
-                    explanation="user_id distintos nas cobranças canônicas; não é contagem de clientes pagantes."
-                    status={data.cash.registeredPaymentPeople.status}
-                  />
-                  <HonestCard
-                    label="Pagamentos sem pessoa"
-                    value={formatCountMetric(
-                      data.cash.registeredPaymentsWithoutPerson,
-                    )}
-                    explanation="Cobranças canônicas sem user_id persistido."
-                    status={data.cash.registeredPaymentsWithoutPerson.status}
-                  />
                 </div>
 
                 {data.cash.status === "not_collected" ? (
@@ -437,68 +415,88 @@ export function FinanceDashboard({
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <HonestCard
                           headingLevel={4}
+                          label="Caixa líquido calculável registrado"
+                          value={formatMoneyMetric(bucket.calculableNet)}
+                          explanation="Líquido dos movimentos locais aceitos; cobertura parcial."
+                          status={bucket.calculableNet.status}
+                        />
+                        <HonestCard
+                          headingLevel={4}
                           label="Entradas positivas registradas"
                           value={formatMoneyMetric(bucket.positiveEntries)}
-                          explanation="Soma do bruto de charges positivas deduplicadas."
+                          explanation="Cobranças positivas locais deduplicadas."
                           status={bucket.positiveEntries.status}
                         />
                         <HonestCard
                           headingLevel={4}
                           label="Reembolsos registrados"
                           value={formatMoneyMetric(bucket.refunds)}
-                          explanation="Somente refunds presentes no ledger; devolução externa fica fora."
+                          explanation="Somente devoluções presentes no registro local."
                           status={bucket.refunds.status}
                         />
                         <HonestCard
                           headingLevel={4}
                           label="Taxas registradas"
                           value={formatMoneyMetric(bucket.fees)}
-                          explanation="Soma assinada de fee_cents das movimentações aceitas."
+                          explanation="Taxas observadas nos movimentos aceitos."
                           status={bucket.fees.status}
-                        />
-                        <HonestCard
-                          headingLevel={4}
-                          label="Líquido calculável registrado"
-                          value={formatMoneyMetric(bucket.calculableNet)}
-                          explanation="Soma de net_cents de entradas, refunds, ajustes e disputas."
-                          status={bucket.calculableNet.status}
-                        />
-                        <HonestCard
-                          headingLevel={4}
-                          label="Transações sem pessoa"
-                          value={formatCountMetric(
-                            bucket.transactionsWithoutPerson,
-                          )}
-                          explanation="Movimentos aceitos sem user_id persistido."
-                          status={bucket.transactionsWithoutPerson.status}
                         />
                       </div>
                     </div>
                   ))
                 )}
 
-                <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                  <p>
-                    Excluídas por dado inválido ou conflito econômico:{" "}
-                    <strong>
-                      {formatCountMetric(data.cash.excludedTransactions)}
-                    </strong>
-                    . Identidades conflitantes:{" "}
-                    <strong>
-                      {formatCountMetric(data.cash.conflictingIdentities)}
-                    </strong>
-                    .
+                <div className="rounded-xl bg-slate-100 p-4 text-sm text-slate-700 dark:bg-secondary">
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    Pagamentos e qualidade dos dados
+                  </h3>
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      ["Pagamentos registrados", data.cash.registeredPayments],
+                      [
+                        "Pessoas identificadas",
+                        data.cash.registeredPaymentPeople,
+                      ],
+                      [
+                        "Pagamentos sem pessoa",
+                        data.cash.registeredPaymentsWithoutPerson,
+                      ],
+                      ["Transações excluídas", data.cash.excludedTransactions],
+                    ].map(([label, metric]) => (
+                      <div key={label as string}>
+                        <dt className="text-xs font-bold uppercase text-slate-600">
+                          {label as string}
+                        </dt>
+                        <dd className="mt-1 text-xl font-black text-slate-950">
+                          {formatCountMetric(metric as FinanceCountMetric)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-2 text-xs font-semibold">
+                    As contagens usam a identidade canônica da Visão. Pessoas
+                    identificadas não equivalem a clientes pagantes.
                   </p>
-                  <p className="mt-1 text-xs">
-                    Duplicatas equivalentes ignoradas:{" "}
-                    {data.cash.coverage.duplicateRowsIgnored}. A leitura não
-                    infere reembolsos externos ausentes.
-                  </p>
-                  <details className="mt-2 text-xs">
+                  <details className="mt-3 text-xs">
                     <summary className="cursor-pointer font-black">
-                      Ver exclusões por motivo
+                      Ver exclusões, conflitos e limitações
                     </summary>
-                    <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                    <p className="mt-2">
+                      Identidades conflitantes:{" "}
+                      {formatCountMetric(data.cash.conflictingIdentities)}.
+                      Duplicatas equivalentes ignoradas:{" "}
+                      {data.cash.coverage.duplicateRowsIgnored}. Reembolsos
+                      externos ausentes não são inferidos.
+                    </p>
+                    {data.cash.currencies.map((bucket) => (
+                      <p key={bucket.currency} className="mt-1">
+                        {bucket.currency}:{" "}
+                        {formatCountMetric(bucket.transactionsWithoutPerson)}{" "}
+                        transações aceitas sem pessoa.
+                      </p>
+                    ))}
+                    <h4 className="mt-2 font-black">Exclusões por motivo</h4>
+                    <ul className="mt-1 grid gap-1 sm:grid-cols-2">
                       {Object.entries(data.cash.exclusionsByReason).map(
                         ([reason, quantity]) => (
                           <li key={reason}>
@@ -526,17 +524,17 @@ export function FinanceDashboard({
                       Acessos atuais
                     </h2>
                     <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                      Estado operacional atual de subscriptions, sem afirmar
+                      Estado operacional dos acessos atuais, sem afirmar
                       pagamento ou obrigação futura.
                     </p>
                   </div>
                   <StatusBadge status={data.accesses.status} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <HonestCard
                     label="Automáticos ativos"
                     value={formatCountMetric(data.accesses.automaticActive)}
-                    explanation="Acessos com renewal_type auto; ainda não prova contrato pago."
+                    explanation="Renovação automática informada; ainda não prova contrato pago."
                     status={data.accesses.automaticActive.status}
                   />
                   <HonestCard
@@ -551,30 +549,24 @@ export function FinanceDashboard({
                     explanation="Trial não é cliente pagante."
                     status={data.accesses.trialing.status}
                   />
-                  <HonestCard
-                    label="Pessoas com acessos conflitantes"
-                    value={formatCountMetric(data.accesses.conflictingPeople)}
-                    explanation="Mais de uma subscription atual: nenhuma é escolhida silenciosamente."
-                    status={data.accesses.conflictingPeople.status}
-                  />
-                  <HonestCard
-                    label="Cancelamento agendado"
-                    value={formatCountMetric(
-                      data.accesses.scheduledCancellation,
-                    )}
-                    explanation="Acesso ainda atual até o fim do período; renovação futura não presumida."
-                    status={data.accesses.scheduledCancellation.status}
-                  />
                 </div>
+                <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 dark:bg-secondary">
+                  Pessoas com acessos conflitantes:{" "}
+                  <strong>
+                    {formatCountMetric(data.accesses.conflictingPeople)}
+                  </strong>
+                  {" · "}Cancelamentos agendados:{" "}
+                  <strong>
+                    {formatCountMetric(data.accesses.scheduledCancellation)}
+                  </strong>
+                  . Nenhum acesso conflitante é escolhido silenciosamente.
+                </p>
                 {data.accesses.catalogMonthlyValues.map((bucket) => (
-                  <div
-                    key={bucket.currency}
-                    className="rounded-2xl border-2 border-slate-900 bg-white p-4"
-                  >
+                  <div key={bucket.currency} className="space-y-3">
                     <h3 className="font-display text-lg font-black text-slate-950">
                       Valores mensais de catálogo em {bucket.currency}
                     </h3>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <HonestCard
                         headingLevel={4}
                         label="Acessos automáticos ativos"

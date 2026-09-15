@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +46,8 @@ class ResizeObserverStub {
   ResizeObserverStub;
 
 import { clearHonestFinanceClientCacheForTests } from "@/components/admin/useHonestFinance";
+import { financeFixtureForRequest } from "@/components/admin/financeFixtureForRequest.testUtils";
+import type { AdminFinanceContract } from "@shared/adminFinance";
 import Admin from "./Admin";
 
 const overview = {
@@ -153,12 +156,37 @@ const series = {
 function installRoutes(finance: unknown = financeFixture) {
   fetchMock.mockImplementation((path: unknown) => {
     const route = String(path);
-    if (route.startsWith("/overview?"))
-      return Promise.resolve({ data: overview });
+    if (route.startsWith("/overview?")) {
+      const selected = new URL(route, "http://localhost").searchParams.get(
+        "window",
+      );
+      return Promise.resolve({
+        data: {
+          ...overview,
+          window: selected,
+          windowFirstDay:
+            selected === "all"
+              ? null
+              : selected === "7"
+                ? "2026-09-08"
+                : "2026-08-16",
+        },
+      });
+    }
     if (route.startsWith("/overview-series"))
       return Promise.resolve({ data: series });
     if (route.startsWith("/finance/summary"))
-      return Promise.resolve({ data: finance });
+      return Promise.resolve({
+        data:
+          finance &&
+          typeof finance === "object" &&
+          "contractVersion" in finance &&
+          finance.contractVersion === 1
+            ? financeFixtureForRequest(finance as AdminFinanceContract, route)
+            : finance,
+      });
+    if (route.startsWith("/finance/transactions"))
+      return Promise.resolve({ data: { rows: [], total: 0 } });
     if (route.startsWith("/online-now")) {
       return Promise.resolve({
         data: { state: "ok", atividade: { online: 12, hojePessoas: 340 } },
@@ -181,72 +209,179 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("resumo executivo da Visão", () => {
-  it("mostra quatro KPIs, com caixa BRL e breakdown observado", async () => {
+describe("Visão antiga com caixa financeiro honesto", () => {
+  it("Tudo consulta o histórico financeiro local, sem virar indisponibilidade artificial", async () => {
+    window.history.replaceState({}, "", "/admin?window=all");
+    installRoutes();
+    render(<Admin />);
+    const cashCard = await screen.findByTestId("overview-finance-card");
+    await waitFor(() =>
+      expect(cashCard.textContent).toContain("Caixa líquido registrado"),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([path]) =>
+          String(path).includes(
+            "/finance/summary?contract=honest-v1&preset=all&asOfDay=",
+          ),
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() => expect(cashCard.textContent).toContain("R$"));
+    expect(cashCard.textContent).toContain("Hoje excluído");
+    expect(cashCard.textContent).not.toContain(
+      "Selecione uma janela com dias completos",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ver financeiro" }));
+    expect(window.location.search).toContain("financePeriod=all");
+  });
+
+  it("7 dias → Tudo → 30 dias mantém o intervalo final apesar de respostas fora de ordem", async () => {
+    window.history.replaceState({}, "", "/admin?window=7");
+    installRoutes();
+    const baseFetch = fetchMock.getMockImplementation()!;
+    const delayed: Array<(value: unknown) => void> = [];
+    fetchMock.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary") && delayed.length < 2) {
+        return new Promise((resolve) => delayed.push(resolve));
+      }
+      return baseFetch(path);
+    });
+    render(<Admin />);
+    const selector = await screen.findByTestId("overview-periodo");
+    await waitFor(() => expect(delayed).toHaveLength(1));
+    fireEvent.click(within(selector).getByRole("button", { name: "Tudo" }));
+    await waitFor(() => expect(delayed).toHaveLength(2));
+    fireEvent.click(within(selector).getByRole("button", { name: "30 dias" }));
+    const cashCard = await screen.findByTestId("overview-finance-card");
+    await waitFor(() =>
+      expect(cashCard.textContent).toContain("16/08/2026 a 13/09/2026"),
+    );
+    const oldPaths = fetchMock.mock.calls
+      .map(([path]) => String(path))
+      .filter((path) => path.startsWith("/finance/summary"));
+    delayed[1]({
+      data: financeFixtureForRequest(
+        financeFixture as AdminFinanceContract,
+        oldPaths[1],
+      ),
+    });
+    delayed[0]({
+      data: financeFixtureForRequest(
+        financeFixture as AdminFinanceContract,
+        oldPaths[0],
+      ),
+    });
+    await Promise.resolve();
+    expect(cashCard.textContent).toContain("16/08/2026 a 13/09/2026");
+    expect(cashCard.textContent).not.toContain("01/01/2026");
+  });
+
+  it("preserva a hierarquia 3+4 e troca somente o slot financeiro", async () => {
     installRoutes();
     render(<Admin />);
 
-    const kpis = await screen.findByTestId("executive-kpis");
-    expect(kpis.children).toHaveLength(4);
+    const principais = await screen.findByTestId("cards-principais");
+    const secundarios = screen.getByTestId("cards-secundarios");
+    expect(principais.children).toHaveLength(3);
+    expect(secundarios.children).toHaveLength(4);
+    expect(principais.textContent).toContain("Usuários totais");
+    expect(principais.textContent).toContain("Assinantes Pro");
     expect(screen.getByText("Caixa líquido registrado")).toBeTruthy();
-    expect(
-      screen.getByText("Pessoas com primeiro pagamento observado"),
-    ).toBeTruthy();
-    expect(screen.getByText("Acessos automáticos ativos")).toBeTruthy();
-    expect(screen.getByText("Custo de IA no período")).toBeTruthy();
-    await waitFor(() => expect(kpis.textContent).toContain("entradas"));
-    expect(kpis.textContent).toContain("R$");
-    expect(kpis.textContent).toContain("reembolsos");
-    expect(kpis.textContent).toContain("taxas");
-    expect(kpis.textContent).toContain("Cobertura parcial");
-    expect(kpis.textContent).toContain(
-      "01/09/2026 a 01/09/2026 · America/Sao_Paulo",
+    expect(secundarios.textContent).toContain("Atividade agora");
+    expect(secundarios.textContent).toContain("Valor mensal de catálogo");
+    expect(secundarios.textContent).toContain("Acessos em atenção");
+    expect(secundarios.textContent).toContain("Custo de IA");
+    expect(screen.queryByTestId("executive-kpis")).toBeNull();
+    expect(screen.queryByText("Aquisição e receita")).toBeNull();
+    expect(screen.queryByText("Produto e engajamento")).toBeNull();
+
+    const caixa = screen.getByTestId("overview-finance-card");
+    await waitFor(() => expect(caixa.textContent).toContain("entradas"));
+    expect(caixa.textContent).toContain("R$");
+    expect(caixa.textContent).toContain("reembolsos");
+    expect(caixa.textContent).toContain("taxas");
+    expect(caixa.textContent).toContain("Cobertura parcial");
+    expect(caixa.textContent).toContain(
+      "16/08/2026 a 13/09/2026 · America/Sao_Paulo · Hoje excluído",
     );
     expect(screen.getByRole("button", { name: "Ver financeiro" })).toBeTruthy();
   });
 
-  it("agrupa a navegação secundária no menu Mais e fecha com Escape", async () => {
+  it("expõe todas as seções diretamente e não renderiza Mais", async () => {
     installRoutes();
     render(<Admin />);
 
-    const trigger = await screen.findByRole("button", {
-      name: "Abrir mais seções do admin",
-    });
-    expect(trigger.closest("nav")?.className).toContain("flex-nowrap");
-    trigger.focus();
-    fireEvent.click(trigger);
-    expect(
-      await screen.findByRole("menuitem", { name: /Tarefas/ }),
-    ).toBeTruthy();
-    expect(screen.getAllByRole("menuitem")).toHaveLength(8);
-    expect(trigger.getAttribute("aria-expanded")).toBe("true");
-
-    fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("menuitem")).toBeNull());
-    expect(document.activeElement).toBe(trigger);
+    await screen.findByText("Caixa líquido registrado");
+    const nav = screen
+      .getAllByRole("navigation")
+      .find((item) => item.className.includes("lg:flex"))!;
+    expect(nav.className).toContain("flex-nowrap");
+    expect(nav.className).toContain("overflow-x-auto");
+    for (const label of [
+      "Visão",
+      "Conversão",
+      "Páginas",
+      "Conteúdo",
+      "Vagas",
+      "Usuários",
+      "Creators",
+      "Retenção",
+      "Financeiro",
+      "Afiliados",
+      "Emails",
+      "Notificações",
+      "IA",
+      "Tarefas",
+    ]) {
+      expect(
+        screen
+          .getAllByRole("button", { name: label })
+          .some((button) => nav.contains(button)),
+      ).toBe(true);
+    }
+    expect(screen.queryByRole("button", { name: /mais seções/i })).toBeNull();
+    expect(screen.queryByText("Mais")).toBeNull();
   });
 
-  it("mantém Mais identificado quando uma seção secundária está ativa", async () => {
+  it("identifica diretamente uma seção antes escondida em Mais", async () => {
     window.history.replaceState({}, "", "/admin?section=tarefas&window=30");
     installRoutes();
     render(<Admin />);
-    const trigger = await screen.findByRole("button", {
-      name: "Abrir mais seções do admin",
-    });
-    expect(trigger.getAttribute("aria-current")).toBe("page");
+    const tarefas = await screen.findAllByRole("button", { name: "Tarefas" });
+    expect(
+      tarefas.every((button) => button.className.includes("nav-pill-active")),
+    ).toBe(true);
   });
 
-  it("falha financeira fica isolada e não derruba os outros KPIs", async () => {
+  it("restaura o hero anterior só na Visão e mantém Financeiro compacto", async () => {
+    installRoutes();
+    render(<Admin />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Centro de comando do BORA NA TECH?",
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText("Dados separados por seção")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Financeiro" })[0]);
+    expect(
+      await screen.findByRole("heading", { name: "Centro de comando" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Dados separados por seção")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Resumo" })).toBeTruthy();
+  });
+
+  it("falha financeira fica isolada e não derruba os cards antigos", async () => {
     installRoutes({ contractVersion: 0 });
     render(<Admin />);
 
     await waitFor(() =>
       expect(screen.getAllByText("Indisponível").length).toBeGreaterThan(0),
     );
-    expect(
-      screen.getByText("Pessoas com primeiro pagamento observado"),
-    ).toBeTruthy();
-    expect(screen.getByText("Custo de IA no período")).toBeTruthy();
+    expect(screen.getByText("Usuários totais")).toBeTruthy();
+    expect(screen.getByText("Assinantes Pro")).toBeTruthy();
+    expect(screen.getByText("Custo de IA")).toBeTruthy();
     expect(screen.queryByText("R$ 0,00")).toBeNull();
   });
 
@@ -321,8 +456,8 @@ describe("resumo executivo da Visão", () => {
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.filter(([path]) =>
-          String(path).startsWith(
-            "/finance/summary?contract=honest-v1&preset=30d",
+          String(path).includes(
+            "/finance/summary?contract=honest-v1&preset=custom&fromDay=2026-08-16&toDay=2026-09-13",
           ),
         ),
       ).toHaveLength(1),
@@ -330,10 +465,13 @@ describe("resumo executivo da Visão", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ver financeiro" }));
     await screen.findByRole("tab", { name: "Resumo" });
+    expect(window.location.search).toContain("financePeriod=custom");
+    expect(window.location.search).toContain("financeFrom=2026-08-16");
+    expect(window.location.search).toContain("financeTo=2026-09-13");
     expect(
       fetchMock.mock.calls.filter(([path]) =>
-        String(path).startsWith(
-          "/finance/summary?contract=honest-v1&preset=30d",
+        String(path).includes(
+          "/finance/summary?contract=honest-v1&preset=custom&fromDay=2026-08-16&toDay=2026-09-13",
         ),
       ),
     ).toHaveLength(1);
