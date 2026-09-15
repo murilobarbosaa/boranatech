@@ -188,6 +188,7 @@ export const TRAIL_PALETTE: Record<string, TagPalette> = {
   javascript: { bg: "bg-amber-200", text: "text-amber-900" },
   python: { bg: "bg-sky-200", text: "text-sky-900" },
   git: { bg: "bg-orange-200", text: "text-orange-900" },
+  html: { bg: "bg-rose-200", text: "text-rose-900" },
 };
 
 const TRAIL_FALLBACK: TagPalette = {
