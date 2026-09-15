@@ -890,7 +890,6 @@ export default function Checkout() {
         if (opcoes.aposCancelar) {
           // A cobranca anterior acabou de ser cancelada e o servidor ainda
           // recusa. Reabrir o dialogo faria um laco; vira aviso.
-          // TODO(Ana): copy do Pix que continua pendente depois de cancelar.
           toast.error(
             "Ainda não foi possível liberar um novo Pix. Tente de novo em instantes.",
           );

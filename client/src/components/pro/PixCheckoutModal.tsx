@@ -449,7 +449,6 @@ export default function PixCheckoutModal({
               onClick={() => setCancelarAberto(true)}
               className="text-xs font-bold text-slate-500 underline underline-offset-4 transition-colors duration-200 hover:text-rose-600"
             >
-              {/* TODO(Ana): rotulo da acao de cancelar a cobranca no modal Pix. */}
               Cancelar e escolher outro plano
             </button>
           </div>

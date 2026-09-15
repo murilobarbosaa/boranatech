@@ -1978,7 +1978,6 @@ export default function Perfil() {
                           onClick={() => setCancelPixOpen(true)}
                           className="pt-2 text-sm font-black text-slate-600 underline underline-offset-4 transition-colors duration-200 hover:text-rose-600"
                         >
-                          {/* TODO(Ana): rotulo do botao de cancelar a cobranca Pix pendente. */}
                           Cancelar cobrança
                         </button>
                       ) : null}
