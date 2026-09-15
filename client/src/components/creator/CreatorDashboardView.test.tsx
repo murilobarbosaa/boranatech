@@ -477,6 +477,49 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     );
     expect(lista?.className).not.toContain("grid-cols-2");
   });
+
+  it("cabecalho: faixa listrada atras do cartao brutal, e a etiqueta CREATOR nele", () => {
+    desenhar(painelBase());
+    const faixa = screen.getByTestId("creator-faixa");
+    expect(faixa.getAttribute("aria-hidden")).toBe("true");
+    expect(faixa.className).toContain("repeating-linear-gradient(45deg");
+    const cartao = screen.getByText("Ana Creator").closest("section");
+    expect(faixa.nextElementSibling).toBe(cartao);
+    expect(cartao?.className).toContain("card-brutal");
+    const etiqueta = screen.getByTestId("creator-etiqueta");
+    expect(etiqueta.textContent).toBe("Creator");
+    expect(cartao?.contains(etiqueta)).toBe(true);
+  });
+
+  it("os seis tiles sao card-brutal, cada um num par pastel diferente", () => {
+    desenhar(painelBase());
+    const familias = [
+      "cliques",
+      "vendas",
+      "conversao",
+      "receita",
+      "a-receber",
+      "paga",
+    ].map((id) => {
+      const classes = screen.getByTestId(`creator-tile-${id}`).className;
+      expect(classes, id).toContain("card-brutal");
+      const familia = /\bbg-([a-z]+)-200\b/.exec(classes)?.[1];
+      expect(familia, id).toBeTruthy();
+      return familia;
+    });
+    expect(new Set(familias).size).toBe(6);
+  });
+
+  it("a visao admin usa o mesmo cupom, tiles e faixa, sem nada a definir", () => {
+    desenhar(painelAdmin(), "admin");
+    expect(screen.getByTestId("creator-faixa")).toBeTruthy();
+    expect(
+      screen.getByTestId("creator-codigo-ANA30").className,
+    ).toContain("bg-[var(--brand-yellow)]");
+    expect(screen.getByTestId("creator-tile-cliques").className).toContain(
+      "card-brutal",
+    );
+  });
 });
 
 describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques", () => {
