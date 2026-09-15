@@ -54,7 +54,7 @@ describe("manifesto administrativo fechado", () => {
   });
 
   it("valida invariantes da matriz para os três papéis em todas as rotas", () => {
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(128);
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(129);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

@@ -109,6 +109,7 @@ export function FinanceWorkspace({
 
   function selectPeriod(next: FinancePeriodFilter) {
     const params = new URLSearchParams(window.location.search);
+    params.delete("financePage");
     if (next.preset === "30d") params.delete("financePeriod");
     else params.set("financePeriod", next.preset);
     if (next.customFrom) params.set("financeFrom", next.customFrom);

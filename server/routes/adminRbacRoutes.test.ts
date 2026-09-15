@@ -161,8 +161,8 @@ describe("inventário independente das rotas administrativas", () => {
     ]);
 
     const actual = actualAdminRoutes();
-    expect(actual).toHaveLength(128);
-    expect(actual.filter(([method]) => method === "GET")).toHaveLength(65);
+    expect(actual).toHaveLength(129);
+    expect(actual.filter(([method]) => method === "GET")).toHaveLength(66);
     expect(actual.filter(([method]) => method !== "GET")).toHaveLength(63);
     expect(actual.some(([, routePath]) => routePath.includes(":"))).toBe(true);
     expect(actual.some(([, routePath]) => routePath.includes("*"))).toBe(false);
