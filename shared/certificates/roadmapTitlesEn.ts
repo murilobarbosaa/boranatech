@@ -37,6 +37,7 @@ export const ROADMAP_TITLES_EN: Record<string, string> = {
   python: "Python from Scratch",
   git: "Git from Scratch",
   html: "HTML from Scratch",
+  css: "CSS from Scratch",
 };
 
 // Titulo da trilha no idioma pedido. Fallback: o proprio titulo (PT) se nao

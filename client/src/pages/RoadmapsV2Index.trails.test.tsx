@@ -115,7 +115,7 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
     ).toBeTruthy();
     expect(card.getByText("10 etapas")).toBeTruthy();
     expect(card.getByText("44 passos")).toBeTruthy();
-    for (const slug of ["javascript", "python", "git", "html"]) {
+    for (const slug of ["javascript", "python", "git", "html", "css"]) {
       const a = container.querySelector<HTMLElement>(
         `a[href="/roadmaps/${slug}"]`,
       );
