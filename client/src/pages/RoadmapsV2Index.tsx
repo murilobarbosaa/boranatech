@@ -12,7 +12,6 @@ import {
   FileText,
   Flag,
   Footprints,
-  GitBranch,
   Headphones,
   Linkedin,
   Map,
@@ -44,6 +43,7 @@ import {
   type CertificateStatus,
 } from "@/services/certificateService";
 import { entrada } from "@/lib/entradaEstatica";
+import TrailLogo from "@/components/roadmapV2/TrailLogo";
 
 // Selo da vitrine. So "certificada" e "concluida" ganham marca (ambas exigem
 // quiz aprovado no server). "em_progresso" nao tem selo proprio: a listagem
@@ -92,8 +92,9 @@ const CAREER_CARD_FALLBACK: { icon: LucideIcon; tagClass: string } = {
 // Grupos de trilha de linguagem e de ferramenta, abaixo das carreiras. A lista
 // vem de trailGroups (derivada do meta, que deriva do registro): trilha nova
 // registrada aparece sem tocar aqui. Esta tabela so guarda a copy e o icone de
-// cada GRUPO; a cor do card vem de trailPaletteOf, por slug, no mesmo par
-// pastel com icone escuro dos cards de area.
+// cada GRUPO (o icone e o fallback do TrailLogo, para trilha sem logo); a
+// cor do card vem de trailPaletteOf, por slug, no mesmo par pastel com icone
+// escuro dos cards de area.
 const TRAIL_GROUP_UI: Record<
   TrailGroupKey,
   { title: string; lead: string; icon: LucideIcon }
@@ -110,12 +111,6 @@ const TRAIL_GROUP_UI: Record<
     lead: "O que todo dev usa no dia a dia, do primeiro comando ao fluxo completo.",
     icon: Wrench,
   },
-};
-
-// Icone proprio de uma trilha, quando o do grupo nao basta. Sem entrada, o
-// card usa o icone do grupo.
-const TRAIL_ICON: Record<string, LucideIcon> = {
-  git: GitBranch,
 };
 
 const HERO_DOODLES = [
@@ -656,12 +651,6 @@ export default function RoadmapsV2Index() {
                 <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {group.entries.map((entry, index) => {
                     const palette = trailPaletteOf(entry.slug);
-                    const Icon = Object.prototype.hasOwnProperty.call(
-                      TRAIL_ICON,
-                      entry.slug,
-                    )
-                      ? TRAIL_ICON[entry.slug]
-                      : ui.icon;
                     return (
                       <motion.div
                         key={entry.slug}
@@ -688,8 +677,10 @@ export default function RoadmapsV2Index() {
                             <span
                               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
                             >
-                              <Icon
-                                className={`h-[19px] w-[19px] ${palette.text}`}
+                              <TrailLogo
+                                slug={entry.slug}
+                                fallback={ui.icon}
+                                className="h-[19px] w-[19px]"
                               />
                             </span>
                             <h2 className="text-[15px] font-bold leading-tight text-slate-900">
