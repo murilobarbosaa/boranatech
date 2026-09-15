@@ -52,6 +52,72 @@ function access(overrides: Record<string, unknown> = {}) {
 }
 
 describe("caixa financeiro honesto", () => {
+  it("não deduz um repasse bancário uma segunda vez do líquido de pagamentos", () => {
+    const charge = transaction();
+    const payout = transaction({
+      id: "payout-1",
+      provider_transaction_id: "po_1",
+      stripe_charge_id: null,
+      type: "payout",
+      gross_cents: -9_500,
+      fee_cents: 0,
+      net_cents: -9_500,
+      occurred_at: "2026-09-02T12:00:00-03:00",
+      user_id: null,
+    });
+    const before = analyzeRegisteredCash({ period, rows: [charge] });
+    const after = analyzeRegisteredCash({ period, rows: [charge, payout] });
+    expect(after.currencies).toEqual(before.currencies);
+    expect(after.registeredPayments).toEqual(before.registeredPayments);
+    expect(after.exclusionsByReason.unsupportedType).toBe(1);
+  });
+  it("preserva efeitos de reembolso, disputa e ajuste e ignora tipo desconhecido", () => {
+    const rows = [
+      transaction(),
+      transaction({
+        id: "refund",
+        type: "refund",
+        provider_transaction_id: "re-1",
+        stripe_charge_id: null,
+        gross_cents: -1_000,
+        fee_cents: 0,
+        net_cents: -1_000,
+      }),
+      transaction({
+        id: "dispute",
+        type: "dispute",
+        provider_transaction_id: "dp-1",
+        stripe_charge_id: null,
+        gross_cents: -2_000,
+        fee_cents: 0,
+        net_cents: -2_000,
+      }),
+      transaction({
+        id: "adjustment",
+        type: "adjustment",
+        provider_transaction_id: "adj-1",
+        stripe_charge_id: null,
+        gross_cents: 100,
+        fee_cents: 0,
+        net_cents: 100,
+      }),
+      transaction({
+        id: "failure",
+        type: "payout_failure",
+        provider_transaction_id: "pf-1",
+        stripe_charge_id: null,
+        gross_cents: 9_500,
+        fee_cents: 0,
+        net_cents: 9_500,
+      }),
+    ];
+    const cash = analyzeRegisteredCash({ period, rows });
+    expect(cash.currencies[0].positiveEntries.valueCents).toBe(10_000);
+    expect(cash.currencies[0].refunds.valueCents).toBe(1_000);
+    expect(cash.currencies[0].fees.valueCents).toBe(500);
+    expect(cash.currencies[0].calculableNet.valueCents).toBe(6_600);
+    expect(cash.exclusionsByReason.unsupportedType).toBe(1);
+  });
   it.each([
     MAX_FINANCE_HISTORY_DAYS - 1,
     MAX_FINANCE_HISTORY_DAYS,

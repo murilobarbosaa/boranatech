@@ -143,7 +143,25 @@ import {
   resolverJanela,
   rotuloDeIntervalo,
 } from "../lib/overviewWindow";
-import { coletarTagueado, coletarTudo, paginateRange } from "../lib/paginate";
+import {
+  coletarTagueado,
+  coletarTudo,
+  coletarTudoProvandoTotal,
+  paginateRange,
+} from "../lib/paginate";
+import {
+  analyzePaymentMethods,
+  pageMethodTransactions,
+  type MethodFinanceRow,
+  type PaymentMethodFilter,
+} from "../lib/financePaymentMethods";
+import {
+  PAYMENT_METHOD_SCAN_LIMIT,
+  verifiedMethodScan,
+} from "../lib/verifiedMethodScan";
+import { createVerifiedDatasetCache } from "../lib/verifiedDatasetCache";
+import type { PaymentMethodEvidence } from "../lib/registeredPayments";
+import { PaymentMethodSummarySchema } from "../../shared/adminFinanceMethods";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -6878,6 +6896,143 @@ router.get("/finance/timeseries", async (req, res, next) => {
   }
 });
 
+const paymentMethodDatasetCache = createVerifiedDatasetCache<
+  Awaited<ReturnType<typeof readPaymentMethodDataset>>
+>(45_000, 2);
+
+async function readPaymentMethodDataset(from: string, toExclusive: string) {
+  const [rows, evidence] = await Promise.all([
+    verifiedMethodScan<MethodFinanceRow>(async (start, end) => {
+      return supabaseAdmin
+        .from("finance_transactions")
+        .select(
+          "id, provider, provider_transaction_id, stripe_charge_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, created_at, user_id, plan_code",
+          { count: "exact" },
+        )
+        .gte("occurred_at", from)
+        .lt("occurred_at", toExclusive)
+        .order("occurred_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(start, end);
+    }, "rows"),
+    verifiedMethodScan<PaymentMethodEvidence & { id: string }>(
+      async (start, end) => {
+        return supabaseAdmin
+          .from("subscriptions")
+          .select("id, provider, provider_subscription_id, payment_method", {
+            count: "exact",
+          })
+          .eq("provider", "asaas")
+          .not("provider_subscription_id", "is", null)
+          .order("id", { ascending: true })
+          .range(start, end);
+      },
+      "evidence",
+    ),
+  ]);
+  const analysis = analyzePaymentMethods({
+    rows,
+    evidence,
+    cutoff: toExclusive,
+  });
+  const { rowIdsByMethod: _rowIdsByMethod, ...publicAnalysis } = analysis;
+  PaymentMethodSummarySchema.parse(publicAnalysis);
+  return {
+    rows,
+    evidenceCount: evidence.length,
+    analysis,
+  };
+}
+
+async function verifyPaymentMethodCounts(
+  from: string,
+  toExclusive: string,
+  dataset: Awaited<ReturnType<typeof readPaymentMethodDataset>>,
+) {
+  const [finance, evidence] = await Promise.all([
+    supabaseAdmin
+      .from("finance_transactions")
+      .select("id", { count: "exact", head: true })
+      .gte("occurred_at", from)
+      .lt("occurred_at", toExclusive),
+    supabaseAdmin
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("provider", "asaas")
+      .not("provider_subscription_id", "is", null),
+  ]);
+  for (const [kind, result] of [
+    ["rows", finance],
+    ["evidence", evidence],
+  ] as const) {
+    if (
+      result.error ||
+      !Number.isSafeInteger(result.count) ||
+      result.count! < 0
+    ) {
+      throw createError(
+        503,
+        "finance_method_count_unavailable",
+        "Contagem dos meios indisponível.",
+      );
+    }
+    if (result.count! > PAYMENT_METHOD_SCAN_LIMIT) {
+      throw createError(
+        503,
+        kind === "rows"
+          ? "finance_method_scan_limit"
+          : "finance_method_evidence_limit",
+        "O filtro por meio excede o limite seguro de leitura local.",
+      );
+    }
+  }
+  return (
+    finance.count === dataset.rows.length &&
+    evidence.count === dataset.evidenceCount
+  );
+}
+
+function loadPaymentMethodDataset(
+  from: string,
+  toExclusive: string,
+  fresh = false,
+) {
+  return paymentMethodDatasetCache.get(
+    `${from}|${toExclusive}`,
+    () => readPaymentMethodDataset(from, toExclusive),
+    fresh,
+    (dataset) => verifyPaymentMethodCounts(from, toExclusive, dataset),
+  );
+}
+
+router.get("/finance/payment-methods", async (req, res, next) => {
+  try {
+    const from = typeof req.query.from === "string" ? req.query.from : "";
+    const toExclusive =
+      typeof req.query.toExclusive === "string" ? req.query.toExclusive : "";
+    if (
+      !Number.isFinite(Date.parse(from)) ||
+      !Number.isFinite(Date.parse(toExclusive)) ||
+      Date.parse(from) >= Date.parse(toExclusive)
+    ) {
+      throw createError(
+        400,
+        "invalid_finance_method_period",
+        "Período financeiro inválido.",
+      );
+    }
+    const { analysis } = await loadPaymentMethodDataset(
+      new Date(from).toISOString(),
+      new Date(toExclusive).toISOString(),
+      wantsFresh(req.query as Record<string, unknown>),
+    );
+    const { rowIdsByMethod: _rowIdsByMethod, ...publicAnalysis } = analysis;
+    res.json({ data: PaymentMethodSummarySchema.parse(publicAnalysis) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/finance/transactions", async (req, res, next) => {
   try {
     const { page, pageSize } = parsePageParams(
@@ -6885,6 +7040,124 @@ router.get("/finance/transactions", async (req, res, next) => {
     );
     const rangeFrom = (page - 1) * pageSize;
     const rangeTo = rangeFrom + pageSize - 1;
+
+    if (
+      req.query.method !== undefined &&
+      typeof req.query.method !== "string"
+    ) {
+      throw createError(
+        400,
+        "invalid_payment_method",
+        "Meio de pagamento inválido.",
+      );
+    }
+    const method = typeof req.query.method === "string" ? req.query.method : "";
+    if (method && !["pix", "card", "boleto", "unknown"].includes(method)) {
+      throw createError(
+        400,
+        "invalid_payment_method",
+        "Meio de pagamento inválido.",
+      );
+    }
+    if (method) {
+      for (const [name, minimum, maximum] of [
+        ["page", 1, 20_001],
+        ["pageSize", 1, 100],
+      ] as const) {
+        const raw = req.query[name];
+        if (
+          raw !== undefined &&
+          (typeof raw !== "string" ||
+            !/^\d{1,6}$/.test(raw) ||
+            Number(raw) < minimum ||
+            Number(raw) > maximum)
+        ) {
+          throw createError(
+            400,
+            "invalid_finance_method_pagination",
+            "Paginação financeira inválida.",
+          );
+        }
+      }
+      const from = typeof req.query.from === "string" ? req.query.from : "";
+      const toExclusive =
+        typeof req.query.toExclusive === "string" ? req.query.toExclusive : "";
+      if (
+        !Number.isFinite(Date.parse(from)) ||
+        !Number.isFinite(Date.parse(toExclusive)) ||
+        Date.parse(from) >= Date.parse(toExclusive)
+      ) {
+        throw createError(
+          400,
+          "invalid_finance_method_period",
+          "Período financeiro inválido.",
+        );
+      }
+      if (
+        req.query.currency !== undefined &&
+        typeof req.query.currency !== "string"
+      ) {
+        throw createError(400, "invalid_currency", "Moeda inválida.");
+      }
+      const currency =
+        typeof req.query.currency === "string"
+          ? req.query.currency.trim().toUpperCase()
+          : "";
+      if (currency && !/^[A-Z]{3}$/.test(currency))
+        throw createError(400, "invalid_currency", "Moeda inválida.");
+      if (req.query.type !== undefined && typeof req.query.type !== "string") {
+        throw createError(
+          400,
+          "invalid_finance_method_type",
+          "Tipo financeiro inválido.",
+        );
+      }
+      const type = typeof req.query.type === "string" ? req.query.type : "";
+      if (
+        type &&
+        !["charge", "refund", "adjustment", "dispute", "payout"].includes(type)
+      ) {
+        throw createError(
+          400,
+          "invalid_finance_method_type",
+          "Tipo financeiro inválido.",
+        );
+      }
+      const { rows, analysis } = await loadPaymentMethodDataset(
+        new Date(from).toISOString(),
+        new Date(toExclusive).toISOString(),
+        wantsFresh(req.query as Record<string, unknown>),
+      );
+      const matchingIds =
+        analysis.rowIdsByMethod[method as PaymentMethodFilter];
+      const filtered = pageMethodTransactions({
+        rows,
+        matchingIds,
+        currency,
+        type,
+        page,
+        pageSize,
+      });
+      res.json({
+        data: {
+          rows: filtered.rows.map(
+            ({
+              user_id: _userId,
+              provider_transaction_id: _providerId,
+              stripe_charge_id: _chargeId,
+              created_at: _createdAt,
+              ...row
+            }) => row,
+          ),
+          total: filtered.total,
+          page,
+          pageSize,
+          filterContractVersion: 1,
+          appliedMethod: method,
+        },
+      });
+      return;
+    }
 
     let query = supabaseAdmin
       .from("finance_transactions")

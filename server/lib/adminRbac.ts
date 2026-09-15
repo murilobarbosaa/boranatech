@@ -348,6 +348,7 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
     ALL_ROLES,
     [
       ["GET", "/api/admin/finance/summary"],
+      ["GET", "/api/admin/finance/payment-methods"],
       ["GET", "/api/admin/finance/timeseries"],
       ["GET", "/api/admin/finance/transactions"],
       ["GET", "/api/admin/finance/expenses"],
