@@ -150,6 +150,26 @@ const ITEM_DO_QUADRO = {
     commission_paid_cents: 0,
   },
   ultimo_evento_at: "2026-09-18T01:30:00Z",
+  tem_pix: true,
+  instagram_handle: "ana.cria",
+};
+
+// Perfil de creator e chave Pix (lote 08). A chave e um CPF de teste valido: a
+// mesma do teste de shared/creatorProfile, para as mascaras baterem.
+const CHAVE_PIX = {
+  user_id: UID,
+  key_type: "cpf",
+  key_value: "52998224725",
+  updated_at: "2026-09-14T12:00:00Z",
+};
+const PERFIL_CREATOR = {
+  user_id: UID,
+  instagram_handle: "ana.cria",
+  tiktok_handle: null,
+  instagram_followers: 12500,
+  tiktok_followers: null,
+  followers_updated_at: "2026-09-14T12:00:00Z",
+  visible_to_creators: true,
 };
 
 beforeEach(() => {
@@ -163,7 +183,13 @@ afterEach(() => {
 
 describe("GET /creators", () => {
   it("padrao: ativos de todos os kinds, pagina 1 de 25, UMA chamada agregada", async () => {
-    montar({}, async () => ({ data: [LINHA_DO_QUADRO], error: null }));
+    montar(
+      {
+        creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
+        creator_profiles: respostaQueFiltra([PERFIL_CREATOR]),
+      },
+      async () => ({ data: [LINHA_DO_QUADRO], error: null }),
+    );
     const r = await chamarAdmin("GET", "/creators");
 
     expect(r.status).toBe(200);
@@ -179,13 +205,63 @@ describe("GET /creators", () => {
         args: { p_status: "active", p_kind: "all", p_limit: 25, p_offset: 0 },
       },
     ]);
-    // ultimo_evento_at e totais vem da MESMA chamada: nenhuma leitura de
-    // tabela, nenhuma consulta por creator.
-    expect(estado.double.chamadas).toHaveLength(0);
+    // ultimo_evento_at e totais vem da MESMA chamada agregada. O enriquecimento
+    // do lote 08 faz UMA leitura por tabela para a pagina inteira (`in`), nunca
+    // uma por creator, e a de chave Pix pede so `user_id`: o quadro sabe SE ha
+    // chave, e nunca qual.
+    expect(
+      estado.double.chamadas.map((c) => [c.table, c.colunas, c.filtros]),
+    ).toEqual([
+      [
+        "creator_pix_keys",
+        ["user_id"],
+        [{ tipo: "in", coluna: "user_id", valor: [UID] }],
+      ],
+      [
+        "creator_profiles",
+        ["user_id", "instagram_handle"],
+        [{ tipo: "in", coluna: "user_id", valor: [UID] }],
+      ],
+    ]);
+    expect(JSON.stringify(r.body)).not.toContain("52998224725");
+  });
+
+  it("creator sem chave e sem perfil: tem_pix false e instagram null, nunca ausentes", async () => {
+    montar(
+      {
+        creator_pix_keys: respostaQueFiltra([]),
+        creator_profiles: respostaQueFiltra([]),
+      },
+      async () => ({ data: [LINHA_DO_QUADRO], error: null }),
+    );
+    const r = await chamarAdmin("GET", "/creators");
+    expect(r.status).toBe(200);
+    expect(r.body.data.rows[0].tem_pix).toBe(false);
+    expect(r.body.data.rows[0].instagram_handle).toBeNull();
+  });
+
+  it("erro na leitura das chaves: 500, nunca tem_pix false", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar(
+      {
+        creator_pix_keys: { error: { message: "timeout" } },
+        creator_profiles: respostaQueFiltra([]),
+      },
+      async () => ({ data: [LINHA_DO_QUADRO], error: null }),
+    );
+    const r = await chamarAdmin("GET", "/creators");
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
   });
 
   it("filtros e paginacao chegam como argumentos da funcao", async () => {
-    montar({}, async () => ({ data: [LINHA_DO_QUADRO], error: null }));
+    montar(
+      {
+        creator_pix_keys: respostaQueFiltra([]),
+        creator_profiles: respostaQueFiltra([]),
+      },
+      async () => ({ data: [LINHA_DO_QUADRO], error: null }),
+    );
     const r = await chamarAdmin(
       "GET",
       "/creators?status=revoked&kind=afiliado&page=2&pageSize=10",
@@ -352,6 +428,8 @@ describe("GET /creators/:userId", () => {
         },
       ]),
       affiliates: respostaQueFiltra([]),
+      creator_profiles: respostaQueFiltra([PERFIL_CREATOR]),
+      creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
     });
     const r = await chamarAdmin("GET", `/creators/${UID}?janela=90d`);
     expect(r.status).toBe(200);
@@ -363,6 +441,57 @@ describe("GET /creators/:userId", () => {
     });
     expect(r.body.data.perfil.email).toBe("ana@x.com");
     expect(r.body.data.janela).toBe("90d");
+  });
+
+  it("perfil_creator: redes, seguidores, consentimento e a chave MASCARADA", async () => {
+    montar({
+      creators: respostaQueFiltra([
+        {
+          id: "c1",
+          user_id: UID,
+          kind: "influencer",
+          granted_at: "2026-09-01T12:00:00Z",
+          revoked_at: null,
+          granted_by: "admin-9",
+        },
+      ]),
+      profiles: respostaQueFiltra([
+        {
+          user_id: UID,
+          name: "Ana",
+          handle: "ana",
+          avatar_url: null,
+          email: "ana@x.com",
+        },
+      ]),
+      affiliates: respostaQueFiltra([]),
+      creator_profiles: respostaQueFiltra([PERFIL_CREATOR]),
+      creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
+    });
+    const r = await chamarAdmin("GET", `/creators/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.perfil_creator).toEqual({
+      instagram_handle: "ana.cria",
+      tiktok_handle: null,
+      instagram_followers: 12500,
+      tiktok_followers: null,
+      followers_updated_at: "2026-09-14T12:00:00Z",
+      visible_to_creators: true,
+      pix: {
+        tipo: "cpf",
+        mascarada: "***.***.247-**",
+        updated_at: "2026-09-14T12:00:00Z",
+      },
+    });
+    expect(JSON.stringify(r.body)).not.toContain("52998224725");
+  });
+
+  it("quem nunca foi creator: 404 sem ler o perfil de creator", async () => {
+    montar({ creators: respostaQueFiltra([]) });
+    const r = await chamarAdmin("GET", `/creators/${UID}`);
+    expect(r.status).toBe(404);
+    expect(estado.double.de("creator_profiles")).toHaveLength(0);
+    expect(estado.double.de("creator_pix_keys")).toHaveLength(0);
   });
 
   it("janela invalida: 400", async () => {
@@ -379,6 +508,72 @@ describe("GET /creators/:userId", () => {
     // 500 do resumo sem linha, e nao 400 de uuid invalido.
     expect(r.status).toBe(500);
     expect(estado.double.rpcCalls[0].nome).toBe("creators_board_summary");
+  });
+});
+
+describe("POST /creators/:userId/reveal-pix", () => {
+  it("id que nao e uuid: 400, sem ler nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", "/creators/nao-e-uuid/reveal-pix", {});
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_user_id");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("sem chave: 404 pix_not_found, e nada e auditado", async () => {
+    montar({
+      creator_pix_keys: respostaQueFiltra([]),
+      content_audit_logs: { rows: [{}] },
+    });
+    const r = await chamarAdmin("POST", `/creators/${UID}/reveal-pix`, {});
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("pix_not_found");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("com chave: audita PRIMEIRO e so entao devolve a chave inteira", async () => {
+    montar({
+      creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
+      content_audit_logs: { rows: [{}] },
+    });
+    const r = await chamarAdmin("POST", `/creators/${UID}/reveal-pix`, {});
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { tipo: "cpf", valor: "52998224725" } });
+    const auditoria = estado.double.de("content_audit_logs");
+    expect(auditoria).toHaveLength(1);
+    expect(auditoria[0].op).toBe("insert");
+    expect(auditoria[0].payload).toEqual({
+      actor_user_id: "admin-1",
+      action: "reveal",
+      resource_type: "creator_pix_key",
+      resource_id: UID,
+      resource_slug: null,
+      before_json: null,
+      after_json: null,
+    });
+  });
+
+  it("auditoria falhou: 500 audit_failed, SEM a chave", async () => {
+    montar({
+      creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
+      content_audit_logs: { error: { message: "timeout" } },
+    });
+    const r = await chamarAdmin("POST", `/creators/${UID}/reveal-pix`, {});
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(JSON.stringify(r.body)).not.toContain("52998224725");
+  });
+
+  it("erro ao ler a chave: 500 db_error, sem auditar e sem chave", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({
+      creator_pix_keys: { error: { message: "timeout" } },
+      content_audit_logs: { rows: [{}] },
+    });
+    const r = await chamarAdmin("POST", `/creators/${UID}/reveal-pix`, {});
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
   });
 });
 

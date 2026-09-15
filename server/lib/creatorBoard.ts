@@ -13,6 +13,7 @@ import {
   textoOuNull,
 } from "./creatorDashboard";
 import { creatorKindOf } from "./creatorKind";
+import { enriquecerPaginaDoQuadro } from "./creatorProfile";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -24,6 +25,12 @@ import { supabaseAdmin } from "./supabaseAdmin";
  * PostgREST estao desligados em producao e a alternativa seria ler linhas
  * brutas e somar aqui, sob o teto de linhas que trunca em silencio. A pagina
  * tem no maximo 100 linhas (parsePageParams), bem abaixo desse teto.
+ *
+ * PERFIL DE CREATOR (lote 08): cada linha da pagina ganha `tem_pix` e o @ do
+ * Instagram, lidos DEPOIS da pagina, uma consulta por tabela para a pagina
+ * inteira (`enriquecerPaginaDoQuadro`). A funcao SQL `admin_creators_page` nao
+ * foi tocada: mexer nela exigiria migration de `create or replace`, que o
+ * guard so enxerga por nome.
  *
  * ERRO LANCA, e linha fora do formato tambem: a rota transforma em 500. Uma
  * lista vazia com 200 seria indistinguivel de "nao ha creators".
@@ -125,7 +132,18 @@ export async function listarCreatorsDoQuadro(filtro: {
       primeira.length > 0 ? numeroDe(primeira[0].total_count, "total_count") : 0;
   }
 
-  return { rows: linhas.map(lerItem), total, page, pageSize };
+  const itens = linhas.map(lerItem);
+  const extras = await enriquecerPaginaDoQuadro(itens.map((i) => i.user_id));
+  const rows = itens.map((item) => {
+    const extra = extras.get(item.user_id);
+    return {
+      ...item,
+      tem_pix: extra?.tem_pix ?? false,
+      instagram_handle: extra?.instagram_handle ?? null,
+    };
+  });
+
+  return { rows, total, page, pageSize };
 }
 
 /**

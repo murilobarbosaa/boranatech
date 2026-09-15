@@ -1,0 +1,321 @@
+import {
+  isTipoDeChavePix,
+  mascararChavePix,
+  normalizarChavePix,
+  normalizarHandle,
+  normalizarSeguidores,
+  type CodigoDeChavePix,
+  type CodigoDeHandle,
+  type CodigoDeSeguidores,
+  type CreatorPerfilDados,
+  type CreatorPixMascarada,
+  type Resultado,
+  type TipoDeChavePix,
+} from "../../shared/creatorProfile";
+import type { Linha } from "./creatorDashboard";
+import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
+import { erroEncadeavel } from "./supabaseError";
+import { supabaseAdmin } from "./supabaseAdmin";
+
+/**
+ * PERFIL DE CREATOR E CHAVE PIX (lote 08): toda leitura e escrita de
+ * `creator_profiles` e `creator_pix_keys` passa por aqui.
+ *
+ * A CHAVE PIX INTEIRA SO SAI DESTE ARQUIVO POR `revelarChavePix`, que so a rota
+ * de revelacao do admin chama, e so depois de gravar a auditoria. Toda outra
+ * leitura devolve a chave mascarada (`mascararChavePix`, em shared). Por isso a
+ * consulta mascarada e a revelacao moram juntas: o `select` de `key_value`
+ * existe em dois lugares so, e os dois estao a vista neste arquivo.
+ *
+ * ERRO LANCA, e linha fora do formato tambem: a rota transforma em 500. Um
+ * perfil vazio com 200 seria indistinguivel de "o creator nao preencheu".
+ */
+
+/** Perfil de quem ainda nao salvou nada: tudo nulo e o consentimento desligado. */
+function perfilVazio(): Omit<CreatorPerfilDados, "pix"> {
+  return {
+    instagram_handle: null,
+    tiktok_handle: null,
+    instagram_followers: null,
+    tiktok_followers: null,
+    followers_updated_at: null,
+    visible_to_creators: false,
+  };
+}
+
+function inteiroOuNull(valor: unknown, campo: string): number | null {
+  return valor === null || valor === undefined ? null : numeroDe(valor, campo);
+}
+
+function tipoDaLinha(valor: unknown): TipoDeChavePix {
+  if (!isTipoDeChavePix(valor)) {
+    throw new Error(
+      `[creatorProfile] key_type desconhecido: ${JSON.stringify(valor)}`,
+    );
+  }
+  return valor;
+}
+
+/** Chave Pix do creator, MASCARADA, ou null quando ele nao cadastrou. */
+export async function lerPixMascarada(
+  userId: string,
+): Promise<CreatorPixMascarada | null> {
+  const { data, error } = await supabaseAdmin
+    .from("creator_pix_keys")
+    .select("key_type, key_value, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw erroEncadeavel(error);
+  const linha: Linha | null = data;
+  if (!linha) return null;
+  const tipo = tipoDaLinha(linha.key_type);
+  return {
+    tipo,
+    mascarada: mascararChavePix(tipo, textoDe(linha.key_value, "key_value")),
+    updated_at: textoDe(linha.updated_at, "updated_at"),
+  };
+}
+
+async function lerLinhaDoPerfil(userId: string): Promise<Linha | null> {
+  const { data, error } = await supabaseAdmin
+    .from("creator_profiles")
+    .select(
+      "instagram_handle, tiktok_handle, instagram_followers, tiktok_followers, followers_updated_at, visible_to_creators",
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw erroEncadeavel(error);
+  const linha: Linha | null = data;
+  return linha;
+}
+
+/**
+ * Perfil do creator com a chave mascarada. Sem linha em `creator_profiles`,
+ * devolve os campos nulos e o consentimento desligado: a leitura NAO cria
+ * linha, e "nunca salvou" nao e erro.
+ */
+export async function lerPerfilDoCreator(
+  userId: string,
+): Promise<CreatorPerfilDados> {
+  const [linha, pix] = await Promise.all([
+    lerLinhaDoPerfil(userId),
+    lerPixMascarada(userId),
+  ]);
+  if (!linha) return { ...perfilVazio(), pix };
+  if (typeof linha.visible_to_creators !== "boolean") {
+    throw new Error("[creatorProfile] visible_to_creators fora do formato");
+  }
+  return {
+    instagram_handle: textoOuNull(linha.instagram_handle, "instagram_handle"),
+    tiktok_handle: textoOuNull(linha.tiktok_handle, "tiktok_handle"),
+    instagram_followers: inteiroOuNull(
+      linha.instagram_followers,
+      "instagram_followers",
+    ),
+    tiktok_followers: inteiroOuNull(linha.tiktok_followers, "tiktok_followers"),
+    followers_updated_at: textoOuNull(
+      linha.followers_updated_at,
+      "followers_updated_at",
+    ),
+    visible_to_creators: linha.visible_to_creators,
+    pix,
+  };
+}
+
+export type EntradaDoPerfil = {
+  instagram_handle: string | null;
+  tiktok_handle: string | null;
+  instagram_followers: number | null;
+  tiktok_followers: number | null;
+  visible_to_creators: boolean;
+};
+
+export type CodigoDoPerfil =
+  | "invalid_body"
+  | "invalid_visible_to_creators"
+  | CodigoDeHandle
+  | CodigoDeSeguidores;
+
+/**
+ * Corpo do PUT /profile, validado campo a campo pelas regras de shared. O
+ * primeiro campo invalido decide o codigo, na ordem em que aparecem no
+ * formulario, para o client apontar o campo certo.
+ *
+ * O consentimento e OBRIGATORIO no corpo: o PUT grava o perfil inteiro, e um
+ * `visible_to_creators` ausente virar false em silencio desligaria o
+ * consentimento de quem so queria corrigir o @.
+ */
+export function validarEntradaDoPerfil(
+  corpo: unknown,
+): Resultado<EntradaDoPerfil, CodigoDoPerfil> {
+  if (typeof corpo !== "object" || corpo === null || Array.isArray(corpo)) {
+    return { ok: false, code: "invalid_body" };
+  }
+  const c = corpo as Record<string, unknown>;
+  const instagram = normalizarHandle("instagram", c.instagram_handle);
+  if (!instagram.ok) return instagram;
+  const seguidoresInstagram = normalizarSeguidores(
+    "instagram",
+    c.instagram_followers,
+  );
+  if (!seguidoresInstagram.ok) return seguidoresInstagram;
+  const tiktok = normalizarHandle("tiktok", c.tiktok_handle);
+  if (!tiktok.ok) return tiktok;
+  const seguidoresTiktok = normalizarSeguidores("tiktok", c.tiktok_followers);
+  if (!seguidoresTiktok.ok) return seguidoresTiktok;
+  if (typeof c.visible_to_creators !== "boolean") {
+    return { ok: false, code: "invalid_visible_to_creators" };
+  }
+  return {
+    ok: true,
+    valor: {
+      instagram_handle: instagram.valor,
+      tiktok_handle: tiktok.valor,
+      instagram_followers: seguidoresInstagram.valor,
+      tiktok_followers: seguidoresTiktok.valor,
+      visible_to_creators: c.visible_to_creators,
+    },
+  };
+}
+
+/**
+ * Grava o perfil inteiro (upsert por user_id) e devolve o perfil relido.
+ *
+ * `followers_updated_at` e o instante DESTA gravacao quando ha qualquer
+ * seguidor informado, e null quando nao ha nenhum: seguidor declarado vale na
+ * data em que foi declarado, e sem numero nenhum nao ha data a mostrar.
+ */
+export async function salvarPerfilDoCreator(
+  userId: string,
+  entrada: EntradaDoPerfil,
+  agora: Date = new Date(),
+): Promise<CreatorPerfilDados> {
+  const instante = agora.toISOString();
+  const temSeguidor =
+    entrada.instagram_followers !== null || entrada.tiktok_followers !== null;
+  const { error } = await supabaseAdmin.from("creator_profiles").upsert(
+    {
+      user_id: userId,
+      instagram_handle: entrada.instagram_handle,
+      tiktok_handle: entrada.tiktok_handle,
+      instagram_followers: entrada.instagram_followers,
+      tiktok_followers: entrada.tiktok_followers,
+      followers_updated_at: temSeguidor ? instante : null,
+      visible_to_creators: entrada.visible_to_creators,
+      updated_at: instante,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw erroEncadeavel(error);
+  return lerPerfilDoCreator(userId);
+}
+
+/** Valida, normaliza e grava a chave; devolve so a versao mascarada. */
+export async function salvarChavePix(
+  userId: string,
+  tipo: unknown,
+  valor: unknown,
+  agora: Date = new Date(),
+): Promise<Resultado<CreatorPixMascarada, CodigoDeChavePix>> {
+  const chave = normalizarChavePix(tipo, valor);
+  if (!chave.ok) return chave;
+  const instante = agora.toISOString();
+  const { error } = await supabaseAdmin.from("creator_pix_keys").upsert(
+    {
+      user_id: userId,
+      key_type: chave.valor.tipo,
+      key_value: chave.valor.valor,
+      updated_at: instante,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw erroEncadeavel(error);
+  return {
+    ok: true,
+    valor: {
+      tipo: chave.valor.tipo,
+      mascarada: mascararChavePix(chave.valor.tipo, chave.valor.valor),
+      updated_at: instante,
+    },
+  };
+}
+
+/** Apaga a chave do creator. Sem chave, e no-op (DELETE idempotente). */
+export async function removerChavePix(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("creator_pix_keys")
+    .delete()
+    .eq("user_id", userId);
+  if (error) throw erroEncadeavel(error);
+}
+
+/**
+ * A chave INTEIRA. So a rota de revelacao do admin chama, e so DEPOIS de gravar
+ * a auditoria em content_audit_logs (fail-closed, padrao do reveal-cpf).
+ * Null quando o creator nao tem chave.
+ */
+export async function revelarChavePix(
+  userId: string,
+): Promise<{ tipo: TipoDeChavePix; valor: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("creator_pix_keys")
+    .select("key_type, key_value")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw erroEncadeavel(error);
+  const linha: Linha | null = data;
+  if (!linha) return null;
+  return {
+    tipo: tipoDaLinha(linha.key_type),
+    valor: textoDe(linha.key_value, "key_value"),
+  };
+}
+
+/**
+ * Enriquecimento do quadro do admin: quem tem chave e o @ do Instagram, para
+ * uma pagina inteira de user_ids. Uma consulta por tabela por PAGINA (`in`),
+ * nunca uma por linha. A de chave le so `user_id`: o quadro precisa saber SE
+ * ha chave, e nao qual.
+ */
+export async function enriquecerPaginaDoQuadro(
+  userIds: string[],
+): Promise<Map<string, { tem_pix: boolean; instagram_handle: string | null }>> {
+  const mapa = new Map<
+    string,
+    { tem_pix: boolean; instagram_handle: string | null }
+  >();
+  for (const id of userIds) {
+    mapa.set(id, { tem_pix: false, instagram_handle: null });
+  }
+  if (userIds.length === 0) return mapa;
+
+  const [chaves, perfis] = await Promise.all([
+    supabaseAdmin
+      .from("creator_pix_keys")
+      .select("user_id")
+      .in("user_id", userIds),
+    supabaseAdmin
+      .from("creator_profiles")
+      .select("user_id, instagram_handle")
+      .in("user_id", userIds),
+  ]);
+  if (chaves.error) throw erroEncadeavel(chaves.error);
+  if (perfis.error) throw erroEncadeavel(perfis.error);
+
+  const linhasChave: Linha[] = chaves.data ?? [];
+  for (const linha of linhasChave) {
+    const item = mapa.get(textoDe(linha.user_id, "user_id"));
+    if (item) item.tem_pix = true;
+  }
+  const linhasPerfil: Linha[] = perfis.data ?? [];
+  for (const linha of linhasPerfil) {
+    const item = mapa.get(textoDe(linha.user_id, "user_id"));
+    if (item) {
+      item.instagram_handle = textoOuNull(
+        linha.instagram_handle,
+        "instagram_handle",
+      );
+    }
+  }
+  return mapa;
+}

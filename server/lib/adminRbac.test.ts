@@ -54,7 +54,9 @@ describe("manifesto administrativo fechado", () => {
   });
 
   it("valida invariantes da matriz para os três papéis em todas as rotas", () => {
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(129);
+    // 129 -> 130 com `POST /api/admin/creators/:userId/reveal-pix` (creators,
+    // lote 08), no grupo users.pii.reveal ao lado do reveal-cpf.
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(130);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

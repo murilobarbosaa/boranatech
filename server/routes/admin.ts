@@ -50,6 +50,7 @@ import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
 import { listarCreatorsDoQuadro, resumoDoQuadro } from "../lib/creatorBoard";
+import { lerPerfilDoCreator, revelarChavePix } from "../lib/creatorProfile";
 import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
@@ -4345,6 +4346,10 @@ router.get("/creators/resumo", async (_req, res, next) => {
 // /api/creator/me, mais e-mail, notas internas e granted_by. Abre tambem o de
 // quem ja foi revogado (com revoked_at preenchido); 404 so para quem nunca
 // teve concessao.
+//
+// `perfil_creator` (lote 08) e lido AQUI, depois do painel, e nao dentro do
+// montador: o montador continua sem saber de perfil, e o 404 de quem nunca foi
+// creator nao vira 500 por uma leitura de perfil que nem precisava acontecer.
 router.get("/creators/:userId", async (req, res, next) => {
   const uid = req.params.userId;
   if (!UUID_RE.test(uid)) {
@@ -4375,11 +4380,67 @@ router.get("/creators/:userId", async (req, res, next) => {
         ),
       );
     }
-    res.json({ data: resultado.painel });
+    const perfilCreator = await lerPerfilDoCreator(uid);
+    res.json({ data: { ...resultado.painel, perfil_creator: perfilCreator } });
   } catch (err) {
     next(
       // TODO(Ana)
       dbError("creator painel", err, "Erro ao carregar o painel do creator."),
+    );
+  }
+});
+
+// Revelacao da chave Pix de um creator (lote 08). Copia do reveal-cpf: a chave
+// so sai depois de gravar a auditoria em content_audit_logs, e se essa escrita
+// falhar a resposta e erro SEM a chave (fail-closed). Nao ha caminho que
+// revele sem registrar quem revelou, de quem e quando.
+router.post("/creators/:userId/reveal-pix", async (req, res, next) => {
+  const uid = req.params.userId;
+  if (!UUID_RE.test(uid)) {
+    return next(
+      createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+    );
+  }
+  try {
+    const chave = await revelarChavePix(uid);
+    if (!chave) {
+      return next(
+        createError(
+          404,
+          "pix_not_found",
+          // TODO(Ana)
+          "Este creator não tem chave Pix cadastrada.",
+        ),
+      );
+    }
+
+    // Auditoria PRIMEIRO. Fail-closed: sem log gravado, nao ha revelacao.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "reveal",
+        resource_type: "creator_pix_key",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: null,
+        after_json: null,
+      });
+    if (auditError) {
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da revelação.",
+        ),
+      );
+    }
+
+    res.json({ data: { tipo: chave.tipo, valor: chave.valor } });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creator reveal pix", err, "Erro ao revelar a chave Pix."),
     );
   }
 });

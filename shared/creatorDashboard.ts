@@ -6,6 +6,8 @@
 // isso o kind e reescrito aqui como uniao literal; o `CreatorKind` de
 // server/lib/creatorKind.ts e atribuivel a ele.
 
+import type { CreatorPerfilDados } from "./creatorProfile";
+
 export const CREATOR_DASHBOARD_JANELAS = ["7d", "30d", "90d", "all"] as const;
 export type CreatorDashboardJanela = (typeof CREATOR_DASHBOARD_JANELAS)[number];
 
@@ -75,6 +77,14 @@ export type CreatorBoardItem = {
   };
   /** Ultimo evento de qualquer tipo entre os codigos; null sem evento. */
   ultimo_evento_at: string | null;
+  /**
+   * Se o creator cadastrou chave Pix (lote 08). OPCIONAL por causa da janela
+   * de deploy: o backend anterior nao manda o campo, e ausente e "nao sei",
+   * nunca "sem chave".
+   */
+  tem_pix?: boolean;
+  /** @ do Instagram declarado no perfil de creator (lote 08). Opcional idem. */
+  instagram_handle?: string | null;
 };
 
 /** Mesmo formato das outras listas paginadas do admin: total no corpo. */
@@ -153,6 +163,13 @@ export type CreatorDashboard = {
     /** So na visao admin. Ausente na visao creator. */
     email?: string | null;
   };
+  /**
+   * Perfil de creator (redes, seguidores declarados, consentimento e a chave
+   * Pix MASCARADA). So na visao admin, no mesmo estilo de `email`: o proprio
+   * creator le o perfil em GET /api/creator/profile, a parte, para o painel de
+   * numeros nao esperar por ele.
+   */
+  perfil_creator?: CreatorPerfilDados;
   janela: CreatorDashboardJanela;
   /** Dos CONTADORES de affiliates, desde sempre. Nunca somados com eventos. */
   totais: {

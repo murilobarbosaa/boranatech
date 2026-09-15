@@ -134,7 +134,8 @@ export type CodigoDeChavePix =
   | "invalid_pix_telefone"
   | "invalid_pix_aleatoria";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
  * Telefone nacional (DDD mais numero, 10 ou 11 digitos) a partir do que foi
@@ -145,8 +146,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function telefoneNacional(valor: string): string | null {
   const digitos = onlyDigits(valor);
   const nacional =
-    (digitos.length === 12 || digitos.length === 13) &&
-    digitos.startsWith("55")
+    (digitos.length === 12 || digitos.length === 13) && digitos.startsWith("55")
       ? digitos.slice(2)
       : digitos;
   if (nacional.length !== 10 && nacional.length !== 11) return null;

@@ -40,8 +40,13 @@ const EXPECTED_ACOES_NO_CHECK = 15;
  * mesma acao `refund` do caminho da Stripe. O numero sobe porque o CONJUNTO de
  * sitios cresceu, nao porque o parser mudou; a acao gravada continua sendo uma
  * das que a CHECK ja aceita, entao nao houve migration.
+ *
+ * 12 desde o lote 08 de creators: `POST /creators/:userId/reveal-pix` em
+ * server/routes/admin.ts grava a auditoria da revelacao da chave Pix ANTES de
+ * devolver a chave (fail-closed, copia do reveal-cpf). A acao e `reveal`, que a
+ * CHECK aceita desde 20260714170000, entao tambem nao houve migration.
  */
-const EXPECTED_SITIOS_INSERT_DIRETO = 11;
+const EXPECTED_SITIOS_INSERT_DIRETO = 12;
 /**
  * Chamadas de `logAudit(...)`.
  *

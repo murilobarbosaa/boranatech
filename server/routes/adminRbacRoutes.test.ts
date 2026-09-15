@@ -161,9 +161,11 @@ describe("inventário independente das rotas administrativas", () => {
     ]);
 
     const actual = actualAdminRoutes();
-    expect(actual).toHaveLength(129);
+    // 129 -> 130 (e 63 -> 64 fora de GET) com
+    // `POST /api/admin/creators/:userId/reveal-pix` (creators, lote 08).
+    expect(actual).toHaveLength(130);
     expect(actual.filter(([method]) => method === "GET")).toHaveLength(66);
-    expect(actual.filter(([method]) => method !== "GET")).toHaveLength(63);
+    expect(actual.filter(([method]) => method !== "GET")).toHaveLength(64);
     expect(actual.some(([, routePath]) => routePath.includes(":"))).toBe(true);
     expect(actual.some(([, routePath]) => routePath.includes("*"))).toBe(false);
     expect(validateAdminRouteManifest(ADMIN_ROUTE_MANIFEST, actual)).toEqual(

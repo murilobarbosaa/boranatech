@@ -165,7 +165,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // testes de posicao acima conferem isso. `/creators/:userId` expoe e-mail e
 // notas internas: estar atras das duas guardas e o requisito, nao detalhe.
 // 67 -> 68 em ADM-D01-D04-P1: GET /finance/payment-methods.
-const EXPECTED_ROUTE_COUNT = 68;
+// 68 -> 69 em 2026-09-15 (creators, lote 08), com
+// `POST /admin/creators/:userId/reveal-pix`. Valor MEDIDO por
+// `rotasDeclaradas().length`, nao somado. Declarada logo abaixo de
+// `GET /creators/:userId`, depois dos dois `router.use` do topo. Ela devolve a
+// chave Pix inteira de uma pessoa: estar atras de requireAuth mais requireAdmin
+// e o requisito, e a auditoria fail-closed dentro dela e a segunda barreira.
+const EXPECTED_ROUTE_COUNT = 69;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -224,10 +230,11 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
   });
 
   it("as rotas de creators estão todas na lista derivada do router", () => {
-    // As tres do quadro de creators (lote 02). `/creators/:userId` expoe e-mail
-    // e notas internas; o teste de posicao acima e o que prova que ela esta
-    // atras das duas guardas, e este fixa que nenhuma rota de creators sumiu
-    // ou apareceu sem alguem olhar.
+    // As tres do quadro de creators (lote 02), mais a revelacao da chave Pix
+    // (lote 08). `/creators/:userId` expoe e-mail e notas internas, e
+    // `reveal-pix` devolve a chave Pix inteira; o teste de posicao acima e o que
+    // prova que as duas estao atras das duas guardas, e este fixa que nenhuma
+    // rota de creators sumiu ou apareceu sem alguem olhar.
     const deCreators = rotasDeclaradas()
       .filter((r) => r.caminho.startsWith("/creators"))
       .map((r) => `${r.metodo} ${r.caminho}`)
@@ -236,6 +243,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /creators",
       "GET /creators/:userId",
       "GET /creators/resumo",
+      "POST /creators/:userId/reveal-pix",
     ]);
   });
 

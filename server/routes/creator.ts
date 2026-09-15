@@ -1,9 +1,18 @@
 import { Router } from "express";
 
+import type { CodigoDeChavePix } from "../../shared/creatorProfile";
 import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
 } from "../lib/creatorDashboard";
+import {
+  lerPerfilDoCreator,
+  removerChavePix,
+  salvarChavePix,
+  salvarPerfilDoCreator,
+  validarEntradaDoPerfil,
+  type CodigoDoPerfil,
+} from "../lib/creatorProfile";
 import { montarDbError } from "../lib/dbError";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -83,6 +92,117 @@ router.get("/me", requireCreator, async (req, res, next) => {
         err,
         // TODO(Ana)
         "Erro ao carregar o painel.",
+      ),
+    );
+  }
+});
+
+// PERFIL DE CREATOR (lote 08): redes, seguidores declarados, consentimento e a
+// chave Pix de comissao. requireCreator em cada rota, como em /me. A chave sai
+// sempre MASCARADA: a inteira so existe na revelacao auditada do admin.
+//
+// Um codigo por campo no 400, que e o que o client usa para apontar o campo.
+// As mensagens sao de tela.
+
+// TODO(Ana)
+const MENSAGEM_DO_PERFIL: Record<CodigoDoPerfil, string> = {
+  invalid_body: "Envie os dados do perfil.",
+  invalid_visible_to_creators:
+    "Diga se o seu @ pode aparecer para outros creators.",
+  invalid_instagram_handle:
+    "@ do Instagram inválido. Use até 30 letras, números, ponto ou sublinhado.",
+  invalid_tiktok_handle:
+    "@ do TikTok inválido. Use de 2 a 24 letras, números, ponto ou sublinhado.",
+  invalid_instagram_followers:
+    "Seguidores do Instagram: use um número inteiro de 0 a 100 milhões.",
+  invalid_tiktok_followers:
+    "Seguidores do TikTok: use um número inteiro de 0 a 100 milhões.",
+};
+
+// TODO(Ana)
+const MENSAGEM_DA_CHAVE: Record<CodigoDeChavePix, string> = {
+  invalid_pix_type: "Tipo de chave Pix inválido.",
+  invalid_pix_cpf: "CPF inválido.",
+  invalid_pix_cnpj: "CNPJ inválido.",
+  invalid_pix_email: "E-mail inválido.",
+  invalid_pix_telefone: "Telefone inválido. Informe o DDD e o número.",
+  invalid_pix_aleatoria: "Chave aleatória inválida.",
+};
+
+router.get("/profile", requireCreator, async (req, res, next) => {
+  try {
+    res.json({ data: await lerPerfilDoCreator(req.user!.id) });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "perfil do creator",
+        err,
+        // TODO(Ana)
+        "Erro ao carregar o seu perfil.",
+      ),
+    );
+  }
+});
+
+router.put("/profile", requireCreator, async (req, res, next) => {
+  const entrada = validarEntradaDoPerfil(req.body);
+  if (!entrada.ok) {
+    return next(
+      createError(400, entrada.code, MENSAGEM_DO_PERFIL[entrada.code]),
+    );
+  }
+  try {
+    res.json({
+      data: await salvarPerfilDoCreator(req.user!.id, entrada.valor),
+    });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "salvar perfil do creator",
+        err,
+        // TODO(Ana)
+        "Erro ao salvar o seu perfil.",
+      ),
+    );
+  }
+});
+
+router.put("/pix", requireCreator, async (req, res, next) => {
+  const corpo: Record<string, unknown> =
+    typeof req.body === "object" && req.body !== null ? req.body : {};
+  try {
+    const chave = await salvarChavePix(req.user!.id, corpo.tipo, corpo.valor);
+    if (!chave.ok) {
+      return next(createError(400, chave.code, MENSAGEM_DA_CHAVE[chave.code]));
+    }
+    res.json({ data: { pix: chave.valor } });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "salvar chave pix",
+        err,
+        // TODO(Ana)
+        "Erro ao salvar a sua chave Pix.",
+      ),
+    );
+  }
+});
+
+router.delete("/pix", requireCreator, async (req, res, next) => {
+  try {
+    await removerChavePix(req.user!.id);
+    res.json({ data: { pix: null } });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "remover chave pix",
+        err,
+        // TODO(Ana)
+        "Erro ao remover a sua chave Pix.",
       ),
     );
   }

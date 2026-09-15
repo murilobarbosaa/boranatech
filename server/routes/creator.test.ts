@@ -387,3 +387,340 @@ describe("GET /api/creator/me", () => {
     expect(r.body.data).toBeUndefined();
   });
 });
+
+// PERFIL DE CREATOR E CHAVE PIX (lote 08). O CPF de teste e o mesmo de
+// shared/creatorProfile.test.ts, e a asserção que importa em toda rota daqui e
+// que os onze digitos NUNCA aparecem na resposta: a chave inteira so existe na
+// revelacao auditada do admin.
+
+const CPF_DE_TESTE = "52998224725";
+const AGORA_ISO = "2026-09-15T12:00:00.000Z";
+
+function concessaoAtiva() {
+  return respostaQueFiltra([
+    { user_id: UID, kind: "afiliado", revoked_at: null },
+  ]);
+}
+
+function escritasEm(tabela: string) {
+  return double.de(tabela).filter((c) => c.op !== "select");
+}
+
+describe("GET /api/creator/profile", () => {
+  it("quem nao e creator: 403 not_creator", async () => {
+    montar({ creators: respostaQueFiltra([]) });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/profile");
+    expect(r.status).toBe(403);
+    expect(r.body.error.code).toBe("not_creator");
+  });
+
+  it("sem linha: campos nulos, consentimento desligado, e a leitura NAO cria linha", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: respostaQueFiltra([]),
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/profile");
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({
+      data: {
+        instagram_handle: null,
+        tiktok_handle: null,
+        instagram_followers: null,
+        tiktok_followers: null,
+        followers_updated_at: null,
+        visible_to_creators: false,
+        pix: null,
+      },
+    });
+    expect(escritasEm("creator_profiles")).toHaveLength(0);
+    expect(escritasEm("creator_pix_keys")).toHaveLength(0);
+  });
+
+  it("com perfil e chave: a chave sai MASCARADA, nunca inteira", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: respostaQueFiltra([
+        {
+          user_id: UID,
+          instagram_handle: "ana.cria",
+          tiktok_handle: "ana.cria",
+          instagram_followers: 12500,
+          tiktok_followers: 800,
+          followers_updated_at: "2026-09-14T12:00:00Z",
+          visible_to_creators: true,
+        },
+      ]),
+      creator_pix_keys: respostaQueFiltra([
+        {
+          user_id: UID,
+          key_type: "cpf",
+          key_value: CPF_DE_TESTE,
+          updated_at: "2026-09-14T12:00:00Z",
+        },
+      ]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/profile");
+    expect(r.status).toBe(200);
+    expect(r.body.data.pix).toEqual({
+      tipo: "cpf",
+      mascarada: "***.***.247-**",
+      updated_at: "2026-09-14T12:00:00Z",
+    });
+    expect(r.body.data.visible_to_creators).toBe(true);
+    expect(JSON.stringify(r.body)).not.toContain(CPF_DE_TESTE);
+  });
+
+  it("erro de leitura: 500 db_error, nunca perfil vazio", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: { error: { message: "timeout" } },
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/profile");
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+    expect(r.body.data).toBeUndefined();
+  });
+});
+
+describe("PUT /api/creator/profile", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("grava normalizado, com a data dos seguidores, e devolve o perfil relido", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_ISO));
+    const salvo = {
+      user_id: UID,
+      instagram_handle: "ana.cria",
+      tiktok_handle: "ana.cria",
+      instagram_followers: 12500,
+      tiktok_followers: null,
+      followers_updated_at: AGORA_ISO,
+      visible_to_creators: true,
+    };
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: (c) =>
+        c.op === "select" ? { rows: [salvo] } : { rows: [] },
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", {
+      instagram_handle: "https://www.instagram.com/Ana.Cria/",
+      tiktok_handle: "@ana.cria",
+      instagram_followers: 12500,
+      tiktok_followers: null,
+      visible_to_creators: true,
+    });
+    expect(r.status).toBe(200);
+    const escritas = escritasEm("creator_profiles");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].op).toBe("upsert");
+    expect(escritas[0].payload).toEqual({
+      user_id: UID,
+      instagram_handle: "ana.cria",
+      tiktok_handle: "ana.cria",
+      instagram_followers: 12500,
+      tiktok_followers: null,
+      followers_updated_at: AGORA_ISO,
+      visible_to_creators: true,
+      updated_at: AGORA_ISO,
+    });
+    expect(r.body.data.instagram_handle).toBe("ana.cria");
+    expect(r.body.data.followers_updated_at).toBe(AGORA_ISO);
+  });
+
+  it("sem seguidor nenhum: followers_updated_at vai null", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: { rows: [] },
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", {
+      instagram_handle: "ana.cria",
+      tiktok_handle: null,
+      instagram_followers: null,
+      tiktok_followers: null,
+      visible_to_creators: false,
+    });
+    expect(r.status).toBe(200);
+    expect(
+      escritasEm("creator_profiles")[0].payload?.followers_updated_at,
+    ).toBe(null);
+  });
+
+  it("@ invalido: 400 com o codigo do campo, e nada e gravado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: respostaQueFiltra([]),
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", {
+      instagram_handle: "ana cria",
+      tiktok_handle: null,
+      instagram_followers: null,
+      tiktok_followers: null,
+      visible_to_creators: false,
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_instagram_handle");
+    expect(escritasEm("creator_profiles")).toHaveLength(0);
+  });
+
+  it("seguidores como texto: 400 invalid_tiktok_followers", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: respostaQueFiltra([]),
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", {
+      instagram_handle: null,
+      tiktok_handle: "ana.cria",
+      instagram_followers: null,
+      tiktok_followers: "1.200",
+      visible_to_creators: false,
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_tiktok_followers");
+  });
+
+  it("consentimento ausente: 400, nunca vira false em silencio", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: respostaQueFiltra([]),
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", {
+      instagram_handle: "ana.cria",
+      tiktok_handle: null,
+      instagram_followers: null,
+      tiktok_followers: null,
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_visible_to_creators");
+    expect(escritasEm("creator_profiles")).toHaveLength(0);
+  });
+
+  it("quem nao e creator: 403 e nada e gravado", async () => {
+    montar({
+      creators: respostaQueFiltra([]),
+      creator_profiles: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/profile", { visible_to_creators: true });
+    expect(r.status).toBe(403);
+    expect(escritasEm("creator_profiles")).toHaveLength(0);
+  });
+});
+
+describe("PUT /api/creator/pix", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("CPF valido: grava so os digitos e devolve so a mascara", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_ISO));
+    montar({
+      creators: concessaoAtiva(),
+      creator_pix_keys: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/pix", {
+      tipo: "cpf",
+      valor: "529.982.247-25",
+    });
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({
+      data: {
+        pix: {
+          tipo: "cpf",
+          mascarada: "***.***.247-**",
+          updated_at: AGORA_ISO,
+        },
+      },
+    });
+    const escritas = escritasEm("creator_pix_keys");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].op).toBe("upsert");
+    expect(escritas[0].payload).toEqual({
+      user_id: UID,
+      key_type: "cpf",
+      key_value: CPF_DE_TESTE,
+      updated_at: AGORA_ISO,
+    });
+    expect(JSON.stringify(r.body)).not.toContain(CPF_DE_TESTE);
+  });
+
+  it("CPF com digito verificador errado: 400 invalid_pix_cpf, nada gravado", async () => {
+    montar({ creators: concessaoAtiva(), creator_pix_keys: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/pix", {
+      tipo: "cpf",
+      valor: "529.982.247-26",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_pix_cpf");
+    expect(escritasEm("creator_pix_keys")).toHaveLength(0);
+  });
+
+  it("tipo fora da lista: 400 invalid_pix_type", async () => {
+    montar({ creators: concessaoAtiva(), creator_pix_keys: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/pix", { tipo: "celular", valor: "1" });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_pix_type");
+  });
+
+  it("erro ao gravar: 500 db_error, sem chave na resposta", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_pix_keys: { error: { message: "timeout" } },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("PUT", "/pix", {
+      tipo: "cpf",
+      valor: CPF_DE_TESTE,
+    });
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+    expect(JSON.stringify(r.body)).not.toContain(CPF_DE_TESTE);
+  });
+});
+
+describe("DELETE /api/creator/pix", () => {
+  it("apaga a chave do proprio creator e devolve pix null", async () => {
+    montar({ creators: concessaoAtiva(), creator_pix_keys: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", "/pix");
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { pix: null } });
+    const escritas = escritasEm("creator_pix_keys");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].op).toBe("delete");
+    expect(escritas[0].filtros).toEqual([
+      { tipo: "eq", coluna: "user_id", valor: UID },
+    ]);
+  });
+
+  it("quem nao e creator: 403 e nada e apagado", async () => {
+    montar({ creators: respostaQueFiltra([]), creator_pix_keys: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", "/pix");
+    expect(r.status).toBe(403);
+    expect(escritasEm("creator_pix_keys")).toHaveLength(0);
+  });
+});

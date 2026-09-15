@@ -253,7 +253,13 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
     "users.pii.reveal",
     "high",
     OWNER_ONLY,
-    [["POST", "/api/admin/users/:id/reveal-cpf"]],
+    [
+      ["POST", "/api/admin/users/:id/reveal-cpf"],
+      // Chave Pix de creator (lote 08): uma chave do tipo cpf e o proprio CPF,
+      // entao a revelacao e a mesma capacidade, o mesmo risco e a mesma
+      // auditoria fail-closed do reveal-cpf, e nao a leitura de creators.
+      ["POST", "/api/admin/creators/:userId/reveal-pix"],
+    ],
     CRITICAL_WRITE,
   ),
   ...mutation(

@@ -41,13 +41,16 @@ describe("normalizarHandle", () => {
     expect(
       normalizarHandle("tiktok", "https://www.tiktok.com/@ana.creator"),
     ).toEqual({ ok: true, valor: "ana.creator" });
-    expect(normalizarHandle("tiktok", "http://tiktok.com/@AnaCreator/")).toEqual(
-      { ok: true, valor: "anacreator" },
-    );
+    expect(
+      normalizarHandle("tiktok", "http://tiktok.com/@AnaCreator/"),
+    ).toEqual({ ok: true, valor: "anacreator" });
   });
 
   it("vazio, so espaco e ausente sao null, e nao erro", () => {
-    expect(normalizarHandle("instagram", "")).toEqual({ ok: true, valor: null });
+    expect(normalizarHandle("instagram", "")).toEqual({
+      ok: true,
+      valor: null,
+    });
     expect(normalizarHandle("instagram", "   ")).toEqual({
       ok: true,
       valor: null,
@@ -75,7 +78,10 @@ describe("normalizarHandle", () => {
   });
 
   it("limites de tamanho de cada rede", () => {
-    expect(normalizarHandle("instagram", "a")).toEqual({ ok: true, valor: "a" });
+    expect(normalizarHandle("instagram", "a")).toEqual({
+      ok: true,
+      valor: "a",
+    });
     expect(normalizarHandle("instagram", "a".repeat(30))).toEqual({
       ok: true,
       valor: "a".repeat(30),
@@ -103,7 +109,10 @@ describe("normalizarHandle", () => {
 describe("normalizarSeguidores", () => {
   it("aceita inteiro de 0 ao teto", () => {
     expect(SEGUIDORES_MAX).toBe(100000000);
-    expect(normalizarSeguidores("instagram", 0)).toEqual({ ok: true, valor: 0 });
+    expect(normalizarSeguidores("instagram", 0)).toEqual({
+      ok: true,
+      valor: 0,
+    });
     expect(normalizarSeguidores("tiktok", 12500)).toEqual({
       ok: true,
       valor: 12500,
