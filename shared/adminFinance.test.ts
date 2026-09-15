@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAdminFinanceContract } from "./adminFinance";
+import {
+  MAX_FINANCE_HISTORY_DAYS,
+  parseAdminFinanceContract,
+} from "./adminFinance";
 import { inicioDoDiaBrasilia, somarDiaCivil } from "./brasiliaDay";
 
 function metric(valueCents: number | null = 1000) {
@@ -55,6 +58,13 @@ function contract() {
         externalCoverage: "not_collected",
       },
       freshness: "2026-09-02T03:00:00.000Z",
+      seriesDetail: undefined as
+        | {
+            status: "unavailable";
+            reason: "daily_limit_exceeded" | "series_build_failed";
+            maxDailyPoints: number;
+          }
+        | undefined,
       currencies: [
         {
           currency: "BRL",
@@ -160,6 +170,63 @@ describe("contrato compartilhado do financeiro", () => {
     all.cash.currencies[0].series = series;
     expect(series.length).toBeGreaterThan(366);
     expect(parseAdminFinanceContract(all).period.preset).toBe("all");
+  });
+
+  it("mantém total histórico longo sem exigir série, mas só com detalhe explícito", () => {
+    const all = contract();
+    all.period.preset = "all";
+    all.period.startDay = somarDiaCivil(
+      all.period.endDayInclusive,
+      -MAX_FINANCE_HISTORY_DAYS,
+    );
+    all.period.from = inicioDoDiaBrasilia(all.period.startDay);
+    all.cash.currencies[0].series = [];
+    expect(() => parseAdminFinanceContract(all)).toThrow(
+      /série diária completa excede o limite de pontos/,
+    );
+    all.cash.seriesDetail = {
+      status: "unavailable",
+      reason: "daily_limit_exceeded",
+      maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+    };
+    const parsed = parseAdminFinanceContract(all);
+    expect(parsed.cash.currencies[0].calculableNet.valueCents).toBe(1000);
+    expect(parsed.cash.seriesDetail?.status).toBe("unavailable");
+    all.cash.currencies[0].series = [
+      {
+        day: all.period.startDay,
+        positiveEntriesCents: 1000,
+        refundsCents: 1000,
+        feesCents: 1000,
+        calculableNetCents: 1000,
+      },
+    ];
+    expect(() => parseAdminFinanceContract(all)).toThrow(
+      /série indisponível não pode conter pontos parciais/,
+    );
+    all.cash.currencies[0].series = [];
+    all.cash.seriesDetail.reason = "series_build_failed";
+    expect(() => parseAdminFinanceContract(all)).toThrow(
+      /motivo da indisponibilidade da série diverge do período/,
+    );
+  });
+
+  it("não confunde falha da série com disponibilidade ou exatidão do agregado", () => {
+    const detailFailure = contract();
+    detailFailure.cash.seriesDetail = {
+      status: "unavailable",
+      reason: "series_build_failed",
+      maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+    };
+    detailFailure.cash.currencies[0].series = [];
+    expect(
+      parseAdminFinanceContract(detailFailure).cash.currencies[0]
+        .positiveEntries.valueCents,
+    ).toBe(1000);
+    detailFailure.cash.currencies[0].positiveEntries.valueCents = null as never;
+    expect(() => parseAdminFinanceContract(detailFailure)).toThrow(
+      /métrica disponível precisa de valor finito/,
+    );
   });
 
   it("aceita o contrato v1 completo", () => {

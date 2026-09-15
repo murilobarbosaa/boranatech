@@ -141,17 +141,6 @@ export async function resolveHonestFinanceAllPeriod(
       "Ainda não há movimentos financeiros em dias encerrados.",
     );
   }
-  const length =
-    Math.floor(
-      (Date.parse(`${endDayInclusive}T00:00:00Z`) -
-        Date.parse(`${startDay}T00:00:00Z`)) /
-        DAY_MS,
-    ) + 1;
-  if (length > MAX_FINANCE_HISTORY_DAYS) {
-    invalidPeriod(
-      "O histórico local excede o limite explícito da série diária; nenhuma janela menor foi usada.",
-    );
-  }
   return {
     preset: "all",
     startDay,
@@ -320,6 +309,8 @@ type CashCandidate = {
 export function analyzeRegisteredCash(input: {
   rows: RawFinanceRow[];
   period: HonestFinancePeriod;
+  /** Injeção só para testar falha do detalhe sem mascarar o agregado. */
+  seriesDays?: (period: HonestFinancePeriod) => string[];
 }): AdminFinanceContract["cash"] {
   const exclusions: ExclusionReasons = {
     unsupportedType: 0,
@@ -436,7 +427,6 @@ export function analyzeRegisteredCash(input: {
     });
   }
 
-  const days = daysInPeriod(input.period);
   type Bucket = {
     positive: number;
     refunds: number;
@@ -502,6 +492,38 @@ export function analyzeRegisteredCash(input: {
   const coverage =
     "Paginação local conferida por contagem exata; cobertura externa não coletada.";
   const source = ["finance_transactions"];
+  const spanDays =
+    Math.floor(
+      (Date.parse(`${input.period.endDayInclusive}T00:00:00Z`) -
+        Date.parse(`${input.period.startDay}T00:00:00Z`)) /
+        DAY_MS,
+    ) + 1;
+  let days: string[] = [];
+  let seriesDetail: AdminFinanceContract["cash"]["seriesDetail"];
+  if (spanDays > MAX_FINANCE_HISTORY_DAYS) {
+    seriesDetail = {
+      status: "unavailable",
+      reason: "daily_limit_exceeded",
+      maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+    };
+  } else {
+    try {
+      days = (input.seriesDays ?? daysInPeriod)(input.period);
+      seriesDetail = {
+        status: "available",
+        reason: "complete_daily",
+        maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+      };
+    } catch {
+      // A classificação/deduplicação e todos os subtotais já foram calculados;
+      // somente a série opcional falhou. Não esconder o agregado validado.
+      seriesDetail = {
+        status: "unavailable",
+        reason: "series_build_failed",
+        maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+      };
+    }
+  }
   const currencies = Array.from(buckets.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([currency, bucket]) => ({
@@ -597,6 +619,7 @@ export function analyzeRegisteredCash(input: {
     },
     freshness,
     currencies,
+    seriesDetail,
     registeredPayments: countMetric({
       status: "partial",
       value: registeredInWindow.length,

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import financeFixture from "../../../../docs/investigacoes/2026-09-14-adm-004-p1-1-exemplo-sintetico.json";
 import type { AdminFinanceContract } from "@shared/adminFinance";
+import { MAX_FINANCE_HISTORY_DAYS } from "@shared/adminFinance";
+import { inicioDoDiaBrasilia } from "@shared/brasiliaDay";
 import { financeFixtureForRequest } from "./financeFixtureForRequest.testUtils";
 
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -64,6 +66,16 @@ function RefreshProbe({ refreshKey }: { refreshKey: number }) {
   );
 }
 
+function AllProbe({ asOfDay }: { asOfDay: string }) {
+  const result = useHonestFinance({ preset: "all", asOfDay });
+  return (
+    <output aria-label="histórico">
+      {result.data?.cash.currencies[0]?.calculableNet.valueCents ??
+        (result.error ? "erro" : "carregando")}
+    </output>
+  );
+}
+
 beforeEach(() => {
   clearHonestFinanceClientCacheForTests();
   fetchMock.mockReset();
@@ -92,6 +104,33 @@ describe("useHonestFinance", () => {
     expect(before).toContain("asOfDay=2026-09-14");
     expect(after).toContain("asOfDay=2026-09-15");
     expect(before).not.toBe(after);
+  });
+
+  it("aceita agregado histórico acima do limite sem série diária e muda de dia sem cache antigo", async () => {
+    fetchMock.mockImplementation((path: string) => {
+      const fixture = financeFixtureForRequest(
+        financeFixture as AdminFinanceContract,
+        path,
+      );
+      fixture.period.startDay = "2010-01-01";
+      fixture.period.from = inicioDoDiaBrasilia("2010-01-01");
+      fixture.cash.seriesDetail = {
+        status: "unavailable",
+        reason: "daily_limit_exceeded",
+        maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+      };
+      for (const bucket of fixture.cash.currencies) bucket.series = [];
+      return Promise.resolve({ data: fixture });
+    });
+    const firstDay = "2026-09-14";
+    const rendered = render(<AllProbe asOfDay={firstDay} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("histórico").textContent).toBe("8500"),
+    );
+    rendered.rerender(<AllProbe asOfDay="2026-09-15" />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock.mock.calls[0][0]).toContain(`asOfDay=${firstDay}`);
+    expect(fetchMock.mock.calls[1][0]).toContain("asOfDay=2026-09-15");
   });
 
   it("rejeita resposta válida para um período diferente, sem exibir valor antigo", async () => {

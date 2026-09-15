@@ -3,7 +3,7 @@ import { inicioDoDiaBrasilia, somarDiaCivil } from "./brasiliaDay";
 
 export const ADMIN_FINANCE_CONTRACT_VERSION = 1 as const;
 export const ADMIN_FINANCE_TIMEZONE = "America/Sao_Paulo" as const;
-// Limite explícito de payload para a série diária do histórico local completo.
+// Limite de pontos diários no payload, não do agregado histórico.
 export const MAX_FINANCE_HISTORY_DAYS = 3653;
 
 export const FinanceAvailabilitySchema = z.enum([
@@ -58,7 +58,7 @@ export const FinancePeriodSchema = z
     if (
       !Number.isSafeInteger(spanDays) ||
       spanDays < 1 ||
-      spanDays > MAX_FINANCE_HISTORY_DAYS
+      (period.preset !== "all" && spanDays > MAX_FINANCE_HISTORY_DAYS)
     ) {
       ctx.addIssue({
         code: "custom",
@@ -178,6 +178,26 @@ const CashSeriesPointSchema = z
   })
   .strict();
 
+// Extensão aditiva do contrato v1: ausência em cache v1 anterior significa
+// série diária completa. Série vazia com total calculado só é válida quando
+// esta indisponibilidade de detalhe é declarada explicitamente.
+const CashSeriesDetailSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      status: z.literal("available"),
+      reason: z.literal("complete_daily"),
+      maxDailyPoints: z.literal(MAX_FINANCE_HISTORY_DAYS),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal("unavailable"),
+      reason: z.enum(["daily_limit_exceeded", "series_build_failed"]),
+      maxDailyPoints: z.literal(MAX_FINANCE_HISTORY_DAYS),
+    })
+    .strict(),
+]);
+
 const CashCurrencySchema = z
   .object({
     currency: currencySchema,
@@ -253,6 +273,7 @@ const CashSchema = z
       .strict(),
     freshness: instantSchema.nullable(),
     currencies: z.array(CashCurrencySchema).max(32),
+    seriesDetail: CashSeriesDetailSchema.optional(),
     registeredPayments: FinanceCountMetricSchema,
     registeredPaymentPeople: FinanceCountMetricSchema,
     registeredPaymentsWithoutPerson: FinanceCountMetricSchema,
@@ -330,7 +351,7 @@ export const AdminFinanceContractSchema = z
     if (
       !Number.isSafeInteger(spanDays) ||
       spanDays < 1 ||
-      spanDays > MAX_FINANCE_HISTORY_DAYS
+      (contract.period.preset !== "all" && spanDays > MAX_FINANCE_HISTORY_DAYS)
     ) {
       ctx.addIssue({
         code: "custom",
@@ -346,6 +367,41 @@ export const AdminFinanceContractSchema = z
         message: "moedas repetidas seriam somadas implicitamente",
         path: ["cash", "currencies"],
       });
+    }
+    const seriesDetail = contract.cash.seriesDetail ?? {
+      status: "available" as const,
+      reason: "complete_daily" as const,
+      maxDailyPoints: MAX_FINANCE_HISTORY_DAYS,
+    };
+    if (seriesDetail.status === "unavailable") {
+      if (
+        (seriesDetail.reason === "daily_limit_exceeded" &&
+          spanDays <= MAX_FINANCE_HISTORY_DAYS) ||
+        (seriesDetail.reason === "series_build_failed" &&
+          spanDays > MAX_FINANCE_HISTORY_DAYS)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "motivo da indisponibilidade da série diverge do período",
+          path: ["cash", "seriesDetail", "reason"],
+        });
+      }
+      if (contract.cash.currencies.some((bucket) => bucket.series.length > 0)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "série indisponível não pode conter pontos parciais",
+          path: ["cash", "currencies"],
+        });
+      }
+      return;
+    }
+    if (spanDays > MAX_FINANCE_HISTORY_DAYS) {
+      ctx.addIssue({
+        code: "custom",
+        message: "série diária completa excede o limite de pontos",
+        path: ["cash", "seriesDetail"],
+      });
+      return;
     }
     const referenceDays = contract.cash.currencies[0]?.series.map(
       (point) => point.day,
