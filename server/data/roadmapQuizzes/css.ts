@@ -308,13 +308,13 @@ const pool: QuizPool = {
         "Qual alternativa completa a lacuna para declarar preto com metade da opacidade?",
       alternativas: {
         a: "rgb(0 0 0 / 50%)",
-        b: "rgb(0, 0, 0, 50)",
+        b: "rgb(0 0 0 50%)",
         c: "hex(#000000, 0.5)",
         d: "opacity(#000000 50%)",
       },
       correta: "a",
       explicacao:
-        "A notação moderna de rgb aceita a transparência depois de uma barra. As outras três não existem como funções de cor.",
+        "Na notação com espaços, a transparência vem depois de uma barra. Sem a barra a cor é inválida, e hex() e opacity() não existem como funções de cor.",
       fonte: "texto-cores.cores",
       tipo: "completar",
       codigo: {
@@ -383,7 +383,7 @@ const pool: QuizPool = {
       },
       correta: "a",
       explicacao:
-        "O padding fica entre o conteúdo e a borda, e é pintado pelo fundo do elemento; a margem separa o elemento dos vizinhos e é sempre transparente. É o contrário da última alternativa.",
+        "O padding fica entre o conteúdo e a borda e é pintado pelo fundo do elemento; a margem separa o elemento dos vizinhos e é sempre transparente, e não o contrário.",
       fonte: "box-model.caixa",
     },
     {
@@ -442,7 +442,7 @@ const pool: QuizPool = {
       },
       correta: "d",
       explicacao:
-        "Margens verticais encostadas colapsam e vale a maior das duas. Elas só somariam se houvesse borda, padding ou um contexto de flex ou grid separando os elementos.",
+        "Margens verticais encostadas colapsam e vale a maior das duas. Elas só somariam se os dois parágrafos fossem itens de flex ou de grid, onde margem não colapsa.",
       fonte: "box-model.margens",
     },
     {
@@ -613,7 +613,7 @@ const pool: QuizPool = {
       },
       correta: "a",
       explicacao:
-        "Os números são linhas da grade, e o segundo é onde o item termina: da linha 1 à 3 são duas colunas. As duas primeiras opções ocupam uma coluna só, e span 3 ocuparia três.",
+        "Os números são linhas da grade, e o segundo é onde o item termina: da linha 1 à 3 são duas colunas. Com 1 / 2 ou 2 / 3 o item ocupa uma coluna só, e span 3 ocuparia três.",
       fonte: "grid.posicionar",
       tipo: "completar",
       codigo: {
@@ -682,12 +682,12 @@ const pool: QuizPool = {
       alternativas: {
         a: "min-width: 48rem",
         b: "max-width: 48rem",
-        c: "width >= 48rem",
+        c: "min-size: 48rem",
         d: "screen: 48rem",
       },
       correta: "a",
       explicacao:
-        "O min-width é a condição de piso, que combina com o mobile-first. O max-width faria o contrário, e as outras duas formas não são sintaxe válida de media query.",
+        "O min-width é a condição de piso, que combina com o mobile-first. O max-width faz o contrário, min-size não é uma media feature e screen é tipo de mídia, não condição com valor.",
       fonte: "responsivo.media",
       tipo: "completar",
       codigo: {
@@ -721,12 +721,12 @@ const pool: QuizPool = {
       alternativas: {
         a: "max-width não vale para imagens",
         b: "Falta declarar display: block",
-        c: "Sem height: auto, a imagem encolhe achatada",
+        c: "A altura fixa não acompanha a largura e distorce",
         d: "A largura precisa ser declarada em pixels",
       },
       correta: "c",
       explicacao:
-        "O max-width limita a largura, e sem o height: auto a altura original continua valendo, o que distorce. O par completo é max-width: 100% com height: auto.",
+        "O max-width reduz a largura, mas a altura continua em 400px, e a proporção se perde. O par que resolve é max-width: 100% com height: auto.",
       fonte: "responsivo.imagens",
       tipo: "erro",
       codigo: {
@@ -835,16 +835,16 @@ const pool: QuizPool = {
       id: "css-av-15",
       nivel: "avancado",
       pergunta:
-        "No painel Styles do DevTools, o que significa uma declaração aparecer riscada?",
+        "No painel Styles do DevTools, uma declaração válida aparece riscada. O que isso significa?",
       alternativas: {
         a: "Ela perdeu para outra regra e não está valendo",
-        b: "Ela tem erro de sintaxe e foi descartada",
+        b: "Ela foi escrita fora da ordem alfabética",
         c: "Ela veio da folha de estilos padrão do navegador",
         d: "Ela só vale em telas de outro tamanho",
       },
       correta: "a",
       explicacao:
-        "O risco marca a declaração derrotada na cascata, e ao lado dela o painel mostra de onde veio a vencedora. É a resposta direta para a cor que você escreveu e não apareceu.",
+        "O risco numa declaração válida marca a que perdeu a disputa, e o painel mostra ao lado de onde veio a vencedora. Valor inválido também aparece riscado, mas com um ícone de alerta.",
       fonte: "moderno.devtools",
     },
   ],
