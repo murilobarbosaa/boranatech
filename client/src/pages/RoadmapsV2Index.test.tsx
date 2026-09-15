@@ -87,6 +87,15 @@ describe("vitrine /roadmaps: cor dos cards", () => {
     expect(icone?.getAttribute("class")).not.toContain("text-white");
   });
 
+  it("card de trilha nova (git) sai com o par da paleta de trilha e icone escuro", () => {
+    const { container } = render(<RoadmapsV2Index />);
+    const { quadrado, faixa, icone } = cardDe(container, "git");
+    expect(quadrado.classList.contains("bg-orange-200")).toBe(true);
+    expect(faixa.classList.contains("bg-orange-200")).toBe(true);
+    expect(icone?.getAttribute("class")).toContain("text-orange-900");
+    expect(icone?.getAttribute("class")).not.toContain("text-white");
+  });
+
   it("tag_class desconhecida degrada para o neutro e nao apaga os vizinhos", () => {
     const { container } = render(<RoadmapsV2Index />);
     expect(
