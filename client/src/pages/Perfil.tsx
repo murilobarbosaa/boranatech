@@ -2439,14 +2439,10 @@ export default function Perfil() {
             onClose={() => setCancelRenewOpen(false)}
             goneEhSucesso
             copy={{
-              // TODO(Ana): pergunta do dialogo de cancelar a cobranca da renovacao.
               pergunta: "Cancelar a cobrança da renovação?",
-              // TODO(Ana): aviso do dialogo de cancelar a cobranca da renovacao.
               aviso:
                 "O código Pix da renovação anterior deixa de valer e uma cobrança nova é gerada. Seu acesso atual não muda.",
-              // TODO(Ana): rotulo do botao de cancelar e renovar de novo.
               confirmar: "Cancelar e renovar de novo",
-              // TODO(Ana): toast da cobranca de renovacao cancelada.
               sucesso:
                 "Cobrança anterior cancelada. Gerando a nova renovação...",
             }}

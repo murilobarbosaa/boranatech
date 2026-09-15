@@ -1494,14 +1494,10 @@ export default function Checkout() {
         onClose={() => setPixPendenteMetodo(null)}
         goneEhSucesso
         copy={{
-          // TODO(Ana): pergunta do dialogo de Pix ja pendente no checkout.
           pergunta: "Você já tem um Pix aguardando pagamento",
-          // TODO(Ana): aviso do dialogo de Pix ja pendente no checkout.
           aviso:
             "Para gerar um novo Pix com as condições escolhidas agora, a cobrança anterior é cancelada e o código dela deixa de valer.",
-          // TODO(Ana): rotulo do botao de cancelar e gerar novo Pix.
           confirmar: "Cancelar e gerar novo Pix",
-          // TODO(Ana): toast da cobranca anterior cancelada no checkout.
           sucesso: "Cobrança anterior cancelada. Gerando o novo Pix...",
         }}
         onResolved={(resultado) => {

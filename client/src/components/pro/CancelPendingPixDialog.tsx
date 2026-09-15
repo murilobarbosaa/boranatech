@@ -59,7 +59,6 @@ export default function CancelPendingPixDialog({
     setCancelando(true);
     try {
       await cancelPendingPixCharge();
-      // TODO(Ana): copy do sucesso do cancelamento da cobranca Pix.
       showActionToast({
         message:
           copy?.sucesso ??
@@ -69,19 +68,16 @@ export default function CancelPendingPixDialog({
     } catch (err) {
       const code = err instanceof CheckoutError ? err.code : "";
       if (code === "pagamento_ja_recebido") {
-        // TODO(Ana): copy do Pix que ja estava pago na hora de cancelar.
         showActionToast({
           message: "Esse Pix já foi pago. Seu acesso Pro está sendo liberado.",
         });
         onResolved("already_paid");
       } else if (code === "sem_cobranca_pendente") {
         if (!goneEhSucesso) {
-          // TODO(Ana): copy da cobranca que ja nao estava pendente.
           showErrorToast("Essa cobrança não está mais pendente.");
         }
         onResolved("gone");
       } else {
-        // TODO(Ana): copy da falha ao cancelar a cobranca Pix.
         showErrorToast(
           "Não foi possível cancelar agora. Tente de novo em instantes.",
         );
@@ -103,7 +99,6 @@ export default function CancelPendingPixDialog({
         aria-describedby={undefined}
         className="gap-0 rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-0 shadow-[4px_4px_0_var(--bnt-shadow)] sm:max-w-md"
       >
-        {/* TODO(Ana): titulo do dialog de cancelar a cobranca Pix. */}
         <DialogTitle className="sr-only">Cancelar cobrança Pix</DialogTitle>
         <button
           type="button"
@@ -122,10 +117,8 @@ export default function CancelPendingPixDialog({
             </span>
             <div>
               <h2 className="font-display text-2xl font-black text-[var(--bnt-ink)]">
-                {/* TODO(Ana): pergunta do dialog de cancelar a cobranca Pix. */}
                 {copy?.pergunta ?? "Cancelar esta cobrança?"}
               </h2>
-              {/* TODO(Ana): aviso de que o QR atual deixa de valer. */}
               <p className="mt-1 text-sm font-semibold text-slate-600">
                 {copy?.aviso ??
                   "O código Pix atual deixa de valer. Depois disso, você pode escolher outro plano."}
@@ -140,7 +133,6 @@ export default function CancelPendingPixDialog({
               disabled={cancelando}
               className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[var(--bnt-ink)] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--bnt-ink)] hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
-              {/* TODO(Ana): rotulo do botao de desistir do cancelamento. */}
               Voltar
             </button>
             <button
@@ -149,7 +141,6 @@ export default function CancelPendingPixDialog({
               disabled={cancelando}
               className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-slate-950 bg-red-600 px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
-              {/* TODO(Ana): rotulos do botao de confirmar o cancelamento. */}
               {cancelando
                 ? "Cancelando..."
                 : (copy?.confirmar ?? "Cancelar cobrança")}
