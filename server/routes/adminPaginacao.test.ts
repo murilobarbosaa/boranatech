@@ -124,6 +124,91 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe("GET /finance/transactions com meio comprovado", () => {
+  it("filtra o conjunto inteiro antes da página e confirma o filtro aplicado", async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `tx${String(index).padStart(2, "0")}`,
+      provider: "asaas",
+      provider_transaction_id: `pay${index}`,
+      stripe_charge_id: null,
+      type: "charge",
+      gross_cents: 10_000,
+      fee_cents: 0,
+      net_cents: 10_000,
+      currency: index === 0 ? "USD" : "BRL",
+      occurred_at: "2026-09-01T12:00:00.000Z",
+      created_at: "2026-09-01T12:00:01.000Z",
+      user_id: `person${index}`,
+      plan_code: "pro",
+    }));
+    const evidence = rows.map((row, index) => ({
+      id: `sub${String(index).padStart(2, "0")}`,
+      provider: "asaas",
+      provider_subscription_id: row.provider_transaction_id,
+      payment_method: index === 0 || index === 29 ? "pix" : "card",
+    }));
+    montar(
+      { finance_transactions: { rows }, subscriptions: { rows: evidence } },
+      10,
+    );
+    const base =
+      "/finance/transactions?method=pix&from=2026-09-01T03%3A00%3A00.000Z&toExclusive=2026-09-02T03%3A00%3A00.000Z";
+    const first = await chamarAdmin(
+      "GET",
+      `${base}&fresh=1&page=1&pageSize=1&type=charge&currency=BRL`,
+    );
+    expect(first.status).toBe(200);
+    expect(first.body.data).toMatchObject({
+      total: 1,
+      page: 1,
+      pageSize: 1,
+      filterContractVersion: 1,
+      appliedMethod: "pix",
+      rows: [expect.objectContaining({ id: "tx29" })],
+    });
+    const callsAfterColdRead = estado.double.chamadas.length;
+    const later = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=charge&currency=USD`,
+    );
+    expect(later.status).toBe(200);
+    expect(later.body.data).toMatchObject({
+      total: 1,
+      rows: [expect.objectContaining({ id: "tx00" })],
+    });
+    expect(estado.double.chamadas.length - callsAfterColdRead).toBe(2);
+    const wrongType = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=refund&currency=USD`,
+    );
+    expect(wrongType.status).toBe(200);
+    expect(wrongType.body.data.total).toBe(0);
+    expect(first.body.data.rows[0].user_id).toBeUndefined();
+    expect(first.body.data.rows[0].provider_transaction_id).toBeUndefined();
+    const unknownParam = await chamarAdmin(
+      "GET",
+      `${base}&page=1&pageSize=1&type=charge&currency=BRL&notAFilter=pix`,
+    );
+    expect(unknownParam.status).toBe(200);
+    expect(unknownParam.body.data.rows).toEqual(first.body.data.rows);
+    expect((await chamarAdmin("GET", `${base}&page=1evil`)).status).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&type=payout_failure`)).status,
+    ).toBe(400);
+    expect(
+      (await chamarAdmin("GET", base.replace("method=pix", "method=untrusted")))
+        .status,
+    ).toBe(400);
+    expect((await chamarAdmin("GET", `${base}&method=card`)).status).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&currency=BRL&currency=USD`)).status,
+    ).toBe(400);
+    expect(
+      (await chamarAdmin("GET", `${base}&type=charge&type=refund`)).status,
+    ).toBe(400);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // O próprio dublê: sem isto, os testes abaixo poderiam passar sobre um dublê
 // que ignora o teto, e não provariam nada.
@@ -981,6 +1066,8 @@ describe("variação da série", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /overview", () => {
+  afterEach(() => vi.useRealTimers());
+
   function assinatura(over: Record<string, unknown> = {}) {
     return {
       id: "s1",
@@ -1174,6 +1261,14 @@ describe("GET /overview", () => {
     vi.setSystemTime(new Date("2026-08-14T12:00:00-03:00"));
     // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
     // (não sustenta). Uma regra global da página erraria em um dos dois.
+    //
+    // RELÓGIO FIXO, porque "sustenta" é relativo a hoje: a janela 30 vs 30
+    // anteriores começa 60 dias atrás, e com o relógio real ela alcançou
+    // 2026-07-13 em 2026-09-11, e o finance passou a sustentar sozinho. Em
+    // 2026-08-20 a janela começa em 2026-06-21, que é o cenário do comentário.
+    // Só `Date` é falso; o `afterEach` do describe devolve o relógio real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-20T12:00:00Z"));
     base({
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 100 },
       finance_transactions: {

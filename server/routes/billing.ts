@@ -16,6 +16,8 @@ import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError, type AppError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
 import {
+  cancelPayment,
+  closePendingCharge,
   fetchChargeAmountCents,
   fetchPixQrCode,
   lerPagamento,
@@ -570,6 +572,108 @@ router.get("/pix-qrcode", requireAuth, async (req, res, next) => {
     return next(err);
   }
 });
+
+/**
+ * O cliente cancela a PROPRIA cobranca Pix pendente e volta a poder comprar.
+ *
+ * Mesmo desenho de autorizacao do `/pix-qrcode`: nenhum id vem do cliente, a
+ * cobranca e resolvida a partir de `req.user.id`.
+ *
+ * FAIL-CLOSED: a linha local so fecha depois de o Asaas confirmar que a cobranca
+ * morreu. Fechar so aqui deixaria uma cobranca VIVA no Asaas, pagavel, sem linha
+ * `pending` para ativar. `already_paid` e falha deixam a linha como esta.
+ *
+ * O fechamento e o MESMO do webhook (`closePendingCharge`), condicional em
+ * `pending`, e por isso o PAYMENT_DELETED que o Asaas manda depois nao escreve
+ * nada. Se o fechamento falhar depois de o Asaas ter excluido, o erro sobe (500)
+ * e o proprio PAYMENT_DELETED fecha a linha; um novo clique tambem fecha, porque
+ * a recusa do segundo DELETE cai no balde "ja removida" de `cancelPayment`.
+ *
+ * Linha pendente SEM cobranca (criacao em voo, ou residuo de criacao que falhou)
+ * responde 404: fechar sem saber se a cobranca remota nasceu arriscaria
+ * justamente a cobranca orfa que o fail-closed evita.
+ */
+export async function handleCancelPending(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = req.user!.id;
+
+    const { data: pending, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, provider_subscription_id")
+      .eq("user_id", userId)
+      .eq("provider", "asaas")
+      .eq("payment_method", "pix")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return next(
+        createError(500, "db_error", "Erro ao buscar a cobrança.", {
+          cause: erroEncadeavel(error),
+        }),
+      );
+    }
+    const chargeId = pending?.provider_subscription_id;
+    if (!pending || typeof chargeId !== "string" || !chargeId) {
+      return next(
+        createError(
+          404,
+          "sem_cobranca_pendente",
+          "Nenhum Pix aguardando pagamento.",
+        ),
+      );
+    }
+
+    const cancelamento = await cancelPayment(chargeId);
+    if (cancelamento.resultado === "already_paid") {
+      return next(
+        createError(
+          409,
+          "pagamento_ja_recebido",
+          "Este Pix já foi pago. Seu acesso está sendo liberado.",
+        ),
+      );
+    }
+    if (cancelamento.resultado === "falha") {
+      return next(
+        createError(
+          502,
+          "cancelamento_falhou",
+          "Não foi possível cancelar a cobrança agora. Tente de novo.",
+          {
+            context: {
+              motivo: cancelamento.motivo,
+              asaas_payment_id: chargeId,
+              subscription_row_id: pending.id,
+            },
+          },
+        ),
+      );
+    }
+
+    await closePendingCharge({
+      eventType: "CANCELAMENTO_PELO_CLIENTE",
+      eventId: "",
+      chargeId,
+      rowId: pending.id,
+      event: { event: "CANCELAMENTO_PELO_CLIENTE", payment: { id: chargeId } },
+    });
+    console.log(
+      `[billing/cancel-pending] cobranca ${chargeId} cancelada pelo dono (row ${pending.id}).`,
+    );
+    return res.json({ data: { canceled: true } });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+router.post("/cancel-pending", requireAuth, handleCancelPending);
 
 /**
  * Estado da emissao de NFS-e, para o frontend decidir o que montar.

@@ -118,6 +118,25 @@ describe("paginateRange", () => {
 });
 
 describe("coletarTudoProvandoTotal", () => {
+  it("falha na segunda página sem devolver agregado parcial", async () => {
+    let page = 0;
+    await expect(
+      coletarTudoProvandoTotal(
+        async () => {
+          page += 1;
+          return page === 1
+            ? { data: [{ id: "movimento-antigo" }], error: null, count: 2 }
+            : {
+                data: null,
+                error: { message: "leitura interrompida" },
+                count: 2,
+              };
+        },
+        { op: "financeiro-historico", pageSize: 1, rowKey: (row) => row.id },
+      ),
+    ).rejects.toMatchObject({ statusCode: 500 });
+    expect(page).toBe(2);
+  });
   it("mantém páginas curtas quando o servidor limita abaixo do solicitado", async () => {
     const source = Array.from({ length: 7 }, (_, n) => ({ id: `row-${n}` }));
     const result = await coletarTudoProvandoTotal(

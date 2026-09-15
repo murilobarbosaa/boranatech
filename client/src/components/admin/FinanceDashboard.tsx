@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { adminFetch } from "@/lib/adminApi";
@@ -9,6 +10,10 @@ import {
   type FinanceCountMetric,
   type FinanceMoneyMetric,
 } from "@shared/adminFinance";
+import {
+  PaymentMethodSummarySchema,
+  type PaymentMethodSummary,
+} from "@shared/adminFinanceMethods";
 import { useHonestFinance } from "./useHonestFinance";
 
 export type FinancePeriodFilter = {
@@ -34,6 +39,8 @@ type TxListData = {
   total: number;
   page: number;
   pageSize: number;
+  filterContractVersion?: number;
+  appliedMethod?: string;
 };
 
 const PRESETS: Array<{ id: FinancePeriodFilter["preset"]; label: string }> = [
@@ -56,7 +63,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
   refund: "Reembolso",
   adjustment: "Ajuste",
   dispute: "Disputa",
-  payout: "Repasse excluído",
+  payout: "Repasse para conta bancária",
 };
 
 const EXCLUSION_LABELS: Record<
@@ -205,13 +212,42 @@ export function FinanceDashboard({
   const activePeriodFilter = periodFilter ?? localPeriodFilter;
   const { preset, customFrom, customTo } = activePeriodFilter;
   const setPeriodFilter = onPeriodFilterChange ?? setLocalPeriodFilter;
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const urlParams = new URLSearchParams(search);
   const [txData, setTxData] = useState<TxListData | null>(null);
-  const [txPage, setTxPage] = useState(1);
-  const [txCurrency, setTxCurrency] = useState("");
-  const [txType, setTxType] = useState("");
+  const requestedTxPage = Number(urlParams.get("financePage"));
+  const txPage =
+    Number.isSafeInteger(requestedTxPage) && requestedTxPage > 0
+      ? requestedTxPage
+      : 1;
+  const txCurrency = urlParams.get("financeCurrency") ?? "";
+  const txType = urlParams.get("financeType") ?? "";
+  const txMethod =
+    urlParams.get("paymentMethod") ?? urlParams.get("financeMethod") ?? "";
+  function setTxFilter(changes: Record<string, string>, resetPage = true) {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    if (resetPage) params.delete("financePage");
+    params.set("section", "financeiro");
+    setLocation(`/admin?${params.toString()}`);
+  }
   const [txLoading, setTxLoading] = useState(false);
+  const [txDataKey, setTxDataKey] = useState("");
   const [txError, setTxError] = useState<string | null>(null);
-
+  const [txErrorKey, setTxErrorKey] = useState("");
+  const [methodData, setMethodData] = useState<PaymentMethodSummary | null>(
+    null,
+  );
+  const [methodDataPeriod, setMethodDataPeriod] = useState("");
+  const [methodError, setMethodError] = useState<string | null>(null);
+  const [methodLoading, setMethodLoading] = useState(false);
+  const [localFreshKey, setLocalFreshKey] = useState(0);
+  const methodFreshUsed = useRef(0);
+  const txFreshUsed = useRef(0);
   const {
     data,
     loading,
@@ -220,10 +256,73 @@ export function FinanceDashboard({
     reload,
     params: periodQuery,
   } = useHonestFinance({ preset, customFrom, customTo }, { refreshKey });
+  const currentMethodPeriod = data
+    ? `${data.period.from}|${data.period.toExclusive}`
+    : "";
+  const visibleMethodData =
+    methodDataPeriod === currentMethodPeriod ? methodData : null;
+  const txQueryKey =
+    data && view === "transactions"
+      ? [
+          data.period.from,
+          data.period.toExclusive,
+          data.computedAt,
+          txCurrency,
+          txType,
+          txMethod,
+          txPage,
+          refreshKey,
+        ].join("|")
+      : "";
+  const visibleTxData = txDataKey === txQueryKey ? txData : null;
+  const visibleTxError = txErrorKey === txQueryKey ? txError : null;
 
   useEffect(() => {
-    setTxPage(1);
-  }, [preset, customFrom, customTo, txCurrency, txType]);
+    if (!data || view !== "summary") {
+      setMethodData(null);
+      return;
+    }
+    let cancelled = false;
+    const params = new URLSearchParams({
+      from: data.period.from,
+      toExclusive: data.period.toExclusive,
+    });
+    if (localFreshKey > methodFreshUsed.current) {
+      methodFreshUsed.current = localFreshKey;
+      params.set("fresh", "1");
+    }
+    setMethodLoading(true);
+    setMethodError(null);
+    adminFetch(`/finance/payment-methods?${params.toString()}`)
+      .then((json: { data?: unknown }) => {
+        if (cancelled) return;
+        const parsed = PaymentMethodSummarySchema.parse(json.data);
+        setMethodData(parsed);
+        setMethodDataPeriod(`${data.period.from}|${data.period.toExclusive}`);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (
+          err instanceof Error &&
+          [
+            "finance_method_scan_limit",
+            "finance_method_evidence_limit",
+          ].includes(String((err as Error & { code?: unknown }).code ?? ""))
+        )
+          setMethodData(null);
+        setMethodError(
+          err instanceof Error
+            ? err.message
+            : "Erro ao ler meios de pagamento.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setMethodLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data, refreshKey, localFreshKey, view]);
 
   useEffect(() => {
     if (!data || view !== "transactions") {
@@ -239,6 +338,11 @@ export function FinanceDashboard({
     });
     if (txCurrency) params.set("currency", txCurrency);
     if (txType) params.set("type", txType);
+    if (txMethod) params.set("method", txMethod);
+    if (txMethod && localFreshKey > txFreshUsed.current) {
+      txFreshUsed.current = localFreshKey;
+      params.set("fresh", "1");
+    }
     setTxLoading(true);
     setTxError(null);
     adminFetch(`/finance/transactions?${params.toString()}`)
@@ -247,15 +351,34 @@ export function FinanceDashboard({
         if (
           !json.data ||
           !Array.isArray(json.data.rows) ||
-          !Number.isSafeInteger(json.data.total)
+          !Number.isSafeInteger(json.data.total) ||
+          json.data.total < 0 ||
+          json.data.page !== txPage ||
+          json.data.pageSize !== 25 ||
+          json.data.rows.length !==
+            Math.min(25, Math.max(0, json.data.total - (txPage - 1) * 25)) ||
+          new Set(json.data.rows.map((row) => row.id)).size !==
+            json.data.rows.length ||
+          (txMethod &&
+            (json.data.filterContractVersion !== 1 ||
+              json.data.appliedMethod !== txMethod))
         ) {
           throw new Error("Contrato do extrato financeiro incompatível.");
         }
         setTxData(json.data);
+        setTxDataKey(txQueryKey);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setTxData(null);
+        if (
+          err instanceof Error &&
+          [
+            "finance_method_scan_limit",
+            "finance_method_evidence_limit",
+          ].includes(String((err as Error & { code?: unknown }).code ?? ""))
+        )
+          setTxData(null);
+        setTxErrorKey(txQueryKey);
         setTxError(
           err instanceof Error ? err.message : "Erro ao carregar o extrato.",
         );
@@ -266,11 +389,23 @@ export function FinanceDashboard({
     return () => {
       cancelled = true;
     };
-  }, [data, txCurrency, txPage, txType, refreshKey, view]);
+  }, [
+    data,
+    txCurrency,
+    txPage,
+    txType,
+    txMethod,
+    refreshKey,
+    localFreshKey,
+    view,
+  ]);
 
   const currencies = data?.cash.currencies.map((item) => item.currency) ?? [];
-  const txRows = txData?.rows;
-  const txTotal = txData?.total;
+  const txRows = visibleTxData?.rows;
+  const txTotal = visibleTxData?.total;
+  const effectiveTxLoading =
+    txLoading ||
+    (Boolean(txQueryKey) && txDataKey !== txQueryKey && !visibleTxError);
 
   return (
     <div className="space-y-6">
@@ -289,7 +424,10 @@ export function FinanceDashboard({
           </div>
           <button
             type="button"
-            onClick={() => void reload(true)}
+            onClick={() => {
+              setLocalFreshKey((value) => value + 1);
+              void reload(true);
+            }}
             disabled={refreshing || !periodQuery}
             className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase disabled:opacity-50"
           >
@@ -488,6 +626,17 @@ export function FinanceDashboard({
                       {data.cash.coverage.duplicateRowsIgnored}. Reembolsos
                       externos ausentes não são inferidos.
                     </p>
+                    {data.cash.seriesDetail?.status === "unavailable" ? (
+                      <p className="mt-1">
+                        O total cobre todo o intervalo exibido. A série diária
+                        detalhada não foi enviada{" "}
+                        {data.cash.seriesDetail.reason ===
+                        "daily_limit_exceeded"
+                          ? `porque ultrapassa ${data.cash.seriesDetail.maxDailyPoints} pontos`
+                          : "por falha restrita ao detalhe"}
+                        ; nenhuma janela menor substituiu o histórico.
+                      </p>
+                    ) : null}
                     {data.cash.currencies.map((bucket) => (
                       <p key={bucket.currency} className="mt-1">
                         {bucket.currency}:{" "}
@@ -510,6 +659,133 @@ export function FinanceDashboard({
                     </ul>
                   </details>
                 </div>
+                <section
+                  aria-labelledby="payment-methods-title"
+                  className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3
+                        id="payment-methods-title"
+                        className="font-display text-lg font-black text-slate-950"
+                      >
+                        Pagamentos por meio
+                      </h3>
+                      <p className="text-xs font-semibold text-slate-600">
+                        Pagamentos positivos confirmados no registro local; meio
+                        comprovado pelo vínculo do pagamento.
+                      </p>
+                    </div>
+                    {visibleMethodData ? (
+                      <StatusBadge status={visibleMethodData.status} />
+                    ) : null}
+                  </div>
+                  {methodError && visibleMethodData ? (
+                    <p
+                      className="mt-3 text-sm font-semibold text-amber-900"
+                      role="status"
+                    >
+                      Última leitura válida deste período, desatualizada:{" "}
+                      {methodError}
+                    </p>
+                  ) : null}
+                  {methodLoading && !visibleMethodData ? (
+                    <p className="mt-3 text-sm font-semibold">
+                      Lendo meios registrados...
+                    </p>
+                  ) : methodError && !visibleMethodData ? (
+                    <p className="mt-3 text-sm font-semibold text-rose-700">
+                      Meios indisponíveis: {methodError}
+                    </p>
+                  ) : visibleMethodData?.status === "not_collected" ? (
+                    <p className="mt-3 text-sm font-semibold text-slate-600">
+                      Histórico local não coletado neste período; nenhuma
+                      contagem é apresentada como zero.
+                    </p>
+                  ) : visibleMethodData ? (
+                    <div className="mt-3 space-y-3">
+                      {visibleMethodData.pix.length === 0 ? (
+                        <p className="text-sm font-semibold text-slate-600">
+                          Nenhum Pix comprovado nas linhas locais observadas
+                          neste período.
+                        </p>
+                      ) : (
+                        visibleMethodData.pix.map((bucket) => (
+                          <div
+                            key={bucket.currency}
+                            className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:items-center"
+                          >
+                            <div>
+                              <span className="text-xs font-bold uppercase text-slate-600">
+                                Pix confirmado · {bucket.currency}
+                              </span>
+                              <p className="text-xl font-black">
+                                {bucket.payments} pagamentos
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold uppercase text-slate-600">
+                                Pessoas identificadas
+                              </span>
+                              <p className="text-xl font-black">
+                                {bucket.people}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold uppercase text-slate-600">
+                                Bruto recebido
+                              </span>
+                              <p className="text-xl font-black">
+                                {formatCents(
+                                  bucket.grossCents,
+                                  bucket.currency,
+                                )}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTxFilter({
+                                  financeView: "transacoes",
+                                  paymentMethod: "pix",
+                                  financeMethod: "",
+                                  financeType: "charge",
+                                  financeCurrency: bucket.currency,
+                                })
+                              }
+                              className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black focus-visible:ring-2 focus-visible:ring-violet-500"
+                            >
+                              Ver movimentos Pix
+                            </button>
+                            {bucket.withoutPerson > 0 ? (
+                              <p className="text-xs font-semibold text-amber-900 sm:col-span-4">
+                                {bucket.withoutPerson} pagamento(s) sem pessoa
+                                identificada.
+                              </p>
+                            ) : null}
+                          </div>
+                        ))
+                      )}
+                      {visibleMethodData.pix.some(
+                        (bucket) => bucket.currency !== "BRL",
+                      ) ? (
+                        <p className="text-xs font-semibold text-amber-900">
+                          Há pagamentos Pix em outras moedas; os valores
+                          aparecem separados e não são somados.
+                        </p>
+                      ) : null}
+                      <p className="text-xs font-semibold text-slate-600">
+                        {visibleMethodData.paymentsWithoutMethod} pagamento(s)
+                        sem meio identificado ·{" "}
+                        {visibleMethodData.methodConflicts} conflito(s) de meio
+                        · {visibleMethodData.excludedEconomicOrCurrency}{" "}
+                        identidade(s) excluída(s) por conflito econômico ou
+                        moeda. Cobertura histórica integral não verificável; sem
+                        fotografia transacional.
+                      </p>
+                    </div>
+                  ) : null}
+                </section>
               </section>
             ) : null}
 
@@ -638,6 +914,9 @@ export function FinanceDashboard({
                     <p className="text-sm font-semibold text-slate-600">
                       Rota administrativa protegida; sem nomes, emails ou ids
                       externos na interface.
+                      <span className="block sm:hidden">
+                        Arraste a tabela para ver os valores.
+                      </span>
                     </p>
                   </div>
                   <div
@@ -649,7 +928,9 @@ export function FinanceDashboard({
                       <select
                         aria-label="Filtrar extrato por moeda"
                         value={txCurrency}
-                        onChange={(event) => setTxCurrency(event.target.value)}
+                        onChange={(event) =>
+                          setTxFilter({ financeCurrency: event.target.value })
+                        }
                         className="ml-2 rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
                       >
                         <option value="">Todas, sem somar</option>
@@ -665,7 +946,9 @@ export function FinanceDashboard({
                       <select
                         aria-label="Filtrar extrato por tipo"
                         value={txType}
-                        onChange={(event) => setTxType(event.target.value)}
+                        onChange={(event) =>
+                          setTxFilter({ financeType: event.target.value })
+                        }
                         className="ml-2 rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
                       >
                         <option value="">Todos</option>
@@ -673,81 +956,128 @@ export function FinanceDashboard({
                         <option value="refund">Reembolso</option>
                         <option value="adjustment">Ajuste</option>
                         <option value="dispute">Disputa</option>
+                        <option value="payout">
+                          Repasse para conta bancária
+                        </option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-black uppercase text-slate-600">
+                      Meio
+                      <select
+                        aria-label="Filtrar extrato por meio"
+                        value={txMethod}
+                        onChange={(event) =>
+                          setTxFilter({
+                            paymentMethod: event.target.value,
+                            financeMethod: "",
+                          })
+                        }
+                        className="ml-2 rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                      >
+                        <option value="">Todos</option>
+                        <option value="pix">Pix comprovado</option>
+                        <option value="card">Cartão comprovado</option>
+                        <option value="boleto">Boleto comprovado</option>
+                        <option value="unknown">Não identificado</option>
                       </select>
                     </label>
                   </div>
                 </div>
                 <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-                  {txLoading && !txRows ? (
+                  {effectiveTxLoading && !txRows ? (
                     <LoadingBlock label="Carregando movimentos..." />
-                  ) : txError ? (
+                  ) : visibleTxError && !txRows ? (
                     <div className="p-4">
-                      <ErrorBlock message={txError} />
+                      <ErrorBlock message={visibleTxError} />
                     </div>
                   ) : txTotal === 0 ? (
                     <p className="p-5 text-sm font-semibold text-slate-600">
                       Nenhum movimento local registrado neste filtro.
                     </p>
                   ) : txRows ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left text-sm">
-                        <thead className="sticky top-0 z-10">
-                          <tr className="border-b-2 border-slate-900 bg-slate-50">
-                            {[
-                              "Data",
-                              "Provedor",
-                              "Tipo",
-                              "Bruto",
-                              "Taxa",
-                              "Líquido",
-                              "Plano",
-                            ].map((heading) => (
-                              <th
-                                key={heading}
-                                scope="col"
-                                className="px-4 py-3 text-xs font-black uppercase text-slate-600"
-                              >
-                                {heading}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {txRows.map((row) => (
-                            <tr
-                              key={row.id}
-                              className="border-b border-slate-200"
-                            >
-                              <td className="px-4 py-3 text-slate-600">
-                                {new Date(row.occurred_at).toLocaleString(
-                                  "pt-BR",
-                                  {
-                                    timeZone: data.period.timezone,
-                                  },
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-slate-700">
-                                {providerLabelOf(row.provider)}
-                              </td>
-                              <td className="px-4 py-3 font-semibold">
-                                {TX_TYPE_LABEL[row.type] ?? row.type}
-                              </td>
-                              <td className="px-4 py-3">
-                                {formatCents(row.gross_cents, row.currency)}
-                              </td>
-                              <td className="px-4 py-3">
-                                {formatCents(row.fee_cents, row.currency)}
-                              </td>
-                              <td className="px-4 py-3 font-black">
-                                {formatCents(row.net_cents, row.currency)}
-                              </td>
-                              <td className="px-4 py-3 font-mono text-xs">
-                                {row.plan_code ?? "Não atribuído"}
-                              </td>
+                    <div>
+                      {visibleTxError ? (
+                        <p
+                          className="px-4 pt-3 text-sm font-semibold text-amber-900"
+                          role="status"
+                        >
+                          Último extrato válido deste filtro, desatualizado:{" "}
+                          {visibleTxError}
+                        </p>
+                      ) : null}
+                      <div className="overflow-x-auto touch-pan-x">
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead className="sticky top-0 z-10">
+                            <tr className="border-b-2 border-slate-900 bg-slate-50">
+                              {[
+                                "Data",
+                                "Provedor",
+                                "Tipo",
+                                "Bruto",
+                                "Taxa",
+                                "Líquido",
+                                "Plano",
+                              ].map((heading) => (
+                                <th
+                                  key={heading}
+                                  scope="col"
+                                  className="px-4 py-3 text-xs font-black uppercase text-slate-600"
+                                >
+                                  {heading}
+                                </th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {txRows.map((row) => (
+                              <tr
+                                key={row.id}
+                                className="border-b border-slate-200"
+                              >
+                                <td className="px-4 py-3 text-slate-600">
+                                  {new Date(row.occurred_at).toLocaleString(
+                                    "pt-BR",
+                                    {
+                                      timeZone: data.period.timezone,
+                                    },
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-slate-700">
+                                  {providerLabelOf(row.provider)}
+                                </td>
+                                <td className="px-4 py-3 font-semibold">
+                                  {TX_TYPE_LABEL[row.type] ?? row.type}
+                                  {row.type === "payout" ? (
+                                    <span className="block text-xs font-medium text-slate-600">
+                                      Transferência entre contas próprias; fora
+                                      do líquido de pagamentos.
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {row.type === "payout"
+                                    ? `Transferido: ${formatCents(Math.abs(row.gross_cents), row.currency)}`
+                                    : formatCents(
+                                        row.gross_cents,
+                                        row.currency,
+                                      )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {formatCents(row.fee_cents, row.currency)}
+                                </td>
+                                <td className="px-4 py-3 font-black">
+                                  {row.type === "payout"
+                                    ? `Saída do saldo Stripe: ${formatCents(row.net_cents, row.currency)}`
+                                    : formatCents(row.net_cents, row.currency)}
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs">
+                                  {row.plan_code ?? "Não atribuído"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ) : (
                     <p className="p-5 text-sm font-semibold text-slate-600">
@@ -755,26 +1085,37 @@ export function FinanceDashboard({
                     </p>
                   )}
                   {typeof txTotal === "number" && txTotal > 0 ? (
-                    <div className="flex items-center justify-between border-t-2 border-slate-900 px-4 py-3">
-                      <span className="text-xs font-bold text-slate-500">
-                        Página {txPage} · {txTotal} movimentos
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-slate-900 px-4 py-3">
+                      <span className="min-w-0 text-xs font-bold text-slate-500">
+                        Página {txPage} · {txTotal} movimentos no conjunto
+                        completo · {txRows?.length ?? 0} visíveis
                       </span>
-                      <div className="flex gap-2">
+                      <div className="flex shrink-0 gap-2">
                         <button
                           type="button"
-                          disabled={txPage === 1 || txLoading}
+                          disabled={txPage === 1 || effectiveTxLoading}
                           onClick={() =>
-                            setTxPage((page) => Math.max(1, page - 1))
+                            setTxFilter(
+                              { financePage: String(Math.max(1, txPage - 1)) },
+                              false,
+                            )
                           }
-                          className="rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black disabled:opacity-40"
+                          className="min-h-10 rounded-full border-2 border-slate-900 px-3 py-2 text-xs font-black disabled:opacity-40"
                         >
                           Anterior
                         </button>
                         <button
                           type="button"
-                          disabled={txPage * 25 >= txTotal || txLoading}
-                          onClick={() => setTxPage((page) => page + 1)}
-                          className="rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black disabled:opacity-40"
+                          disabled={
+                            txPage * 25 >= txTotal || effectiveTxLoading
+                          }
+                          onClick={() =>
+                            setTxFilter(
+                              { financePage: String(txPage + 1) },
+                              false,
+                            )
+                          }
+                          className="min-h-10 rounded-full border-2 border-slate-900 px-3 py-2 text-xs font-black disabled:opacity-40"
                         >
                           Próxima
                         </button>

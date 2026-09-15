@@ -195,11 +195,14 @@ describe("CreatorDashboardView: totais", () => {
     expect(valorDoTile("creator-tile-paga")).toBe("R$\u00a00,00");
   });
 
-  it("conversao null mostra o texto, nunca 0%", () => {
+  it("conversao null mostra um traco e 'sem cliques ainda', nunca 0%", () => {
     const p = painelBase();
     p.totais = { ...p.totais, clicks: 0, sales: 0, conversao_pct: null };
     desenhar(p);
-    expect(valorDoTile("creator-tile-conversao")).toBe("sem cliques ainda");
+    expect(valorDoTile("creator-tile-conversao")).toBe("-");
+    expect(screen.getByTestId("creator-tile-conversao").textContent).toContain(
+      "sem cliques ainda",
+    );
   });
 
   it("cabecalho: kind rotulado e data de concessao em dia de Brasilia", () => {
@@ -453,17 +456,17 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     ).not.toContain("por 100 cliques");
   });
 
-  it("Desde o inicio e selo ao lado do titulo Seus numeros", () => {
+  it("desde o inicio e o selo acima do titulo Seus numeros", () => {
     desenhar(painelBase());
     const titulo = screen.getByRole("heading", { name: "Seus números" });
-    expect(titulo.parentElement?.textContent).toContain("Desde o início");
+    expect(titulo.previousElementSibling?.textContent).toBe("desde o início");
   });
 
-  it("o subtitulo fala com o creator, e some na visao admin", () => {
+  it("a frase do creator saiu da view para a faixa da pagina, nas duas visoes", () => {
     const frase =
       "Seu link, seus números e o que você já gerou para a Bora na Tech.";
     desenhar(painelBase(), "creator");
-    expect(screen.getByText(frase)).toBeTruthy();
+    expect(screen.queryByText(frase)).toBeNull();
     cleanup();
     desenhar(painelBase(), "admin");
     expect(screen.queryByText(frase)).toBeNull();
@@ -478,46 +481,150 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     expect(lista?.className).not.toContain("grid-cols-2");
   });
 
-  it("cabecalho: faixa listrada atras do cartao brutal, e a etiqueta CREATOR nele", () => {
+  it("identidade embutida: cartao card-brutal, sem faixa e sem etiqueta", () => {
     desenhar(painelBase());
-    const faixa = screen.getByTestId("creator-faixa");
-    expect(faixa.getAttribute("aria-hidden")).toBe("true");
-    expect(faixa.className).toContain("repeating-linear-gradient(45deg");
-    const cartao = screen.getByText("Ana Creator").closest("section");
-    expect(faixa.nextElementSibling).toBe(cartao);
-    expect(cartao?.className).toContain("card-brutal");
-    const etiqueta = screen.getByTestId("creator-etiqueta");
-    expect(etiqueta.textContent).toBe("Creator");
-    expect(cartao?.contains(etiqueta)).toBe(true);
+    expect(screen.queryByTestId("creator-faixa")).toBeNull();
+    expect(screen.queryByTestId("creator-etiqueta")).toBeNull();
+    const identidade = screen.getByTestId("creator-identidade");
+    expect(identidade.className).toContain("card-brutal");
+    expect(identidade.textContent).toContain("Ana Creator");
   });
 
-  it("os seis tiles sao card-brutal, cada um num par pastel diferente", () => {
+  it("os seis numeros sao cards card-brutal brancos", () => {
     desenhar(painelBase());
-    const familias = [
+    for (const id of [
       "cliques",
       "vendas",
       "conversao",
       "receita",
       "a-receber",
       "paga",
-    ].map((id) => {
+    ]) {
       const classes = screen.getByTestId(`creator-tile-${id}`).className;
       expect(classes, id).toContain("card-brutal");
-      const familia = /\bbg-([a-z]+)-200\b/.exec(classes)?.[1];
-      expect(familia, id).toBeTruthy();
-      return familia;
-    });
-    expect(new Set(familias).size).toBe(6);
+      expect(classes, id).toContain("bg-white");
+    }
   });
 
-  it("a visao admin usa o mesmo cupom, tiles e faixa, sem nada a definir", () => {
+  it("a visao admin abre com a identidade e usa os mesmos cards e cupom", () => {
     desenhar(painelAdmin(), "admin");
-    expect(screen.getByTestId("creator-faixa")).toBeTruthy();
-    expect(
-      screen.getByTestId("creator-codigo-ANA30").className,
-    ).toContain("bg-[var(--brand-yellow)]");
+    expect(screen.getByTestId("creator-painel").firstElementChild).toBe(
+      screen.getByTestId("creator-identidade"),
+    );
     expect(screen.getByTestId("creator-tile-cliques").className).toContain(
       "card-brutal",
+    );
+    expect(screen.getByTestId("creator-codigo-ANA30")).toBeTruthy();
+  });
+});
+
+describe("CreatorDashboardView: forma do admin", () => {
+  // As quatro cores de quadrado de icone que o admin ja usa, literais.
+  const VIOLETA = "bg-violet-800 text-white";
+  const CEU = "bg-sky-600 text-white";
+  const ACENTO = "bg-[var(--bnt-accent-solid)] text-ink-on-accent";
+  const ESMERALDA = "bg-emerald-600 text-white";
+  const CORES = [VIOLETA, CEU, ACENTO, ESMERALDA];
+
+  it("com identidade nenhuma a view nao desenha a identidade, nem na visao admin", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelAdmin()}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="admin"
+        identidade="nenhuma"
+      />,
+    );
+    expect(screen.queryByTestId("creator-identidade")).toBeNull();
+    expect(screen.queryByTestId("creator-kind")).toBeNull();
+    expect(screen.queryByTestId("creator-email")).toBeNull();
+    expect(screen.queryByTestId("creator-revogado")).toBeNull();
+  });
+
+  it("no padrao a view desenha a identidade; na visao admin, com e-mail e revogado", () => {
+    desenhar(painelBase(), "creator");
+    expect(screen.getByTestId("creator-kind")).toBeTruthy();
+    cleanup();
+    desenhar(painelAdmin(), "admin");
+    expect(screen.getByTestId("creator-kind")).toBeTruthy();
+    expect(screen.getByTestId("creator-email")).toBeTruthy();
+    expect(screen.getByTestId("creator-revogado")).toBeTruthy();
+  });
+
+  it("os seis cards: card-brutal branco, com o quadrado de icone na cor da tabela", () => {
+    desenhar(painelBase());
+    const esperado: Array<[string, string]> = [
+      ["cliques", VIOLETA],
+      ["vendas", VIOLETA],
+      ["conversao", CEU],
+      ["receita", ACENTO],
+      ["a-receber", ACENTO],
+      ["paga", ESMERALDA],
+    ];
+    for (const [id, cor] of esperado) {
+      const card = screen.getByTestId(`creator-tile-${id}`);
+      expect(card.className, id).toContain("card-brutal");
+      expect(card.className, id).toContain("bg-white");
+      const quadrado = card.firstElementChild;
+      expect(quadrado?.getAttribute("aria-hidden"), id).toBe("true");
+      const classes = quadrado?.getAttribute("class") ?? "";
+      expect(classes, id).toContain("border-2 border-slate-900");
+      expect(
+        CORES.filter((c) => classes.includes(c)),
+        id,
+      ).toEqual([cor]);
+    }
+  });
+
+  it("nenhum elemento do painel tem fundo pastel bg-*-200", () => {
+    desenhar(painelAdmin(), "admin");
+    const painel = screen.getByTestId("creator-painel");
+    const pasteis = [painel, ...Array.from(painel.querySelectorAll("*"))]
+      .map((el) => el.getAttribute("class") ?? "")
+      .filter((classes) => /\bbg-[a-z]+-200\b/.test(classes));
+    expect(pasteis).toEqual([]);
+  });
+
+  it("pilulas na forma do OverviewPeriod: a ativa bg-slate-950 e nenhuma com sombra dura", () => {
+    desenhar(painelBase());
+    const grupo = screen.getByRole("group", { name: "Período da série" });
+    const botoes = within(grupo).getAllByRole("button");
+    expect(botoes.map((b) => b.textContent)).toEqual([
+      "7 dias",
+      "30 dias",
+      "90 dias",
+      "Tudo",
+    ]);
+    for (const botao of botoes) {
+      expect(botao.className).not.toContain("shadow-[");
+      const ativa = botao.getAttribute("aria-pressed") === "true";
+      expect(botao.className).toContain(ativa ? "bg-slate-950" : "bg-white");
+    }
+    expect(
+      botoes.filter((b) => b.getAttribute("aria-pressed") === "true"),
+    ).toHaveLength(1);
+  });
+
+  it("a moldura da serie e a do ChartFrame: eyebrow violeta e o h3", () => {
+    desenhar(painelBase());
+    const h3 = screen.getByRole("heading", {
+      level: 3,
+      name: "Cliques e vendas por dia",
+    });
+    const eyebrow = h3.previousElementSibling;
+    expect(eyebrow?.textContent).toBe("série diária");
+    expect(eyebrow?.className).toContain("text-violet-700");
+    expect(h3.closest("section")?.className).toContain("card-brutal");
+  });
+
+  it("os quatro blocos do periodo tem a forma do bloco interno do admin", () => {
+    desenhar(painelBase());
+    const blocos = Array.from(
+      screen.getByTestId("creator-periodo").children,
+    ).map((bloco) => bloco.className);
+    expect(blocos).toEqual(
+      Array(4).fill("rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"),
     );
   });
 });

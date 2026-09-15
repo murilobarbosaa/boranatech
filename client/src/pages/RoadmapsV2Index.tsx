@@ -507,7 +507,7 @@ export default function RoadmapsV2Index() {
                 aria-pressed={filtro === f.id}
                 className={
                   filtro === f.id
-                    ? "shrink-0 whitespace-nowrap rounded-full border-2 border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
+                    ? "shrink-0 whitespace-nowrap rounded-full border-2 border-violet-600 bg-violet-600 px-3 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] dark:border-slate-900 dark:bg-slate-900 dark:text-white"
                     : "shrink-0 whitespace-nowrap rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-100"
                 }
               >
@@ -516,127 +516,37 @@ export default function RoadmapsV2Index() {
             ))}
           </div>
 
-          {mostra("carreiras") && (
-            <div className="mt-14" data-testid="vitrine-grupo-carreira">
-              <motion.div
-                initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-              >
-                <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
-                  Trilhas de carreira
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
-                  Caminhos por objetivo de carreira, da base ao próximo passo.
-                </p>
-              </motion.div>
-
-              <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {roadmapsMeta
-                  .filter((r) => r.kind === "carreira")
-                  .map((r, index) => {
-                    const style =
-                      CAREER_CARD_STYLE[r.slug] ?? CAREER_CARD_FALLBACK;
-                    const Icon = style.icon;
-                    const stepCount = r.stepCount;
-                    return (
-                      <motion.div
-                        key={r.slug}
-                        initial={entrada(
-                          reduce ? false : { opacity: 0, y: 12 },
-                        )}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          duration: 0.35,
-                          delay: Math.min(index * 0.04, 0.4),
-                        }}
-                      >
-                        <Link
-                          href={`/roadmaps/${r.slug}`}
-                          onMouseEnter={() => prefetchRoadmap(r.slug)}
-                          onFocus={() => prefetchRoadmap(r.slug)}
-                          className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
-                        >
-                          <span
-                            aria-hidden
-                            className={`-mx-5 -mt-5 mb-4 h-2 ${style.tagClass}`}
-                          />
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${style.tagClass}`}
-                            >
-                              <Icon className="h-[19px] w-[19px] text-white" />
-                            </span>
-                            <h2 className="text-[15px] font-bold leading-tight text-slate-900">
-                              {r.title}
-                            </h2>
-                          </div>
-
-                          <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
-                            {r.description}
-                          </p>
-
-                          {statusBySlug[r.slug] ? (
-                            <CertBadge status={statusBySlug[r.slug]} />
-                          ) : null}
-
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="rounded-full border-[1.5px] border-slate-900 bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                              carreira
-                            </span>
-                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                              {r.sectionCount} etapas
-                            </span>
-                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                              {stepCount} passos
-                            </span>
-                          </div>
-
-                          <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
-                            <span className="text-[11px] text-slate-400">
-                              trilha de carreira
-                            </span>
-                            <ArrowRight className="h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-1" />
-                          </div>
-                        </Link>
-                      </motion.div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {grupos
-            .filter((group) => mostra(FILTRO_DO_GRUPO[group.key]))
-            .map((group) => {
-              const ui = TRAIL_GROUP_UI[group.key];
-              return (
-                <div
-                  key={group.key}
-                  className="mt-14"
-                  data-testid={`vitrine-grupo-${group.key}`}
+          {/* Grupos: 32px abaixo da barra (o mesmo respiro entre o hero e a
+              barra) e 56px entre si. Gap no conteiner, e nao margem em cada
+              secao, porque o primeiro grupo visivel muda com o filtro. */}
+          <div className="mt-8 flex flex-col gap-14">
+            {mostra("carreiras") && (
+              <div data-testid="vitrine-grupo-carreira">
+                <motion.div
+                  initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
                 >
-                  <motion.div
-                    initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-80px" }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                  >
-                    <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
-                      {ui.title}
-                    </h2>
-                    <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
-                      {ui.lead}
-                    </p>
-                  </motion.div>
+                  <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
+                    Trilhas de carreira
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
+                    Caminhos por objetivo de carreira, da base ao próximo passo.
+                  </p>
+                </motion.div>
 
-                  <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {group.entries.map((entry, index) => {
-                      const palette = trailPaletteOf(entry.slug);
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {roadmapsMeta
+                    .filter((r) => r.kind === "carreira")
+                    .map((r, index) => {
+                      const style =
+                        CAREER_CARD_STYLE[r.slug] ?? CAREER_CARD_FALLBACK;
+                      const Icon = style.icon;
+                      const stepCount = r.stepCount;
                       return (
                         <motion.div
-                          key={entry.slug}
+                          key={r.slug}
                           initial={entrada(
                             reduce ? false : { opacity: 0, y: 12 },
                           )}
@@ -647,9 +557,214 @@ export default function RoadmapsV2Index() {
                           }}
                         >
                           <Link
-                            href={`/roadmaps/${entry.slug}`}
-                            onMouseEnter={() => prefetchRoadmap(entry.slug)}
-                            onFocus={() => prefetchRoadmap(entry.slug)}
+                            href={`/roadmaps/${r.slug}`}
+                            onMouseEnter={() => prefetchRoadmap(r.slug)}
+                            onFocus={() => prefetchRoadmap(r.slug)}
+                            className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
+                          >
+                            <span
+                              aria-hidden
+                              className={`-mx-5 -mt-5 mb-4 h-2 ${style.tagClass}`}
+                            />
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${style.tagClass}`}
+                              >
+                                <Icon className="h-[19px] w-[19px] text-white" />
+                              </span>
+                              <h2 className="text-[15px] font-bold leading-tight text-slate-900">
+                                {r.title}
+                              </h2>
+                            </div>
+
+                            <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
+                              {r.description}
+                            </p>
+
+                            {statusBySlug[r.slug] ? (
+                              <CertBadge status={statusBySlug[r.slug]} />
+                            ) : null}
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <span className="rounded-full border-[1.5px] border-slate-900 bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                                carreira
+                              </span>
+                              <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                                {r.sectionCount} etapas
+                              </span>
+                              <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                                {stepCount} passos
+                              </span>
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
+                              <span className="text-[11px] text-slate-400">
+                                trilha de carreira
+                              </span>
+                              <ArrowRight className="h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-1" />
+                            </div>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {grupos
+              .filter((group) => mostra(FILTRO_DO_GRUPO[group.key]))
+              .map((group) => {
+                const ui = TRAIL_GROUP_UI[group.key];
+                return (
+                  <div
+                    key={group.key}
+                    data-testid={`vitrine-grupo-${group.key}`}
+                  >
+                    <motion.div
+                      initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-80px" }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
+                      <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
+                        {ui.title}
+                      </h2>
+                      <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
+                        {ui.lead}
+                      </p>
+                    </motion.div>
+
+                    <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {group.entries.map((entry, index) => {
+                        const palette = trailPaletteOf(entry.slug);
+                        return (
+                          <motion.div
+                            key={entry.slug}
+                            initial={entrada(
+                              reduce ? false : { opacity: 0, y: 12 },
+                            )}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              duration: 0.35,
+                              delay: Math.min(index * 0.04, 0.4),
+                            }}
+                          >
+                            <Link
+                              href={`/roadmaps/${entry.slug}`}
+                              onMouseEnter={() => prefetchRoadmap(entry.slug)}
+                              onFocus={() => prefetchRoadmap(entry.slug)}
+                              className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
+                            >
+                              <span
+                                aria-hidden
+                                className={`-mx-5 -mt-5 mb-4 h-2 ${palette.bg}`}
+                              />
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
+                                >
+                                  <TrailLogo
+                                    slug={entry.slug}
+                                    fallback={ui.icon}
+                                    className="h-[19px] w-[19px]"
+                                  />
+                                </span>
+                                <h2 className="text-[15px] font-bold leading-tight text-slate-900">
+                                  {entry.title}
+                                </h2>
+                              </div>
+
+                              <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
+                                {entry.summary}
+                              </p>
+
+                              {statusBySlug[entry.slug] ? (
+                                <CertBadge status={statusBySlug[entry.slug]} />
+                              ) : null}
+
+                              {/* TODO(Ana): copy do card de trilha (pilulas, selo de prova e rodape) */}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                                  {entry.sectionCount} etapas
+                                </span>
+                                <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                                  {entry.stepCount} passos
+                                </span>
+                                {entry.hasQuiz && (
+                                  <span className="rounded-full border-[1.5px] border-slate-900 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-800">
+                                    Com prova
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
+                                <span className="text-[11px] text-slate-400">
+                                  iniciante → avançado
+                                </span>
+                                <ArrowRight className="h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-1" />
+                              </div>
+                            </Link>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {mostra("areas") && (
+              <div data-testid="vitrine-grupo-area">
+                <motion.div
+                  initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  {/* TODO(Ana): titulo e apoio do grupo de areas na vitrine */}
+                  <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
+                    Trilhas por área
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
+                    Um passo a passo por área da TI, do primeiro conceito ao
+                    nível avançado.
+                  </p>
+                </motion.div>
+
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {roadmapsMeta
+                    .filter((r) => !r.kind)
+                    .map((r, index) => {
+                      const area = areasTI.find((x) => x.slug === r.area);
+                      if (!area) return null;
+                      const Icon = area.icon;
+                      // Cor pelo resolver do chip de area, nao pela classe crua: as
+                      // `.tag-*` sairam do index.css em 2026-09-01 (2dae5521) e esta
+                      // vitrine ficou de fora da migracao, com o quadrado e a faixa
+                      // sem fundo e o icone branco invisivel. O resolver ja degrada
+                      // para o neutro com tag_class desconhecida.
+                      const palette = tagPaletteOf(area.tagClass);
+                      const hasProject = r.hasProject;
+                      const isMultiStack = Boolean(
+                        r.languages && r.languages.length > 0,
+                      );
+                      const stepCount = r.stepCount;
+
+                      return (
+                        <motion.div
+                          key={r.slug}
+                          initial={entrada(
+                            reduce ? false : { opacity: 0, y: 12 },
+                          )}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            duration: 0.35,
+                            delay: Math.min(index * 0.04, 0.4),
+                          }}
+                        >
+                          <Link
+                            href={`/roadmaps/${r.slug}`}
+                            onMouseEnter={() => prefetchRoadmap(r.slug)}
+                            onFocus={() => prefetchRoadmap(r.slug)}
                             className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
                           >
                             <span
@@ -660,36 +775,38 @@ export default function RoadmapsV2Index() {
                               <span
                                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
                               >
-                                <TrailLogo
-                                  slug={entry.slug}
-                                  fallback={ui.icon}
-                                  className="h-[19px] w-[19px]"
+                                <Icon
+                                  className={`h-[19px] w-[19px] ${palette.text}`}
                                 />
                               </span>
                               <h2 className="text-[15px] font-bold leading-tight text-slate-900">
-                                {entry.title}
+                                {area.nome}
                               </h2>
                             </div>
 
                             <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
-                              {entry.summary}
+                              {area.descricaoCurta}
                             </p>
 
-                            {statusBySlug[entry.slug] ? (
-                              <CertBadge status={statusBySlug[entry.slug]} />
+                            {statusBySlug[r.slug] ? (
+                              <CertBadge status={statusBySlug[r.slug]} />
                             ) : null}
 
-                            {/* TODO(Ana): copy do card de trilha (pilulas, selo de prova e rodape) */}
                             <div className="mt-3 flex flex-wrap gap-2">
                               <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                                {entry.sectionCount} etapas
+                                {r.sectionCount} etapas
                               </span>
                               <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                                {entry.stepCount} passos
+                                {stepCount} passos
                               </span>
-                              {entry.hasQuiz && (
+                              {hasProject && (
+                                <span className="rounded-full border-[1.5px] border-slate-900 bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-800">
+                                  Projeto prático
+                                </span>
+                              )}
+                              {isMultiStack && (
                                 <span className="rounded-full border-[1.5px] border-slate-900 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-800">
-                                  Com prova
+                                  Multi-stack
                                 </span>
                               )}
                             </div>
@@ -704,123 +821,10 @@ export default function RoadmapsV2Index() {
                         </motion.div>
                       );
                     })}
-                  </div>
                 </div>
-              );
-            })}
-
-          {mostra("areas") && (
-            <div className="mt-14" data-testid="vitrine-grupo-area">
-              <motion.div
-                initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-              >
-                {/* TODO(Ana): titulo e apoio do grupo de areas na vitrine */}
-                <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
-                  Trilhas por área
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
-                  Um passo a passo por área da TI, do primeiro conceito ao nível
-                  avançado.
-                </p>
-              </motion.div>
-
-              <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {roadmapsMeta
-                  .filter((r) => !r.kind)
-                  .map((r, index) => {
-                    const area = areasTI.find((x) => x.slug === r.area);
-                    if (!area) return null;
-                    const Icon = area.icon;
-                    // Cor pelo resolver do chip de area, nao pela classe crua: as
-                    // `.tag-*` sairam do index.css em 2026-09-01 (2dae5521) e esta
-                    // vitrine ficou de fora da migracao, com o quadrado e a faixa
-                    // sem fundo e o icone branco invisivel. O resolver ja degrada
-                    // para o neutro com tag_class desconhecida.
-                    const palette = tagPaletteOf(area.tagClass);
-                    const hasProject = r.hasProject;
-                    const isMultiStack = Boolean(
-                      r.languages && r.languages.length > 0,
-                    );
-                    const stepCount = r.stepCount;
-
-                    return (
-                      <motion.div
-                        key={r.slug}
-                        initial={entrada(
-                          reduce ? false : { opacity: 0, y: 12 },
-                        )}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          duration: 0.35,
-                          delay: Math.min(index * 0.04, 0.4),
-                        }}
-                      >
-                        <Link
-                          href={`/roadmaps/${r.slug}`}
-                          onMouseEnter={() => prefetchRoadmap(r.slug)}
-                          onFocus={() => prefetchRoadmap(r.slug)}
-                          className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
-                        >
-                          <span
-                            aria-hidden
-                            className={`-mx-5 -mt-5 mb-4 h-2 ${palette.bg}`}
-                          />
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
-                            >
-                              <Icon
-                                className={`h-[19px] w-[19px] ${palette.text}`}
-                              />
-                            </span>
-                            <h2 className="text-[15px] font-bold leading-tight text-slate-900">
-                              {area.nome}
-                            </h2>
-                          </div>
-
-                          <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
-                            {area.descricaoCurta}
-                          </p>
-
-                          {statusBySlug[r.slug] ? (
-                            <CertBadge status={statusBySlug[r.slug]} />
-                          ) : null}
-
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                              {r.sectionCount} etapas
-                            </span>
-                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                              {stepCount} passos
-                            </span>
-                            {hasProject && (
-                              <span className="rounded-full border-[1.5px] border-slate-900 bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-800">
-                                Projeto prático
-                              </span>
-                            )}
-                            {isMultiStack && (
-                              <span className="rounded-full border-[1.5px] border-slate-900 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-800">
-                                Multi-stack
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
-                            <span className="text-[11px] text-slate-400">
-                              iniciante → avançado
-                            </span>
-                            <ArrowRight className="h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-1" />
-                          </div>
-                        </Link>
-                      </motion.div>
-                    );
-                  })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
     </Layout>

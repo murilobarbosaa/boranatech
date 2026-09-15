@@ -129,15 +129,71 @@ describe("CupomDoCodigo", () => {
     expect(screen.queryByTestId("creator-codigo-notas-ANA30")).toBeNull();
   });
 
-  it("o corpo tem os dois recortes laterais, e o cupom nao corta o que transborda", () => {
+  it("o cupom fica na superficie secondary, sem a camada ambar do ticket e sem classe ambar", () => {
+    render(
+      <CupomDoCodigo
+        codigo={codigo({ status: "paused", notes: "contrato assinado" })}
+        visao="admin"
+      />,
+    );
+    const cupom = screen.getByTestId("creator-codigo-ANA30");
+    expect(cupom.className.split(" ")).toContain("bg-secondary");
+    expect(cupom.className).toContain("border-[var(--bnt-ink)]");
+    expect(cupom.className).not.toContain("bg-[var(--brand-yellow)]");
+    expect(screen.queryByTestId("creator-cupom-fundo-ANA30")).toBeNull();
+    for (const el of [cupom, ...Array.from(cupom.querySelectorAll("*"))]) {
+      expect(el.getAttribute("style") ?? "").not.toContain("--bnt-ticket-pro");
+      expect(el.getAttribute("class") ?? "").not.toContain("amber");
+    }
+  });
+
+  it("sem recortes e sem listras: nenhum before:, after: nem repeating-linear-gradient", () => {
+    render(
+      <CupomDoCodigo
+        codigo={codigo({ status: "paused", notes: "contrato assinado" })}
+        visao="admin"
+      />,
+    );
+    const cupom = screen.getByTestId("creator-codigo-ANA30");
+    for (const el of [cupom, ...Array.from(cupom.querySelectorAll("*"))]) {
+      const classes = el.getAttribute("class") ?? "";
+      const estilo = el.getAttribute("style") ?? "";
+      expect(classes).not.toMatch(/(^|\s)(before|after):/);
+      expect(classes).not.toContain("repeating-linear-gradient");
+      expect(estilo).not.toContain("repeating-linear-gradient");
+    }
+    expect(screen.queryByTestId("creator-cupom-corpo-ANA30")).toBeNull();
+  });
+
+  it("os dois chips tem a forma neutra, e o pausado a rose", () => {
+    render(
+      <CupomDoCodigo codigo={codigo({ status: "paused" })} visao="creator" />,
+    );
+    const neutro =
+      "rounded-full border-2 border-slate-900 bg-white px-2.5 py-0.5 text-xs font-black text-slate-900";
+    expect(screen.getByText("10% de desconto para quem usar").className).toBe(
+      neutro,
+    );
+    expect(screen.getByText("Comissão de 30%").className).toBe(neutro);
+    const pausado = screen.getByTestId("creator-codigo-pausado-ANA30");
+    expect(pausado.textContent).toBe("Pausado");
+    expect(pausado.className).toContain("border-rose-700");
+  });
+
+  it("o codigo e display, nao mono, e os numeros vem depois do divisor tracejado", () => {
     render(<CupomDoCodigo codigo={codigo()} visao="creator" />);
-    const corpo = screen.getByTestId("creator-cupom-corpo-ANA30").className;
-    expect(corpo).toContain("before:-left-4");
-    expect(corpo).toContain("after:-right-4");
-    expect(corpo).toContain("before:bg-[var(--brand-cream)]");
-    expect(corpo).toContain("after:bg-[var(--brand-cream)]");
-    const cupom = screen.getByTestId("creator-codigo-ANA30").className;
-    expect(cupom).toContain("bg-[var(--brand-yellow)]");
-    expect(cupom).not.toContain("overflow-hidden");
+    const cupom = screen.getByTestId("creator-codigo-ANA30");
+    const code = within(cupom).getByText("ANA30");
+    expect(code.className).toContain("font-display");
+    expect(code.className).not.toContain("font-mono");
+    // Codigos de producao chegam a 18 caracteres, e o overflow-hidden do
+    // poster cortaria o que nao quebra.
+    expect(code.className.split(" ")).toContain("break-all");
+    const divisor = screen.getByTestId(
+      "creator-cupom-numeros-ANA30",
+    ).previousElementSibling;
+    expect(divisor?.className).toBe(
+      "my-6 border-t-2 border-dashed border-violet-200",
+    );
   });
 });

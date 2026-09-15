@@ -8,9 +8,21 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ fetch: vi.fn() }));
-vi.mock("@/lib/adminApi", () => ({ adminFetch: api.fetch }));
+vi.mock("@/lib/adminApi", () => ({
+  adminFetch: api.fetch,
+  AdminApiError: class AdminApiError extends Error {
+    constructor(
+      message: string,
+      public status: number,
+      public code: string | null,
+    ) {
+      super(message);
+    }
+  },
+}));
 
 import type { AdminFinanceContract } from "@shared/adminFinance";
+import { AdminApiError } from "@/lib/adminApi";
 
 import { FinanceDashboard } from "./FinanceDashboard";
 import { financeFixtureForRequest } from "./financeFixtureForRequest.testUtils";
@@ -160,6 +172,7 @@ function fixture(): AdminFinanceContract {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/admin?section=financeiro");
   clearHonestFinanceClientCacheForTests();
   api.fetch.mockImplementation((path: string) =>
     path.startsWith("/finance/summary")
@@ -176,6 +189,432 @@ afterEach(() => {
 });
 
 describe("FinanceDashboard", () => {
+  it("mantém o Resumo útil se o backend antigo ainda não servir meios de pagamento", async () => {
+    api.fetch.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary"))
+        return Promise.resolve({
+          data: financeFixtureForRequest(fixture(), path),
+        });
+      if (path.startsWith("/finance/payment-methods"))
+        return Promise.reject(new Error("Erro 404"));
+      return Promise.resolve({
+        data: { rows: [], total: 0, page: 1, pageSize: 25 },
+      });
+    });
+    render(<FinanceDashboard />);
+    expect(
+      await screen.findByText("Meios indisponíveis: Erro 404"),
+    ).toBeTruthy();
+    expect(screen.getByText("Movimentos em BRL")).toBeTruthy();
+    expect(screen.queryByText("0 pagamentos")).toBeNull();
+  });
+  it("mantém só a última leitura válida do mesmo período como desatualizada em falha transitória", async () => {
+    let attempts = 0;
+    api.fetch.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary"))
+        return Promise.resolve({
+          data: financeFixtureForRequest(fixture(), path),
+        });
+      if (path.startsWith("/finance/payment-methods")) {
+        attempts++;
+        return attempts === 1
+          ? Promise.resolve({
+              data: {
+                status: "partial",
+                pix: [
+                  {
+                    currency: "BRL",
+                    payments: 1,
+                    people: 1,
+                    grossCents: 10_000,
+                    withoutPerson: 0,
+                  },
+                ],
+                paymentsWithoutMethod: 0,
+                methodConflicts: 0,
+                excludedEconomicOrCurrency: 0,
+                coverage: {
+                  localRowsRead: 1,
+                  observedPayments: 1,
+                  duplicateRowsIgnored: 0,
+                  historicalCompleteness: "not_verifiable",
+                  transactionalSnapshot: false,
+                },
+              },
+            })
+          : Promise.reject(new Error("Falha sintética"));
+      }
+      return Promise.resolve({
+        data: { rows: [], total: 0, page: 1, pageSize: 25 },
+      });
+    });
+    const view = render(<FinanceDashboard refreshKey={0} />);
+    expect(await screen.findByText("1 pagamentos")).toBeTruthy();
+    view.rerender(<FinanceDashboard refreshKey={1} />);
+    expect(
+      await screen.findByText(
+        /Última leitura válida deste período, desatualizada/,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("1 pagamentos")).toBeTruthy();
+  });
+  it("limite excedido remove a leitura anterior e mostra indisponibilidade", async () => {
+    let attempts = 0;
+    api.fetch.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary"))
+        return Promise.resolve({
+          data: financeFixtureForRequest(fixture(), path),
+        });
+      if (path.startsWith("/finance/payment-methods")) {
+        attempts++;
+        return attempts === 1
+          ? Promise.resolve({
+              data: {
+                status: "partial",
+                pix: [
+                  {
+                    currency: "BRL",
+                    payments: 1,
+                    people: 1,
+                    grossCents: 10_000,
+                    withoutPerson: 0,
+                  },
+                ],
+                paymentsWithoutMethod: 0,
+                methodConflicts: 0,
+                excludedEconomicOrCurrency: 0,
+                coverage: {
+                  localRowsRead: 1,
+                  observedPayments: 1,
+                  duplicateRowsIgnored: 0,
+                  historicalCompleteness: "not_verifiable",
+                  transactionalSnapshot: false,
+                },
+              },
+            })
+          : Promise.reject(
+              new AdminApiError(
+                "Limite sintético",
+                503,
+                "finance_method_scan_limit",
+              ),
+            );
+      }
+      return Promise.resolve({
+        data: { rows: [], total: 0, page: 1, pageSize: 25 },
+      });
+    });
+    const view = render(<FinanceDashboard refreshKey={0} />);
+    expect(await screen.findByText("1 pagamentos")).toBeTruthy();
+    view.rerender(<FinanceDashboard refreshKey={1} />);
+    expect(
+      await screen.findByText("Meios indisponíveis: Limite sintético"),
+    ).toBeTruthy();
+    expect(screen.queryByText("1 pagamentos")).toBeNull();
+  });
+  it("abre o extrato Pix com período e filtros na URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeMethod=card",
+    );
+    api.fetch.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary"))
+        return Promise.resolve({
+          data: financeFixtureForRequest(fixture(), path),
+        });
+      if (path.startsWith("/finance/payment-methods"))
+        return Promise.resolve({
+          data: {
+            status: "partial",
+            pix: [
+              {
+                currency: "BRL",
+                payments: 3,
+                people: 1,
+                grossCents: 30_000,
+                withoutPerson: 1,
+              },
+            ],
+            paymentsWithoutMethod: 2,
+            methodConflicts: 1,
+            excludedEconomicOrCurrency: 0,
+            coverage: {
+              localRowsRead: 5,
+              observedPayments: 4,
+              duplicateRowsIgnored: 1,
+              historicalCompleteness: "not_verifiable",
+              transactionalSnapshot: false,
+            },
+          },
+        });
+      return Promise.resolve({
+        data: { rows: [], total: 0, page: 1, pageSize: 25 },
+      });
+    });
+    render(<FinanceDashboard />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Ver movimentos Pix" }),
+    );
+    expect(window.location.search).toContain("financeView=transacoes");
+    expect(window.location.search).toContain("paymentMethod=pix");
+    expect(window.location.search).not.toContain("financeMethod=card");
+    expect(window.location.search).toContain("financeType=charge");
+    expect(window.location.search).toContain("financeCurrency=BRL");
+  });
+
+  it("rotula payout como transferência sem tratá-lo como perda de pagamentos", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes",
+    );
+    api.fetch.mockImplementation((path: string) =>
+      path.startsWith("/finance/summary")
+        ? Promise.resolve({ data: financeFixtureForRequest(fixture(), path) })
+        : Promise.resolve({
+            data: {
+              rows: [
+                {
+                  id: "po-1",
+                  provider: "stripe",
+                  type: "payout",
+                  gross_cents: -9_500,
+                  fee_cents: 0,
+                  net_cents: -9_500,
+                  currency: "BRL",
+                  occurred_at: "2026-09-01T12:00:00Z",
+                  plan_code: null,
+                },
+              ],
+              total: 1,
+              page: 1,
+              pageSize: 25,
+            },
+          }),
+    );
+    render(<FinanceDashboard view="transactions" />);
+    await waitFor(() =>
+      expect(api.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/finance\/transactions\?/),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Repasse para conta bancária").length,
+      ).toBeGreaterThan(1),
+    );
+    expect(
+      screen.getByText(/Transferência entre contas próprias/),
+    ).toBeTruthy();
+    expect(screen.getByText(/Saída do saldo Stripe/)).toBeTruthy();
+  });
+
+  it("restaura Pix e a página da URL após F5 sintético", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes&financeMethod=pix&financePage=2",
+    );
+    render(<FinanceDashboard view="transactions" />);
+    await waitFor(() =>
+      expect(api.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/finance\/transactions\?.*page=2.*method=pix/),
+      ),
+    );
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: "Filtrar extrato por meio",
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("pix");
+  });
+  it("recusa extrato sem confirmação de filtro durante deployment com backend antigo", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes&paymentMethod=pix",
+    );
+    render(<FinanceDashboard view="transactions" />);
+    expect(
+      await screen.findByText("Contrato do extrato financeiro incompatível."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Nenhum movimento local registrado neste filtro."),
+    ).toBeNull();
+  });
+  it("recusa payload truncado mesmo quando o backend declara ter aplicado Pix", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes&paymentMethod=pix",
+    );
+    api.fetch.mockImplementation((path: string) =>
+      path.startsWith("/finance/summary")
+        ? Promise.resolve({ data: financeFixtureForRequest(fixture(), path) })
+        : Promise.resolve({
+            data: {
+              rows: [],
+              total: 26,
+              page: 1,
+              pageSize: 25,
+              filterContractVersion: 1,
+              appliedMethod: "pix",
+            },
+          }),
+    );
+    render(<FinanceDashboard view="transactions" />);
+    expect(
+      await screen.findByText("Contrato do extrato financeiro incompatível."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Nenhum movimento local registrado neste filtro."),
+    ).toBeNull();
+  });
+  it("restaura o filtro de meio ao voltar e avançar no histórico", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes",
+    );
+    render(<FinanceDashboard view="transactions" />);
+    const method = (await screen.findByRole("combobox", {
+      name: "Filtrar extrato por meio",
+    })) as HTMLSelectElement;
+    fireEvent.change(method, { target: { value: "pix" } });
+    await waitFor(() => expect(method.value).toBe("pix"));
+    window.history.back();
+    await waitFor(() => expect(method.value).toBe(""));
+    window.history.forward();
+    await waitFor(() => expect(method.value).toBe("pix"));
+  });
+
+  it("ignora uma resposta Pix obsoleta após troca rápida de período", async () => {
+    const pending: Array<(value: unknown) => void> = [];
+    api.fetch.mockImplementation((path: string) => {
+      if (path.startsWith("/finance/summary"))
+        return Promise.resolve({
+          data: financeFixtureForRequest(fixture(), path),
+        });
+      if (path.startsWith("/finance/payment-methods"))
+        return new Promise((resolve) => pending.push(resolve));
+      return Promise.resolve({
+        data: { rows: [], total: 0, page: 1, pageSize: 25 },
+      });
+    });
+    const first = {
+      preset: "custom" as const,
+      customFrom: "2026-09-01",
+      customTo: "2026-09-01",
+    };
+    const second = {
+      preset: "custom" as const,
+      customFrom: "2026-09-02",
+      customTo: "2026-09-02",
+    };
+    const view = render(<FinanceDashboard periodFilter={first} />);
+    await waitFor(() => expect(pending).toHaveLength(1));
+    view.rerender(<FinanceDashboard periodFilter={second} />);
+    await waitFor(() => expect(pending).toHaveLength(2));
+    const response = (payments: number) => ({
+      data: {
+        status: "partial",
+        pix: [
+          {
+            currency: "BRL",
+            payments,
+            people: 1,
+            grossCents: payments * 10_000,
+            withoutPerson: 0,
+          },
+        ],
+        paymentsWithoutMethod: 0,
+        methodConflicts: 0,
+        excludedEconomicOrCurrency: 0,
+        coverage: {
+          localRowsRead: payments,
+          observedPayments: payments,
+          duplicateRowsIgnored: 0,
+          historicalCompleteness: "not_verifiable",
+          transactionalSnapshot: false,
+        },
+      },
+    });
+    pending[1](response(2));
+    expect(await screen.findByText("2 pagamentos")).toBeTruthy();
+    pending[0](response(9));
+    await waitFor(() => expect(screen.queryByText("9 pagamentos")).toBeNull());
+  });
+  it("não mostra movimentos antigos durante troca rápida do filtro de meio", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?section=financeiro&financeView=transacoes",
+    );
+    const pending: Array<(value: unknown) => void> = [];
+    api.fetch.mockImplementation((path: string) =>
+      path.startsWith("/finance/summary")
+        ? Promise.resolve({ data: financeFixtureForRequest(fixture(), path) })
+        : new Promise((resolve) => pending.push(resolve)),
+    );
+    render(<FinanceDashboard view="transactions" />);
+    await waitFor(() => expect(pending).toHaveLength(1));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Filtrar extrato por meio" }),
+      { target: { value: "pix" } },
+    );
+    await waitFor(() => expect(pending).toHaveLength(2));
+    pending[1]({
+      data: {
+        rows: [
+          {
+            id: "pix-1",
+            provider: "asaas",
+            type: "charge",
+            gross_cents: 10_000,
+            fee_cents: 0,
+            net_cents: 10_000,
+            currency: "BRL",
+            occurred_at: "2026-09-01T12:00:00Z",
+            plan_code: "pro",
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+        filterContractVersion: 1,
+        appliedMethod: "pix",
+      },
+    });
+    expect(await screen.findByText("Entrada")).toBeTruthy();
+    pending[0]({
+      data: {
+        rows: [
+          {
+            id: "po-1",
+            provider: "stripe",
+            type: "payout",
+            gross_cents: -9_500,
+            fee_cents: 0,
+            net_cents: -9_500,
+            currency: "BRL",
+            occurred_at: "2026-09-01T12:00:00Z",
+            plan_code: null,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      },
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Transferência entre contas próprias/),
+      ).toBeNull(),
+    );
+    expect(window.location.search).toContain("paymentMethod=pix");
+  });
   it("mostra caixa por moeda e separa automático, manual e trial", async () => {
     render(<FinanceDashboard />);
     expect(

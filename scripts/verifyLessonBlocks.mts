@@ -11,8 +11,15 @@
 //   portao do gerador. Em bash, confere a convencao de trecho decidida no Lote
 //   07b: o bloco abre com um comando prefixado por "$ ", e saida vem sem
 //   prefixo; linha que parece comando sem o prefixo e acusada.
+// - html e css (Lote 08): sem execucao tambem, mas com conferencia
+//   estrutural. Em html, a marcacao precisa valer por si, e nao porque o
+//   parser conserta; em css, chaves balanceadas.
 // - cerca fora de codeLanguages (json, text, sem identificador): so os
 //   limites, "fora-de-codeLanguages".
+//
+// Alem dos blocos, o verificador confere a PROSA de cada passo: o renderer
+// das licoes usa react-markdown sem rehype-raw, entao HTML cru fora de crase
+// e DESCARTADO na tela, sem aviso (ver prosaHtmlCru).
 // Exit 1 se algum bloco falhar ou divergir da convencao.
 //
 // Nasceu no Lote 07b: ate aqui nenhum instrumento executava os blocos das
@@ -23,6 +30,10 @@
 import { pathToFileURL } from "node:url";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { avisoSemRunner, capabilityOf } from "./languageCapabilities.mts";
+// Reexportadas do modulo proprio (ver htmlStructure.mts): quem ja importava
+// daqui continua importando daqui.
+export { estruturaCss, estruturaHtml } from "./htmlStructure.mts";
+import { estruturaCss, estruturaHtml } from "./htmlStructure.mts";
 import { type Executor, makeExecutor } from "./verifyQuizPoolByExecution.mts";
 
 export const BLOCO_MAX_LINHAS = 10;
@@ -129,6 +140,40 @@ function convencaoBash(corpo: string): string[] {
   return out;
 }
 
+// HTML cru na PROSA. O renderer das licoes usa react-markdown sem rehype-raw:
+// uma tag fora de crase some da tela, sem aviso nenhum. Fora das cercas e do
+// codigo inline, "<" seguido de letra, barra ou "!" e problema. "a < b" nao e.
+export function prosaHtmlCru(texto: string): string[] {
+  const semCodigo = texto
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ");
+  return Array.from(semCodigo.matchAll(/<[a-zA-Z/!][^\n]{0,40}/g)).map(
+    (m) =>
+      `prosa com HTML cru fora de crase (o renderer descarta): ${m[0].trim()}`,
+  );
+}
+
+export interface LinhaProsa {
+  passo: string;
+  problemas: string[];
+}
+
+export function prosaDaTrilha(roadmap: RoadmapV2): LinhaProsa[] {
+  const out: LinhaProsa[] = [];
+  const visitar = (node: RoadmapNode) => {
+    const problemas = prosaHtmlCru(node.content ?? "");
+    for (const [lang, variante] of Object.entries(node.byLanguage ?? {})) {
+      problemas.push(
+        ...prosaHtmlCru(variante.content ?? "").map((p) => `[${lang}] ${p}`),
+      );
+    }
+    if (problemas.length > 0) out.push({ passo: node.id, problemas });
+    node.children?.forEach(visitar);
+  };
+  roadmap.sections.forEach((section) => section.children.forEach(visitar));
+  return out;
+}
+
 // Conferencia de UM bloco. Pura em relacao ao executor recebido (o teste
 // passa um stub); so e chamado em linguagem de codeLanguages com runner.
 export function conferirBloco(
@@ -141,6 +186,8 @@ export function conferirBloco(
     return { veredito: "fora-de-codeLanguages", problemas };
   }
   if (bloco.linguagem === "bash") problemas.push(...convencaoBash(bloco.corpo));
+  if (bloco.linguagem === "html") problemas.push(...estruturaHtml(bloco.corpo));
+  if (bloco.linguagem === "css") problemas.push(...estruturaCss(bloco.corpo));
   const runner = capabilityOf(bloco.linguagem).runner;
   if (!runner) return { veredito: "nao-executado", problemas };
   const r = executar(bloco.corpo);
@@ -225,11 +272,18 @@ async function main() {
     };
   });
   for (const linha of relatorioBlocos(linhas)) console.log(linha);
-  const reprova = linhas.some(
-    (l) =>
-      l.veredito === "falhou" ||
-      l.problemas.some((p) => !p.startsWith("execucao:")),
-  );
+  const prosa = prosaDaTrilha(roadmap);
+  for (const linha of prosa) {
+    console.log(`${linha.passo} | prosa | ${linha.problemas.join("; ")}`);
+  }
+  console.log(`prosa com HTML cru: ${prosa.length} passo(s)`);
+  const reprova =
+    prosa.length > 0 ||
+    linhas.some(
+      (l) =>
+        l.veredito === "falhou" ||
+        l.problemas.some((p) => !p.startsWith("execucao:")),
+    );
   if (reprova) process.exit(1);
 }
 

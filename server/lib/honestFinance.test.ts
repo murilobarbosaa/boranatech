@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { MAX_FINANCE_HISTORY_DAYS } from "../../shared/adminFinance";
+import { inicioDoDiaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import { classifyRegisteredPayments } from "./registeredPayments";
 
 import {
@@ -50,6 +52,189 @@ function access(overrides: Record<string, unknown> = {}) {
 }
 
 describe("caixa financeiro honesto", () => {
+  it("não deduz um repasse bancário uma segunda vez do líquido de pagamentos", () => {
+    const charge = transaction();
+    const payout = transaction({
+      id: "payout-1",
+      provider_transaction_id: "po_1",
+      stripe_charge_id: null,
+      type: "payout",
+      gross_cents: -9_500,
+      fee_cents: 0,
+      net_cents: -9_500,
+      occurred_at: "2026-09-02T12:00:00-03:00",
+      user_id: null,
+    });
+    const before = analyzeRegisteredCash({ period, rows: [charge] });
+    const after = analyzeRegisteredCash({ period, rows: [charge, payout] });
+    expect(after.currencies).toEqual(before.currencies);
+    expect(after.registeredPayments).toEqual(before.registeredPayments);
+    expect(after.exclusionsByReason.unsupportedType).toBe(1);
+  });
+  it("preserva efeitos de reembolso, disputa e ajuste e ignora tipo desconhecido", () => {
+    const rows = [
+      transaction(),
+      transaction({
+        id: "refund",
+        type: "refund",
+        provider_transaction_id: "re-1",
+        stripe_charge_id: null,
+        gross_cents: -1_000,
+        fee_cents: 0,
+        net_cents: -1_000,
+      }),
+      transaction({
+        id: "dispute",
+        type: "dispute",
+        provider_transaction_id: "dp-1",
+        stripe_charge_id: null,
+        gross_cents: -2_000,
+        fee_cents: 0,
+        net_cents: -2_000,
+      }),
+      transaction({
+        id: "adjustment",
+        type: "adjustment",
+        provider_transaction_id: "adj-1",
+        stripe_charge_id: null,
+        gross_cents: 100,
+        fee_cents: 0,
+        net_cents: 100,
+      }),
+      transaction({
+        id: "failure",
+        type: "payout_failure",
+        provider_transaction_id: "pf-1",
+        stripe_charge_id: null,
+        gross_cents: 9_500,
+        fee_cents: 0,
+        net_cents: 9_500,
+      }),
+    ];
+    const cash = analyzeRegisteredCash({ period, rows });
+    expect(cash.currencies[0].positiveEntries.valueCents).toBe(10_000);
+    expect(cash.currencies[0].refunds.valueCents).toBe(1_000);
+    expect(cash.currencies[0].fees.valueCents).toBe(500);
+    expect(cash.currencies[0].calculableNet.valueCents).toBe(6_600);
+    expect(cash.exclusionsByReason.unsupportedType).toBe(1);
+  });
+  it.each([
+    MAX_FINANCE_HISTORY_DAYS - 1,
+    MAX_FINANCE_HISTORY_DAYS,
+    MAX_FINANCE_HISTORY_DAYS + 1,
+  ])("mantém o agregado de movimentos antigos com %i dias", (length) => {
+    const endDayInclusive = "2026-09-13";
+    const startDay = somarDiaCivil(endDayInclusive, -(length - 1));
+    const allPeriod = {
+      ...period,
+      preset: "all" as const,
+      startDay,
+      endDayInclusive,
+      from: inicioDoDiaBrasilia(startDay),
+      toExclusive: inicioDoDiaBrasilia("2026-09-14"),
+    };
+    const cash = analyzeRegisteredCash({
+      period: allPeriod,
+      rows: [
+        transaction({ occurred_at: `${startDay}T12:00:00-03:00` }),
+        transaction({
+          id: "row-2",
+          provider_transaction_id: "ch_2",
+          stripe_charge_id: "stripe-charge-2",
+          currency: "USD",
+          occurred_at: "2026-09-13T12:00:00-03:00",
+          gross_cents: 2_000,
+          fee_cents: 100,
+          net_cents: 1_900,
+        }),
+      ],
+    });
+    expect(cash.currencies.map((bucket) => bucket.currency)).toEqual([
+      "BRL",
+      "USD",
+    ]);
+    expect(cash.currencies[0].positiveEntries.valueCents).toBe(10_000);
+    expect(cash.currencies[1].positiveEntries.valueCents).toBe(2_000);
+    expect(cash.seriesDetail?.status).toBe(
+      length > MAX_FINANCE_HISTORY_DAYS ? "unavailable" : "available",
+    );
+    expect(cash.currencies[0].series).toHaveLength(
+      length > MAX_FINANCE_HISTORY_DAYS ? 0 : length,
+    );
+    if (length > MAX_FINANCE_HISTORY_DAYS) {
+      expect(cash.seriesDetail?.reason).toBe("daily_limit_exceeded");
+    }
+  });
+
+  it("deduplica e exclui conflitos atravessando páginas no histórico longo", () => {
+    const startDay = "2010-01-01";
+    const allPeriod = {
+      ...period,
+      preset: "all" as const,
+      startDay,
+      endDayInclusive: "2026-09-13",
+      from: inicioDoDiaBrasilia(startDay),
+      toExclusive: inicioDoDiaBrasilia("2026-09-14"),
+    };
+    const rows = Array.from({ length: 1_001 }, (_, index) =>
+      transaction({
+        id: `row-${index}`,
+        provider_transaction_id: `ch-${index}`,
+        stripe_charge_id: `stripe-charge-${index}`,
+        occurred_at: "2010-01-01T12:00:00-03:00",
+      }),
+    );
+    // Identidades econômicas cruzam a borda típica de páginas de 1.000 linhas.
+    rows[999] = transaction({
+      id: "row-999",
+      provider_transaction_id: "dup",
+      stripe_charge_id: "duplicate-across-page",
+      occurred_at: "2010-01-01T12:00:00-03:00",
+    });
+    rows[1_000] = transaction({
+      id: "row-1000",
+      provider_transaction_id: "dup",
+      stripe_charge_id: "duplicate-across-page",
+      occurred_at: "2010-01-01T12:00:00-03:00",
+    });
+    rows[0] = transaction({
+      id: "row-0",
+      stripe_charge_id: "conflict-across-page",
+      occurred_at: "2010-01-01T12:00:00-03:00",
+    });
+    rows[500] = transaction({
+      id: "row-500",
+      stripe_charge_id: "conflict-across-page",
+      occurred_at: "2010-01-01T12:00:00-03:00",
+      gross_cents: 12_000,
+    });
+    const cash = analyzeRegisteredCash({ period: allPeriod, rows });
+    expect(cash.seriesDetail?.reason).toBe("daily_limit_exceeded");
+    expect(cash.coverage.duplicateRowsIgnored).toBe(2);
+    expect(cash.conflictingIdentities.value).toBe(1);
+    expect(cash.exclusionsByReason.economicConflict).toBe(2);
+    expect(cash.coverage.canonicalTransactions).toBe(998);
+    expect(cash.currencies[0].positiveEntries.valueCents).toBe(9_980_000);
+  });
+
+  it("falha restrita à série não apaga agregado; linha inválida é excluída", () => {
+    const cash = analyzeRegisteredCash({
+      period,
+      rows: [transaction()],
+      seriesDays: () => {
+        throw new Error("série indisponível");
+      },
+    });
+    expect(cash.seriesDetail?.reason).toBe("series_build_failed");
+    expect(cash.currencies[0].series).toEqual([]);
+    expect(cash.currencies[0].calculableNet.valueCents).toBe(9_500);
+    const invalid = analyzeRegisteredCash({
+      period,
+      rows: [transaction({ gross_cents: null })],
+    });
+    expect(invalid.currencies).toEqual([]);
+    expect(invalid.exclusionsByReason.invalidAmount).toBe(1);
+  });
   it("separa moedas, sem produzir um total misto", () => {
     const cash = analyzeRegisteredCash({
       period,
@@ -295,7 +480,7 @@ describe("períodos gerenciais", () => {
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it("Tudo recusa dia de referência obsoleto e limite excedido sem cortar histórico", async () => {
+  it("Tudo recusa dia de referência obsoleto, mas não corta histórico longo", async () => {
     await expect(
       resolveHonestFinanceAllPeriod(
         { preset: "all", asOfDay: "2026-09-13" },
@@ -303,13 +488,12 @@ describe("períodos gerenciais", () => {
         () => Promise.resolve("2026-01-01T12:00:00Z"),
       ),
     ).rejects.toMatchObject({ statusCode: 400 });
-    await expect(
-      resolveHonestFinanceAllPeriod(
-        { preset: "all", asOfDay: "2026-09-14" },
-        new Date("2026-09-14T12:00:00Z"),
-        () => Promise.resolve("2010-01-01T12:00:00Z"),
-      ),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    const all = await resolveHonestFinanceAllPeriod(
+      { preset: "all", asOfDay: "2026-09-14" },
+      new Date("2026-09-14T12:00:00Z"),
+      () => Promise.resolve("2010-01-01T12:00:00Z"),
+    );
+    expect(all.startDay).toBe("2010-01-01");
   });
 
   it("usa apenas dias completos de America/Sao_Paulo", () => {

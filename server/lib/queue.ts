@@ -6,6 +6,7 @@ import { Queue, Worker, type Job } from "bullmq";
 import type { Gender } from "../../shared/gender";
 import { env } from "./env";
 import { queueConnection } from "./redis";
+import { supabaseAdmin } from "./supabaseAdmin";
 import { withRedisOpTimeout } from "./redisOpTimeout";
 import {
   sendAccessEndedEmail,
@@ -48,6 +49,12 @@ export type EmailJobData =
     } & Recipient)
   | ({
       type: "pix_pending_reminder";
+      /**
+       * Linha de `subscriptions` da cobranca. OBRIGATORIO, e nao opcional, para
+       * o `tsc` cobrar de quem enfileira: o envio reconfere a linha antes de
+       * montar o e-mail (ver `sendDirect`), e sem o id nao ha o que reconferir.
+       */
+      subscriptionId: string;
       variant: "aberto" | "vence_hoje";
       planName: string;
       /** Valor da COBRANCA, nao do plano. */
@@ -141,6 +148,65 @@ export const emailQueue = queueConnection
     })
   : null;
 
+/**
+ * A cobranca deste lembrete ainda esta de pe?
+ *
+ * A CORRIDA QUE ISTO FECHA: o cron le o Asaas, decide, enfileira e marca o
+ * estagio; o envio acontece depois, e o BullMQ ainda reentrega um job falho
+ * horas mais tarde. Nesse intervalo a pessoa pode ter cancelado a cobranca (pelo
+ * checkout ou pelo Perfil) e o cron de expiracao pode ter encerrado a linha.
+ * "Seu Pix vence hoje" sobre uma cobranca morta e um e-mail que so gera duvida.
+ *
+ * LE A LINHA, E NAO O ASAAS. O cron confirmou no Asaas minutos antes; o que muda
+ * daquele instante para este e um cancelamento LOCAL, que a nossa tabela
+ * responde. Uma chamada externa por mensagem acrescentaria uma causa de falha no
+ * caminho de envio para responder o que ja sabemos aqui dentro.
+ *
+ * ERRO DE LEITURA ENVIA ASSIM MESMO. Os dois erros possiveis nao custam o
+ * mesmo: um lembrete a mais para quem cancelou e um e-mail ignorado, enquanto um
+ * lembrete a menos para quem ainda podia pagar e a ultima chance perdida de uma
+ * cobranca que vence em dois dias, e a venda junto. Este tipo esta classificado
+ * como `critical` em `EMAIL_CRITICALITY` justamente porque nao sair e o pior
+ * desfecho; deixar um timeout do banco suprimi-lo contrariaria essa decisao. O
+ * guard e um filtro de cortesia, nao uma trava de dinheiro.
+ *
+ * JOB ANTERIOR AO CAMPO tambem envia: `subscriptionId` passou a existir depois
+ * que jobs ja estavam na fila (e um job falho fica retido 30 dias). Sem id nao
+ * ha o que reconferir, e o comportamento de antes e o certo para eles.
+ */
+async function lembretePixAindaValido(
+  subscriptionId: string,
+): Promise<boolean> {
+  if (typeof subscriptionId !== "string" || !subscriptionId) {
+    console.log(
+      "[queue] lembrete de Pix sem subscriptionId (job anterior ao campo); enviando como antes.",
+    );
+    return true;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("status")
+    .eq("id", subscriptionId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(
+      `[queue] leitura da linha ${subscriptionId} falhou antes do lembrete de Pix; enviando assim mesmo: ${error.message}`,
+    );
+    return true;
+  }
+
+  const status = (data as { status?: string | null } | null)?.status ?? null;
+  if (status === "pending") return true;
+
+  // `log`, e nao `warn` nem `error`: e uma corrida normal que o guard resolveu.
+  console.log(
+    `[queue] lembrete de Pix NAO enviado: linha ${subscriptionId} esta ${status ?? "ausente"}.`,
+  );
+  return false;
+}
+
 async function sendDirect(data: EmailJobData) {
   switch (data.type) {
     case "welcome":
@@ -181,6 +247,10 @@ async function sendDirect(data: EmailJobData) {
       });
       break;
     case "pix_pending_reminder":
+      // RECONFERE ANTES DE MONTAR O E-MAIL. Ver `lembretePixAindaValido`.
+      // Sai sem enviar e SEM LANCAR: um throw faria o BullMQ repetir tres vezes
+      // o mesmo nao-envio e terminar com um job falho que nao significa falha.
+      if (!(await lembretePixAindaValido(data.subscriptionId))) return;
       await sendPixPendingReminderEmail(data.to, data.name, {
         variant: data.variant,
         planName: data.planName,

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import {
   BadgeCheck,
+  BarChart3,
   CalendarDays,
   DollarSign,
   Hourglass,
@@ -8,6 +9,7 @@ import {
   MousePointerClick,
   Percent,
   ShoppingBag,
+  Ticket,
 } from "lucide-react";
 import {
   Area,
@@ -24,9 +26,7 @@ import {
   YAxis,
 } from "recharts";
 
-import UserAvatar from "@/components/UserAvatar";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
-import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { formatarCentavos } from "@/lib/formatarCentavos";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
 import {
@@ -34,9 +34,9 @@ import {
   rotuloDeDia,
 } from "@/components/admin/overview/chartMath";
 import { relativeTime } from "@/components/admin/tasks/relativeTime";
-import { CreatorMetricTile } from "@/components/creator/CreatorMetricTile";
+import { CreatorIdentidade } from "@/components/creator/CreatorIdentidade";
+import { CreatorMetricCard } from "@/components/creator/CreatorMetricCard";
 import { CupomDoCodigo } from "@/components/creator/CupomDoCodigo";
-import type { TagPalette } from "@/lib/tagPalette";
 import {
   diaBrasilia,
   formatarDiaCivil,
@@ -65,6 +65,11 @@ import type {
 // SERIE CURTA: com 1 ou 2 dias o grafico vira barras. Uma linha com um ponto so
 // fica um ponto solto no meio do vazio, e a leitura some; barras dizem o valor
 // de cada dia sem precisar de vizinho.
+//
+// IDENTIDADE: com `identidade="embutida"` (o padrao, que e o do admin) a view
+// desenha o CreatorIdentidade como primeiro bloco. Com `"nenhuma"` ninguem
+// desenha: e a pagina /creator, onde o avatar da propria pessoa ja esta no
+// header do site.
 
 type Visao = "creator" | "admin";
 
@@ -86,15 +91,8 @@ const JANELAS: Array<{ valor: CreatorDashboardJanela; rotulo: string }> = [
 ];
 
 const ICONE = "h-3.5 w-3.5";
-
-// Um par pastel de tagPalette.ts por tile (fundo -200, tinta -900), seis
-// familias diferentes. Strings literais: o Tailwind so emite classe escrita.
-const TOM_CLIQUES: TagPalette = { bg: "bg-sky-200", text: "text-sky-900" };
-const TOM_VENDAS: TagPalette = { bg: "bg-violet-200", text: "text-violet-900" };
-const TOM_CONVERSAO: TagPalette = { bg: "bg-teal-200", text: "text-teal-900" };
-const TOM_RECEITA: TagPalette = { bg: "bg-amber-200", text: "text-amber-900" };
-const TOM_A_RECEBER: TagPalette = { bg: "bg-pink-200", text: "text-pink-900" };
-const TOM_PAGA: TagPalette = { bg: "bg-lime-200", text: "text-lime-900" };
+const ICONE_DO_SELO = "h-4 w-4";
+const ICONE_DO_CARD = "h-6 w-6";
 
 // Opacidade da base das barras: o gradiente vertical sai da cor da serie no
 // topo e desbota ate aqui.
@@ -175,21 +173,35 @@ export function deltaPermitido(
   return Date.parse(medidoDesde) < Date.parse(inicioAnterior);
 }
 
-function TituloDeSecao({
+/** Cabecalho de secao na forma do AdminSection do admin: selo, titulo e frase. */
+function CabecalhoDeSecao({
   id,
-  children,
+  icone,
   selo,
+  titulo,
+  frase,
 }: {
   id: string;
-  children: ReactNode;
-  selo?: ReactNode;
+  icone: ReactNode;
+  selo: string;
+  titulo: string;
+  frase: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <h3 id={id} className="font-display text-xl font-black text-slate-950">
-        {children}
-      </h3>
-      {selo}
+    <div>
+      <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
+        {icone}
+        {selo}
+      </p>
+      <h2
+        id={id}
+        className="font-display mt-3 text-3xl font-black text-slate-950"
+      >
+        {titulo}
+      </h2>
+      <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+        {frase}
+      </p>
     </div>
   );
 }
@@ -216,8 +228,10 @@ function SeletorDeJanela({
             type="button"
             aria-pressed={ativa}
             onClick={() => onChange(opcao.valor)}
-            className={`rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)] ${
-              ativa ? "bg-slate-900 text-white" : "bg-white text-slate-900"
+            className={`rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:py-1.5 ${
+              ativa
+                ? "bg-slate-950 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >
             {opcao.rotulo}
@@ -535,12 +549,12 @@ function Serie({
         {linhasDoPeriodo.map((linha) => (
           <div
             key={linha.chave}
-            className="rounded-2xl border-2 border-slate-200 bg-slate-50 px-3 py-2"
+            className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"
           >
             <dt className="text-[11px] font-black uppercase tracking-wide text-slate-500">
               {linha.rotulo}
             </dt>
-            <dd className="font-display text-xl font-black tabular-nums text-slate-950">
+            <dd className="font-display mt-1 text-xl font-black tabular-nums text-slate-950">
               {linha.valor}
             </dd>
             {anterior ? (
@@ -583,94 +597,22 @@ export function CreatorDashboardView({
   janela,
   onJanelaChange,
   visao,
+  identidade = "embutida",
 }: {
   painel: CreatorDashboard;
   janela: CreatorDashboardJanela;
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
   visao: Visao;
+  identidade?: "embutida" | "nenhuma";
 }) {
   const agoraMs = Date.now();
   const { perfil, creator, totais, codigos } = painel;
-  // TODO(Ana)
-  const nome = perfil.name ?? perfil.handle ?? "Creator";
 
   return (
     <div data-testid="creator-painel" className="space-y-6 md:space-y-8">
-      <div className="relative isolate">
-      <div
-        aria-hidden="true"
-        data-testid="creator-faixa"
-        className="absolute -inset-x-4 top-1/2 -z-10 h-24 -translate-y-1/2 border-y-2 border-slate-950 bg-[var(--brand-yellow)] bg-[repeating-linear-gradient(45deg,var(--brand-yellow-soft-deep)_0_10px,transparent_10px_20px)] sm:-inset-x-6 md:h-28"
-      />
-      <section className="card-brutal relative rounded-3xl bg-white p-6 md:p-8">
-        <span
-          aria-hidden="true"
-          data-testid="creator-etiqueta"
-          className="absolute -right-3 -top-4 rotate-6 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1 font-display text-xs font-black uppercase tracking-widest text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
-        >
-          {/* TODO(Ana) */}
-          Creator
-        </span>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <UserAvatar
-            name={nome}
-            avatarUrl={perfil.avatar_url}
-            mode={perfil.avatar_url ? "photo" : "icon"}
-            size="xl"
-          />
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] font-black uppercase tracking-[0.22em] text-amber-800">
-              {/* TODO(Ana) */}
-              Creator da Bora na Tech
-            </p>
-            <h2 className="mt-2 font-display text-3xl font-black text-slate-950 md:text-4xl">
-              {nome}
-            </h2>
-            {perfil.handle ? (
-              <p className="mt-1 text-sm font-bold text-slate-600">
-                @{perfil.handle}
-              </p>
-            ) : null}
-            {visao === "creator" ? (
-              <p className="mt-2 max-w-xl text-sm font-semibold text-slate-600">
-                {/* TODO(Ana) */}
-                Seu link, seus números e o que você já gerou para a Bora na
-                Tech.
-              </p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span
-                data-testid="creator-kind"
-                className="rounded-full border-2 border-sky-800 bg-sky-50 px-2.5 py-0.5 text-xs font-black text-sky-900"
-              >
-                {rotuloDoKind(creator.kind)}
-              </span>
-              <span className="text-xs font-bold text-slate-500">
-                {/* TODO(Ana) */}
-                {`Creator desde ${dataCurta(creator.granted_at)}`}
-              </span>
-              {visao === "admin" && creator.revoked_at ? (
-                <span
-                  data-testid="creator-revogado"
-                  className="rounded-full border-2 border-rose-700 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-800"
-                >
-                  {/* TODO(Ana) */}
-                  {`Revogado em ${dataCurta(creator.revoked_at)}`}
-                </span>
-              ) : null}
-            </div>
-            {visao === "admin" && perfil.email ? (
-              <p
-                data-testid="creator-email"
-                className="mt-2 break-all text-sm font-bold text-slate-700"
-              >
-                {perfil.email}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </section>
-      </div>
+      {identidade === "embutida" ? (
+        <CreatorIdentidade perfil={perfil} creator={creator} visao={visao} />
+      ) : null}
 
       {codigos.length === 0 ? (
         <section
@@ -694,80 +636,89 @@ export function CreatorDashboardView({
             // TODO(Ana)
             nome="Seus números"
           >
-            <section aria-labelledby="creator-totais-titulo" className="space-y-4">
-              <TituloDeSecao
+            <section
+              aria-labelledby="creator-totais-titulo"
+              className="space-y-5"
+            >
+              <CabecalhoDeSecao
                 id="creator-totais-titulo"
-                selo={
-                  <span
-                    className={`${SELO} border-slate-900 bg-yellow-300 uppercase tracking-wide text-ink-on-accent`}
-                  >
-                    {/* TODO(Ana) */}
-                    Desde o início
-                  </span>
-                }
-              >
-                {/* TODO(Ana) */}
-                Seus números
-              </TituloDeSecao>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                <CreatorMetricTile
+                icone={<BarChart3 className={ICONE_DO_SELO} />}
+                // TODO(Ana)
+                selo="desde o início"
+                // TODO(Ana)
+                titulo="Seus números"
+                // TODO(Ana)
+                frase="Os totais acumulados de todos os seus códigos."
+              />
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <CreatorMetricCard
                   testId="creator-tile-cliques"
-                  tom={TOM_CLIQUES}
-                  icone={<MousePointerClick className={ICONE} />}
+                  icone={<MousePointerClick className={ICONE_DO_CARD} />}
+                  cor="bg-violet-800 text-white"
                   // TODO(Ana)
                   rotulo="Cliques"
                   valor={inteiro(totais.clicks)}
+                  // TODO(Ana)
+                  detalhe="no seu link"
                 />
-                <CreatorMetricTile
+                <CreatorMetricCard
                   testId="creator-tile-vendas"
-                  tom={TOM_VENDAS}
-                  icone={<ShoppingBag className={ICONE} />}
+                  icone={<ShoppingBag className={ICONE_DO_CARD} />}
+                  cor="bg-violet-800 text-white"
                   // TODO(Ana)
                   rotulo="Vendas"
                   valor={inteiro(totais.sales)}
+                  // TODO(Ana)
+                  detalhe="com o seu cupom"
                 />
-                <CreatorMetricTile
+                <CreatorMetricCard
                   testId="creator-tile-conversao"
-                  tom={TOM_CONVERSAO}
-                  icone={<Percent className={ICONE} />}
+                  icone={<Percent className={ICONE_DO_CARD} />}
+                  cor="bg-sky-600 text-white"
                   // TODO(Ana)
                   rotulo="Conversão"
                   valor={
                     totais.conversao_pct === null
-                      ? // TODO(Ana)
-                        "sem cliques ainda"
+                      ? "-"
                       : percentual(totais.conversao_pct)
                   }
                   detalhe={
                     totais.conversao_pct === null
-                      ? undefined
+                      ? // TODO(Ana)
+                        "sem cliques ainda"
                       : // TODO(Ana)
                         `${decimal(totais.conversao_pct)} vendas por 100 cliques`
                   }
                 />
-                <CreatorMetricTile
+                <CreatorMetricCard
                   testId="creator-tile-receita"
-                  tom={TOM_RECEITA}
-                  icone={<DollarSign className={ICONE} />}
+                  icone={<DollarSign className={ICONE_DO_CARD} />}
+                  cor="bg-[var(--bnt-accent-solid)] text-ink-on-accent"
                   // TODO(Ana)
                   rotulo="Receita gerada"
                   valor={formatarCentavos(totais.revenue_cents)}
+                  // TODO(Ana)
+                  detalhe="valor pago pelas pessoas, com desconto"
                 />
-                <CreatorMetricTile
+                <CreatorMetricCard
                   testId="creator-tile-a-receber"
-                  tom={TOM_A_RECEBER}
-                  icone={<Hourglass className={ICONE} />}
+                  icone={<Hourglass className={ICONE_DO_CARD} />}
+                  cor="bg-[var(--bnt-accent-solid)] text-ink-on-accent"
                   // TODO(Ana)
                   rotulo="Comissão a receber"
                   valor={formatarCentavos(totais.commission_due_cents)}
+                  // TODO(Ana)
+                  detalhe="ainda não repassada"
                 />
-                <CreatorMetricTile
+                <CreatorMetricCard
                   testId="creator-tile-paga"
-                  tom={TOM_PAGA}
-                  icone={<BadgeCheck className={ICONE} />}
+                  icone={<BadgeCheck className={ICONE_DO_CARD} />}
+                  cor="bg-emerald-600 text-white"
                   // TODO(Ana)
                   rotulo="Comissão paga"
                   valor={formatarCentavos(totais.commission_paid_cents)}
+                  // TODO(Ana)
+                  detalhe="já repassada a você"
                 />
               </div>
             </section>
@@ -775,13 +726,22 @@ export function CreatorDashboardView({
 
           <BlocoBoundary
             // TODO(Ana)
-            nome="Seus links"
+            nome="Seu cupom"
           >
-            <section aria-labelledby="creator-links-titulo" className="space-y-4">
-              <TituloDeSecao id="creator-links-titulo">
-                {/* TODO(Ana) */}
-                Seus links
-              </TituloDeSecao>
+            <section
+              aria-labelledby="creator-links-titulo"
+              className="space-y-5"
+            >
+              <CabecalhoDeSecao
+                id="creator-links-titulo"
+                icone={<Ticket className={ICONE_DO_SELO} />}
+                // TODO(Ana)
+                selo="cupom e link"
+                // TODO(Ana)
+                titulo="Seu cupom"
+                // TODO(Ana)
+                frase="O código e o link para divulgar, com os números de cada um."
+              />
               <div className="grid gap-5">
                 {codigos.map((codigo) => (
                   <CupomDoCodigo
@@ -800,18 +760,27 @@ export function CreatorDashboardView({
           >
             <section
               aria-labelledby="creator-serie-titulo"
-              className="card-brutal space-y-4 rounded-3xl bg-white p-5 sm:p-6"
+              className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
             >
-              <TituloDeSecao id="creator-serie-titulo">
+              <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+                {/* TODO(Ana) */}
+                série diária
+              </p>
+              <h3
+                id="creator-serie-titulo"
+                className="font-display text-lg font-black text-slate-950 sm:text-xl"
+              >
                 {/* TODO(Ana) */}
                 Cliques e vendas por dia
-              </TituloDeSecao>
-              <Serie
-                painel={painel}
-                janela={janela}
-                onJanelaChange={onJanelaChange}
-                agoraMs={agoraMs}
-              />
+              </h3>
+              <div className="mt-4">
+                <Serie
+                  painel={painel}
+                  janela={janela}
+                  onJanelaChange={onJanelaChange}
+                  agoraMs={agoraMs}
+                />
+              </div>
             </section>
           </BlocoBoundary>
         </>

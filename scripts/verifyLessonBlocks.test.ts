@@ -3,7 +3,10 @@ import type { RoadmapV2 } from "../shared/roadmapV2/types";
 import {
   blocosDaTrilha,
   conferirBloco,
+  estruturaCss,
+  estruturaHtml,
   extrairBlocos,
+  prosaHtmlCru,
   relatorioBlocos,
 } from "./verifyLessonBlocks.mts";
 import type { Execucao } from "./verifyQuizPoolByExecution.mts";
@@ -180,5 +183,120 @@ describe("conferirBloco: saida real que parece comando", () => {
       () => executorQueRoda(),
     );
     expect(r.problemas).toEqual([]);
+  });
+});
+
+// Controles do verificador estrutural (Lote 08). Literais escritos a mao: se
+// viessem do proprio verificador, provariam so que ele concorda consigo mesmo.
+const DOCUMENTO_MINIMO = [
+  "<!DOCTYPE html>",
+  '<html lang="pt-BR">',
+  "  <head>",
+  '    <meta charset="UTF-8">',
+  "    <title>Minha pagina</title>",
+  "  </head>",
+  "  <body>",
+  "    <h1>Ola</h1>",
+  "  </body>",
+  "</html>",
+].join("\n");
+
+describe("estruturaHtml: marcacao que so vale porque o parser conserta", () => {
+  it("tag nao-void aberta e nunca fechada reprova", () => {
+    const problemas = estruturaHtml("<div>\n  <p>texto</p>");
+    expect(problemas.length).toBeGreaterThan(0);
+    expect(problemas.join(" ")).toContain("div");
+  });
+
+  it("tag fechada sem ter sido aberta reprova", () => {
+    const problemas = estruturaHtml("<p>um</p>\n</section>");
+    expect(problemas.length).toBeGreaterThan(0);
+    expect(problemas.join(" ")).toContain("section");
+  });
+
+  it("aninhamento que o parser recupera reprova (p contendo div)", () => {
+    expect(
+      estruturaHtml("<p>\n  <div>bloco</div>\n</p>").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("fechamento fora de ordem reprova", () => {
+    expect(estruturaHtml("<b><i>texto</b></i>").length).toBeGreaterThan(0);
+  });
+
+  it("li sem fechar reprova", () => {
+    const problemas = estruturaHtml("<ul>\n  <li>um\n  <li>dois\n</ul>");
+    expect(problemas.length).toBeGreaterThan(0);
+    expect(problemas.join(" ")).toContain("li");
+  });
+
+  it("documento minimo passa", () => {
+    expect(estruturaHtml(DOCUMENTO_MINIMO)).toEqual([]);
+  });
+
+  it("elemento void sem barra passa", () => {
+    expect(
+      estruturaHtml(
+        '<img src="foto.jpg" alt="Ana sorrindo">\n<br>\n<input type="email" id="email">',
+      ),
+    ).toEqual([]);
+  });
+
+  it("elemento void com barra passa", () => {
+    expect(
+      estruturaHtml(
+        '<label for="nome">Nome</label>\n<input id="nome" name="nome" />',
+      ),
+    ).toEqual([]);
+  });
+
+  it("comentario e enfase passam", () => {
+    expect(
+      estruturaHtml("<!-- comentario -->\n<p>Ola, <strong>mundo</strong></p>"),
+    ).toEqual([]);
+  });
+
+  it("tabela sem tbody passa: o enxerto do parser e normal", () => {
+    expect(estruturaHtml("<table>\n  <tr><td>1</td></tr>\n</table>")).toEqual(
+      [],
+    );
+  });
+});
+
+describe("estruturaCss: chaves balanceadas", () => {
+  it("regra fechada passa", () => {
+    expect(estruturaCss("a { color: red; }")).toEqual([]);
+  });
+
+  it("chave aberta e nao fechada reprova", () => {
+    expect(estruturaCss("a { color: red;").length).toBeGreaterThan(0);
+  });
+
+  it("chave fechada antes de abrir reprova", () => {
+    expect(estruturaCss("a } color: red; {").length).toBeGreaterThan(0);
+  });
+
+  it("chave dentro de comentario nao conta", () => {
+    expect(estruturaCss("/* } */ a { color: red; }")).toEqual([]);
+  });
+});
+
+describe("prosaHtmlCru: o renderer descarta HTML fora de crase", () => {
+  it("tag crua na prosa reprova", () => {
+    const problemas = prosaHtmlCru("Use a tag <p> aqui");
+    expect(problemas.length).toBeGreaterThan(0);
+    expect(problemas.join(" ")).toContain("renderer descarta");
+  });
+
+  it("tag entre crases passa", () => {
+    expect(prosaHtmlCru("Use a tag `<p>` aqui")).toEqual([]);
+  });
+
+  it("menor que com espaco nao e tag", () => {
+    expect(prosaHtmlCru("se a < b, o laco continua")).toEqual([]);
+  });
+
+  it("tag dentro de cerca passa", () => {
+    expect(prosaHtmlCru("Exemplo:\n\n```html\n<p>Ola</p>\n```\n")).toEqual([]);
   });
 });
