@@ -28,6 +28,7 @@ import mobile from "./mobile";
 import produto from "./produto";
 import python from "./python";
 import git from "./git";
+import css from "./css";
 import html from "./html";
 import qa from "./qa";
 import sre from "./sre";
@@ -58,6 +59,7 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   python,
   git,
   html,
+  css,
   qa,
   sre,
   uxui,
