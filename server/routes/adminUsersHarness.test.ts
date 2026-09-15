@@ -95,6 +95,13 @@ const TABELAS_PENDENTES: string[] = [
   // ultimo clique, ultima venda e o primeiro evento direto dela. Sai daqui
   // junto com o rename de creators quando os tipos forem regenerados.
   "creator_events",
+  // Criadas em `20260915160000_creator_profiles.sql` (creators, lote 08), que
+  // ainda NAO foi aplicada em producao: `shared/database.types.ts` nao as
+  // conhece. As rotas de perfil e de chave Pix (server/lib/creatorProfile.ts)
+  // leem e gravam as duas. Saem daqui depois de aplicar a migration e rodar
+  // `pnpm db:types`.
+  "creator_profiles",
+  "creator_pix_keys",
 ];
 
 function colunasDeCreateTable(tabela: string): Set<string> | null {

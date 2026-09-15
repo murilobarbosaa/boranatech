@@ -276,7 +276,9 @@ const naoReconhecidasOutras: string[] = [];
 // 86 desde 20260914120000_drop_influencers_view.sql, MEDIDO com `--declared`:
 // a view de compatibilidade cai e sai do conjunto pelo DROP_VIEW_RE. RLS nao
 // muda pelo mesmo motivo de nao ter subido.
-const EXPECTED_TABLE_COUNT = 86;
+// 88 desde 20260915160000_creator_profiles.sql, MEDIDO com `--declared`, nao
+// somado: cria creator_profiles e creator_pix_keys (creators, lote 08).
+const EXPECTED_TABLE_COUNT = 88;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -298,7 +300,9 @@ const EXPECTED_TABLE_COUNT = 86;
 // 86 desde 20260913120000_creators_and_creator_events.sql, medido com
 // `--declared`: creator_events declara RLS. A marca de RLS de influencers MUDA
 // de nome junto com a tabela (creators), e por isso nao conta duas vezes.
-const EXPECTED_RLS_COUNT = 86;
+// 88 desde 20260915160000_creator_profiles.sql, MEDIDO com `--declared`: as
+// duas tabelas novas declaram `enable row level security`.
+const EXPECTED_RLS_COUNT = 88;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
