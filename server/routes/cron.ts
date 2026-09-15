@@ -40,7 +40,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
-import { lerPagamento } from "../providers/asaas";
+import { cancelPayment, lerPagamento } from "../providers/asaas";
 import { getStripeSubscriptionState } from "../providers/stripe";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import { metodoDaRenovacao } from "../../shared/renewalMethod";
@@ -1513,6 +1513,259 @@ router.post(
     } catch (err) {
       await recordCronRun({
         jobName: "pix-pending-reminders",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+/**
+ * Pix sem vencimento gravado (linhas anteriores ao lote 2) so expira depois
+ * disto, contado do `created_at`: os 2 dias de prazo (`PIX_DUE_DAYS`) mais 2 de
+ * folga, na mesma logica do `ORPHAN_BOLETO_DAYS`.
+ */
+const PIX_SEM_VENCIMENTO_DIAS = 4;
+
+/**
+ * Status de cobranca do Asaas que significam dinheiro recebido. O mesmo
+ * conjunto de `STATUS_DE_COBRANCA_PAGA` em server/providers/asaas.ts, que e
+ * privado daquele modulo.
+ */
+const STATUS_PIX_PAGO = new Set(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]);
+
+const COLUNAS_PIX_EXPIRACAO =
+  "id, provider_subscription_id, pix_due_date, created_at";
+
+type LinhaPixExpiracao = {
+  id: string;
+  provider_subscription_id: string | null;
+  pix_due_date: string | null;
+  created_at: string;
+};
+
+export type ResultadoExpiracaoPix = {
+  /** Estado da flag nesta execucao. `false` e rodada de observacao. */
+  ligado: boolean;
+  candidatos: number;
+  canceladas: number;
+  /** Com a flag desligada: quantas TERIAM sido canceladas. */
+  cancelaria: number;
+  /** Cobranca paga no Asaas com a linha ainda pending. Nunca cancelada. */
+  pagosMantidos: number;
+  falhas: number;
+  /** Contagem por motivo de quem ficou de fora. */
+  pulados: Record<string, number>;
+};
+
+/**
+ * Dinheiro entrou e o acesso nao saiu: a linha segue pending com a cobranca
+ * paga. NAO cancela (seria fechar a unica linha que o webhook atrasado ainda
+ * pode ativar) e grita, porque a correcao e humana.
+ */
+function gritarPixPagoPendente(
+  linhaId: string,
+  chargeId: string,
+  status: string,
+): void {
+  console.error(
+    `[cron/expire-pending-pix] Pix PAGO com a linha ainda pending (cobranca ${chargeId}, linha ${linhaId}, status ${status}); NAO cancelado, investigar ativacao perdida.`,
+  );
+  Sentry.captureMessage("pix_expiry_pago_em_linha_pendente", {
+    level: "error",
+    fingerprint: ["pix-expiry-pago-em-linha-pendente"],
+    tags: { origem: "cron-expire-pending-pix" },
+    extra: {
+      subscription_row_id: linhaId,
+      asaas_payment_id: chargeId,
+      asaas_status: status,
+    },
+  });
+}
+
+/**
+ * A rodada de expiracao do Pix vencido, separada da rota para ser exercitada
+ * com dubles.
+ *
+ * O PROBLEMA: uma linha pending/pix trava o guard 409 `pix_pending` do
+ * checkout, e quem a encerra e o PAYMENT_OVERDUE. Quando o evento nao chega, a
+ * pessoa nao consegue gerar Pix novo nem assinar, para sempre. O
+ * `expire-pending-boletos` faz isto para boleto e nao alcanca Pix.
+ *
+ * A ORDEM E O PONTO: exclui a cobranca NO ASAAS primeiro, e so depois fecha a
+ * linha. Fechar so a linha deixaria a cobranca pagavel sem linha pending para
+ * ativar: o pagamento tardio cairia em `registrarPagamentoForaDoFluxo`, entraria
+ * no ledger e o acesso nao sairia. Se a exclusao remota nao se confirma, a
+ * linha FICA VIVA. Na duvida, sempre viva, igual ao boleto.
+ *
+ * SELECAO: vencimento anterior a ONTEM em Brasilia (um dia de folga depois do
+ * vencimento, porque o PAYMENT_OVERDUE foi medido chegando entre 03h e 04h do
+ * dia seguinte), ou sem vencimento e criada ha mais de
+ * `PIX_SEM_VENCIMENTO_DIAS`.
+ *
+ * FLAG DESLIGADA (`pixExpiryEnabled`, o padrao) e rodada de observacao: le o
+ * Asaas (leitura), decide, grita o pago e conta em `cancelaria`, sem excluir
+ * nada no Asaas nem tocar em linha.
+ */
+export async function rodarExpiracaoPix(
+  agora: Date,
+): Promise<ResultadoExpiracaoPix> {
+  const r: ResultadoExpiracaoPix = {
+    ligado: env.pixExpiryEnabled,
+    candidatos: 0,
+    canceladas: 0,
+    cancelaria: 0,
+    pagosMantidos: 0,
+    falhas: 0,
+    pulados: {},
+  };
+  const pular = (motivo: string) => {
+    r.pulados[motivo] = (r.pulados[motivo] ?? 0) + 1;
+  };
+
+  // `pix_due_date` e `date`, e `YYYY-MM-DD` compara como texto.
+  const ontem = relogioDeBrasilia(agora.getTime() - DAY_MS).dia;
+  const corteSemVencimentoIso = new Date(
+    agora.getTime() - PIX_SEM_VENCIMENTO_DIAS * DAY_MS,
+  ).toISOString();
+
+  // PAGINADO: caminho de ESCRITA. A linha que ficasse fora da pagina seguiria
+  // travando o guard 409 e a rodada reportaria sucesso.
+  const vencidas = await coletarTagueado<LinhaPixExpiracao>(
+    (fromRow, toRow) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(COLUNAS_PIX_EXPIRACAO)
+        .eq("provider", "asaas")
+        .eq("payment_method", "pix")
+        .eq("status", "pending")
+        .lt("pix_due_date", ontem)
+        .order("id", { ascending: true })
+        .range(fromRow, toRow),
+    "expire-pending-pix vencidas",
+  );
+  if (vencidas.error) throw new Error(vencidas.error.message);
+  const semVencimento = await coletarTagueado<LinhaPixExpiracao>(
+    (fromRow, toRow) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(COLUNAS_PIX_EXPIRACAO)
+        .eq("provider", "asaas")
+        .eq("payment_method", "pix")
+        .eq("status", "pending")
+        .is("pix_due_date", null)
+        .lt("created_at", corteSemVencimentoIso)
+        .order("id", { ascending: true })
+        .range(fromRow, toRow),
+    "expire-pending-pix sem vencimento",
+  );
+  if (semVencimento.error) throw new Error(semVencimento.error.message);
+
+  const linhas = [...(vencidas.data ?? []), ...(semVencimento.data ?? [])];
+  r.candidatos = linhas.length;
+
+  for (const linha of linhas) {
+    try {
+      const chargeId = linha.provider_subscription_id;
+      if (!chargeId) {
+        pular("sem_cobranca");
+        continue;
+      }
+
+      let pagamento: Awaited<ReturnType<typeof lerPagamento>>;
+      try {
+        pagamento = await lerPagamento(chargeId);
+      } catch (err) {
+        r.falhas++;
+        console.error(
+          `[cron/expire-pending-pix] leitura da cobranca ${chargeId} falhou (linha ${linha.id}); mantendo linha viva:`,
+          err,
+        );
+        continue;
+      }
+
+      if (pagamento.status && STATUS_PIX_PAGO.has(pagamento.status)) {
+        gritarPixPagoPendente(linha.id, chargeId, pagamento.status);
+        r.pagosMantidos++;
+        continue;
+      }
+
+      if (!r.ligado) {
+        r.cancelaria++;
+        continue;
+      }
+
+      // `cancelPayment` nao lanca: o desfecho volta tipado. `already_paid` e o
+      // pagamento que caiu entre a leitura acima e a exclusao.
+      const cancelamento = await cancelPayment(chargeId);
+      if (cancelamento.resultado === "already_paid") {
+        gritarPixPagoPendente(linha.id, chargeId, cancelamento.status);
+        r.pagosMantidos++;
+        continue;
+      }
+      if (cancelamento.resultado === "falha") {
+        r.falhas++;
+        console.error(
+          `[cron/expire-pending-pix] exclusao da cobranca ${chargeId} nao confirmada (linha ${linha.id}, motivo ${cancelamento.motivo}); mantendo linha viva.`,
+        );
+        continue;
+      }
+
+      // Condicional em pending para idempotencia. Se falhar, a cobranca ja
+      // morreu no Asaas e o PAYMENT_DELETED que ele manda fecha a linha pelo
+      // `closePendingCharge`; a proxima rodada tambem, pelo balde "ja removida".
+      const agoraIso = new Date().toISOString();
+      const { error: cancelError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          status: "canceled",
+          canceled_at: agoraIso,
+          last_event_at: agoraIso,
+        })
+        .eq("id", linha.id)
+        .eq("status", "pending");
+      if (cancelError) {
+        r.falhas++;
+        console.error(
+          `[cron/expire-pending-pix] cobranca ${chargeId} excluida no Asaas e a linha ${linha.id} NAO fechou:`,
+          cancelError,
+        );
+        continue;
+      }
+      r.canceladas++;
+    } catch (err) {
+      r.falhas++;
+      console.error(
+        `[cron/expire-pending-pix] falha na linha ${linha.id}:`,
+        err,
+      );
+    }
+  }
+
+  return r;
+}
+
+// Expiracao de Pix vencido: exclui a cobranca no Asaas e so depois fecha a
+// linha. Nasce DESLIGADA (`pixExpiryEnabled`); desligada, so observa. Uma vez
+// por dia, depois da hora em que o PAYMENT_OVERDUE costuma chegar.
+router.post(
+  "/expire-pending-pix",
+  withCronLock("expire-pending-pix", 600, async (_req, res, next) => {
+    const startedAt = new Date();
+    try {
+      const r = await rodarExpiracaoPix(new Date());
+      await recordCronRun({
+        jobName: "expire-pending-pix",
+        status: r.falhas > 0 ? "partial" : "success",
+        startedAt,
+        payload: r,
+      });
+      res.json({ data: r });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "expire-pending-pix",
         status: "error",
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),

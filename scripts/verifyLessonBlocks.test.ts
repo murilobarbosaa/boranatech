@@ -6,8 +6,12 @@ import {
   estruturaCss,
   estruturaHtml,
   extrairBlocos,
+  idsDePasso,
+  prosaDaTrilha,
   prosaHtmlCru,
+  prosaIdInterno,
   relatorioBlocos,
+  validarCss,
 } from "./verifyLessonBlocks.mts";
 import type { Execucao } from "./verifyQuizPoolByExecution.mts";
 
@@ -298,5 +302,179 @@ describe("prosaHtmlCru: o renderer descarta HTML fora de crase", () => {
 
   it("tag dentro de cerca passa", () => {
     expect(prosaHtmlCru("Exemplo:\n\n```html\n<p>Ola</p>\n```\n")).toEqual([]);
+  });
+});
+
+// Lote 09. Os controles sao escritos a mao e cada um precisa REPROVAR antes de
+// o instrumento valer: o css-tree sozinho deixa passar bloco sem fechar,
+// combinador repetido, media feature com erro de digitacao e ";;", e a
+// convencao da trilha cobre a escrita, que o AST normaliza.
+describe("validarCss: css invalido", () => {
+  const REPROVA: [string, string][] = [
+    ["propriedade que nao existe", "a { colr: red; }"],
+    ["numero sem unidade", "div { width: 100; }"],
+    ["dois-pontos faltando", "a { color red; }"],
+    ["valor que nao existe na propriedade", "p { display: flexbox; }"],
+    ["hex incompleto", "p { color: #12; }"],
+    ["margin com cinco valores", "p { margin: 10px 5px 3px 2px 1px; }"],
+    ["seletor com virgula solta", ".a, { color: red; }"],
+    ["chaves trocadas", "a } color: red; {"],
+    ["bloco sem fechar", "a { color: red; "],
+  ];
+  for (const [rotulo, css] of REPROVA) {
+    it(`reprova ${rotulo}`, () => {
+      expect(validarCss(css).length).toBeGreaterThan(0);
+    });
+  }
+});
+
+describe("validarCss: convencao da trilha", () => {
+  it("reprova declaracao sem ponto e virgula, inclusive a ultima", () => {
+    expect(validarCss("a { color: red }")).toEqual([
+      "declaracao sem ponto e virgula: color",
+    ]);
+  });
+
+  it("reprova ponto e virgula repetido", () => {
+    expect(validarCss("a { color: red;; }")).toEqual([
+      "ponto e virgula repetido",
+    ]);
+  });
+
+  it("reprova duas declaracoes na mesma linha", () => {
+    expect(validarCss(".x { aspect-ratio: 16 / 9; gap: 1rem; }")).toEqual([
+      "mais de uma declaracao na mesma linha (use uma por linha)",
+    ]);
+  });
+
+  it("reprova propriedade fora de minusculas", () => {
+    expect(validarCss("a { Color: red; }")).toContain(
+      "propriedade fora de minusculas: Color",
+    );
+  });
+
+  it("reprova indentacao impar", () => {
+    expect(validarCss("a {\n   color: red;\n}")).toContain(
+      "linha 2: indentacao de 3 espacos (use multiplos de 2)",
+    );
+  });
+});
+
+describe("validarCss: os dois limites que o css-tree sozinho deixa passar", () => {
+  it("reprova combinador repetido", () => {
+    expect(validarCss(".nav > > a { color: red; }")).toEqual([
+      "seletor com combinador repetido: .nav>>a",
+    ]);
+  });
+
+  it("reprova media feature com erro de digitacao", () => {
+    expect(
+      validarCss("@media (min-widht: 600px) {\n  p {\n    color: red;\n  }\n}"),
+    ).toEqual(["media feature fora da lista da trilha: min-widht"]);
+  });
+
+  it("aceita a media feature escrita certo", () => {
+    expect(
+      validarCss("@media (min-width: 600px) {\n  p {\n    color: red;\n  }\n}"),
+    ).toEqual([]);
+  });
+});
+
+describe("validarCss: css valido passa", () => {
+  const PASSA: [string, string][] = [
+    ["atalho margin", ".c { margin: 0 auto; }"],
+    ["grid com repeat", ".g { grid-template-columns: repeat(3, 1fr); }"],
+    [
+      "propriedade customizada e var()",
+      ":root {\n  --cor: #333;\n}\n\np {\n  color: var(--cor);\n}",
+    ],
+    ["pseudo-classe", "a:hover { color: blue; }"],
+    ["pseudo-elemento com content", 'p::before { content: ""; }'],
+    ["clamp", "h1 { font-size: clamp(1.5rem, 4vw, 3rem); }"],
+    [
+      "duas declaracoes em duas linhas",
+      ".x {\n  aspect-ratio: 16 / 9;\n  gap: 1rem;\n}",
+    ],
+    ["transition", ".x { transition: opacity 0.2s ease-in-out; }"],
+    ["rgb com barra", "p { color: rgb(0 0 0 / 50%); }"],
+    [
+      "keyframes",
+      "@keyframes sobe { from { opacity: 0; } to { opacity: 1; } }",
+    ],
+    ["object-fit", "img { object-fit: cover; }"],
+    [
+      "prefers-reduced-motion",
+      "@media (prefers-reduced-motion: reduce) {\n  .a {\n    transition: none;\n  }\n}",
+    ],
+  ];
+  for (const [rotulo, css] of PASSA) {
+    it(`aceita ${rotulo}`, () => {
+      expect(validarCss(css)).toEqual([]);
+    });
+  }
+});
+
+describe("prosaIdInterno: id de passo exposto na prosa", () => {
+  const registro: RoadmapV2[] = [
+    {
+      slug: "teste",
+      title: "Teste",
+      description: "d",
+      level: "Iniciante",
+      sections: [
+        {
+          id: "s1",
+          title: "S1",
+          children: [
+            { id: "html.seo", title: "SEO basico", content: "" },
+            { id: "outro.passo", title: "Outro", content: "" },
+          ],
+        },
+      ],
+    } as unknown as RoadmapV2,
+  ];
+  const ids = idsDePasso(registro);
+
+  it("o universo de ids sai do registro", () => {
+    expect([...ids].sort()).toEqual(["html.seo", "outro.passo"]);
+  });
+
+  it("reprova codigo inline que e exatamente um id de passo", () => {
+    expect(prosaIdInterno("veja o passo `html.seo` depois", ids)).toEqual([
+      "id interno de passo exposto na prosa: html.seo",
+    ]);
+  });
+
+  it("aceita codigo inline que so parece id", () => {
+    expect(prosaIdInterno("use `lista.map` para isso", ids)).toEqual([]);
+  });
+
+  it("nao olha dentro das cercas", () => {
+    expect(prosaIdInterno("```js\n// `html.seo`\n```", ids)).toEqual([]);
+  });
+
+  it("prosaDaTrilha junta o id exposto ao HTML cru", () => {
+    const trilha = {
+      slug: "t",
+      sections: [
+        {
+          id: "s",
+          title: "S",
+          children: [
+            { id: "p1", title: "P1", content: "olhe o passo `html.seo`." },
+          ],
+        },
+      ],
+    } as unknown as RoadmapV2;
+    expect(prosaDaTrilha(trilha, ids)).toEqual([
+      {
+        passo: "p1",
+        problemas: ["id interno de passo exposto na prosa: html.seo"],
+      },
+    ]);
+  });
+
+  it("sem os ids, a conferencia nao acusa nada (controle)", () => {
+    expect(prosaIdInterno("veja o passo `html.seo`", new Set())).toEqual([]);
   });
 });

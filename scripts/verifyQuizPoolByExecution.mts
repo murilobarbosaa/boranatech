@@ -46,7 +46,7 @@ import {
   capabilityOf,
   type Runner,
 } from "./languageCapabilities.mts";
-import { estruturaHtml } from "./htmlStructure.mts";
+import { estruturaHtml, validarCss } from "./htmlStructure.mts";
 
 const TIMEOUT_MS = 10000;
 const ALTERNATIVAS: QuizAlternativaId[] = ["a", "b", "c", "d"];
@@ -343,18 +343,27 @@ export function resumoCorreta(texto: string): string {
   return linha.length <= 60 ? linha : `${linha.slice(0, 57)}...`;
 }
 
-// Coluna estrutural da tabela (Lote 08): em html, o que o verificador de
-// marcacao diz do trecho. Em "erro", roda sobre o trecho como esta: "limpo"
+// Coluna estrutural da tabela (Lote 08, estendida para css no Lote 09): o
+// que o verificador da linguagem diz do trecho. Em "erro", roda sobre o trecho como esta: "limpo"
 // nao invalida a pergunta (o defeito pode ser semantico, como alt ausente ou
 // hierarquia de titulos pulada), mas a tabela humana passa a exigir essa
 // justificativa. Em "completar", roda com a correta na lacuna (precisa sair
 // limpo) e conta quantas das erradas tambem saem limpas, informacao para quem
-// revisa. Linguagem sem verificador estrutural fica com "-".
+// revisa. Linguagem sem verificador estrutural (ver VERIFICADORES_ESTRUTURAIS)
+// fica com "-".
+const VERIFICADORES_ESTRUTURAIS: Record<string, (t: string) => string[]> = {
+  html: estruturaHtml,
+  css: validarCss,
+};
+
 function estruturaDaPergunta(question: QuizQuestion): string {
   const codigo = question.codigo;
-  if (!codigo || codigo.linguagem !== "html") return "-";
+  const verificar = codigo
+    ? VERIFICADORES_ESTRUTURAIS[codigo.linguagem]
+    : undefined;
+  if (!codigo || !verificar) return "-";
   const avaliar = (texto: string) => {
-    const problemas = estruturaHtml(texto);
+    const problemas = verificar(texto);
     return problemas.length === 0 ? "limpo" : `acusa: ${problemas[0]}`;
   };
   if (question.tipo !== "completar") return avaliar(codigo.trecho);
@@ -364,8 +373,8 @@ function estruturaDaPergunta(question: QuizQuestion): string {
   const erradasLimpas = ALTERNATIVAS.filter(
     (alt) =>
       alt !== question.correta &&
-      estruturaHtml(fillGap(codigo.trecho, question.alternativas[alt]))
-        .length === 0,
+      verificar(fillGap(codigo.trecho, question.alternativas[alt])).length ===
+        0,
   ).length;
   return `${comCorreta} (erradas limpas: ${erradasLimpas}/3)`;
 }

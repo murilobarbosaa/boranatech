@@ -32,6 +32,7 @@ import { erp } from "./erp";
 import { javascript } from "./javascript";
 import { python } from "./python";
 import { git } from "./git";
+import { css } from "./css";
 import { html } from "./html";
 
 export {
@@ -101,4 +102,5 @@ export const roadmapsV2: RoadmapV2[] = [
   python,
   git,
   html,
+  css,
 ];

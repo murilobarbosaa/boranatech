@@ -159,6 +159,22 @@ export async function getPixQrCode(): Promise<PixQrCode> {
 }
 
 /**
+ * Cancela a cobranca Pix pendente do proprio usuario.
+ *
+ * Sem parametro pelo mesmo motivo de `getPixQrCode`: o servidor resolve a
+ * cobranca pelo dono. Recusa vira `CheckoutError` com o slug
+ * (`pagamento_ja_recebido`, `sem_cobranca_pendente`, `cancelamento_falhou`).
+ */
+export async function cancelPendingPixCharge(): Promise<void> {
+  const headers = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/billing/cancel-pending`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
+}
+
+/**
  * RENOVACAO COM SESSAO (o botao do Perfil). Mesma rota do link do e-mail, sem
  * token: o servidor acha a assinatura manual do usuario logado. A resposta e
  * a de `createRenewalCheckout` do renewalService, mais `previousPeriodEnd`.

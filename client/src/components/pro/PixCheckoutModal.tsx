@@ -18,6 +18,7 @@ import {
 } from "@/lib/pixExpiration";
 import { nextPixPollStep } from "@/lib/pixPolling";
 import { getPixQrCode, type PixQrCode } from "@/services/subscriptionService";
+import CancelPendingPixDialog from "./CancelPendingPixDialog";
 
 /**
  * PAGAMENTO PIX NA PROPRIA TELA DO CHECKOUT.
@@ -84,6 +85,7 @@ export default function PixCheckoutModal({
   onDismiss,
   onConfirmedContinue,
   onExpiredRestart,
+  onChargeCanceled,
 }: {
   open: boolean;
   /**
@@ -112,6 +114,12 @@ export default function PixCheckoutModal({
   onConfirmedContinue: () => void;
   /** Prazo esgotado: o chamador devolve a pessoa para a escolha de plano. */
   onExpiredRestart: () => void;
+  /**
+   * Cobranca cancelada pela propria pessoa. Presente, o modal oferece "cancelar
+   * e escolher outro plano"; ausente (renovacao, e /renovar, que nao tem sessao
+   * para chamar a rota), a acao nao aparece.
+   */
+  onChargeCanceled?: () => void;
 }) {
   const { isPro, refreshSubscription } = useSubscription();
   const reduce = useReducedMotion();
@@ -119,6 +127,7 @@ export default function PixCheckoutModal({
   const confettiFiredRef = useRef(false);
   const sucessoRef = useRef<HTMLDivElement | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [cancelarAberto, setCancelarAberto] = useState(false);
   const [agora, setAgora] = useState(() => new Date());
   const inicioRef = useRef<number>(Date.now());
 
@@ -431,6 +440,38 @@ export default function PixCheckoutModal({
                 "A confirmação é automática. Pode deixar esta tela aberta."}
             </p>
           </div>
+        ) : null}
+
+        {onChargeCanceled && fase.nome !== "confirmado" && !expirou ? (
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setCancelarAberto(true)}
+              className="text-xs font-bold text-slate-500 underline underline-offset-4 transition-colors duration-200 hover:text-rose-600"
+            >
+              Cancelar e escolher outro plano
+            </button>
+          </div>
+        ) : null}
+
+        {/* Dentro do DialogContent de proposito: o Radix so trata como dialog
+            aninhado o que esta na arvore React do de fora, e fora dela um clique
+            na confirmacao contaria como clique fora do modal e o fecharia. */}
+        {onChargeCanceled ? (
+          <CancelPendingPixDialog
+            open={cancelarAberto}
+            onClose={() => setCancelarAberto(false)}
+            onResolved={(resultado) => {
+              setCancelarAberto(false);
+              if (resultado === "already_paid") {
+                // Ja pago: o polling confirma e o modal vira a tela de
+                // confirmado, em vez de fechar sobre um pagamento.
+                void refreshSubscription({ silent: true });
+                return;
+              }
+              onChargeCanceled();
+            }}
+          />
         ) : null}
       </DialogContent>
     </Dialog>

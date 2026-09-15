@@ -147,7 +147,7 @@ const pool: QuizPool = {
         "d": "SELECT regiao, SUM(valor) FROM vendas GROUP BY regiao"
       },
       "correta": "c",
-      "explicacao": "A alternativa correta usa HAVING para filtrar os resultados após a agregação, enquanto a opção b usa WHERE, que não é aplicável após o GROUP BY.",
+      "explicacao": "O HAVING filtra depois da agregação, e repetir SUM(valor) nele funciona em qualquer banco; o apelido total no HAVING não é aceito por todos. WHERE não pode vir depois do GROUP BY.",
       "fonte": "sql.agregacao"
     },
     {

@@ -19,6 +19,10 @@ describe("trailPaletteOf: paleta dos cards de trilha na vitrine", () => {
       bg: "bg-rose-200",
       text: "text-rose-900",
     });
+    expect(trailPaletteOf("css")).toEqual({
+      bg: "bg-purple-200",
+      text: "text-purple-900",
+    });
   });
 
   it("trilha sem entrada cai no teal e continua com par legivel", () => {

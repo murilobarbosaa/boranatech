@@ -231,7 +231,7 @@ const pool: QuizPool = {
         "d": "idade < 18 or not tem_ingresso"
       },
       "correta": "a",
-      "explicacao": "A alternativa a é a correta, pois verifica se a idade é maior ou igual a 18 e se o usuário tem ingresso, o que é necessário para a entrada.",
+      "explicacao": "idade >= 18 and tem_ingresso exige as duas condições ao mesmo tempo, que é a regra de entrada. Com or bastaria uma delas, e com not a lógica se inverte.",
       "fonte": "fluxo.logicos"
     },
     {

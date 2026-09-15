@@ -45,6 +45,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import ManualRenewalCard from "@/components/pro/ManualRenewalCard";
 import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import PixQrCodeBlock from "@/components/pro/PixQrCodeBlock";
+import CancelPendingPixDialog from "@/components/pro/CancelPendingPixDialog";
 import { nextPixPollStep } from "@/lib/pixPolling";
 import { useFavorites } from "@/hooks/useFavorites";
 import {
@@ -792,6 +793,10 @@ export default function Perfil() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [cancelPixOpen, setCancelPixOpen] = useState(false);
+  // Renovacao barrada por uma cobranca Pix que ficou para tras. Ver o ramo
+  // `pix_pending` de `handleRenewNow`.
+  const [cancelRenewOpen, setCancelRenewOpen] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   // Renovacao manual pelo Perfil (lote 2b.2). `renewPix` e a cobranca Pix
   // aberta no modal; boleto redireciona para a Stripe e nao passa por aqui.
@@ -1058,7 +1063,7 @@ export default function Perfil() {
         )
       : "pix";
 
-  async function handleRenewNow() {
+  async function handleRenewNow(opcoes: { aposCancelar?: boolean } = {}) {
     if (renewing) return;
     setRenewing(true);
     try {
@@ -1074,10 +1079,21 @@ export default function Perfil() {
       showErrorToast("Não foi possível iniciar a renovação.");
     } catch (err) {
       const code = (err as { code?: string } | null)?.code ?? "";
+      if (code === "pix_pending" && !opcoes.aposCancelar) {
+        // A MESMA SAIDA DO CHECKOUT, e aqui ela e a UNICA que existe: quem ja e
+        // Pro nao ve o bloco de cobranca pendente, entao nao havia botao de
+        // cancelar em lugar nenhum. Este 409 so chega quando a cobranca NAO
+        // esta mais pendente no Asaas (com ela viva, a rota devolve o mesmo QR,
+        // por `pixPendenteReaproveitavel`), ou seja, quando a linha ficou para
+        // tras. Cancelar nao mexe no acesso: a renovacao e linha NOVA, e a
+        // vigente segue ate o fim do periodo pago.
+        setCancelRenewOpen(true);
+        return;
+      }
       // TODO(Ana)
       showErrorToast(
         code === "pix_pending"
-          ? "Você já tem um Pix de renovação aguardando pagamento."
+          ? "Ainda não foi possível liberar uma nova renovação. Tente de novo em instantes."
           : code === "boleto_pending"
             ? "Você já tem um boleto de renovação aguardando pagamento."
             : "Não foi possível iniciar a renovação. Tente de novo.",
@@ -1899,7 +1915,8 @@ export default function Perfil() {
                 ) : !isPro && pendingBoleto ? (
                   // Cenario A: cobranca avulsa de primeira compra aguardando
                   // pagamento (boleto ou Pix).
-                  // Sem acesso Pro ainda; sem botao de cancelar e sem CTA.
+                  // Sem acesso Pro ainda e sem CTA. So o Pix tem o botao de
+                  // cancelar a cobranca (lote 2o); o boleto e da Stripe.
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
                       Assinatura
@@ -1954,6 +1971,16 @@ export default function Perfil() {
                       </p>
 
                       {isPendingPix ? <PixQrCodeBlock /> : null}
+
+                      {isPendingPix ? (
+                        <button
+                          type="button"
+                          onClick={() => setCancelPixOpen(true)}
+                          className="pt-2 text-sm font-black text-slate-600 underline underline-offset-4 transition-colors duration-200 hover:text-rose-600"
+                        >
+                          Cancelar cobrança
+                        </button>
+                      ) : null}
                     </div>
                   </>
                 ) : estadoManual?.kind === "expired" ? (
@@ -2413,6 +2440,39 @@ export default function Perfil() {
             periodEnd={subscriptionData?.current_period_end}
             isLoading={cancelingSubscription}
             mode={isBoletoSubscription ? "non_renewal" : "cancel"}
+          />
+          <CancelPendingPixDialog
+            open={cancelPixOpen}
+            onClose={() => setCancelPixOpen(false)}
+            onResolved={() => {
+              setCancelPixOpen(false);
+              void refreshSubscription().catch(() => undefined);
+            }}
+          />
+          {/* Saida da renovacao barrada. `goneEhSucesso` pelo mesmo motivo do
+              checkout: aqui a pessoa pediu uma renovacao nova, e a cobranca
+              anterior ter sumido antes e exatamente o que ela queria. */}
+          <CancelPendingPixDialog
+            open={cancelRenewOpen}
+            onClose={() => setCancelRenewOpen(false)}
+            goneEhSucesso
+            copy={{
+              pergunta: "Cancelar a cobrança da renovação?",
+              aviso:
+                "O código Pix da renovação anterior deixa de valer e uma cobrança nova é gerada. Seu acesso atual não muda.",
+              confirmar: "Cancelar e renovar de novo",
+              sucesso:
+                "Cobrança anterior cancelada. Gerando a nova renovação...",
+            }}
+            onResolved={(resultado) => {
+              setCancelRenewOpen(false);
+              if (resultado === "already_paid") {
+                // A renovacao anterior ja estava paga: nao ha o que refazer.
+                void refreshSubscription().catch(() => undefined);
+                return;
+              }
+              void handleRenewNow({ aposCancelar: true });
+            }}
           />
           <PixCheckoutModal
             open={renewPix !== null}

@@ -100,6 +100,7 @@ const loadersCrus: Record<string, () => Promise<RoadmapV2>> = {
     import("@shared/roadmapV2/content/python").then((m) => m.python),
   git: () => import("@shared/roadmapV2/content/git").then((m) => m.git),
   html: () => import("@shared/roadmapV2/content/html").then((m) => m.html),
+  css: () => import("@shared/roadmapV2/content/css").then((m) => m.css),
 };
 
 /**

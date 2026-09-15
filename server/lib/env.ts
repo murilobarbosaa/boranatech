@@ -132,6 +132,27 @@ export const env = {
     );
     return false;
   })(),
+  // Kill-switch da expiracao de Pix vencido, no MESMO desenho do
+  // pixRemindersEnabled: fail-closed, so o literal exato "true" liga. Ligado, o
+  // cron exclui a cobranca no Asaas e so depois fecha a linha local; e a unica
+  // escrita remota automatica sobre cobranca de cliente, e uma exclusao errada
+  // nao se desfaz. Existe para a PRIMEIRA execucao em producao ser de
+  // observacao: desligado, o cron le cada cobranca no Asaas (leitura), decide e
+  // grava no cron_run_logs quantas CANCELARIA, sem excluir nada no Asaas e sem
+  // tocar em linha nenhuma. Ligar e desligar e so trocar a variavel no Railway,
+  // sem deploy.
+  pixExpiryEnabled: (() => {
+    const raw = process.env.PIX_EXPIRY_ENABLED;
+    if (!raw) return false; // ausente: expiracao off, so observa, sem alarde.
+    if (raw === "true") {
+      console.log("[env] expiracao de Pix LIGADA (PIX_EXPIRY_ENABLED=true).");
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: PIX_EXPIRY_ENABLED="${raw}" nao liga a expiracao de Pix. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); expiracao DESLIGADA.`,
+    );
+    return false;
+  })(),
   // Qual adapter atende a emissao. NAO tem fallback silencioso para valor
   // desconhecido: qual provedor emitiu a nota E a informacao, nao apresentacao
   // dela, e cair em 'mock' por engano produziria "nota emitida" com numero

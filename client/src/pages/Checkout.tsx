@@ -54,6 +54,7 @@ import { useNfseEnabled } from "@/services/nfseStatus";
 import { getMyProfile } from "@/services/profileService";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
+import CancelPendingPixDialog from "@/components/pro/CancelPendingPixDialog";
 import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import {
@@ -654,6 +655,11 @@ export default function Checkout() {
     dueDate?: string | null;
     invoiceUrl?: string | null;
   } | null>(null);
+  // 409 `pix_pending`: ja existe um Pix aguardando pagamento. Guarda o meio que
+  // a pessoa escolheu, para refazer o MESMO checkout depois de cancelar a
+  // cobranca anterior. `null` = dialogo fechado.
+  const [pixPendenteMetodo, setPixPendenteMetodo] =
+    useState<CheckoutPaymentMethod | null>(null);
   const { refreshSubscription } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -832,7 +838,10 @@ export default function Checkout() {
 
   // Dispara o checkout com o metodo escolhido. captureCheckoutStarted vive AQUI (na
   // confirmacao), nao ao abrir o dialog: quem abre e fecha nao iniciou checkout.
-  async function doCheckout(paymentMethod: CheckoutPaymentMethod) {
+  async function doCheckout(
+    paymentMethod: CheckoutPaymentMethod,
+    opcoes: { aposCancelar?: boolean } = {},
+  ) {
     setPaymentDialogOpen(false);
     setLoading(true);
     try {
@@ -878,10 +887,19 @@ export default function Checkout() {
           "Você tem um boleto aguardando pagamento. Confira seu e-mail.",
         );
       } else if (code === "pix_pending") {
-        // TODO(Ana): copy do erro de Pix ja aguardando pagamento.
-        toast.error(
-          "Você tem um Pix aguardando pagamento. Confira seu e-mail.",
-        );
+        if (opcoes.aposCancelar) {
+          // A cobranca anterior acabou de ser cancelada e o servidor ainda
+          // recusa. Reabrir o dialogo faria um laco; vira aviso.
+          toast.error(
+            "Ainda não foi possível liberar um novo Pix. Tente de novo em instantes.",
+          );
+        } else {
+          // SEM "confira seu e-mail" como unica saida: quem trava aqui quer
+          // pagar (trocou de plano, ganhou um cupom) e o guard nao deixa. A
+          // saida e oferecida ali mesmo: cancelar a cobranca anterior e refazer
+          // este checkout.
+          setPixPendenteMetodo(paymentMethod);
+        }
       } else if (code === "payment_method_not_allowed") {
         // TODO(Ana): copy do erro de meio de pagamento indisponivel no plano.
         toast.error("Essa forma de pagamento não está disponível neste plano.");
@@ -1485,6 +1503,35 @@ export default function Checkout() {
         onSelect={(method) => void doCheckout(method)}
       />
 
+      {/* Saida do 409 `pix_pending`, no proprio checkout: o mesmo dialog do
+          Perfil e do modal Pix, com a copy do contexto. Confirmado, refaz o
+          checkout que a pessoa pediu; o cupom vai junto porque `createCheckout`
+          o le do localStorage a cada chamada. */}
+      <CancelPendingPixDialog
+        open={pixPendenteMetodo !== null}
+        onClose={() => setPixPendenteMetodo(null)}
+        goneEhSucesso
+        copy={{
+          pergunta: "Você já tem um Pix aguardando pagamento",
+          aviso:
+            "Para gerar um novo Pix com as condições escolhidas agora, a cobrança anterior é cancelada e o código dela deixa de valer.",
+          confirmar: "Cancelar e gerar novo Pix",
+          sucesso: "Cobrança anterior cancelada. Gerando o novo Pix...",
+        }}
+        onResolved={(resultado) => {
+          const metodo = pixPendenteMetodo;
+          setPixPendenteMetodo(null);
+          if (resultado === "already_paid") {
+            // A cobranca anterior ja estava paga: nao ha o que refazer. Leva
+            // para a pagina da assinatura, onde a confirmacao aparece.
+            void refreshSubscription().then(() => setLocation("/perfil"));
+            return;
+          }
+          // `canceled` ou `gone`: nada mais trava o guard.
+          if (metodo) void doCheckout(metodo, { aposCancelar: true });
+        }}
+      />
+
       {/* Gate fiscal. Ao salvar, retoma exatamente o passo que estava
           pendente: quem clicou em "assinar mensal" vai direto para o checkout
           de cartao, quem escolheu semestral/anual cai no dialog de metodo. Sem
@@ -1533,6 +1580,12 @@ export default function Checkout() {
           // esta nesta mesma tela. Nao ha chamada ao backend, a expiracao da
           // cobranca do lado do provedor segue seu curso.
           setPixCharge(null);
+        }}
+        onChargeCanceled={() => {
+          // Cancelou para trocar de plano: fica no checkout, onde a escolha de
+          // plano mora, com a assinatura ja sem a cobranca pendente.
+          setPixCharge(null);
+          void refreshSubscription();
         }}
       />
     </Layout>

@@ -1066,6 +1066,8 @@ describe("variação da série", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /overview", () => {
+  afterEach(() => vi.useRealTimers());
+
   function assinatura(over: Record<string, unknown> = {}) {
     return {
       id: "s1",
@@ -1259,6 +1261,14 @@ describe("GET /overview", () => {
     vi.setSystemTime(new Date("2026-08-14T12:00:00-03:00"));
     // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
     // (não sustenta). Uma regra global da página erraria em um dos dois.
+    //
+    // RELÓGIO FIXO, porque "sustenta" é relativo a hoje: a janela 30 vs 30
+    // anteriores começa 60 dias atrás, e com o relógio real ela alcançou
+    // 2026-07-13 em 2026-09-11, e o finance passou a sustentar sozinho. Em
+    // 2026-08-20 a janela começa em 2026-06-21, que é o cenário do comentário.
+    // Só `Date` é falso; o `afterEach` do describe devolve o relógio real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-20T12:00:00Z"));
     base({
       profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 100 },
       finance_transactions: {
