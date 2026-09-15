@@ -542,6 +542,43 @@ describe("CreatorDashboardView: forma do admin", () => {
     expect(screen.queryByTestId("creator-revogado")).toBeNull();
   });
 
+  it("sem chave Pix, a visao creator mostra o aviso antes de Seus numeros, com o link do perfil", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelBase()}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="creator"
+        identidade="nenhuma"
+        semChavePix
+      />,
+    );
+    const aviso = screen.getByTestId("creator-sem-pix");
+    expect(within(aviso).getByRole("link").getAttribute("href")).toBe(
+      "#creator-perfil",
+    );
+    const titulo = screen.getByRole("heading", { name: "Seus números" });
+    expect(
+      aviso.compareDocumentPosition(titulo) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("o aviso de chave Pix nunca aparece na visao admin, nem sem a prop", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelAdmin()}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="admin"
+        semChavePix
+      />,
+    );
+    expect(screen.queryByTestId("creator-sem-pix")).toBeNull();
+    cleanup();
+    desenhar(painelBase(), "creator");
+    expect(screen.queryByTestId("creator-sem-pix")).toBeNull();
+  });
+
   it("no padrao a view desenha a identidade; na visao admin, com e-mail e revogado", () => {
     desenhar(painelBase(), "creator");
     expect(screen.getByTestId("creator-kind")).toBeTruthy();

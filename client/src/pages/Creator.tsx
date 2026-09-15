@@ -4,8 +4,10 @@ import { Link } from "wouter";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
+import { CreatorPerfilForm } from "@/components/creator/CreatorPerfilForm";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
@@ -27,6 +29,14 @@ import {
 // esta no header do site, e repeti-lo aqui era redundante. Por isso a view
 // recebe `identidade="nenhuma"`. No admin a identidade continua, porque la quem
 // olha e outra pessoa.
+//
+// PERFIL DE CREATOR (lote 08): o CreatorPerfilForm busca e grava sozinho, e
+// fica FORA do condicional do painel. Trocar a janela do grafico poe o painel
+// em "carregando"; se o formulario estivesse dentro, ele desmontaria e o que a
+// pessoa estivesse digitando sumiria. O painel de numeros tambem nao espera por
+// ele: sao duas buscas independentes. A pagina so guarda se ha chave Pix
+// (`temPix`), para o aviso do topo do painel. Enquanto o perfil nao respondeu,
+// `temPix` e null e o aviso nao aparece: "nao sei" nao e "sem chave".
 
 type Estado =
   | { tipo: "carregando" }
@@ -56,6 +66,7 @@ export default function Creator() {
   );
   const [tentativa, setTentativa] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
+  const [temPix, setTemPix] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -149,8 +160,18 @@ export default function Creator() {
               onJanelaChange={setJanela}
               visao="creator"
               identidade="nenhuma"
+              semChavePix={temPix === false}
             />
           )}
+
+          {estado.tipo !== "nao_creator" ? (
+            <BlocoBoundary
+              // TODO(Ana)
+              nome="Seu perfil de creator"
+            >
+              <CreatorPerfilForm onPixChange={setTemPix} />
+            </BlocoBoundary>
+          ) : null}
         </div>
       </section>
     </Layout>

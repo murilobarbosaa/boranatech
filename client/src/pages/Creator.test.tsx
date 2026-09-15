@@ -31,6 +31,7 @@ type PropsDoView = {
   onJanelaChange: (janela: "7d" | "30d" | "90d" | "all") => void;
   visao: string;
   identidade?: string;
+  semChavePix?: boolean;
 };
 
 const estado = vi.hoisted(() => ({
@@ -40,7 +41,11 @@ const estado = vi.hoisted(() => ({
     janela: string;
     visao: string;
     identidade: string | undefined;
+    semChavePix: boolean | undefined;
   },
+  // O formulario de perfil (lote 08) e mockado: ele busca sozinho, e aqui o que
+  // se afirma e onde a pagina o poe e o que ela faz com o `onPixChange`.
+  perfilForm: { montagens: 0 },
 }));
 
 // Sonda: se a pagina voltar a importar o fundo decorado, ele aparece na tela
@@ -67,6 +72,7 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
       janela: props.janela,
       visao: props.visao,
       identidade: props.identidade,
+      semChavePix: props.semChavePix,
     };
     return (
       <div data-testid="view">
@@ -77,6 +83,30 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
     );
   },
 }));
+vi.mock("@/components/creator/CreatorPerfilForm", async () => {
+  const { useEffect } = await import("react");
+  return {
+    CreatorPerfilForm: ({
+      onPixChange,
+    }: {
+      onPixChange?: (temPix: boolean) => void;
+    }) => {
+      useEffect(() => {
+        estado.perfilForm.montagens += 1;
+      }, []);
+      return (
+        <div data-testid="perfil-form">
+          <button type="button" onClick={() => onPixChange?.(false)}>
+            perfil sem pix
+          </button>
+          <button type="button" onClick={() => onPixChange?.(true)}>
+            perfil com pix
+          </button>
+        </div>
+      );
+    },
+  };
+});
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -136,6 +166,7 @@ function montar() {
 beforeEach(() => {
   estado.fetch = vi.fn();
   estado.props = null;
+  estado.perfilForm = { montagens: 0 };
 });
 
 afterEach(() => {
@@ -281,5 +312,42 @@ describe("pagina /creator: estrutura do admin", () => {
       "utf8",
     );
     expect(fonte).not.toContain("ProfileBackground");
+  });
+});
+
+describe("pagina /creator: perfil de creator (lote 08)", () => {
+  it("o formulario de perfil aparece, e o aviso so liga quando o perfil diz que nao ha chave", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.getByTestId("perfil-form")).toBeTruthy();
+    // Enquanto o perfil nao respondeu, "nao sei" nao e "sem chave".
+    expect(estado.props?.semChavePix).toBe(false);
+    fireEvent.click(screen.getByText("perfil sem pix"));
+    expect(estado.props?.semChavePix).toBe(true);
+    fireEvent.click(screen.getByText("perfil com pix"));
+    expect(estado.props?.semChavePix).toBe(false);
+  });
+
+  it("trocar a janela do grafico NAO remonta o formulario de perfil", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    fireEvent.click(await screen.findByText("trocar para 90 dias"));
+    await screen.findByTestId("view");
+    expect(estado.fetch).toHaveBeenLastCalledWith("/creator/me?janela=90d");
+    expect(estado.perfilForm.montagens).toBe(1);
+  });
+
+  it("quem nao e creator nao ve o formulario de perfil", async () => {
+    estado.fetch = vi.fn(async () => {
+      throw new AdminApiError(
+        "Acesso de creator necessário.",
+        403,
+        "not_creator",
+      );
+    });
+    montar();
+    await screen.findByTestId("creator-nao-creator");
+    expect(screen.queryByTestId("perfil-form")).toBeNull();
   });
 });
