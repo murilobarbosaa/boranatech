@@ -462,5 +462,18 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 42,
     "hasProject": true,
     "hasQuiz": true
+  },
+  {
+    "slug": "css",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "CSS do Zero",
+    "level": "Iniciante",
+    "description": "Da primeira regra até layout responsivo com flexbox e grid, com a linguagem que dá aparência a toda página da web. Conclua uma etapa pra liberar a próxima.",
+    "summary": "A aparência e o layout de toda página da web, da primeira regra ao projeto.",
+    "sectionCount": 10,
+    "stepCount": 42,
+    "hasProject": true,
+    "hasQuiz": false
   }
 ];

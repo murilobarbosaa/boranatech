@@ -19,14 +19,16 @@ function meta(parcial: Partial<RoadmapMeta> & { slug: string }): RoadmapMeta {
 }
 
 describe("trailGroups: grupos de trilha da vitrine derivados do meta", () => {
-  it("com o registro atual: linguagens (JavaScript, Python) e depois ferramentas (Git)", () => {
+  it("com o registro atual: linguagens (JavaScript, Python, HTML, CSS) e depois ferramentas (Git)", () => {
     const grupos = trailGroups(roadmapsMeta);
     expect(grupos.map((g) => g.key)).toEqual(["linguagem", "ferramenta"]);
-    // Lote 08: a trilha de HTML entrou no registro depois de Python.
+    // Lote 08: HTML entrou depois de Python. Lote 09: CSS entrou depois de
+    // HTML, que e a ordem em que se aprende as duas.
     expect(grupos[0].entries.map((e) => e.slug)).toEqual([
       "javascript",
       "python",
       "html",
+      "css",
     ]);
     expect(grupos[1].entries.map((e) => e.slug)).toEqual(["git"]);
   });

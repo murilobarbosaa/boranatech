@@ -164,6 +164,10 @@ export const projectTrailLinks: Record<
     {
       "slug": "html",
       "nodeId": "projeto.pagina"
+    },
+    {
+      "slug": "css",
+      "nodeId": "projeto.estilo"
     }
   ]
 };
