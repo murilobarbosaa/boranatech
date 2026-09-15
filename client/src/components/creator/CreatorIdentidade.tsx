@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import UserAvatar from "@/components/UserAvatar";
-import { rotuloDoTipoDePix } from "@/components/creator/CreatorPerfilForm";
+import { rotuloDoTipoDePix } from "@/components/creator/CreatorPixForm";
 import { adminFetch } from "@/lib/adminApi";
 import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";

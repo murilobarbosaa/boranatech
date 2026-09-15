@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { KeyRound, Share2, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
-import { CreatorPerfilForm } from "@/components/creator/CreatorPerfilForm";
+import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
+import { CreatorRedesForm } from "@/components/creator/CreatorRedesForm";
+import { useCreatorPerfil } from "@/components/creator/useCreatorPerfil";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
@@ -30,13 +33,13 @@ import {
 // recebe `identidade="nenhuma"`. No admin a identidade continua, porque la quem
 // olha e outra pessoa.
 //
-// PERFIL DE CREATOR (lote 08): o CreatorPerfilForm busca e grava sozinho, e
-// fica FORA do condicional do painel. Trocar a janela do grafico poe o painel
-// em "carregando"; se o formulario estivesse dentro, ele desmontaria e o que a
-// pessoa estivesse digitando sumiria. O painel de numeros tambem nao espera por
-// ele: sao duas buscas independentes. A pagina so guarda se ha chave Pix
-// (`temPix`), para o aviso do topo do painel. Enquanto o perfil nao respondeu,
-// `temPix` e null e o aviso nao aparece: "nao sei" nao e "sem chave".
+// PERFIL DE CREATOR: a PAGINA busca o perfil (useCreatorPerfil, lote 08b) e
+// entrega aos dois formularios, que so gravam. A busca subiu para ca porque o
+// que falta preencher precisa ser sabido fora da secao de perfil. Ela tambem
+// fica FORA do condicional do painel: trocar a janela do grafico poe o painel
+// em "carregando", e um formulario que desmontasse ali perderia o que a pessoa
+// estivesse digitando. Enquanto o perfil nao respondeu, `temPix` e null e o
+// aviso nao aparece: "nao sei" nao e "sem chave".
 
 type Estado =
   | { tipo: "carregando" }
@@ -66,7 +69,9 @@ export default function Creator() {
   );
   const [tentativa, setTentativa] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
-  const [temPix, setTemPix] = useState<boolean | null>(null);
+  const perfil = useCreatorPerfil();
+  const temPix =
+    perfil.estado.tipo === "ok" ? perfil.estado.perfil.pix !== null : null;
 
   useEffect(() => {
     let cancelado = false;
@@ -169,11 +174,85 @@ export default function Creator() {
               // TODO(Ana)
               nome="Seu perfil de creator"
             >
-              <CreatorPerfilForm onPixChange={setTemPix} />
+              <SecaoDoPerfil perfil={perfil} />
             </BlocoBoundary>
           ) : null}
         </div>
       </section>
     </Layout>
+  );
+}
+
+/**
+ * Secao de perfil: o cabecalho, e dentro dele os dois formularios. Eles nao
+ * buscam nada; quem leu o perfil foi a pagina.
+ */
+function SecaoDoPerfil({
+  perfil,
+}: {
+  perfil: ReturnType<typeof useCreatorPerfil>;
+}) {
+  const { estado, recarregar, definirPerfil, definirPix } = perfil;
+
+  return (
+    <section
+      id="creator-perfil"
+      data-testid="creator-perfil"
+      aria-labelledby="creator-perfil-titulo"
+      className="scroll-mt-28 space-y-5"
+    >
+      <CabecalhoDeSecao
+        id="creator-perfil-titulo"
+        icone={<Share2 className="h-4 w-4" />}
+        // TODO(Ana)
+        selo="redes e pagamento"
+        // TODO(Ana)
+        titulo="Seu perfil de creator"
+        // TODO(Ana)
+        frase="Suas redes, seus seguidores e a chave Pix por onde a sua comissão será paga."
+      />
+
+      {estado.tipo === "carregando" ? (
+        // TODO(Ana)
+        <LoadingBlock label="Carregando seu perfil..." />
+      ) : estado.tipo === "erro" ? (
+        <div data-testid="creator-perfil-erro" className="space-y-3">
+          {/* TODO(Ana) */}
+          <ErrorBlock message="Não foi possível carregar o seu perfil agora." />
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={recarregar}
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            >
+              {/* TODO(Ana) */}
+              Tentar de novo
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="card-brutal space-y-8 rounded-3xl bg-white p-5 sm:p-6">
+          <div className="space-y-4">
+            <h3 className="font-display text-lg font-black text-slate-950">
+              {/* TODO(Ana) */}
+              Redes
+            </h3>
+            <CreatorRedesForm perfil={estado.perfil} onSalvo={definirPerfil} />
+          </div>
+
+          <div className="space-y-4 border-t-2 border-dashed border-slate-300 pt-6">
+            <h3 className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
+              <KeyRound aria-hidden="true" className="h-5 w-5" />
+              {/* TODO(Ana) */}
+              Chave Pix
+            </h3>
+            <p className="max-w-2xl text-sm font-semibold text-slate-600">
+              {/* TODO(Ana) */}É por esta chave que a sua comissão será paga.
+            </p>
+            <CreatorPixForm pix={estado.perfil.pix} onSalvo={definirPix} />
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

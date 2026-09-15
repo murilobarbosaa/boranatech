@@ -43,9 +43,15 @@ const estado = vi.hoisted(() => ({
     identidade: string | undefined;
     semChavePix: boolean | undefined;
   },
-  // O formulario de perfil (lote 08) e mockado: ele busca sozinho, e aqui o que
-  // se afirma e onde a pagina o poe e o que ela faz com o `onPixChange`.
-  perfilForm: { montagens: 0 },
+  // O perfil (lote 08b) vem do hook useCreatorPerfil, dublado aqui: quem busca
+  // e a PAGINA, e o que se afirma e o que ela faz com o que voltou. Os dois
+  // formularios sao dublados porque aqui eles so precisam existir ou nao.
+  perfil: { tipo: "carregando" } as
+    | { tipo: "carregando" }
+    | { tipo: "erro" }
+    | { tipo: "ok"; perfil: unknown },
+  recarregar: vi.fn(),
+  redesForm: { montagens: 0 },
 }));
 
 // Sonda: se a pagina voltar a importar o fundo decorado, ele aparece na tela
@@ -83,30 +89,28 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
     );
   },
 }));
-vi.mock("@/components/creator/CreatorPerfilForm", async () => {
+vi.mock("@/components/creator/useCreatorPerfil", () => ({
+  useCreatorPerfil: () => ({
+    estado: estado.perfil,
+    recarregar: estado.recarregar,
+    definirPerfil: vi.fn(),
+    definirPix: vi.fn(),
+  }),
+}));
+vi.mock("@/components/creator/CreatorRedesForm", async () => {
   const { useEffect } = await import("react");
   return {
-    CreatorPerfilForm: ({
-      onPixChange,
-    }: {
-      onPixChange?: (temPix: boolean) => void;
-    }) => {
+    CreatorRedesForm: () => {
       useEffect(() => {
-        estado.perfilForm.montagens += 1;
+        estado.redesForm.montagens += 1;
       }, []);
-      return (
-        <div data-testid="perfil-form">
-          <button type="button" onClick={() => onPixChange?.(false)}>
-            perfil sem pix
-          </button>
-          <button type="button" onClick={() => onPixChange?.(true)}>
-            perfil com pix
-          </button>
-        </div>
-      );
+      return <div data-testid="redes-form" />;
     },
   };
 });
+vi.mock("@/components/creator/CreatorPixForm", () => ({
+  CreatorPixForm: () => <div data-testid="pix-form" />,
+}));
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -166,7 +170,9 @@ function montar() {
 beforeEach(() => {
   estado.fetch = vi.fn();
   estado.props = null;
-  estado.perfilForm = { montagens: 0 };
+  estado.perfil = { tipo: "carregando" };
+  estado.recarregar = vi.fn();
+  estado.redesForm = { montagens: 0 };
 });
 
 afterEach(() => {
@@ -315,30 +321,75 @@ describe("pagina /creator: estrutura do admin", () => {
   });
 });
 
-describe("pagina /creator: perfil de creator (lote 08)", () => {
-  it("o formulario de perfil aparece, e o aviso so liga quando o perfil diz que nao ha chave", async () => {
+const PERFIL_COM_CHAVE = {
+  instagram_handle: "ana.cria",
+  tiktok_handle: null,
+  instagram_followers: 1200,
+  tiktok_followers: null,
+  followers_updated_at: "2026-09-14T12:00:00Z",
+  visible_to_creators: false,
+  pix: {
+    tipo: "cpf",
+    mascarada: "***.***.247-**",
+    updated_at: "2026-09-14T12:00:00Z",
+  },
+};
+
+const PERFIL_SEM_CHAVE = { ...PERFIL_COM_CHAVE, pix: null };
+
+describe("pagina /creator: perfil de creator (lote 08b)", () => {
+  it("perfil carregado: os dois formularios aparecem, e o aviso segue a chave", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar();
     await screen.findByTestId("view");
-    expect(screen.getByTestId("perfil-form")).toBeTruthy();
-    // Enquanto o perfil nao respondeu, "nao sei" nao e "sem chave".
-    expect(estado.props?.semChavePix).toBe(false);
-    fireEvent.click(screen.getByText("perfil sem pix"));
-    expect(estado.props?.semChavePix).toBe(true);
-    fireEvent.click(screen.getByText("perfil com pix"));
+    expect(screen.getByTestId("redes-form")).toBeTruthy();
+    expect(screen.getByTestId("pix-form")).toBeTruthy();
     expect(estado.props?.semChavePix).toBe(false);
   });
 
-  it("trocar a janela do grafico NAO remonta o formulario de perfil", async () => {
+  it("perfil sem chave liga o aviso", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_SEM_CHAVE };
+    montar();
+    await screen.findByTestId("view");
+    expect(estado.props?.semChavePix).toBe(true);
+  });
+
+  it("enquanto o perfil nao respondeu o aviso fica desligado", async () => {
+    // "Nao sei" nao e "sem chave".
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "carregando" };
+    montar();
+    await screen.findByTestId("view");
+    expect(estado.props?.semChavePix).toBe(false);
+    expect(screen.queryByTestId("redes-form")).toBeNull();
+  });
+
+  it("erro no perfil: bloco de erro com tentar de novo, e o painel continua", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "erro" };
+    montar();
+    await screen.findByTestId("view");
+    const erro = screen.getByTestId("creator-perfil-erro");
+    fireEvent.click(
+      within(erro).getByRole("button", { name: "Tentar de novo" }),
+    );
+    expect(estado.recarregar).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("redes-form")).toBeNull();
+  });
+
+  it("trocar a janela do grafico NAO remonta o formulario de redes", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar();
     fireEvent.click(await screen.findByText("trocar para 90 dias"));
     await screen.findByTestId("view");
     expect(estado.fetch).toHaveBeenLastCalledWith("/creator/me?janela=90d");
-    expect(estado.perfilForm.montagens).toBe(1);
+    expect(estado.redesForm.montagens).toBe(1);
   });
 
-  it("quem nao e creator nao ve o formulario de perfil", async () => {
+  it("quem nao e creator nao ve a secao de perfil", async () => {
     estado.fetch = vi.fn(async () => {
       throw new AdminApiError(
         "Acesso de creator necessário.",
@@ -346,8 +397,10 @@ describe("pagina /creator: perfil de creator (lote 08)", () => {
         "not_creator",
       );
     });
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar();
     await screen.findByTestId("creator-nao-creator");
-    expect(screen.queryByTestId("perfil-form")).toBeNull();
+    expect(screen.queryByTestId("creator-perfil")).toBeNull();
+    expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import {
   BadgeCheck,
   BarChart3,
@@ -35,6 +35,7 @@ import {
   rotuloDeDia,
 } from "@/components/admin/overview/chartMath";
 import { relativeTime } from "@/components/admin/tasks/relativeTime";
+import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CreatorIdentidade } from "@/components/creator/CreatorIdentidade";
 import { CreatorMetricCard } from "@/components/creator/CreatorMetricCard";
 import { CupomDoCodigo } from "@/components/creator/CupomDoCodigo";
@@ -172,39 +173,6 @@ export function deltaPermitido(
   const primeiroDia = somarDiaCivil(hoje, -(dias - 1));
   const inicioAnterior = inicioDoDiaBrasilia(somarDiaCivil(primeiroDia, -dias));
   return Date.parse(medidoDesde) < Date.parse(inicioAnterior);
-}
-
-/** Cabecalho de secao na forma do AdminSection do admin: selo, titulo e frase. */
-export function CabecalhoDeSecao({
-  id,
-  icone,
-  selo,
-  titulo,
-  frase,
-}: {
-  id: string;
-  icone: ReactNode;
-  selo: string;
-  titulo: string;
-  frase: string;
-}) {
-  return (
-    <div>
-      <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
-        {icone}
-        {selo}
-      </p>
-      <h2
-        id={id}
-        className="font-display mt-3 text-3xl font-black text-slate-950"
-      >
-        {titulo}
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
-        {frase}
-      </p>
-    </div>
-  );
 }
 
 function SeletorDeJanela({
