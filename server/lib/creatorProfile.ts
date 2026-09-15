@@ -179,11 +179,46 @@ export function validarEntradaDoPerfil(
 }
 
 /**
+ * Data dos seguidores declarados para esta gravacao, comparando com a linha
+ * que ja estava gravada:
+ * - os dois seguidores nulos: null, porque sem numero nao ha data a mostrar;
+ * - os dois iguais aos gravados, e a linha anterior com data: a data que ja
+ *   estava, porque o numero nao mudou e continua valendo desde quando foi dito;
+ * - qualquer outro caso (numero diferente, sem linha anterior, linha anterior
+ *   sem data, ou um dos dois removido): o instante desta gravacao.
+ */
+function dataDosSeguidores(
+  entrada: EntradaDoPerfil,
+  anterior: Linha | null,
+  instante: string,
+): string | null {
+  if (
+    entrada.instagram_followers === null &&
+    entrada.tiktok_followers === null
+  ) {
+    return null;
+  }
+  if (!anterior) return instante;
+  const dataAnterior = textoOuNull(
+    anterior.followers_updated_at,
+    "followers_updated_at",
+  );
+  if (dataAnterior === null) return instante;
+  const iguais =
+    inteiroOuNull(anterior.instagram_followers, "instagram_followers") ===
+      entrada.instagram_followers &&
+    inteiroOuNull(anterior.tiktok_followers, "tiktok_followers") ===
+      entrada.tiktok_followers;
+  return iguais ? dataAnterior : instante;
+}
+
+/**
  * Grava o perfil inteiro (upsert por user_id) e devolve o perfil relido.
  *
- * `followers_updated_at` e o instante DESTA gravacao quando ha qualquer
- * seguidor informado, e null quando nao ha nenhum: seguidor declarado vale na
- * data em que foi declarado, e sem numero nenhum nao ha data a mostrar.
+ * `followers_updated_at` so muda quando os NUMEROS declarados mudam (regra em
+ * `dataDosSeguidores`): trocar o @ ou o consentimento com os mesmos seguidores
+ * mantem a data antiga, que e quando aqueles numeros foram ditos. Por isso a
+ * linha atual e lida ANTES do upsert. Se essa leitura falhar, nada e gravado.
  */
 export async function salvarPerfilDoCreator(
   userId: string,
@@ -191,8 +226,7 @@ export async function salvarPerfilDoCreator(
   agora: Date = new Date(),
 ): Promise<CreatorPerfilDados> {
   const instante = agora.toISOString();
-  const temSeguidor =
-    entrada.instagram_followers !== null || entrada.tiktok_followers !== null;
+  const anterior = await lerLinhaDoPerfil(userId);
   const { error } = await supabaseAdmin.from("creator_profiles").upsert(
     {
       user_id: userId,
@@ -200,7 +234,7 @@ export async function salvarPerfilDoCreator(
       tiktok_handle: entrada.tiktok_handle,
       instagram_followers: entrada.instagram_followers,
       tiktok_followers: entrada.tiktok_followers,
-      followers_updated_at: temSeguidor ? instante : null,
+      followers_updated_at: dataDosSeguidores(entrada, anterior, instante),
       visible_to_creators: entrada.visible_to_creators,
       updated_at: instante,
     },
