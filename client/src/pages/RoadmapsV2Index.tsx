@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Award,
   BadgeCheck,
+  Braces,
   Building2,
   Code2,
   Compass,
@@ -11,6 +12,7 @@ import {
   FileText,
   Flag,
   Footprints,
+  GitBranch,
   Headphones,
   Linkedin,
   Map,
@@ -21,6 +23,7 @@ import {
   Route,
   Signpost,
   Sparkles,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -31,7 +34,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import { prefetchRoadmap } from "@/lib/roadmapV2/loaders";
 import { areasTI } from "@/lib/data";
-import { tagPaletteOf } from "@/lib/tagPalette";
+import { tagPaletteOf, trailPaletteOf } from "@/lib/tagPalette";
+import {
+  trailGroups,
+  type TrailGroupKey,
+} from "@shared/roadmapV2/vitrineGroups";
 import {
   getCertificateStatuses,
   type CertificateStatus,
@@ -80,6 +87,35 @@ const CAREER_CARD_STYLE: Record<
 const CAREER_CARD_FALLBACK: { icon: LucideIcon; tagClass: string } = {
   icon: Map,
   tagClass: "bg-slate-600",
+};
+
+// Grupos de trilha de linguagem e de ferramenta, abaixo das carreiras. A lista
+// vem de trailGroups (derivada do meta, que deriva do registro): trilha nova
+// registrada aparece sem tocar aqui. Esta tabela so guarda a copy e o icone de
+// cada GRUPO; a cor do card vem de trailPaletteOf, por slug, no mesmo par
+// pastel com icone escuro dos cards de area.
+const TRAIL_GROUP_UI: Record<
+  TrailGroupKey,
+  { title: string; lead: string; icon: LucideIcon }
+> = {
+  // TODO(Ana): titulo e apoio do grupo de linguagens na vitrine
+  linguagem: {
+    title: "Linguagens de programação",
+    lead: "Aprenda do zero, passo a passo, com provas e certificado.",
+    icon: Braces,
+  },
+  // TODO(Ana): titulo e apoio do grupo de ferramentas na vitrine
+  ferramenta: {
+    title: "Ferramentas",
+    lead: "O que todo dev usa no dia a dia, do primeiro comando ao fluxo completo.",
+    icon: Wrench,
+  },
+};
+
+// Icone proprio de uma trilha, quando o do grupo nao basta. Sem entrada, o
+// card usa o icone do grupo.
+const TRAIL_ICON: Record<string, LucideIcon> = {
+  git: GitBranch,
 };
 
 const HERO_DOODLES = [
@@ -594,6 +630,110 @@ export default function RoadmapsV2Index() {
                 })}
             </div>
           </div>
+
+          {trailGroups(roadmapsMeta).map((group) => {
+            const ui = TRAIL_GROUP_UI[group.key];
+            return (
+              <div
+                key={group.key}
+                className="mt-14"
+                data-testid={`vitrine-grupo-${group.key}`}
+              >
+                <motion.div
+                  initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
+                    {ui.title}
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
+                    {ui.lead}
+                  </p>
+                </motion.div>
+
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {group.entries.map((entry, index) => {
+                    const palette = trailPaletteOf(entry.slug);
+                    const Icon = Object.prototype.hasOwnProperty.call(
+                      TRAIL_ICON,
+                      entry.slug,
+                    )
+                      ? TRAIL_ICON[entry.slug]
+                      : ui.icon;
+                    return (
+                      <motion.div
+                        key={entry.slug}
+                        initial={entrada(
+                          reduce ? false : { opacity: 0, y: 12 },
+                        )}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.35,
+                          delay: Math.min(index * 0.04, 0.4),
+                        }}
+                      >
+                        <Link
+                          href={`/roadmaps/${entry.slug}`}
+                          onMouseEnter={() => prefetchRoadmap(entry.slug)}
+                          onFocus={() => prefetchRoadmap(entry.slug)}
+                          className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
+                        >
+                          <span
+                            aria-hidden
+                            className={`-mx-5 -mt-5 mb-4 h-2 ${palette.bg}`}
+                          />
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${palette.bg}`}
+                            >
+                              <Icon
+                                className={`h-[19px] w-[19px] ${palette.text}`}
+                              />
+                            </span>
+                            <h2 className="text-[15px] font-bold leading-tight text-slate-900">
+                              {entry.title}
+                            </h2>
+                          </div>
+
+                          <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
+                            {entry.summary}
+                          </p>
+
+                          {statusBySlug[entry.slug] ? (
+                            <CertBadge status={statusBySlug[entry.slug]} />
+                          ) : null}
+
+                          {/* TODO(Ana): copy do card de trilha (pilulas, selo de prova e rodape) */}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                              {entry.sectionCount} etapas
+                            </span>
+                            <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
+                              {entry.stepCount} passos
+                            </span>
+                            {entry.hasQuiz && (
+                              <span className="rounded-full border-[1.5px] border-slate-900 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-800">
+                                Com prova
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
+                            <span className="text-[11px] text-slate-400">
+                              iniciante → avançado
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-1" />
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
     </Layout>
