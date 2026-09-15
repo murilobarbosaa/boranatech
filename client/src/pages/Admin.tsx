@@ -96,7 +96,6 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
-import { detalheDeReceitaPorProvider } from "@/components/admin/overview/receitaPorProviderCopy";
 import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
 import { useAttentionData } from "@/components/admin/overview/useAttentionData";
@@ -664,49 +663,6 @@ type PosthogState =
   | { state: "error"; reason: string; httpStatus?: number }
   | { state: "ok"; hasData: boolean; stats: PosthogStats };
 
-type PlanMrr = {
-  code: string;
-  name: string | null;
-  count: number;
-  mrrCents: number;
-};
-
-type MrrSnapshot = {
-  mrrCents: number;
-  arpuCents: number | null;
-  activeCount: number;
-  trialingCount: number;
-  byPlan: PlanMrr[];
-};
-
-// Contexto que ACOMPANHA o churn e nao entra nele. Opcional em ambos os ramos
-// porque na janela de deploy o frontend novo fala com o backend antigo, que nao
-// manda estes campos.
-type ChurnContext = {
-  scheduledNotCounted?: number;
-  revertedInWindow?: number;
-  orphanCancellations?: number;
-};
-
-type ChurnSnapshot =
-  | ({
-      status: "insufficient_data";
-      reason: string;
-      windowDays: number;
-      canceledInWindow?: number;
-      activeAtStart?: number;
-    } & ChurnContext)
-  | ({
-      status: "ok";
-      windowDays: number;
-      churnRate: number;
-      canceledInWindow: number;
-      activeAtStart: number;
-      ltvCents: number | null;
-    } & ChurnContext);
-
-type BillingMetricsData = { mrr: MrrSnapshot; churn: ChurnSnapshot };
-
 type ContentItem = {
   id: string;
   slug?: string;
@@ -792,24 +748,23 @@ export const metricCards: MetricCard[] = [
   },
   {
     key: "mrr",
-    label: "Receita recorrente",
+    label: "Valor mensal de catálogo",
     value: "0",
-    detail: "MRR das assinaturas ativas",
+    detail: "Preço vigente mensalizado dos acessos ativos",
     icon: <DollarSign className="h-6 w-6" />,
-    color: "bg-emerald-600 text-white",
+    color: "bg-amber-100 text-slate-950",
   },
   {
-    // ESTE SLOT E "Receita no período", nao "Chamadas de IA".
+    // ESTE SLOT LEVA AO CAIXA HONESTO, nao "Chamadas de IA".
     //
     // O `useMemo` sempre sobrescreveu o label deste slot, e a base ficou
     // descrevendo outra metrica (registros em `ai_usage_logs`). Enquanto isso
     // durou, o payload sem `cards` desenhava um card fantasma, com assunto e
     // icone que nao existem na tela carregada.
     key: "receita_periodo",
-    label: "Receita no período",
-    value: "0",
-    // TODO(Ana)
-    detail: "Cobranças na janela selecionada",
+    label: "Caixa registrado por moeda",
+    value: "Ver financeiro",
+    detail: "O agregado legado sem moeda não é exibido",
     icon: <DollarSign className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
@@ -818,9 +773,9 @@ export const metricCards: MetricCard[] = [
     // "Cursos cadastrados" saiu daqui: inventário não sustenta decisão, e era o
     // único número da página que ninguém usava para agir. Este é o oposto: muda
     // sozinho, tem data marcada e ainda dá para agir.
-    label: "Receita em risco",
+    label: "Acessos em atenção",
     value: "0",
-    detail: "Saídas agendadas e pagamentos em atraso",
+    detail: "Equivalente de catálogo de saídas e atrasos",
     icon: <TrendingDown className="h-6 w-6" />,
     color: "bg-rose-600 text-white",
   },
@@ -1185,82 +1140,6 @@ function PublishBadge({ published }: { published?: boolean }) {
 
 // Ausencia como estado VISIVEL e nomeado, nunca 0 nem traco.
 // TODO(Ana): revisar copy de "Dados insuficientes" e as explicacoes.
-function InsufficientDataBlock({
-  label,
-  explanation,
-}: {
-  label: string;
-  explanation: string;
-}) {
-  return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-400 bg-slate-50 p-4">
-      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
-      <p className="font-display text-lg font-black text-slate-700">
-        Dados insuficientes
-      </p>
-      <p className="mt-1 text-xs font-semibold text-slate-500">{explanation}</p>
-    </div>
-  );
-}
-
-function MetricTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-      <p className="text-xs font-black uppercase text-violet-700">{label}</p>
-      <p className="font-display text-2xl font-black text-slate-950">{value}</p>
-      {hint ? (
-        <p className="mt-1 text-xs font-semibold text-slate-500">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function formatPercent1(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-// TODO(Ana): revisar as explicacoes de churn insuficiente.
-/**
- * Agendados e revertidos, ao lado do churn.
- *
- * Nao renderiza nada quando o backend nao manda os campos (janela de deploy) nem
- * quando ambos sao zero: bloco vazio ocupando espaco e ruido, e um "0 agendados"
- * so vale quando ha algo a comparar.
- */
-function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
-  const agendados = churn.scheduledNotCounted;
-  const revertidos = churn.revertedInWindow;
-  if (agendados === undefined && revertidos === undefined) return null;
-  if (!agendados && !revertidos) return null;
-
-  return (
-    <>
-      {agendados ? (
-        <MetricTile
-          label="Saídas agendadas"
-          value={String(agendados)}
-          hint="Já avisaram que saem. Fora do churn: viram receita em risco."
-        />
-      ) : null}
-      {revertidos ? (
-        <MetricTile
-          label="Cancelamentos revertidos"
-          value={String(revertidos)}
-          hint="Pediram para sair e desistiram, na janela."
-        />
-      ) : null}
-    </>
-  );
-}
-
 /**
  * Um card da Visão.
  *
@@ -1293,7 +1172,8 @@ function MetricCardView({
   destaque?: boolean;
 }) {
   // RODAPÉ ANCORADO NA BASE, e só quando existe. Card sem sparkline e sem Δ
-  // (hoje "Assinantes Pro" e "Receita em risco") não ganha um rodapé vazio: o
+  // (hoje "Assinantes Pro", "Caixa registrado por moeda" e "Acessos em
+  // atenção") não ganha um rodapé vazio: o
   // conteúdo fica no topo, alinhado com os vizinhos, que é o desejado.
   const rodape =
     metric.sparkline || metric.change ? (
@@ -1370,22 +1250,6 @@ function MetricCardView({
   );
 }
 
-function churnInsufficientReason(reason: string): string {
-  switch (reason) {
-    case "subscription_base_younger_than_window":
-      return "Base de assinaturas ainda nova demais para calcular churn de 30 dias.";
-    case "no_active_subscribers_at_window_start":
-      return "Não havia assinantes ativos no início da janela para calcular churn.";
-    // Estado que existe para NAO virar "0%". Nenhuma assinatura chegou ao fim do
-    // periodo, entao ninguem teve a chance de sair: zero aqui seria ausencia de
-    // medicao disfarcada de medicao.
-    case "no_subscription_period_ended":
-      return "Nenhuma assinatura chegou ao fim do período ainda: não há saída possível para medir.";
-    default:
-      return "Dados insuficientes para calcular churn.";
-  }
-}
-
 // PostHog como quatro telas DISTINTAS (not_configured / error / ok-sem-dados /
 // ok-com-dados). A tela sem dados parece saudavel, nao quebrada.
 // TODO(Ana): revisar copy dos estados do PostHog.
@@ -1434,99 +1298,6 @@ function PosthogStateNotice({ state }: { state: PosthogState | null }) {
       <p className="mt-1 text-sm font-semibold text-slate-500">
         Sem eventos neste recorte no período.
       </p>
-    </div>
-  );
-}
-
-// Painel de metricas de cobranca (MRR, ARPU, churn, LTV, distribuicao por plano).
-// Erro e ausencia sao estados visiveis: nunca renderiza 0 nem valor inventado.
-// TODO(Ana): revisar labels e hints das metricas de cobranca.
-function BillingMetricsPanel({
-  loading,
-  error,
-  metrics,
-}: {
-  loading: boolean;
-  error: string | null;
-  metrics: BillingMetricsData | null;
-}) {
-  if (loading) return <LoadingBlock />;
-  if (error) return <ErrorBlock message={error} />;
-  if (!metrics) return <LoadingBlock />;
-
-  const { mrr, churn } = metrics;
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MetricTile
-          label="MRR"
-          value={formatCents(mrr.mrrCents)}
-          hint={`${mrr.activeCount} ativos, ${mrr.trialingCount} em trial`}
-        />
-        {mrr.arpuCents === null ? (
-          <InsufficientDataBlock
-            label="ARPU"
-            explanation="Sem assinantes ativos para calcular ARPU."
-          />
-        ) : (
-          <MetricTile
-            label="ARPU"
-            value={formatCents(mrr.arpuCents)}
-            hint="Receita média por assinante ativo"
-          />
-        )}
-        {churn.status === "insufficient_data" ? (
-          <InsufficientDataBlock
-            label={`Churn (${churn.windowDays}d)`}
-            explanation={churnInsufficientReason(churn.reason)}
-          />
-        ) : (
-          <MetricTile
-            label={`Churn (${churn.windowDays}d)`}
-            value={formatPercent1(churn.churnRate)}
-            hint={`${churn.canceledInWindow} de ${churn.activeAtStart} no início da janela`}
-          />
-        )}
-        {/* Agendados e revertidos vem ao LADO do churn, nunca somados nele. Sem
-            estes dois, "0% de churn" com nove saidas marcadas leria como
-            "ninguem quer sair". Aparecem nos dois desfechos (ok e insuficiente)
-            porque informam igual nos dois. */}
-        <ChurnContextTiles churn={churn} />
-        {churn.status === "ok" && churn.ltvCents !== null ? (
-          <MetricTile
-            label="LTV"
-            value={formatCents(churn.ltvCents)}
-            hint="ARPU dividido pelo churn"
-          />
-        ) : (
-          <InsufficientDataBlock
-            label="LTV"
-            explanation="LTV precisa de ARPU e churn maior que zero."
-          />
-        )}
-      </div>
-      {mrr.byPlan.length ? (
-        <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-          <p className="border-b-2 border-slate-900 bg-slate-50 px-4 py-2 text-xs font-black uppercase text-slate-600">
-            Distribuição por plano
-          </p>
-          <ul className="divide-y divide-slate-200">
-            {mrr.byPlan.map((plan) => (
-              <li
-                key={plan.code}
-                className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
-              >
-                <span className="font-black text-slate-900">
-                  {plan.name ?? plan.code}
-                </span>
-                <span className="font-semibold text-slate-600">
-                  {plan.count} · {formatCents(plan.mrrCents)}/mês
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -6421,11 +6192,6 @@ export default function Admin() {
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
-  const [billingMetrics, setBillingMetrics] =
-    useState<BillingMetricsData | null>(null);
-  const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
-    null,
-  );
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
@@ -6437,7 +6203,6 @@ export default function Admin() {
   const [posthogLoading, setPosthogLoading] = useState(true);
   const [churnLoading, setChurnLoading] = useState(true);
   const [affiliatesStatsLoading, setAffiliatesStatsLoading] = useState(true);
-  const [billingLoading, setBillingLoading] = useState(true);
   // Aba derivada DIRETO da URL (?section=), fonte unica: sem estado espelhado,
   // entao nao ha loop URL<->estado. F5, voltar/avancar e colar link leem daqui;
   // /admin sem ?section cai em "visao-geral" e nao reescreve a URL.
@@ -6705,7 +6470,6 @@ export default function Admin() {
       setPosthogLoading(true);
       setChurnLoading(true);
       setAffiliatesStatsLoading(true);
-      setBillingLoading(true);
 
       // Mesmas promises tagueadas de antes (falha vira estado de erro da secao,
       // nunca zeros). A diferenca: cada uma aplica SEU estado no proprio .then
@@ -6797,21 +6561,6 @@ export default function Admin() {
           error:
             err instanceof Error ? err.message : "Erro ao carregar afiliados.",
         }));
-      // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
-      // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
-      const billingPromise = adminFetch("/billing-metrics")
-        .then((json) => ({
-          ok: true as const,
-          data: json.data as BillingMetricsData,
-        }))
-        .catch((err: unknown) => ({
-          ok: false as const,
-          error:
-            err instanceof Error
-              ? err.message
-              : "Erro ao carregar métricas de cobrança.",
-        }));
-
       // De /dashboard so sobra `recent_audit`: os contadores morreram junto com
       // os blocos que os exibiam (ver a poda do servidor no commit seguinte).
       void dashboardPromise.then((dashboardResult) => {
@@ -6874,18 +6623,6 @@ export default function Admin() {
         }
         setAffiliatesStatsLoading(false);
       });
-      void billingPromise.then((billingMetricsResult) => {
-        if (cancelled) return;
-        if (billingMetricsResult.ok) {
-          setBillingMetrics(billingMetricsResult.data);
-          setBillingMetricsError(null);
-        } else {
-          setBillingMetrics(null);
-          setBillingMetricsError(billingMetricsResult.error);
-        }
-        setBillingLoading(false);
-      });
-
       // Mantido o Promise.all: mesmo paralelismo, e o await preserva o contrato
       // de "conclui quando tudo terminou" para o caller (resolve()). Os .then
       // acima ja aplicaram cada estado; aqui so aguardamos o conjunto.
@@ -6895,7 +6632,6 @@ export default function Admin() {
         posthogPromise,
         churnPromise,
         affiliatesPromise,
-        billingPromise,
       ]);
     };
 
@@ -6956,8 +6692,6 @@ export default function Admin() {
           setChurnError(null);
           setAffiliates([]);
           setAffiliatesError(null);
-          setBillingMetrics(null);
-          setBillingMetricsError(null);
           setAccessState("forbidden");
         });
     };
@@ -7240,9 +6974,8 @@ export default function Admin() {
           // "+N" de verdade, sem recontar ninguém.
           `+${formatCount(Math.max(c.acessoPro.byInfluencer + (c.acessoPro.byAfiliado ?? 0) - c.acessoPro.both, 0))} só por concessão`,
           `${formatCount(c.acessoPro.total)} com acesso no total`,
-          // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
-          // de propósito. Somá-lo ao número de pagantes faria o card divergir do
-          // MRR no primeiro trial.
+          // TRIALING FORA DO HEADLINE: trial não paga. Somá-lo ao número de
+          // pagantes faria o card afirmar uma relação financeira inexistente.
           c.mrr.trialingCount > 0 ? `${c.mrr.trialingCount} em trial` : null,
         ]
           .filter(Boolean)
@@ -7252,35 +6985,20 @@ export default function Admin() {
       {
         ...metricCards[3],
         value: formatCents(c.mrr.value),
-        detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
-        // ARPU como LINHA SECUNDÁRIA (D9), não card novo: é uma divisão do que
-        // já está no card. `arpuCents` é null sem assinante ativo, ausência.
-        secundaria:
-          c.mrr.arpuCents !== null
-            ? `ARPU ${formatCents(c.mrr.arpuCents)} por assinante`
-            : null,
+        detail: `Preço vigente mensalizado de ${formatCount(c.mrr.activeCount)} acessos ativos, automáticos e manuais (estado atual)`,
+        secundaria: "Não é valor contratado nem dinheiro recebido",
         sparkline: spark("mrrCents", "up_bom"),
         destino: "financeiro",
       },
       {
         ...metricCards[4],
-        label: "Receita no período",
-        value: formatCents(c.receita.value),
-        // BRUTO como principal (base do Simples) e LÍQUIDO ao lado: bruto
-        // sozinho afirma uma receita que não entrou. Os três números já eram
-        // calculados no mesmo laço e dois eram descartados.
-        detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
-        // QUEBRA POR PROVEDOR como linha secundária, não como card novo: é uma
-        // divisão do número que já está no card, mesma decisão do ARPU no MRR.
-        // Ela some sozinha quando não há dois provedores com receita, e some na
-        // janela de deploy contra o backend antigo. Ver o cabeçalho do helper.
-        // TODO(Ana)
-        secundaria: detalheDeReceitaPorProvider(
-          c.receita.porProvider,
-          formatCents,
-        ),
-        sparkline: spark("receitaBrutaCents", "up_bom"),
-        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        label: "Caixa registrado por moeda",
+        value: "Ver financeiro",
+        detail:
+          "O agregado legado não declara moeda nem cobertura; valores confiáveis ficam separados na aba Financeiro.",
+        secundaria: undefined,
+        sparkline: undefined,
+        change: undefined,
         destino: "financeiro",
       },
       {
@@ -7290,8 +7008,8 @@ export default function Admin() {
         // quem tem plano anual. A unidade é a diferença entre um número certo e
         // um número entendido.
         value: `${formatCents(c.receitaEmRisco.mrrCents)}/mês`,
-        // BREAKDOWN em vez do "% do MRR". O percentual respondia "quanto disso é
-        // grande", e o card já mostra o valor; a pergunta que sobra é O QUE
+        // BREAKDOWN em vez de percentual sobre o valor de catálogo. O card já
+        // mostra o valor; a pergunta que sobra é O QUE
         // fazer, e as duas metades pedem ações opostas (reter quem agendou saída,
         // recuperar a cobrança de quem está em atraso).
         //
@@ -8009,10 +7727,10 @@ export default function Admin() {
           {activeSection === "retencao" ? (
             <AdminSection
               id="retencao"
-              eyebrow="retenção e churn"
+              eyebrow="uso e cancelamentos observados"
               icon={<RefreshCcw className="h-4 w-4" />}
-              title="Quem fica, quem cancela e quem está em risco"
-              subtitle="Monitore cohorts, motivos de cancelamento, assinantes sem login e distribuição de dias desde o último acesso."
+              title="Uso recente e cancelamentos registrados"
+              subtitle="Sinais operacionais de navegação, motivos registrados e dias desde o último acesso. Não mede logo churn nem churn de receita."
             >
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <article className="card-brutal overflow-hidden rounded-3xl bg-white">
@@ -8031,7 +7749,7 @@ export default function Admin() {
                   </article>
                   <article className="card-brutal rounded-3xl bg-rose-50 p-6">
                     <h3 className="font-display text-2xl font-black text-slate-950">
-                      Usuários em risco
+                      Acessos sem login recente
                     </h3>
                     <div className="mt-4">
                       {churnLoading ? (
@@ -8042,7 +7760,8 @@ export default function Admin() {
                         // TODO(Ana): copy de fallback do erro de churn.
                         <ErrorBlock
                           message={
-                            churnError ?? "Erro ao carregar risco de churn."
+                            churnError ??
+                            "Erro ao carregar acessos sem login recente."
                           }
                         />
                       ) : churnRiskUsers.length ? (
@@ -8066,7 +7785,8 @@ export default function Admin() {
                                 </span>
                               </div>
                               <p className="mt-3 text-sm font-black text-slate-700">
-                                MRR: {formatCurrency(riskUser.mrr)}
+                                Valor mensal de catálogo associado:{" "}
+                                {formatCurrency(riskUser.mrr)}
                               </p>
                             </div>
                           ))}
@@ -8074,7 +7794,7 @@ export default function Admin() {
                       ) : (
                         <div className="rounded-2xl border-2 border-slate-900 bg-white p-4">
                           <p className="font-display text-lg font-black text-slate-950">
-                            Nenhum assinante Pro em risco no momento
+                            Nenhum acesso Pro sem login recente
                           </p>
                           <p className="mt-2 text-sm font-semibold text-slate-500">
                             Todos os assinantes ativos consultados fizeram login
@@ -8095,7 +7815,7 @@ export default function Admin() {
               eyebrow="financeiro"
               icon={<DollarSign className="h-4 w-4" />}
               title="Financeiro"
-              subtitle="Resultado de caixa (entrou, saiu, lucro) separado das métricas de recorrência (MRR, ARPU, churn). São coisas diferentes."
+              subtitle="Caixa registrado e acessos atuais, com cobertura e limitações explícitas. Métricas contratuais ausentes não aparecem como zero."
             >
               {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
               {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
@@ -8141,32 +7861,16 @@ export default function Admin() {
                   diferenca e que la e um aviso e aqui e onde se resolve. */}
               <OrphanPaymentsPanel />
 
-              {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
               <div className="mt-12 border-t-4 border-slate-900 pt-8">
-                {/* TODO(Ana): titulo e subtitulo do bloco de recorrencia. */}
                 <h2 className="font-display text-3xl font-black text-slate-950">
-                  Recorrência e assinantes
+                  Operação de assinaturas e afiliados
                 </h2>
                 <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Métricas de assinatura (MRR, ARPU, churn) e comissões de
-                  afiliados. Diferente do resultado de caixa acima: aqui é o
-                  recorrente projetado, não o dinheiro que efetivamente entrou.
+                  Listas operacionais preservadas. Os contadores de comissão são
+                  parciais e não formam um ledger financeiro reconciliado.
                 </p>
 
                 <div className="mt-5 grid gap-6 xl:grid-cols-3">
-                  <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                    {/* TODO(Ana): titulo do bloco de metricas de cobranca. */}
-                    <h3 className="font-display text-2xl font-black">
-                      MRR, ARPU e churn
-                    </h3>
-                    <div className="mt-4">
-                      <BillingMetricsPanel
-                        loading={billingLoading}
-                        error={billingMetricsError}
-                        metrics={billingMetrics}
-                      />
-                    </div>
-                  </article>
                   <article className="card-brutal rounded-3xl bg-white p-6">
                     <h3 className="font-display text-2xl font-black">
                       Afiliados externos

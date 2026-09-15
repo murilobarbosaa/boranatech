@@ -271,7 +271,7 @@ describe("gráficos novos", () => {
     serie("custoIaUsd", "Custo de IA", [0.1, 0.2]),
     serie("chamadasSemCustoMedido", "Sem custo", [0, 1]),
     {
-      ...serie("mrrCents", "MRR", [1000, 1000]),
+      ...serie("mrrCents", "Valor mensal de catálogo", [1000, 1000]),
       tipo: "estoque",
       total: 1000,
     },

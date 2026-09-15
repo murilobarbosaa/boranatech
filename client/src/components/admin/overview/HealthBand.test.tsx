@@ -134,7 +134,8 @@ describe("cron parado e boleto em limbo aparecem", () => {
         {
           id: "snapshot-parado",
           label: "Cron de snapshot parado",
-          detalhe: "Sem snapshot há 4 dias. A série de MRR parou de crescer.",
+          detalhe:
+            "Sem snapshot há 4 dias. A série de valor mensal de catálogo parou de crescer.",
           severidade: "erro" as const,
         },
       ],

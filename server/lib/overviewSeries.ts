@@ -41,9 +41,10 @@ export type PontoSerie = {
  * nada aconteceu. Isso e um ZERO de verdade, e a barra e desenhada. Omitir o dia
  * faria o grafico parecer mais curto do que o periodo.
  *
- * ESTOQUE (MRR, assinantes): vem de `subscription_snapshots`, uma foto por dia.
+ * ESTOQUE (valor mensal de catálogo, assinantes): vem de
+ * `subscription_snapshots`, uma foto por dia.
  * Dia sem snapshot significa que NINGUEM MEDIU. Preencher com zero afirmaria que
- * o MRR caiu a zero naquele dia, e interpolar afirmaria uma medicao que nao
+ * o valor de catálogo caiu a zero naquele dia, e interpolar afirmaria uma medicao que nao
  * houve. Volta `null`, e quem desenha quebra a linha.
  */
 export type TipoDeSerie = "fluxo" | "estoque";
@@ -583,7 +584,7 @@ export async function montarSeriesDaVisao(
       const s = snapPorDia.get(date);
       return {
         date,
-        // Dia sem snapshot volta NULL: ninguem mediu. Zero afirmaria que o MRR
+        // Dia sem snapshot volta NULL: ninguem mediu. Zero afirmaria que o valor
         // caiu a zero, e interpolar afirmaria uma medicao que nao houve.
         value: s ? (s[campo] ?? null) : null,
         partial: false,
@@ -655,7 +656,7 @@ export async function montarSeriesDaVisao(
   );
 
   for (const [chave, rotulo, campo] of [
-    ["mrrCents", "MRR", "mrr_cents"],
+    ["mrrCents", "Valor mensal de catálogo", "mrr_cents"],
     ["assinantesAtivos", "Assinantes ativos", "active_count"],
   ] as Array<[string, string, "mrr_cents" | "active_count"]>) {
     const pontos = estoque(campo);

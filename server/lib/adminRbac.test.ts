@@ -20,6 +20,17 @@ describe("manifesto administrativo fechado", () => {
     expect(ADMIN_RBAC_MODE).toBe("observe");
   });
 
+  it("mantém as leituras financeiras protegidas e classificadas", () => {
+    expect(policy("GET", "/api/admin/finance/summary")).toMatchObject({
+      capability: "finance.read",
+      nature: "read",
+    });
+    expect(policy("GET", "/api/admin/finance/transactions")).toMatchObject({
+      capability: "finance.read",
+      nature: "read",
+    });
+  });
+
   it("calcula a decisão hipotética conservadora por papel", () => {
     const dashboard = policy("GET", "/api/admin/overview");
     const content = policy("PATCH", "/api/admin/content/news/abc");
