@@ -37,11 +37,20 @@ export default function CancelPendingPixDialog({
   onClose,
   onResolved,
   copy,
+  goneEhSucesso,
 }: {
   open: boolean;
   onClose: () => void;
   onResolved: (resultado: CancelamentoPixResultado) => void;
   copy?: CancelPendingPixCopy;
+  /**
+   * `gone` (a cobranca ja nao estava pendente) e SUCESSO nesta superficie, e o
+   * toast de erro nao sai. E o caso do checkout: a pessoa pediu um Pix novo, e
+   * a cobranca anterior ter sumido antes e exatamente o que ela queria; o Pix
+   * novo aparece em seguida e ja e o aviso. No Perfil e no modal ninguem pediu
+   * nada, entao o aviso continua, porque ali a cobranca sumir e novidade.
+   */
+  goneEhSucesso?: boolean;
 }) {
   const [cancelando, setCancelando] = useState(false);
 
@@ -66,8 +75,10 @@ export default function CancelPendingPixDialog({
         });
         onResolved("already_paid");
       } else if (code === "sem_cobranca_pendente") {
-        // TODO(Ana): copy da cobranca que ja nao estava pendente.
-        showErrorToast("Essa cobrança não está mais pendente.");
+        if (!goneEhSucesso) {
+          // TODO(Ana): copy da cobranca que ja nao estava pendente.
+          showErrorToast("Essa cobrança não está mais pendente.");
+        }
         onResolved("gone");
       } else {
         // TODO(Ana): copy da falha ao cancelar a cobranca Pix.

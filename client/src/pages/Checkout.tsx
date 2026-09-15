@@ -1492,6 +1492,7 @@ export default function Checkout() {
       <CancelPendingPixDialog
         open={pixPendenteMetodo !== null}
         onClose={() => setPixPendenteMetodo(null)}
+        goneEhSucesso
         copy={{
           // TODO(Ana): pergunta do dialogo de Pix ja pendente no checkout.
           pergunta: "Você já tem um Pix aguardando pagamento",

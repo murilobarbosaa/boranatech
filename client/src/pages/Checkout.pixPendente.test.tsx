@@ -219,6 +219,9 @@ describe("checkout com Pix ja pendente", () => {
       "cancel",
       "checkout:pro_semiannual:pix",
     ]);
+    // `gone` aqui e SUCESSO: a cobranca sumir era o objetivo, e o Pix novo
+    // aparece em seguida. Um toast de erro contradiria a propria tela.
+    expect(spies.toastErro).not.toHaveBeenCalled();
   });
 
   it("ja pago: NAO refaz o checkout, atualiza a assinatura e leva ao perfil", async () => {

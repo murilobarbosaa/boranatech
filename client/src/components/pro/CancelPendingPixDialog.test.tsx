@@ -99,6 +99,28 @@ describe("CancelPendingPixDialog", () => {
     confirmar();
 
     await waitFor(() => expect(onResolved).toHaveBeenCalledWith("gone"));
+    // Sem `goneEhSucesso`, a cobranca ter sumido e novidade: o aviso sai.
+    expect(dubles.erro).toHaveBeenCalledTimes(1);
+  });
+
+  it("com goneEhSucesso (checkout): resolve 'gone' SEM toast de erro", async () => {
+    dubles.cancelar.mockRejectedValue(
+      new dubles.CheckoutError("sem_cobranca_pendente"),
+    );
+    const onResolved = vi.fn();
+    render(
+      <CancelPendingPixDialog
+        open
+        goneEhSucesso
+        onClose={vi.fn()}
+        onResolved={onResolved}
+      />,
+    );
+    confirmar();
+
+    await waitFor(() => expect(onResolved).toHaveBeenCalledWith("gone"));
+    expect(dubles.erro).not.toHaveBeenCalled();
+    expect(dubles.sucesso).not.toHaveBeenCalled();
   });
 
   it("falha generica: so o toast de erro, sem onResolved, e o dialog continua aberto", async () => {
