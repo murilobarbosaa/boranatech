@@ -11,6 +11,18 @@ import {
 export type CancelamentoPixResultado = "canceled" | "already_paid" | "gone";
 
 /**
+ * Textos que mudam por superficie. Todos opcionais: ausentes, o dialog e o do
+ * Perfil e do modal Pix, palavra por palavra. O checkout os troca porque la o
+ * cancelamento e so o meio: o que a pessoa quer e o Pix novo.
+ */
+export type CancelPendingPixCopy = {
+  pergunta?: string;
+  aviso?: string;
+  confirmar?: string;
+  sucesso?: string;
+};
+
+/**
  * CONFIRMACAO DO CANCELAMENTO DA COBRANCA PIX PENDENTE.
  *
  * Uma so para as duas superficies (bloco pendente do Perfil e modal Pix do
@@ -24,10 +36,12 @@ export default function CancelPendingPixDialog({
   open,
   onClose,
   onResolved,
+  copy,
 }: {
   open: boolean;
   onClose: () => void;
   onResolved: (resultado: CancelamentoPixResultado) => void;
+  copy?: CancelPendingPixCopy;
 }) {
   const [cancelando, setCancelando] = useState(false);
 
@@ -38,7 +52,9 @@ export default function CancelPendingPixDialog({
       await cancelPendingPixCharge();
       // TODO(Ana): copy do sucesso do cancelamento da cobranca Pix.
       showActionToast({
-        message: "Cobrança cancelada. Você já pode escolher outro plano.",
+        message:
+          copy?.sucesso ??
+          "Cobrança cancelada. Você já pode escolher outro plano.",
       });
       onResolved("canceled");
     } catch (err) {
@@ -96,12 +112,12 @@ export default function CancelPendingPixDialog({
             <div>
               <h2 className="font-display text-2xl font-black text-[var(--bnt-ink)]">
                 {/* TODO(Ana): pergunta do dialog de cancelar a cobranca Pix. */}
-                Cancelar esta cobrança?
+                {copy?.pergunta ?? "Cancelar esta cobrança?"}
               </h2>
               {/* TODO(Ana): aviso de que o QR atual deixa de valer. */}
               <p className="mt-1 text-sm font-semibold text-slate-600">
-                O código Pix atual deixa de valer. Depois disso, você pode
-                escolher outro plano.
+                {copy?.aviso ??
+                  "O código Pix atual deixa de valer. Depois disso, você pode escolher outro plano."}
               </p>
             </div>
           </div>
@@ -123,7 +139,9 @@ export default function CancelPendingPixDialog({
               className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-slate-950 bg-red-600 px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               {/* TODO(Ana): rotulos do botao de confirmar o cancelamento. */}
-              {cancelando ? "Cancelando..." : "Cancelar cobrança"}
+              {cancelando
+                ? "Cancelando..."
+                : (copy?.confirmar ?? "Cancelar cobrança")}
             </button>
           </div>
         </div>
