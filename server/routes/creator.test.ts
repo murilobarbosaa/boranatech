@@ -724,3 +724,191 @@ describe("DELETE /api/creator/pix", () => {
     expect(escritasEm("creator_pix_keys")).toHaveLength(0);
   });
 });
+
+// PUBLICACOES REGISTRADAS (lote 09). Um codigo por causa, e um status por
+// codigo: link errado e 400, repetida e 409 (vinda do unique do banco) e teto
+// diario e 429. Sao tres coisas que a tela precisa dizer diferente.
+
+const LINK_VALIDO = "https://www.instagram.com/reel/Cx1AbCdEf_-/";
+const POST_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+
+const PUBLICACAO = {
+  id: POST_ID,
+  network: "instagram",
+  kind: "reel",
+  url: LINK_VALIDO,
+  created_at: "2026-09-16T12:00:00Z",
+};
+
+describe("GET /api/creator/posts", () => {
+  it("lista do proprio creator, com total e o do mes", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: { rows: [PUBLICACAO] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/posts");
+    expect(r.status).toBe(200);
+    expect(r.body.data.posts).toEqual([PUBLICACAO]);
+    expect(r.body.data.total).toBe(1);
+    expect(r.body.data.no_mes).toBe(1);
+  });
+
+  it("quem nao e creator: 403 not_creator", async () => {
+    montar({ creators: respostaQueFiltra([]), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/posts");
+    expect(r.status).toBe(403);
+    expect(r.body.error.code).toBe("not_creator");
+  });
+});
+
+describe("POST /api/creator/posts", () => {
+  it("registra o link e devolve 201 com a publicacao normalizada", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert" ? { rows: [PUBLICACAO] } : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc",
+    });
+    expect(r.status).toBe(201);
+    expect(r.body.data.post).toEqual(PUBLICACAO);
+    const escritas = escritasEm("creator_posts");
+    expect(escritas).toHaveLength(1);
+    // O que vai para o banco e a forma CANONICA, nao o que foi colado.
+    expect(escritas[0].payload).toEqual({
+      user_id: UID,
+      network: "instagram",
+      kind: "reel",
+      external_id: "Cx1AbCdEf_-",
+      url: LINK_VALIDO,
+    });
+  });
+
+  it("link invalido: 400 invalid_post_url e NADA e gravado", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.instagram.com/ana.cria/",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_post_url");
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("link curto tem codigo proprio, e o servidor NAO abre a URL", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://vm.tiktok.com/ZMabc1234/",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("short_link_unsupported");
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("publicacao repetida: 409 pelo 23505 da constraint, sem select antes", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert"
+          ? {
+              error: {
+                code: "23505",
+                message:
+                  'duplicate key value violates unique constraint "creator_posts_unico_por_creator"',
+              },
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("post_already_registered");
+  });
+
+  it("outro 23505, de outra constraint, NAO vira 409: e 500", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert"
+          ? {
+              error: {
+                code: "23505",
+                message:
+                  'duplicate key value violates unique constraint "outra_coisa_key"',
+              },
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+  });
+
+  it("no teto do dia: 429 post_daily_limit, e nada e gravado", async () => {
+    // Dez linhas no dia: a contagem bate o teto, e o insert nem acontece.
+    const dezDeHoje = Array.from({ length: 10 }, (_, i) => ({
+      id: `id-${i}`,
+    }));
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: { rows: dezDeHoje },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    expect(r.status).toBe(429);
+    expect(r.body.error.code).toBe("post_daily_limit");
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("quem nao e creator: 403 e nada e gravado", async () => {
+    montar({ creators: respostaQueFiltra([]), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    expect(r.status).toBe(403);
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+});
+
+describe("DELETE /api/creator/posts/:id", () => {
+  it("apaga a propria, com o dono no proprio DELETE", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: { rows: [{ id: POST_ID }] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", `/posts/${POST_ID}`);
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { id: POST_ID } });
+    const escritas = escritasEm("creator_posts");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].op).toBe("delete");
+    expect(escritas[0].filtros).toEqual([
+      { tipo: "eq", coluna: "user_id", valor: UID },
+      { tipo: "eq", coluna: "id", valor: POST_ID },
+    ]);
+  });
+
+  it("publicacao de outra pessoa: 404, porque o delete nao alcanca", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", `/posts/${POST_ID}`);
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("post_not_found");
+  });
+
+  it("id invalido: 400, sem tocar no banco", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", "/posts/nao-e-uuid");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_post_id");
+    expect(double.de("creator_posts")).toHaveLength(0);
+  });
+});

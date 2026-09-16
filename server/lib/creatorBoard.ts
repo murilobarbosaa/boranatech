@@ -140,6 +140,7 @@ export async function listarCreatorsDoQuadro(filtro: {
       ...item,
       tem_pix: extra?.tem_pix ?? false,
       instagram_handle: extra?.instagram_handle ?? null,
+      posts_no_mes: extra?.posts_no_mes ?? 0,
     };
   });
 

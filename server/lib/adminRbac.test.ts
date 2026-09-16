@@ -56,7 +56,9 @@ describe("manifesto administrativo fechado", () => {
   it("valida invariantes da matriz para os três papéis em todas as rotas", () => {
     // 129 -> 130 com `POST /api/admin/creators/:userId/reveal-pix` (creators,
     // lote 08), no grupo users.pii.reveal ao lado do reveal-cpf.
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(130);
+    // 130 -> 132 com as duas de publicacoes (creators, lote 09): o GET entra em
+    // creators.read, e o DELETE na capacidade nova creators.posts.moderate.
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(132);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

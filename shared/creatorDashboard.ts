@@ -85,6 +85,12 @@ export type CreatorBoardItem = {
   tem_pix?: boolean;
   /** @ do Instagram declarado no perfil de creator (lote 08). Opcional idem. */
   instagram_handle?: string | null;
+  /**
+   * Publicacoes registradas no mes civil de Brasilia corrente (lote 09).
+   * Opcional pelo mesmo motivo dos dois acima: o backend anterior nao manda o
+   * campo, e ausente e "nao sei", nunca zero.
+   */
+  posts_no_mes?: number;
 };
 
 /** Mesmo formato das outras listas paginadas do admin: total no corpo. */

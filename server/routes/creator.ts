@@ -1,10 +1,17 @@
 import { Router } from "express";
 
+import { LIMITE_DE_REGISTROS_POR_DIA } from "../../shared/creatorPost";
 import type { CodigoDeChavePix } from "../../shared/creatorProfile";
 import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
 } from "../lib/creatorDashboard";
+import {
+  listarPublicacoes,
+  registrarPublicacao,
+  removerPublicacao,
+  type CodigoDeRegistro,
+} from "../lib/creatorPosts";
 import {
   lerPerfilDoCreator,
   removerChavePix,
@@ -203,6 +210,120 @@ router.delete("/pix", requireCreator, async (req, res, next) => {
         err,
         // TODO(Ana)
         "Erro ao remover a sua chave Pix.",
+      ),
+    );
+  }
+});
+
+// PUBLICACOES REGISTRADAS (lote 09): o creator cola o link de um post ou reel
+// do Instagram, ou de um video do TikTok, e a plataforma registra. Sem
+// verificacao de conteudo: quem julga e o admin, que ve a lista e remove.
+//
+// Um codigo por causa, e um status por codigo: link errado e 400, publicacao
+// repetida e 409 (vem do unique do banco, nao de um select antes), e teto
+// diario e 429. Tres coisas diferentes que a tela precisa dizer diferente.
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
+  invalid_post_url: 400,
+  short_link_unsupported: 400,
+  post_already_registered: 409,
+  post_daily_limit: 429,
+};
+
+// TODO(Ana)
+const MENSAGEM_DA_PUBLICACAO: Record<CodigoDeRegistro, string> = {
+  invalid_post_url:
+    "Link inválido. Cole o link de um post ou reel do Instagram, ou de um vídeo do TikTok.",
+  short_link_unsupported:
+    "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação.",
+  post_already_registered: "Você já registrou esta publicação.",
+  // O numero sai da constante: mensagem com o teto escrito a mao diverge da
+  // regra na primeira vez que alguem mudar o teto.
+  post_daily_limit: `Você já registrou ${LIMITE_DE_REGISTROS_POR_DIA} publicações hoje. Tente de novo amanhã.`,
+};
+
+router.get("/posts", requireCreator, async (req, res, next) => {
+  try {
+    res.json({ data: await listarPublicacoes(req.user!.id) });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "publicacoes do creator",
+        err,
+        // TODO(Ana)
+        "Erro ao carregar as suas publicações.",
+      ),
+    );
+  }
+});
+
+router.post("/posts", requireCreator, async (req, res, next) => {
+  const corpo: Record<string, unknown> =
+    typeof req.body === "object" && req.body !== null ? req.body : {};
+  try {
+    const registro = await registrarPublicacao(req.user!.id, corpo.url);
+    if (!registro.ok) {
+      return next(
+        createError(
+          STATUS_DA_PUBLICACAO[registro.code],
+          registro.code,
+          MENSAGEM_DA_PUBLICACAO[registro.code],
+        ),
+      );
+    }
+    res.status(201).json({ data: { post: registro.valor } });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "registrar publicacao",
+        err,
+        // TODO(Ana)
+        "Erro ao registrar a publicação.",
+      ),
+    );
+  }
+});
+
+router.delete("/posts/:id", requireCreator, async (req, res, next) => {
+  const id = req.params.id;
+  if (!UUID_RE.test(id)) {
+    return next(
+      createError(
+        400,
+        "invalid_post_id",
+        // TODO(Ana)
+        "Identificador de publicação inválido.",
+      ),
+    );
+  }
+  try {
+    // O dono entra no proprio DELETE (server/lib/creatorPosts.ts), entao id de
+    // outra pessoa nao apaga nada e cai no 404 abaixo.
+    const removida = await removerPublicacao(req.user!.id, id);
+    if (!removida) {
+      return next(
+        createError(
+          404,
+          "post_not_found",
+          // TODO(Ana)
+          "Publicação não encontrada.",
+        ),
+      );
+    }
+    res.json({ data: { id } });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "remover publicacao",
+        err,
+        // TODO(Ana)
+        "Erro ao remover a publicação.",
       ),
     );
   }

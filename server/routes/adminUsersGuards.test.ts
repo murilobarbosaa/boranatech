@@ -171,7 +171,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // `GET /creators/:userId`, depois dos dois `router.use` do topo. Ela devolve a
 // chave Pix inteira de uma pessoa: estar atras de requireAuth mais requireAdmin
 // e o requisito, e a auditoria fail-closed dentro dela e a segunda barreira.
-const EXPECTED_ROUTE_COUNT = 69;
+// 69 -> 71 em 2026-09-16 (creators, lote 09), com
+// `GET /admin/creators/:userId/posts` e
+// `DELETE /admin/creators/:userId/posts/:postId`. Valor MEDIDO por
+// `rotasDeclaradas().length`, nao somado. A remocao apaga conteudo de outra
+// pessoa: estar atras das duas guardas e o requisito, e a auditoria gravada
+// ANTES do delete e a segunda barreira.
+const EXPECTED_ROUTE_COUNT = 71;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -230,18 +236,21 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
   });
 
   it("as rotas de creators estão todas na lista derivada do router", () => {
-    // As tres do quadro de creators (lote 02), mais a revelacao da chave Pix
-    // (lote 08). `/creators/:userId` expoe e-mail e notas internas, e
-    // `reveal-pix` devolve a chave Pix inteira; o teste de posicao acima e o que
-    // prova que as duas estao atras das duas guardas, e este fixa que nenhuma
+    // As tres do quadro de creators (lote 02), a revelacao da chave Pix (lote
+    // 08) e as duas de publicacoes (lote 09). `/creators/:userId` expoe e-mail
+    // e notas internas, `reveal-pix` devolve a chave Pix inteira e o DELETE de
+    // publicacao apaga conteudo de outra pessoa; o teste de posicao acima e o
+    // que prova que todas estao atras das duas guardas, e este fixa que nenhuma
     // rota de creators sumiu ou apareceu sem alguem olhar.
     const deCreators = rotasDeclaradas()
       .filter((r) => r.caminho.startsWith("/creators"))
       .map((r) => `${r.metodo} ${r.caminho}`)
       .sort();
     expect(deCreators).toEqual([
+      "DELETE /creators/:userId/posts/:postId",
       "GET /creators",
       "GET /creators/:userId",
+      "GET /creators/:userId/posts",
       "GET /creators/resumo",
       "POST /creators/:userId/reveal-pix",
     ]);

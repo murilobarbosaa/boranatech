@@ -45,8 +45,14 @@ const EXPECTED_ACOES_NO_CHECK = 15;
  * server/routes/admin.ts grava a auditoria da revelacao da chave Pix ANTES de
  * devolver a chave (fail-closed, copia do reveal-cpf). A acao e `reveal`, que a
  * CHECK aceita desde 20260714170000, entao tambem nao houve migration.
+ *
+ * 13 desde o lote 09 de creators: `DELETE /creators/:userId/posts/:postId` em
+ * server/routes/admin.ts grava a auditoria ANTES de apagar a publicacao, com a
+ * linha inteira em `before_json` (depois do delete nao ha o que guardar). A
+ * acao e `delete`, que a CHECK aceita desde a criacao da tabela, entao tambem
+ * nao houve migration.
  */
-const EXPECTED_SITIOS_INSERT_DIRETO = 12;
+const EXPECTED_SITIOS_INSERT_DIRETO = 13;
 /**
  * Chamadas de `logAudit(...)`.
  *

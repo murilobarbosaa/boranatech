@@ -55,6 +55,7 @@ export const ADMIN_CAPABILITIES = [
   "creators.read",
   "creators.access.grant",
   "creators.access.revoke",
+  "creators.posts.moderate",
   "content.read",
   "content.write",
   "email.campaign.read",
@@ -284,9 +285,23 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
       ["GET", "/api/admin/creators"],
       ["GET", "/api/admin/creators/resumo"],
       ["GET", "/api/admin/creators/:userId"],
+      // Publicacoes registradas (lote 09): e mais um detalhe do creator, lido
+      // junto com o painel dele, entao e a mesma capacidade e o mesmo risco.
+      ["GET", "/api/admin/creators/:userId/posts"],
       ["GET", "/api/admin/affiliates-stats"],
     ],
     SENSITIVE_READ,
+  ),
+  // Capacidade NOVA no lote 09. Nao e `content.write`, que e o CMS do site
+  // (cursos e noticias) e daria a quem edita conteudo o poder de apagar
+  // publicacao de creator; nao e `users.avatar.moderate`, que tem a forma
+  // certa mas nome de avatar. Moderar conteudo de creator e coisa propria.
+  ...mutation(
+    "creators.posts.moderate",
+    "medium",
+    EDITOR_AND_OWNER,
+    [["DELETE", "/api/admin/creators/:userId/posts/:postId"]],
+    AUDITED_WRITE,
   ),
   ...mutation(
     "finance.refund",

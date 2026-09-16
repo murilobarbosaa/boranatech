@@ -14,6 +14,7 @@ import {
 } from "../../shared/creatorProfile";
 import type { Linha } from "./creatorDashboard";
 import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
+import { contarPublicacoesDoMes } from "./creatorPosts";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -306,24 +307,34 @@ export async function revelarChavePix(
 }
 
 /**
- * Enriquecimento do quadro do admin: quem tem chave e o @ do Instagram, para
- * uma pagina inteira de user_ids. Uma consulta por tabela por PAGINA (`in`),
- * nunca uma por linha. A de chave le so `user_id`: o quadro precisa saber SE
- * ha chave, e nao qual.
+ * Enriquecimento do quadro do admin: quem tem chave, o @ do Instagram e
+ * quantas publicacoes registrou no mes (lote 09), para uma pagina inteira de
+ * user_ids. Uma consulta por tabela por PAGINA (`in`), nunca uma por linha. A
+ * de chave le so `user_id`: o quadro precisa saber SE ha chave, e nao qual.
  */
 export async function enriquecerPaginaDoQuadro(
   userIds: string[],
-): Promise<Map<string, { tem_pix: boolean; instagram_handle: string | null }>> {
+  agora: Date = new Date(),
+): Promise<
+  Map<
+    string,
+    {
+      tem_pix: boolean;
+      instagram_handle: string | null;
+      posts_no_mes: number;
+    }
+  >
+> {
   const mapa = new Map<
     string,
-    { tem_pix: boolean; instagram_handle: string | null }
+    { tem_pix: boolean; instagram_handle: string | null; posts_no_mes: number }
   >();
   for (const id of userIds) {
-    mapa.set(id, { tem_pix: false, instagram_handle: null });
+    mapa.set(id, { tem_pix: false, instagram_handle: null, posts_no_mes: 0 });
   }
   if (userIds.length === 0) return mapa;
 
-  const [chaves, perfis] = await Promise.all([
+  const [chaves, perfis, publicacoes] = await Promise.all([
     supabaseAdmin
       .from("creator_pix_keys")
       .select("user_id")
@@ -332,9 +343,17 @@ export async function enriquecerPaginaDoQuadro(
       .from("creator_profiles")
       .select("user_id, instagram_handle")
       .in("user_id", userIds),
+    contarPublicacoesDoMes(userIds, agora),
   ]);
   if (chaves.error) throw erroEncadeavel(chaves.error);
   if (perfis.error) throw erroEncadeavel(perfis.error);
+
+  // `forEach` e nao `for...of`: o tsconfig da aplicacao nao declara `target`,
+  // entao iterar um Map direto exigiria `downlevelIteration` e o tsc reprova.
+  publicacoes.forEach((quantas, dono) => {
+    const item = mapa.get(dono);
+    if (item) item.posts_no_mes = quantas;
+  });
 
   const linhasChave: Linha[] = chaves.data ?? [];
   for (const linha of linhasChave) {

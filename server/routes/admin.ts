@@ -52,6 +52,11 @@ import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
 import { listarCreatorsDoQuadro, resumoDoQuadro } from "../lib/creatorBoard";
 import { lerPerfilDoCreator, revelarChavePix } from "../lib/creatorProfile";
 import {
+  lerPublicacao,
+  listarPublicacoes,
+  removerPublicacao,
+} from "../lib/creatorPosts";
+import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
 } from "../lib/creatorDashboard";
@@ -4441,6 +4446,108 @@ router.post("/creators/:userId/reveal-pix", async (req, res, next) => {
     next(
       // TODO(Ana)
       dbError("creator reveal pix", err, "Erro ao revelar a chave Pix."),
+    );
+  }
+});
+
+// Publicacoes registradas por um creator (lote 09). Leitura na mesma
+// capacidade do painel dele (`creators.read`): e mais um detalhe do creator.
+router.get("/creators/:userId/posts", async (req, res, next) => {
+  const uid = req.params.userId;
+  if (!UUID_RE.test(uid)) {
+    return next(
+      createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+    );
+  }
+  try {
+    res.json({ data: await listarPublicacoes(uid) });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError(
+        "creator posts",
+        err,
+        "Erro ao carregar as publicações do creator.",
+      ),
+    );
+  }
+});
+
+// Remocao de uma publicacao pelo admin (lote 09), que e como sai do ranking o
+// que nao e sobre a Bora na Tech.
+//
+// AUDITORIA ANTES DE APAGAR, com a linha inteira em `before_json`: depois do
+// delete nao ha mais o que guardar, e "o admin removeu alguma coisa" sem dizer
+// qual link era nao serve de trilha. Fail-closed, como o reveal: se a
+// auditoria falhar, nada e apagado.
+router.delete("/creators/:userId/posts/:postId", async (req, res, next) => {
+  const uid = req.params.userId;
+  const postId = req.params.postId;
+  if (!UUID_RE.test(uid)) {
+    return next(
+      createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+    );
+  }
+  if (!UUID_RE.test(postId)) {
+    return next(
+      createError(
+        400,
+        "invalid_post_id",
+        // TODO(Ana)
+        "Identificador de publicação inválido.",
+      ),
+    );
+  }
+  try {
+    const publicacao = await lerPublicacao(uid, postId);
+    if (!publicacao) {
+      return next(
+        createError(
+          404,
+          "post_not_found",
+          // TODO(Ana)
+          "Publicação não encontrada para este creator.",
+        ),
+      );
+    }
+
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "delete",
+        resource_type: "creator_post",
+        resource_id: postId,
+        resource_slug: null,
+        before_json: publicacao,
+        after_json: null,
+      });
+    if (auditError) {
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da remoção.",
+        ),
+      );
+    }
+
+    const removida = await removerPublicacao(uid, postId);
+    if (!removida) {
+      return next(
+        createError(
+          404,
+          "post_not_found",
+          // TODO(Ana)
+          "Publicação não encontrada para este creator.",
+        ),
+      );
+    }
+    res.json({ data: { id: postId } });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creator post delete", err, "Erro ao remover a publicação."),
     );
   }
 });

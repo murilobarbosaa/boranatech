@@ -152,6 +152,7 @@ const ITEM_DO_QUADRO = {
   ultimo_evento_at: "2026-09-18T01:30:00Z",
   tem_pix: true,
   instagram_handle: "ana.cria",
+  posts_no_mes: 2,
 };
 
 // Perfil de creator e chave Pix (lote 08). A chave e um CPF de teste valido: a
@@ -181,12 +182,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Publicacoes do mes (lote 09): o enriquecimento conta linhas de
+// `creator_posts` desde o inicio do mes civil de Brasilia. Duas linhas aqui
+// viram `posts_no_mes: 2` no item do quadro.
+const PUBLICACOES_DO_MES = {
+  rows: [{ user_id: UID }, { user_id: UID }],
+};
+
+// 16/09/2026 ao meio-dia UTC. O mes civil de Brasilia comeca em 01/09 00h de
+// Brasilia, que e este instante em UTC.
+const AGORA_ISO = "2026-09-16T12:00:00.000Z";
+const INICIO_DO_MES_ISO = "2026-09-01T03:00:00.000Z";
+
 describe("GET /creators", () => {
   it("padrao: ativos de todos os kinds, pagina 1 de 25, UMA chamada agregada", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_ISO));
     montar(
       {
         creator_pix_keys: respostaQueFiltra([CHAVE_PIX]),
         creator_profiles: respostaQueFiltra([PERFIL_CREATOR]),
+        creator_posts: PUBLICACOES_DO_MES,
       },
       async () => ({ data: [LINHA_DO_QUADRO], error: null }),
     );
@@ -222,15 +238,30 @@ describe("GET /creators", () => {
         ["user_id", "instagram_handle"],
         [{ tipo: "in", coluna: "user_id", valor: [UID] }],
       ],
+      // A terceira leitura e a das publicacoes do mes, tambem UMA para a pagina
+      // inteira, com o corte no inicio do mes civil de Brasilia.
+      [
+        "creator_posts",
+        ["user_id"],
+        [
+          { tipo: "in", coluna: "user_id", valor: [UID] },
+          {
+            tipo: "gte",
+            coluna: "created_at",
+            valor: INICIO_DO_MES_ISO,
+          },
+        ],
+      ],
     ]);
     expect(JSON.stringify(r.body)).not.toContain("52998224725");
   });
 
-  it("creator sem chave e sem perfil: tem_pix false e instagram null, nunca ausentes", async () => {
+  it("creator sem chave, sem perfil e sem publicacao: os tres campos com valor, nunca ausentes", async () => {
     montar(
       {
         creator_pix_keys: respostaQueFiltra([]),
         creator_profiles: respostaQueFiltra([]),
+        creator_posts: { rows: [] },
       },
       async () => ({ data: [LINHA_DO_QUADRO], error: null }),
     );
@@ -238,6 +269,7 @@ describe("GET /creators", () => {
     expect(r.status).toBe(200);
     expect(r.body.data.rows[0].tem_pix).toBe(false);
     expect(r.body.data.rows[0].instagram_handle).toBeNull();
+    expect(r.body.data.rows[0].posts_no_mes).toBe(0);
   });
 
   it("erro na leitura das chaves: 500, nunca tem_pix false", async () => {
@@ -246,6 +278,9 @@ describe("GET /creators", () => {
       {
         creator_pix_keys: { error: { message: "timeout" } },
         creator_profiles: respostaQueFiltra([]),
+        // Registrada de proposito: sem isto o 500 viria da tabela nao
+        // registrada, e o teste passaria sem exercitar o erro de chave.
+        creator_posts: { rows: [] },
       },
       async () => ({ data: [LINHA_DO_QUADRO], error: null }),
     );
@@ -259,6 +294,7 @@ describe("GET /creators", () => {
       {
         creator_pix_keys: respostaQueFiltra([]),
         creator_profiles: respostaQueFiltra([]),
+        creator_posts: { rows: [] },
       },
       async () => ({ data: [LINHA_DO_QUADRO], error: null }),
     );
@@ -621,5 +657,138 @@ describe("concessao e revogacao invalidam o cache de status de creator", () => {
     });
     expect(r.status).toBe(500);
     expect(estado.invalidateCreatorCache).not.toHaveBeenCalled();
+  });
+});
+
+// PUBLICACOES DE UM CREATOR NA VISAO ADMIN (lote 09). A leitura e a mesma
+// capacidade do painel; a remocao e a unica forma de tirar do ranking o que nao
+// e sobre a Bora na Tech, e ela e AUDITADA ANTES de apagar.
+const POST_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+
+const PUBLICACAO = {
+  id: POST_ID,
+  network: "instagram",
+  kind: "reel",
+  url: "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+  created_at: "2026-09-15T12:00:00Z",
+};
+
+describe("GET /creators/:userId/posts", () => {
+  it("lista as publicacoes do creator, com o total e o do mes", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_ISO));
+    montar({ creator_posts: { rows: [PUBLICACAO] } });
+    const r = await chamarAdmin("GET", `/creators/${UID}/posts`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.posts).toEqual([PUBLICACAO]);
+    expect(r.body.data.total).toBe(1);
+    expect(r.body.data.no_mes).toBe(1);
+  });
+
+  it("uuid invalido: 400, sem tocar no banco", async () => {
+    montar({});
+    const r = await chamarAdmin("GET", "/creators/nao-e-uuid/posts");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_user_id");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("erro de leitura: 500 db_error, nunca lista vazia", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({ creator_posts: { error: { message: "timeout" } } });
+    const r = await chamarAdmin("GET", `/creators/${UID}/posts`);
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+    expect(r.body.data).toBeUndefined();
+  });
+});
+
+describe("DELETE /creators/:userId/posts/:postId", () => {
+  function tabelas(
+    over: Record<string, unknown> = {},
+  ): Record<string, RespostaTabela | ((c: Chamada) => RespostaTabela)> {
+    return {
+      creator_posts: (c: Chamada) =>
+        c.op === "delete"
+          ? { rows: [{ id: POST_ID }] }
+          : { rows: [PUBLICACAO] },
+      content_audit_logs: { rows: [{}] },
+      ...over,
+    } as Record<string, RespostaTabela | ((c: Chamada) => RespostaTabela)>;
+  }
+
+  it("audita ANTES de apagar, com a linha inteira em before_json", async () => {
+    montar(tabelas());
+    const r = await chamarAdmin(
+      "DELETE",
+      `/creators/${UID}/posts/${POST_ID}`,
+      {},
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { id: POST_ID } });
+
+    const ordem = estado.double.chamadas.map((c) => `${c.table}:${c.op}`);
+    // A auditoria entra ENTRE a leitura e o delete: depois de apagar nao ha
+    // mais o que guardar em before_json.
+    expect(ordem).toEqual([
+      "creator_posts:select",
+      "content_audit_logs:insert",
+      "creator_posts:delete",
+    ]);
+    const auditoria = estado.double.de("content_audit_logs")[0];
+    expect(auditoria.payload).toEqual({
+      actor_user_id: "admin-1",
+      action: "delete",
+      resource_type: "creator_post",
+      resource_id: POST_ID,
+      resource_slug: null,
+      before_json: PUBLICACAO,
+      after_json: null,
+    });
+  });
+
+  it("auditoria que falha IMPEDE a remocao (fail-closed)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar(tabelas({ content_audit_logs: { error: { message: "check" } } }));
+    const r = await chamarAdmin(
+      "DELETE",
+      `/creators/${UID}/posts/${POST_ID}`,
+      {},
+    );
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(
+      estado.double.de("creator_posts").filter((c) => c.op === "delete"),
+    ).toHaveLength(0);
+  });
+
+  it("publicacao de outro creator: 404 e nada e auditado nem apagado", async () => {
+    montar({
+      creator_posts: { rows: [] },
+      content_audit_logs: { rows: [{}] },
+    });
+    const r = await chamarAdmin(
+      "DELETE",
+      `/creators/${UID}/posts/${POST_ID}`,
+      {},
+    );
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("post_not_found");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("creator_posts").filter((c) => c.op === "delete"),
+    ).toHaveLength(0);
+  });
+
+  it("id de publicacao invalido: 400, sem tocar no banco", async () => {
+    montar({});
+    const r = await chamarAdmin(
+      "DELETE",
+      `/creators/${UID}/posts/nao-e-uuid`,
+      {},
+    );
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_post_id");
+    expect(estado.double.chamadas).toHaveLength(0);
   });
 });
