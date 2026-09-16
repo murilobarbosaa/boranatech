@@ -4,6 +4,7 @@ import {
   CalendarDays,
   KeyRound,
   Link2,
+  Receipt,
   Sparkles,
   Trophy,
 } from "lucide-react";
@@ -380,9 +381,13 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
   return (
     // Lado a lado no desktop (lote 09): sao dois assuntos independentes, e
     // empilhados eles empurravam o Pagamento para fora da primeira tela. No
-    // celular continuam um abaixo do outro. `items-start` para o cartao mais
-    // curto nao esticar ate a altura do outro.
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+    // celular continuam um abaixo do outro.
+    //
+    // `items-stretch` com `h-full` nos dois cartoes (lote 10): eles tem alturas
+    // naturais diferentes, e um mais curto que o outro lia como cartao pela
+    // metade. Funciona porque o BlocoBoundary devolve os filhos sem elemento
+    // proprio (o ErrorBoundary tambem), entao a `section` E o item da grade.
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <BlocoBoundary
         // TODO(Ana)
         nome="Redes"
@@ -390,7 +395,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-redes"
           aria-labelledby="creator-redes-titulo"
-          className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-brutal h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-redes-titulo"
@@ -413,7 +418,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-pagamento"
           aria-labelledby="creator-pagamento-titulo"
-          className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-brutal h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-pagamento-titulo"
@@ -426,6 +431,30 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
             frase="É por esta chave que a sua comissão será paga."
           />
           <CreatorPixForm pix={estado.perfil.pix} onSalvo={definirPix} />
+
+          {/* COMPROVANTES (lote 10): o lugar onde o lote 13 vai listar os
+              pagamentos de comissao. Hoje e so o estado vazio, e nao ha rota
+              nem dado por tras dele. O cabecalho aqui e menor de proposito: o
+              cartao ja tem um titulo (Pagamento), e um segundo `h2` do mesmo
+              tamanho leria como outro cartao. */}
+          <div
+            data-testid="creator-comprovantes"
+            className="space-y-2 border-t-2 border-dashed border-slate-300 pt-5"
+          >
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
+              <Receipt aria-hidden="true" className="h-4 w-4" />
+              {/* TODO(Ana) */}
+              comissões pagas
+            </p>
+            <p
+              data-testid="creator-comprovantes-vazio"
+              className="text-sm font-semibold text-slate-600"
+            >
+              {/* TODO(Ana) */}
+              Nenhum pagamento ainda. Quando uma comissão for paga, o
+              comprovante aparece aqui.
+            </p>
+          </div>
         </section>
       </BlocoBoundary>
     </div>

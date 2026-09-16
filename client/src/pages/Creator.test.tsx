@@ -353,8 +353,35 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     expect(grade?.contains(screen.getByTestId("creator-card-pagamento"))).toBe(
       true,
     );
+    // Lote 10: mesma altura. O `items-stretch` sozinho nao basta; cada cartao
+    // precisa do `h-full`, e e o par que faz os dois terminarem juntos.
+    expect(grade?.className).toContain("lg:items-stretch");
+    expect(screen.getByTestId("creator-card-redes").className).toContain(
+      "h-full",
+    );
+    expect(screen.getByTestId("creator-card-pagamento").className).toContain(
+      "h-full",
+    );
     expect(screen.queryByTestId("view")).toBeNull();
     expect(estado.fetch).not.toHaveBeenCalled();
+  });
+
+  it("o card Pagamento tem o lugar dos comprovantes, ainda vazio (lote 10)", async () => {
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar("/creator?aba=perfil");
+    const pagamento = await screen.findByTestId("creator-card-pagamento");
+    const comprovantes = within(pagamento).getByTestId("creator-comprovantes");
+    expect(comprovantes.textContent).toContain("comissões pagas");
+    expect(
+      within(comprovantes).getByTestId("creator-comprovantes-vazio")
+        .textContent,
+    ).toContain("Nenhum pagamento ainda");
+    // O bloco vem DEPOIS da chave: ele fala do que ja foi pago por ela.
+    const pix = screen.getByTestId("pix-form");
+    expect(
+      pix.compareDocumentPosition(comprovantes) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("erro no perfil: bloco de erro com tentar de novo, e nenhum formulario", async () => {
