@@ -308,3 +308,35 @@ describe("CreatorPublicacoes: remocao", () => {
     expect(chamadasCom("DELETE")).toHaveLength(0);
   });
 });
+
+describe("CreatorPublicacoes: glifos e estado vazio (lote 10b)", () => {
+  it("cada linha leva o glifo oficial da rede, e nao o icone do lucide", async () => {
+    responderLista([REEL, VIDEO], 2);
+    render(<CreatorPublicacoes />);
+    const reel = await screen.findByTestId(`creator-publicacao-${POST_ID}`);
+    expect(within(reel).getByTestId("icone-da-rede-instagram")).toBeTruthy();
+    // O lixo da remocao continua sendo do lucide; o que saiu foi a marca.
+    expect(reel.querySelector("svg.lucide-instagram")).toBeNull();
+    expect(reel.querySelector("svg.lucide-video")).toBeNull();
+    const video = screen.getByTestId(`creator-publicacao-${OUTRO_ID}`);
+    expect(within(video).getByTestId("icone-da-rede-tiktok")).toBeTruthy();
+  });
+
+  it("sem publicacao, a coluna da direita centraliza a frase nas duas direcoes", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    const coluna = screen.getByTestId("creator-publicacoes-lista");
+    for (const classe of [
+      "flex",
+      "min-h-40",
+      "items-center",
+      "justify-center",
+      "text-center",
+    ]) {
+      expect(coluna.className).toContain(classe);
+    }
+    // A rolagem interna e da lista com itens; vazia, nao ha o que rolar.
+    expect(coluna.className).not.toContain("overflow-y-auto");
+  });
+});

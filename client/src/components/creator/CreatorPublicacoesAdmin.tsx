@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Instagram, Trash2, Video } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { BOTAO_SECUNDARIO } from "@/components/creator/creatorFormEstilos";
+import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { adminFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 
@@ -159,11 +160,7 @@ export function CreatorPublicacoesAdmin({ userId }: { userId: string }) {
               data-testid={`creator-publicacao-admin-${post.id}`}
               className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
             >
-              {post.network === "instagram" ? (
-                <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
-              ) : (
-                <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
-              )}
+              <IconeDaRede rede={post.network} />
               <a
                 href={post.url}
                 target="_blank"

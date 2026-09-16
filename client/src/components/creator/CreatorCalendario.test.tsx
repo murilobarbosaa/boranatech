@@ -419,3 +419,35 @@ describe("CreatorCalendario: navegacao de mes", () => {
     expect(screen.queryByTestId("creator-dia-painel")).toBeNull();
   });
 });
+
+describe("CreatorCalendario: glifos das redes (lote 10b)", () => {
+  it("os botoes de rede e os chips das marcacoes usam o glifo oficial, com folga do texto", async () => {
+    responderCom([MINHA, DE_OUTRO]);
+    estado.auth.user = { id: MEU_ID };
+    render(<CreatorCalendario />);
+    await screen.findByTestId(`creator-marcacao-${MINHA.id}`);
+
+    for (const rede of ["instagram", "tiktok"]) {
+      const botao = screen.getByTestId(`creator-marcar-rede-${rede}`);
+      expect(within(botao).getByTestId(`icone-da-rede-${rede}`)).toBeTruthy();
+      // Sem `gap-2` o glifo encostava no nome da rede.
+      expect(botao.className).toContain("gap-2");
+      expect(botao.className).toContain("px-4");
+      // Os icones do lucide sairam: nem o Instagram aproximado, nem o Video
+      // que fazia as vezes do TikTok.
+      expect(botao.querySelector("svg.lucide-instagram")).toBeNull();
+      expect(botao.querySelector("svg.lucide-video")).toBeNull();
+    }
+
+    expect(
+      within(screen.getByTestId(`creator-marcacao-${MINHA.id}`)).getByTestId(
+        "icone-da-rede-instagram",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId(`creator-marcacao-${DE_OUTRO.id}`)).getByTestId(
+        "icone-da-rede-tiktok",
+      ),
+    ).toBeTruthy();
+  });
+});

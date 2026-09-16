@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Instagram, Link2, Trash2, Video } from "lucide-react";
+import { Link2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
@@ -10,6 +10,7 @@ import {
   erroClass,
   inputClass,
 } from "@/components/creator/creatorFormEstilos";
+import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
@@ -284,8 +285,18 @@ export function CreatorPublicacoes() {
       </div>
 
       {/* A lista rola por dentro: com muitas publicacoes, a coluna da esquerda
-          continua a vista em vez de ficar orfa no topo. */}
-      <div className="max-h-80 overflow-y-auto">
+          continua a vista em vez de ficar orfa no topo. Vazia, a coluna vira
+          um flex que centraliza a frase nas duas direcoes (lote 10b): a grade
+          estica a coluna ate a altura do formulario, e a frase encostada no
+          canto de cima parecia sobra de layout. */}
+      <div
+        data-testid="creator-publicacoes-lista"
+        className={
+          estado.posts.length === 0
+            ? "flex min-h-40 items-center justify-center text-center"
+            : "max-h-80 overflow-y-auto"
+        }
+      >
         {estado.posts.length === 0 ? (
           <p
             data-testid="creator-publicacoes-vazio"
@@ -303,13 +314,7 @@ export function CreatorPublicacoes() {
                 data-testid={`creator-publicacao-${post.id}`}
                 className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
               >
-                {post.network === "instagram" ? (
-                  <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
-                ) : (
-                  // O lucide nao tem marca do TikTok; `Video` e o mais proximo
-                  // sem inventar um icone de marca.
-                  <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
-                )}
+                <IconeDaRede rede={post.network} />
                 <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
                   {rotuloDoTipo(post.kind)}
                 </span>

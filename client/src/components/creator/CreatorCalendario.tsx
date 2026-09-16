@@ -4,9 +4,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Instagram,
   Trash2,
-  Video,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +17,7 @@ import {
   erroClass,
   inputClass,
 } from "@/components/creator/creatorFormEstilos";
+import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { useAuth } from "@/contexts/AuthContext";
 import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
@@ -123,16 +122,6 @@ function nomeDoAutor(autor: Autor | null): string {
   const handle = autor?.handle?.trim();
   // TODO(Ana)
   return handle ? `@${handle}` : "Outro creator";
-}
-
-function IconeDaRede({ rede }: { rede: RedeDeCreator }) {
-  return rede === "instagram" ? (
-    <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
-  ) : (
-    // O lucide nao tem marca do TikTok; `Video` e o mais proximo sem inventar
-    // um icone de marca. Mesmo criterio do cartao de publicacoes.
-    <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
-  );
 }
 
 function listaDaResposta(json: unknown, chave: string): unknown[] | null {
@@ -645,9 +634,11 @@ export function CreatorCalendario() {
                     data-testid={`creator-marcar-rede-${opcao}`}
                     onClick={() => setRede(opcao)}
                     aria-pressed={rede === opcao}
-                    className={
+                    // `gap-2` entre o glifo e o nome (lote 10b): o botao base
+                    // nao preve icone, e sem folga o glifo encostava no texto.
+                    className={`${
                       rede === opcao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO
-                    }
+                    } gap-2`}
                   >
                     <IconeDaRede rede={opcao} />
                     {rotuloDaRede(opcao)}
