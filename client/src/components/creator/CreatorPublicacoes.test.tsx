@@ -114,6 +114,24 @@ describe("CreatorPublicacoes: leitura", () => {
     );
   });
 
+  it("dois lados no desktop: cabecalho e formulario de um, lista do outro", async () => {
+    // Lote 10: o cabecalho passou a morar DENTRO do componente, porque ele e a
+    // primeira coisa da coluna da esquerda. A lista rola por dentro, entao a
+    // coluna da esquerda continua a vista quando houver muita publicacao.
+    responderLista([REEL], 1);
+    render(<CreatorPublicacoes />);
+    const raiz = await screen.findByTestId("creator-publicacoes");
+    expect(raiz.className).toContain(
+      "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Suas publicações" }),
+    ).toBeTruthy();
+    const lista = screen.getByRole("list");
+    expect(lista.parentElement?.className).toContain("max-h-80");
+    expect(lista.parentElement?.className).toContain("overflow-y-auto");
+  });
+
   it("sem nenhuma: a frase do estado vazio, e nenhuma linha", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);

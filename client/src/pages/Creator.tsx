@@ -3,7 +3,6 @@ import {
   AtSign,
   CalendarDays,
   KeyRound,
-  Link2,
   Receipt,
   Sparkles,
   Trophy,
@@ -171,21 +170,14 @@ export default function Creator() {
                 // TODO(Ana)
                 nome="Suas publicações"
               >
+                {/* O cabecalho mora DENTRO do componente desde o lote 10: ele
+                    e a primeira coisa da coluna da esquerda, e a lista ocupa a
+                    direita. Aqui fica so a casca do cartao. */}
                 <section
                   data-testid="creator-card-publicacoes"
                   aria-labelledby="creator-publicacoes-titulo"
-                  className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8"
+                  className="card-brutal rounded-3xl bg-white p-6 md:p-8"
                 >
-                  <CabecalhoDeSecao
-                    id="creator-publicacoes-titulo"
-                    icone={<Link2 aria-hidden="true" className="h-4 w-4" />}
-                    // TODO(Ana)
-                    selo="instagram e tiktok"
-                    // TODO(Ana)
-                    titulo="Suas publicações"
-                    // TODO(Ana)
-                    frase="Cole o link do post, reel ou vídeo sobre a Bora na Tech. Cada publicação registrada conta no ranking do mês."
-                  />
                   <CreatorPublicacoes />
                 </section>
               </BlocoBoundary>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Instagram, Trash2, Video } from "lucide-react";
+import { Instagram, Link2, Trash2, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import {
   BOTAO_PRIMARIO,
   BOTAO_SECUNDARIO,
@@ -217,128 +218,151 @@ export function CreatorPublicacoes() {
   }
 
   return (
-    <div data-testid="creator-publicacoes" className="space-y-5">
-      <div className="space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="flex-1">
-            <span className="sr-only">
+    // DOIS LADOS NO DESKTOP (lote 10): a lista crescia para baixo e empurrava o
+    // calendario para fora da tela. Esquerda o que se faz (cabecalho, frase,
+    // formulario e o chip do mes); direita o que ja foi feito, com rolagem
+    // propria. No celular continua empilhado, o formulario antes da lista.
+    <div
+      data-testid="creator-publicacoes"
+      className="space-y-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8 lg:space-y-0"
+    >
+      <div className="space-y-5">
+        <CabecalhoDeSecao
+          id="creator-publicacoes-titulo"
+          icone={<Link2 aria-hidden="true" className="h-4 w-4" />}
+          // TODO(Ana)
+          selo="instagram e tiktok"
+          // TODO(Ana)
+          titulo="Suas publicações"
+          // TODO(Ana)
+          frase="Cole o link do post, reel ou vídeo sobre a Bora na Tech. Cada publicação registrada conta no ranking do mês."
+        />
+        <div className="space-y-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="flex-1">
+              <span className="sr-only">
+                {/* TODO(Ana) */}
+                Link da publicação
+              </span>
+              <input
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                className={inputClass}
+                // TODO(Ana)
+                placeholder="https://www.instagram.com/reel/..."
+                autoComplete="off"
+              />
+            </label>
+            <button
+              type="button"
+              data-testid="creator-publicacoes-registrar"
+              onClick={() => void registrar()}
+              disabled={salvando}
+              className={BOTAO_PRIMARIO}
+            >
               {/* TODO(Ana) */}
-              Link da publicação
+              {salvando ? "Registrando..." : "Registrar"}
+            </button>
+          </div>
+          {erro ? (
+            <span
+              data-testid="creator-publicacoes-erro-campo"
+              className={erroClass}
+            >
+              {erro}
             </span>
-            <input
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className={inputClass}
-              // TODO(Ana)
-              placeholder="https://www.instagram.com/reel/..."
-              autoComplete="off"
-            />
-          </label>
-          <button
-            type="button"
-            data-testid="creator-publicacoes-registrar"
-            onClick={() => void registrar()}
-            disabled={salvando}
-            className={BOTAO_PRIMARIO}
-          >
-            {/* TODO(Ana) */}
-            {salvando ? "Registrando..." : "Registrar"}
-          </button>
+          ) : null}
         </div>
-        {erro ? (
-          <span
-            data-testid="creator-publicacoes-erro-campo"
-            className={erroClass}
-          >
-            {erro}
-          </span>
-        ) : null}
-      </div>
 
-      <p
-        data-testid="creator-publicacoes-no-mes"
-        className="inline-flex items-center rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black text-violet-900"
-      >
-        {/* TODO(Ana) */}
-        {`${estado.no_mes} este mês`}
-      </p>
-
-      {estado.posts.length === 0 ? (
         <p
-          data-testid="creator-publicacoes-vazio"
-          className="text-sm font-semibold text-slate-600"
+          data-testid="creator-publicacoes-no-mes"
+          className="inline-flex items-center rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black text-violet-900"
         >
           {/* TODO(Ana) */}
-          Você ainda não registrou nenhuma publicação. Cole o link da primeira
-          aqui em cima.
+          {`${estado.no_mes} este mês`}
         </p>
-      ) : (
-        <ul className="space-y-2">
-          {estado.posts.map((post) => (
-            <li
-              key={post.id}
-              data-testid={`creator-publicacao-${post.id}`}
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
-            >
-              {post.network === "instagram" ? (
-                <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
-              ) : (
-                // O lucide nao tem marca do TikTok; `Video` e o mais proximo
-                // sem inventar um icone de marca.
-                <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
-              )}
-              <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
-                {rotuloDoTipo(post.kind)}
-              </span>
-              <a
-                href={post.url}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 flex-1 truncate text-sm font-bold text-violet-800 underline underline-offset-2"
+      </div>
+
+      {/* A lista rola por dentro: com muitas publicacoes, a coluna da esquerda
+          continua a vista em vez de ficar orfa no topo. */}
+      <div className="max-h-80 overflow-y-auto">
+        {estado.posts.length === 0 ? (
+          <p
+            data-testid="creator-publicacoes-vazio"
+            className="text-sm font-semibold text-slate-600"
+          >
+            {/* TODO(Ana) */}
+            Você ainda não registrou nenhuma publicação. Cole o link da primeira
+            aqui ao lado.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {estado.posts.map((post) => (
+              <li
+                key={post.id}
+                data-testid={`creator-publicacao-${post.id}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
               >
-                {urlCurta(post.url)}
-              </a>
-              <span className="text-xs font-bold text-slate-500 tabular-nums">
-                {diaCurto(post.created_at)}
-              </span>
-              {confirmando === post.id ? (
-                <span className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    data-testid={`creator-publicacao-confirmar-${post.id}`}
-                    onClick={() => void remover(post.id)}
-                    disabled={removendo}
-                    className={BOTAO_SECUNDARIO}
-                  >
-                    {/* TODO(Ana) */}
-                    {removendo ? "Removendo..." : "Confirmar remoção"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmando(null)}
-                    disabled={removendo}
-                    className={BOTAO_SECUNDARIO}
-                  >
-                    {/* TODO(Ana) */}
-                    Manter
-                  </button>
+                {post.network === "instagram" ? (
+                  <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
+                ) : (
+                  // O lucide nao tem marca do TikTok; `Video` e o mais proximo
+                  // sem inventar um icone de marca.
+                  <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
+                )}
+                <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
+                  {rotuloDoTipo(post.kind)}
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  data-testid={`creator-publicacao-remover-${post.id}`}
-                  onClick={() => setConfirmando(post.id)}
-                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
-                  // TODO(Ana)
-                  aria-label="Remover publicação"
+                <a
+                  href={post.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex-1 truncate text-sm font-bold text-violet-800 underline underline-offset-2"
                 >
-                  <Trash2 aria-hidden="true" className="h-4 w-4" />
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+                  {urlCurta(post.url)}
+                </a>
+                <span className="text-xs font-bold text-slate-500 tabular-nums">
+                  {diaCurto(post.created_at)}
+                </span>
+                {confirmando === post.id ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      data-testid={`creator-publicacao-confirmar-${post.id}`}
+                      onClick={() => void remover(post.id)}
+                      disabled={removendo}
+                      className={BOTAO_SECUNDARIO}
+                    >
+                      {/* TODO(Ana) */}
+                      {removendo ? "Removendo..." : "Confirmar remoção"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmando(null)}
+                      disabled={removendo}
+                      className={BOTAO_SECUNDARIO}
+                    >
+                      {/* TODO(Ana) */}
+                      Manter
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid={`creator-publicacao-remover-${post.id}`}
+                    onClick={() => setConfirmando(post.id)}
+                    className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+                    // TODO(Ana)
+                    aria-label="Remover publicação"
+                  >
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
