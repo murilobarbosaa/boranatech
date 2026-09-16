@@ -261,6 +261,14 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   // migration e de aplicacao manual pela Ana.
   { tabela: "creators", coluna: "kind" },
   { tabela: "affiliates", coluna: "user_id" },
+  // Declaradas em `20260916140000_creator_posts_status.sql` (creators, lote
+  // 10b): a publicacao nasce pendente e o admin confirma. A tabela inteira ja
+  // esta em TABELAS_PENDENTES (colunas lidas do CREATE TABLE), e as tres
+  // colunas novas vem de ADD COLUMN, que aquele parser nao le; por isso entram
+  // aqui. Saem junto com a tabela, quando `pnpm db:types` for rodado.
+  { tabela: "creator_posts", coluna: "status" },
+  { tabela: "creator_posts", coluna: "confirmed_at" },
+  { tabela: "creator_posts", coluna: "confirmed_by" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
