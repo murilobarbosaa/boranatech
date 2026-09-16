@@ -278,7 +278,9 @@ const naoReconhecidasOutras: string[] = [];
 // muda pelo mesmo motivo de nao ter subido.
 // 88 desde 20260915160000_creator_profiles.sql, MEDIDO com `--declared`, nao
 // somado: cria creator_profiles e creator_pix_keys (creators, lote 08).
-const EXPECTED_TABLE_COUNT = 88;
+// 89 desde 20260916100000_creator_posts.sql, MEDIDO com `--declared`, nao
+// somado: cria creator_posts (creators, lote 09).
+const EXPECTED_TABLE_COUNT = 89;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -302,7 +304,9 @@ const EXPECTED_TABLE_COUNT = 88;
 // de nome junto com a tabela (creators), e por isso nao conta duas vezes.
 // 88 desde 20260915160000_creator_profiles.sql, MEDIDO com `--declared`: as
 // duas tabelas novas declaram `enable row level security`.
-const EXPECTED_RLS_COUNT = 88;
+// 89 desde 20260916100000_creator_posts.sql, MEDIDO com `--declared`:
+// creator_posts declara `enable row level security`.
+const EXPECTED_RLS_COUNT = 89;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
