@@ -342,6 +342,12 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     expect(screen.getByTestId("creator-card-pagamento")).toBeTruthy();
     expect(screen.getByTestId("redes-form")).toBeTruthy();
     expect(screen.getByTestId("pix-form")).toBeTruthy();
+    // Lote 09: os dois cartoes dividem a MESMA grade, lado a lado no desktop.
+    const grade = screen.getByTestId("creator-card-redes").closest(".grid");
+    expect(grade?.className).toContain("lg:grid-cols-2");
+    expect(grade?.contains(screen.getByTestId("creator-card-pagamento"))).toBe(
+      true,
+    );
     expect(screen.queryByTestId("view")).toBeNull();
     expect(estado.fetch).not.toHaveBeenCalled();
   });
@@ -495,5 +501,28 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     await screen.findByTestId("view");
     expect(screen.getByTestId("creator-abas")).toBeTruthy();
     expect(screen.queryByTestId("creator-pendencias")).toBeNull();
+  });
+
+  it("?aba=ranking abre o card em breve, sem buscar o painel", async () => {
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar("/creator?aba=ranking");
+    expect(await screen.findByTestId("creator-ranking")).toBeTruthy();
+    expect(screen.queryByTestId("creator-comunidade")).toBeNull();
+    expect(screen.queryByTestId("view")).toBeNull();
+    expect(estado.fetch).not.toHaveBeenCalled();
+  });
+
+  it("clicar em Ranking escreve ?aba=ranking e troca o painel", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    const history = montar();
+    await screen.findByTestId("view");
+
+    fireEvent.click(screen.getByTestId("creator-aba-ranking"));
+    expect(history[history.length - 1]).toBe("/creator?aba=ranking");
+    expect(screen.getByTestId("creator-ranking")).toBeTruthy();
+    expect(screen.queryByTestId("view")).toBeNull();
+    // A aba Ranking tambem nao chama rede: o lote 11 e que vai preenche-la.
+    expect(estado.fetch).toHaveBeenCalledTimes(1);
   });
 });

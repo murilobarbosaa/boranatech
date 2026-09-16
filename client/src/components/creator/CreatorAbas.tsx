@@ -4,6 +4,7 @@ import {
   BarChart3,
   CalendarDays,
   KeyRound,
+  Trophy,
   UserRound,
 } from "lucide-react";
 
@@ -15,7 +16,9 @@ import {
 } from "@/components/creator/creatorAbas";
 
 // FAIXA DE ABAS DO /creator (lote 08b), no lugar onde antes ficava o aviso
-// grande de chave Pix.
+// grande de chave Pix. No lote 09 passou a ter quatro abas: o Ranking saiu da
+// Comunidade e virou aba propria, porque sao dois assuntos com ritmos
+// diferentes (o calendario e do dia a dia, o ranking fecha no mes).
 //
 // Ela faz duas coisas ao mesmo tempo: troca de aba e diz o que falta
 // preencher. O aviso antigo era um cartao tracejado que so aparecia quando
@@ -43,12 +46,14 @@ const CHIP_DE_PENDENCIA =
 const ROTULO_DA_ABA: Record<CreatorAba, string> = {
   numeros: "Números",
   comunidade: "Comunidade",
+  ranking: "Ranking",
   perfil: "Perfil",
 };
 
 const ICONE_DA_ABA: Record<CreatorAba, ReactNode> = {
   numeros: <BarChart3 aria-hidden="true" className="h-4 w-4" />,
   comunidade: <CalendarDays aria-hidden="true" className="h-4 w-4" />,
+  ranking: <Trophy aria-hidden="true" className="h-4 w-4" />,
   perfil: <UserRound aria-hidden="true" className="h-4 w-4" />,
 };
 

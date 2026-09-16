@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AtSign, CalendarDays, KeyRound, Sparkles } from "lucide-react";
+import { AtSign, CalendarDays, KeyRound, Sparkles, Trophy } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
 import Layout from "@/components/Layout";
@@ -29,9 +29,13 @@ import {
   type CreatorDashboardJanela,
 } from "@shared/creatorDashboard";
 
-// PAINEL DO PROPRIO CREATOR, em TRES ABAS (lote 08b): Numeros (o painel de
-// sempre), Comunidade (o calendario e o ranking, que chegam nos lotes 11 e 12)
-// e Perfil (as redes e a chave Pix).
+// PAINEL DO PROPRIO CREATOR, em QUATRO ABAS: Numeros (o painel de sempre),
+// Comunidade (o registro de publicacoes e o calendario, que chega no lote 10),
+// Ranking (o do mes, lote 11) e Perfil (as redes e a chave Pix).
+//
+// O Ranking saiu da Comunidade no lote 09: sao dois assuntos com ritmos
+// diferentes, e a aba propria e o lugar onde o lote 11 entra sem reabrir esta
+// decisao.
 //
 // A ABA VIVE NA URL (`?aba=`), lida a cada render e escrita com `replace`,
 // igual ao `?grupo=` da vitrine de roadmaps. Assim recarregar a pagina, voltar
@@ -157,12 +161,21 @@ export default function Creator() {
             </div>
           ) : null}
 
+          {aba === "ranking" ? (
+            <div
+              role="tabpanel"
+              id={idDoPainel("ranking")}
+              aria-labelledby={idDaAba("ranking")}
+            >
+              <Ranking />
+            </div>
+          ) : null}
+
           {aba === "perfil" ? (
             <div
               role="tabpanel"
               id={idDoPainel("perfil")}
               aria-labelledby={idDaAba("perfil")}
-              className="space-y-8"
             >
               <AbaDePerfil perfil={perfil} />
             </div>
@@ -261,7 +274,7 @@ function PainelDeNumeros() {
   );
 }
 
-/** Aba Comunidade: o lugar do calendario (lote 11) e do ranking (lote 12). */
+/** Aba Comunidade: o calendario compartilhado, que chega no lote 10. */
 function Comunidade() {
   return (
     <section
@@ -275,9 +288,31 @@ function Comunidade() {
         // TODO(Ana)
         selo="em breve"
         // TODO(Ana)
-        titulo="Calendário e ranking"
+        titulo="Calendário dos creators"
         // TODO(Ana)
-        frase="Aqui vão aparecer o calendário compartilhado dos creators, com o que cada um publica e quando, e o ranking mensal com os prêmios do mês."
+        frase="Aqui vai aparecer o calendário compartilhado, com o que cada creator publica e quando, para ninguém repetir o assunto do outro no mesmo dia."
+      />
+    </section>
+  );
+}
+
+/** Aba Ranking: o ranking do mes, que chega no lote 11. */
+function Ranking() {
+  return (
+    <section
+      data-testid="creator-ranking"
+      aria-labelledby="creator-ranking-titulo"
+      className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+    >
+      <CabecalhoDeSecao
+        id="creator-ranking-titulo"
+        icone={<Trophy aria-hidden="true" className="h-4 w-4" />}
+        // TODO(Ana)
+        selo="em breve"
+        // TODO(Ana)
+        titulo="Ranking do mês"
+        // TODO(Ana)
+        frase="Os pontos vêm das publicações que você registrar, dos cliques no seu link e das vendas do mês. Os três primeiros levam prêmio."
       />
     </section>
   );
@@ -312,7 +347,11 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
   }
 
   return (
-    <>
+    // Lado a lado no desktop (lote 09): sao dois assuntos independentes, e
+    // empilhados eles empurravam o Pagamento para fora da primeira tela. No
+    // celular continuam um abaixo do outro. `items-start` para o cartao mais
+    // curto nao esticar ate a altura do outro.
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
       <BlocoBoundary
         // TODO(Ana)
         nome="Redes"
@@ -358,6 +397,6 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
           <CreatorPixForm pix={estado.perfil.pix} onSalvo={definirPix} />
         </section>
       </BlocoBoundary>
-    </>
+    </div>
   );
 }

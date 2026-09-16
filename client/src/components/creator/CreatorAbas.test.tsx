@@ -30,20 +30,36 @@ afterEach(() => {
   cleanup();
 });
 
-describe("CreatorAbas: as tres abas", () => {
+describe("CreatorAbas: as quatro abas", () => {
   it("a ativa e a unica com aria-selected, e cada uma aponta o seu painel", () => {
     desenhar("comunidade", true, true);
     const numeros = screen.getByTestId(idDaAba("numeros"));
     const comunidade = screen.getByTestId(idDaAba("comunidade"));
+    const ranking = screen.getByTestId(idDaAba("ranking"));
     const perfil = screen.getByTestId(idDaAba("perfil"));
     expect(comunidade.getAttribute("aria-selected")).toBe("true");
     expect(numeros.getAttribute("aria-selected")).toBe("false");
+    expect(ranking.getAttribute("aria-selected")).toBe("false");
     expect(perfil.getAttribute("aria-selected")).toBe("false");
     expect(comunidade.getAttribute("aria-controls")).toBe(
       idDoPainel("comunidade"),
     );
     expect(screen.getByRole("tablist")).toBeTruthy();
-    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getAllByRole("tab")).toHaveLength(4);
+  });
+
+  it("a ordem na faixa e Numeros, Comunidade, Ranking e Perfil", () => {
+    // O Ranking entra ENTRE Comunidade e Perfil (lote 09): a ordem e a da
+    // lista em creatorAbas.ts, e este teste e o que trava isso.
+    desenhar("numeros", true, true);
+    expect(
+      screen.getAllByRole("tab").map((b) => b.getAttribute("data-testid")),
+    ).toEqual([
+      idDaAba("numeros"),
+      idDaAba("comunidade"),
+      idDaAba("ranking"),
+      idDaAba("perfil"),
+    ]);
   });
 
   it("clicar numa aba avisa qual foi, sem decidir nada sozinha", () => {

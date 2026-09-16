@@ -4,8 +4,16 @@
 // precisa ser conferido antes de virar estado.
 //
 // Fica em client/ e nao em shared/: o servidor nao sabe de aba nenhuma.
+//
+// Lote 09: entra `ranking`, entre comunidade e perfil. A ordem desta lista e a
+// ordem dos botoes na tela, entao mexer aqui move a faixa.
 
-export const CREATOR_ABAS = ["numeros", "comunidade", "perfil"] as const;
+export const CREATOR_ABAS = [
+  "numeros",
+  "comunidade",
+  "ranking",
+  "perfil",
+] as const;
 export type CreatorAba = (typeof CREATOR_ABAS)[number];
 
 /** Aba de quem chega em /creator sem parametro. Nao escreve nada na URL. */
