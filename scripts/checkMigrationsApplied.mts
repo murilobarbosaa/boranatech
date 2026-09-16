@@ -280,7 +280,9 @@ const naoReconhecidasOutras: string[] = [];
 // somado: cria creator_profiles e creator_pix_keys (creators, lote 08).
 // 89 desde 20260916100000_creator_posts.sql, MEDIDO com `--declared`, nao
 // somado: cria creator_posts (creators, lote 09).
-const EXPECTED_TABLE_COUNT = 89;
+// 91 desde 20260916120000_creator_calendar.sql, MEDIDO com `--declared`, nao
+// somado: cria creator_calendar_events e creator_collab_requests (lote 10).
+const EXPECTED_TABLE_COUNT = 91;
 
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
@@ -306,7 +308,9 @@ const EXPECTED_TABLE_COUNT = 89;
 // duas tabelas novas declaram `enable row level security`.
 // 89 desde 20260916100000_creator_posts.sql, MEDIDO com `--declared`:
 // creator_posts declara `enable row level security`.
-const EXPECTED_RLS_COUNT = 89;
+// 91 desde 20260916120000_creator_calendar.sql, MEDIDO com `--declared`: as
+// duas tabelas novas declaram `enable row level security`.
+const EXPECTED_RLS_COUNT = 91;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes

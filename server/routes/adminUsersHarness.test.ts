@@ -99,11 +99,15 @@ const TABELAS_PENDENTES: string[] = [
   // aplicada em producao: ficam aqui so ate `pnpm db:types` rodar.
   "creator_profiles",
   "creator_pix_keys",
-  // Criada em `20260916100000_creator_posts.sql` (creators, lote 09), que ainda
-  // NAO foi aplicada em producao. As rotas de publicacoes
-  // (server/lib/creatorPosts.ts) leem e gravam nela. Sai daqui junto com as
-  // outras, quando os tipos forem regenerados.
+  // Criada em `20260916100000_creator_posts.sql` (creators, lote 09), JA
+  // aplicada em producao: fica aqui so ate `pnpm db:types` rodar.
   "creator_posts",
+  // Criadas em `20260916120000_creator_calendar.sql` (creators, lote 10), que
+  // ainda NAO foi aplicada em producao. O calendario e os pedidos de collab
+  // (server/lib/creatorCalendar.ts) leem e gravam nas duas. Saem daqui junto
+  // com as outras, quando os tipos forem regenerados.
+  "creator_calendar_events",
+  "creator_collab_requests",
 ];
 
 function colunasDeCreateTable(tabela: string): Set<string> | null {
