@@ -13,10 +13,12 @@ import {
   gerarGradeDoMes,
   JANELA_DE_DIAS,
   LIMITE_DE_PEDIDOS_POR_DIA,
+  limitesDoMes,
   MENSAGEM_MAX,
   normalizarMensagemDeCollab,
   normalizarNota,
   NOTA_MAX,
+  parseMesDoCalendario,
   validarDataDeMarcacao,
 } from "./creatorCalendar";
 
@@ -161,6 +163,72 @@ describe("gerarGradeDoMes", () => {
     expect(() => gerarGradeDoMes(2026, 13)).toThrow();
     expect(() => gerarGradeDoMes(1999, 5)).toThrow();
     expect(() => gerarGradeDoMes(2026.5, 5)).toThrow();
+  });
+});
+
+describe("limitesDoMes", () => {
+  it("fecha o mes sem tabela de tamanhos: 30, 31, fevereiro e bissexto", () => {
+    expect(limitesDoMes(2026, 9)).toEqual({
+      primeiro: "2026-09-01",
+      ultimo: "2026-09-30",
+    });
+    expect(limitesDoMes(2026, 1)).toEqual({
+      primeiro: "2026-01-01",
+      ultimo: "2026-01-31",
+    });
+    expect(limitesDoMes(2026, 2).ultimo).toBe("2026-02-28");
+    // 2028 e bissexto: o 29 existe sem ninguem ter escrito uma regra de
+    // bissexto, porque a conta e "o dia anterior ao dia 1 do mes seguinte".
+    expect(limitesDoMes(2028, 2).ultimo).toBe("2028-02-29");
+  });
+
+  it("dezembro vira o ano em vez de pedir um mes 13", () => {
+    expect(limitesDoMes(2026, 12)).toEqual({
+      primeiro: "2026-12-01",
+      ultimo: "2026-12-31",
+    });
+  });
+
+  it("e a MESMA fonte que a grade usa: os dias do mes batem", () => {
+    const { primeiro, ultimo } = limitesDoMes(2026, 9);
+    const doMes = gerarGradeDoMes(2026, 9)
+      .flat()
+      .filter((d) => d.doMes);
+    expect(doMes[0].dia).toBe(primeiro);
+    expect(doMes[doMes.length - 1].dia).toBe(ultimo);
+  });
+
+  it("mes ou ano invalido LANCA", () => {
+    expect(() => limitesDoMes(2026, 0)).toThrow();
+    expect(() => limitesDoMes(2026, 13)).toThrow();
+    expect(() => limitesDoMes(1999, 5)).toThrow();
+  });
+});
+
+describe("parseMesDoCalendario", () => {
+  it("aceita AAAA-MM e devolve os numeros", () => {
+    expect(parseMesDoCalendario("2026-09")).toEqual({ ano: 2026, mes: 9 });
+    expect(parseMesDoCalendario("2026-12")).toEqual({ ano: 2026, mes: 12 });
+    expect(parseMesDoCalendario("2026-01")).toEqual({ ano: 2026, mes: 1 });
+  });
+
+  it("formato errado e mes fora da faixa dao o MESMO null", () => {
+    for (const ruim of [
+      "2026-9",
+      "2026-13",
+      "2026-00",
+      "1999-05",
+      "2101-05",
+      "2026-09-01",
+      "setembro",
+      "",
+      2026,
+      null,
+      undefined,
+      {},
+    ]) {
+      expect(parseMesDoCalendario(ruim)).toBeNull();
+    }
   });
 });
 

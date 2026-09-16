@@ -50,6 +50,7 @@ vi.mock("@sentry/node", () => ({
   captureException: (...a: unknown[]) => estado.sentry(...a),
 }));
 
+import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import {
   criarSupabaseDouble,
   respostaQueFiltra,
@@ -910,5 +911,604 @@ describe("DELETE /api/creator/posts/:id", () => {
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("invalid_post_id");
     expect(double.de("creator_posts")).toHaveLength(0);
+  });
+});
+
+// CALENDARIO COMPARTILHADO E COLLAB (lote 10).
+//
+// A DATA E CALCULADA A PARTIR DE HOJE, e nao escrita como literal: a janela de
+// marcacao vai de hoje ate hoje mais 90 dias, entao um literal passaria a
+// falhar sozinho por decurso de prazo. Os literais de data ficam no teste de
+// shared/creatorCalendar.ts, que e onde a regra mora.
+
+const OUTRO_UID = "33333333-3333-3333-3333-333333333333";
+const EVENTO_ID = "8f14e45f-ceea-467a-9f6b-2c1d0e2a9b77";
+const PEDIDO_ID = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed";
+
+const HOJE_BR = diaBrasilia(new Date().toISOString())!;
+const DIA_MARCADO = somarDiaCivil(HOJE_BR, 5);
+const DIA_PASSADO = somarDiaCivil(HOJE_BR, -1);
+
+const MARCACAO = {
+  id: EVENTO_ID,
+  user_id: UID,
+  event_date: DIA_MARCADO,
+  network: "instagram",
+  note: "bastidores do curso",
+  created_at: "2026-09-16T12:00:00Z",
+};
+
+const MARCACAO_DE_OUTRO = { ...MARCACAO, user_id: OUTRO_UID };
+
+const PEDIDO = {
+  id: PEDIDO_ID,
+  event_id: EVENTO_ID,
+  requester_id: OUTRO_UID,
+  owner_id: UID,
+  message: "bora?",
+  status: "pendente",
+  created_at: "2026-09-16T13:00:00Z",
+  responded_at: null,
+};
+
+/** Perfis com nome, @ e e-mail: `lerAutores` pede nome e @, `lerContato` pede
+ * nome e e-mail, e a notificacao direcionada resolve o usuario PELO e-mail. */
+function perfis() {
+  return respostaQueFiltra([
+    {
+      user_id: UID,
+      name: "Cria",
+      handle: "cria",
+      email: "cria@exemplo.com",
+    },
+    {
+      user_id: OUTRO_UID,
+      name: "Outra Cria",
+      handle: "outracria",
+      email: "outra@exemplo.com",
+    },
+  ]);
+}
+
+/** As duas tabelas que o aviso escreve, no caminho feliz. */
+function avisoOk(): Record<
+  string,
+  RespostaTabela | ((c: Chamada) => RespostaTabela)
+> {
+  return {
+    notifications: (c: Chamada) =>
+      c.op === "insert" ? { rows: [{ id: "notif-1" }] } : { rows: [] },
+    notification_recipients: { rows: [] },
+  };
+}
+
+describe("GET /api/creator/calendar", () => {
+  it("mes invalido: 400 month_out_of_range, sem tocar no banco", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/calendar?mes=2026-13");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("month_out_of_range");
+    expect(double.de("creator_calendar_events")).toHaveLength(0);
+  });
+
+  it("sem o parametro mes: 400, o mesmo codigo", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/calendar");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("month_out_of_range");
+  });
+
+  it("devolve as marcacoes de TODOS os creators, com o autor de cada uma", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO, MARCACAO_DE_OUTRO] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.marcacoes).toHaveLength(2);
+    // A marcacao de OUTRA pessoa aparece: o calendario e compartilhado, e e
+    // isso que permite a duas pessoas nao repetirem o mesmo assunto no dia.
+    const donos = r.body.data.marcacoes.map(
+      (m: { user_id: string }) => m.user_id,
+    );
+    expect(donos).toEqual([UID, OUTRO_UID]);
+    expect(r.body.data.marcacoes[0].autor).toEqual({
+      user_id: UID,
+      name: "Cria",
+      handle: "cria",
+    });
+  });
+
+  it("quem nao e creator: 403 not_creator", async () => {
+    montar({
+      creators: respostaQueFiltra([]),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/calendar?mes=2026-09");
+    expect(r.status).toBe(403);
+    expect(r.body.error.code).toBe("not_creator");
+  });
+});
+
+describe("POST /api/creator/calendar", () => {
+  it("marca o dia e grava a forma canonica, com a nota sem espaco", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "insert" ? { rows: [MARCACAO] } : { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "instagram",
+      note: "  bastidores do curso  ",
+    });
+    expect(r.status).toBe(201);
+    expect(r.body.data.marcacao.id).toBe(EVENTO_ID);
+    const escritas = escritasEm("creator_calendar_events");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].payload).toEqual({
+      user_id: UID,
+      event_date: DIA_MARCADO,
+      network: "instagram",
+      note: "bastidores do curso",
+    });
+  });
+
+  it("nota vazia vira null, e nao erro: marcar sem assunto vale", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "insert"
+          ? { rows: [{ ...MARCACAO, note: null }] }
+          : { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "tiktok",
+      note: "   ",
+    });
+    expect(r.status).toBe(201);
+    // O payload INTEIRO, e nao so `note`: fixa todas as colunas de uma vez, e
+    // nao esbarra no `payload` opcional de `Chamada`.
+    expect(escritasEm("creator_calendar_events")[0].payload).toEqual({
+      user_id: UID,
+      event_date: DIA_MARCADO,
+      network: "tiktok",
+      note: null,
+    });
+  });
+
+  it("dia que ja passou: 400 date_out_of_window, nada gravado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_PASSADO,
+      network: "instagram",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("date_out_of_window");
+    expect(escritasEm("creator_calendar_events")).toHaveLength(0);
+  });
+
+  it("dia alem da janela de 90 dias: 400 date_out_of_window", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: somarDiaCivil(HOJE_BR, 91),
+      network: "instagram",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("date_out_of_window");
+  });
+
+  it("rede fora da lista: 400 invalid_network, nada gravado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "youtube",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_network");
+    expect(escritasEm("creator_calendar_events")).toHaveLength(0);
+  });
+
+  it("nota acima do teto: 400 invalid_note", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "instagram",
+      note: "a".repeat(141),
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_note");
+  });
+
+  it("mesmo dia e rede de novo: 409 pelo 23505 da constraint nomeada", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "insert"
+          ? {
+              error: {
+                code: "23505",
+                message:
+                  'duplicate key value violates unique constraint "creator_calendar_unico_por_dia"',
+              },
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "instagram",
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("event_already_marked");
+  });
+
+  it("outro 23505, de outra constraint, NAO vira 409: e 500", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "insert"
+          ? {
+              error: {
+                code: "23505",
+                message:
+                  'duplicate key value violates unique constraint "outra_coisa_key"',
+              },
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      network: "instagram",
+    });
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+  });
+});
+
+describe("DELETE /api/creator/calendar/:id", () => {
+  it("apaga a propria, com o dono dentro do proprio DELETE", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [{ id: EVENTO_ID }] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", `/calendar/${EVENTO_ID}`);
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { id: EVENTO_ID } });
+    const escritas = escritasEm("creator_calendar_events");
+    expect(escritas[0].op).toBe("delete");
+    expect(escritas[0].filtros).toEqual([
+      { tipo: "eq", coluna: "user_id", valor: UID },
+      { tipo: "eq", coluna: "id", valor: EVENTO_ID },
+    ]);
+  });
+
+  it("marcacao de outra pessoa: 404, porque o delete nao alcanca", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", `/calendar/${EVENTO_ID}`);
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("event_not_found");
+  });
+
+  it("id invalido: 400, sem tocar no banco", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("DELETE", "/calendar/nao-e-uuid");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_event_id");
+    expect(double.de("creator_calendar_events")).toHaveLength(0);
+  });
+});
+
+describe("POST /api/creator/calendar/:id/collab", () => {
+  it("pede collab e grava o dono VINDO DA MARCACAO, nao do corpo", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO_DE_OUTRO] },
+      creator_collab_requests: (c) =>
+        c.op === "insert"
+          ? { rows: [{ ...PEDIDO, requester_id: UID, owner_id: OUTRO_UID }] }
+          : { rows: [] },
+      profiles: perfis(),
+      ...avisoOk(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {
+      message: "  bora?  ",
+      owner_id: "tentativa-de-forjar",
+    });
+    expect(r.status).toBe(201);
+    const escritas = escritasEm("creator_collab_requests");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].payload).toEqual({
+      event_id: EVENTO_ID,
+      requester_id: UID,
+      owner_id: OUTRO_UID,
+      message: "bora?",
+    });
+    // O AVISO ACONTECE, e chega a quem tem de chegar: o destinatario e o DONO
+    // da marcacao (resolvido pelo e-mail em `profiles`), e nao quem pediu.
+    // Sem esta assercao, quebrar o aviso amanha deixaria a suite verde, que e
+    // exatamente o defeito que o filtro `not.is` acabou de expor no dublê.
+    expect(escritasEm("notifications")).toHaveLength(1);
+    const destinatarios = escritasEm("notification_recipients");
+    expect(destinatarios).toHaveLength(1);
+    expect(destinatarios[0].payload).toEqual({
+      notification_id: "notif-1",
+      user_id: OUTRO_UID,
+    });
+  });
+
+  it("collab na PROPRIA marcacao: 400 own_event, nada gravado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO] },
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {});
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("own_event");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
+  it("marcacao que nao existe: 404 event_not_found", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [] },
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {});
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("event_not_found");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
+  it("no teto do dia: 429 collab_daily_limit, e nada e gravado", async () => {
+    const cincoDeHoje = Array.from({ length: 5 }, (_, i) => ({ id: `p-${i}` }));
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO_DE_OUTRO] },
+      creator_collab_requests: (c) =>
+        c.op === "insert" ? { rows: [PEDIDO] } : { rows: cincoDeHoje },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {});
+    expect(r.status).toBe(429);
+    expect(r.body.error.code).toBe("collab_daily_limit");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
+  it("pedir duas vezes na mesma marcacao: 409 pelo nome da constraint", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO_DE_OUTRO] },
+      creator_collab_requests: (c) =>
+        c.op === "insert"
+          ? {
+              error: {
+                code: "23505",
+                message:
+                  'duplicate key value violates unique constraint "creator_collab_unica_por_evento"',
+              },
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {});
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("collab_already_requested");
+  });
+
+  it("recado acima do teto: 400 invalid_message, sem nem ler a marcacao", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO_DE_OUTRO] },
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {
+      message: "a".repeat(301),
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_message");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
+  it("falha no AVISO nao desfaz o pedido: ainda e 201", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO_DE_OUTRO] },
+      creator_collab_requests: (c) =>
+        c.op === "insert"
+          ? { rows: [{ ...PEDIDO, requester_id: UID, owner_id: OUTRO_UID }] }
+          : { rows: [] },
+      profiles: perfis(),
+      // A notificacao quebra: o pedido ja esta gravado e continua de pe.
+      notifications: { error: { message: "timeout" } },
+      notification_recipients: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {});
+    expect(r.status).toBe(201);
+    expect(escritasEm("creator_collab_requests")).toHaveLength(1);
+    expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/creator/collabs", () => {
+  it("separa os recebidos dos enviados", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: respostaQueFiltra([
+        PEDIDO,
+        {
+          ...PEDIDO,
+          id: "2b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+          requester_id: UID,
+          owner_id: OUTRO_UID,
+        },
+      ]),
+      creator_calendar_events: { rows: [MARCACAO] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/collabs");
+    expect(r.status).toBe(200);
+    expect(r.body.data.recebidos).toHaveLength(1);
+    expect(r.body.data.recebidos[0].id).toBe(PEDIDO_ID);
+    // O outro lado do pedido recebido e quem pediu.
+    expect(r.body.data.recebidos[0].outra_pessoa.user_id).toBe(OUTRO_UID);
+    expect(r.body.data.enviados).toHaveLength(1);
+  });
+
+  it("pedido cuja marcacao sumiu fica FORA da lista, com aviso no log", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: respostaQueFiltra([PEDIDO]),
+      // A marcacao do pedido nao existe mais.
+      creator_calendar_events: { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/collabs");
+    expect(r.status).toBe(200);
+    expect(r.body.data.recebidos).toEqual([]);
+    expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/creator/collabs/:id/responder", () => {
+  it("aceita: 200, e o status pendente entra no proprio UPDATE", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: (c) =>
+        c.op === "update"
+          ? { rows: [{ ...PEDIDO, status: "aceita", responded_at: AGORA_ISO }] }
+          : { rows: [] },
+      creator_calendar_events: { rows: [MARCACAO] },
+      profiles: perfis(),
+      ...avisoOk(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/collabs/${PEDIDO_ID}/responder`, {
+      aceita: true,
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.data.pedido.status).toBe("aceita");
+    const escritas = escritasEm("creator_collab_requests");
+    expect(escritas[0].op).toBe("update");
+    // Sem o `status = pendente` no filtro, duas respostas simultaneas fariam a
+    // segunda sobrescrever a primeira.
+    expect(escritas[0].filtros).toEqual([
+      { tipo: "eq", coluna: "id", valor: PEDIDO_ID },
+      { tipo: "eq", coluna: "owner_id", valor: UID },
+      { tipo: "eq", coluna: "status", valor: "pendente" },
+    ]);
+    // Quem e avisado da RESPOSTA e quem pediu, e nao o dono que respondeu.
+    expect(escritasEm("notifications")).toHaveLength(1);
+    expect(escritasEm("notification_recipients")[0].payload).toEqual({
+      notification_id: "notif-1",
+      user_id: OUTRO_UID,
+    });
+  });
+
+  it("corpo sem booleano: 400 invalid_body, e NADA e gravado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/collabs/${PEDIDO_ID}/responder`, {});
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_body");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
+  it("pedido ja respondido: 409 collab_already_answered", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      // O update nao alcanca (ja nao esta pendente), mas o pedido existe.
+      creator_collab_requests: (c) =>
+        c.op === "update" ? { rows: [] } : { rows: [PEDIDO] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/collabs/${PEDIDO_ID}/responder`, {
+      aceita: false,
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("collab_already_answered");
+  });
+
+  it("pedido inexistente (ou de outro dono): 404 collab_not_found", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/collabs/${PEDIDO_ID}/responder`, {
+      aceita: true,
+    });
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("collab_not_found");
+  });
+
+  it("id invalido: 400, sem tocar no banco", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/collabs/nao-e-uuid/responder", {
+      aceita: true,
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_collab_id");
+    expect(double.de("creator_collab_requests")).toHaveLength(0);
   });
 });

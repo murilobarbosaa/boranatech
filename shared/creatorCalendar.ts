@@ -117,6 +117,58 @@ function diaDaSemana(dia: string): number {
   return new Date(`${dia}T00:00:00Z`).getUTCDay();
 }
 
+const MES_RE = /^(\d{4})-(\d{2})$/;
+
+/**
+ * Primeiro e ultimo dia civil de um mes, em `AAAA-MM-DD`.
+ *
+ * E UMA FUNCAO SO porque o server filtra o mes por intervalo de data e o client
+ * desenha a grade: as duas pontas precisam do mesmo par, e uma segunda copia da
+ * aritmetica de fim de mes divergiria na primeira correcao (fevereiro,
+ * bissexto, virada de ano).
+ *
+ * Mes invalido LANCA: quem chama passa numero, nao entrada de usuario. Entrada
+ * de usuario passa antes por `parseMesDoCalendario`, que devolve `null`.
+ */
+export function limitesDoMes(
+  ano: number,
+  mes: number,
+): { primeiro: string; ultimo: string } {
+  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
+    throw new Error(`limitesDoMes: ano invalido (${ano})`);
+  }
+  if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
+    throw new Error(`limitesDoMes: mes invalido (${mes})`);
+  }
+  const primeiro = `${ano}-${String(mes).padStart(2, "0")}-01`;
+  // Ultimo dia do mes: o dia anterior ao dia 1 do mes seguinte. Assim nao ha
+  // tabela de tamanhos de mes nem caso especial de bissexto.
+  const primeiroDoSeguinte =
+    mes === 12
+      ? `${ano + 1}-01-01`
+      : `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
+  return { primeiro, ultimo: somarDiaCivil(primeiroDoSeguinte, -1) };
+}
+
+/**
+ * O `?mes=AAAA-MM` que chega na rota, ou `null`.
+ *
+ * Devolve `null` tanto para o formato errado quanto para o mes fora da faixa:
+ * as duas coisas viram o MESMO 400 (`month_out_of_range`) porque, para quem
+ * chamou, as duas sao "esse mes eu nao desenho".
+ */
+export function parseMesDoCalendario(
+  valor: unknown,
+): { ano: number; mes: number } | null {
+  if (typeof valor !== "string") return null;
+  const casou = MES_RE.exec(valor);
+  if (!casou) return null;
+  const ano = Number(casou[1]);
+  const mes = Number(casou[2]);
+  if (ano < 2000 || ano > 2100 || mes < 1 || mes > 12) return null;
+  return { ano, mes };
+}
+
 /**
  * A grade de um mes, em semanas de domingo a sabado.
  *
@@ -129,21 +181,7 @@ function diaDaSemana(dia: string): number {
  * um calendario plausivel e errado, e ninguem percebe olhando.
  */
 export function gerarGradeDoMes(ano: number, mes: number): SemanaDaGrade[] {
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
-    throw new Error(`gerarGradeDoMes: ano invalido (${ano})`);
-  }
-  if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
-    throw new Error(`gerarGradeDoMes: mes invalido (${mes})`);
-  }
-
-  const mm = String(mes).padStart(2, "0");
-  const primeiro = `${ano}-${mm}-01`;
-  // Ultimo dia do mes: o dia anterior ao dia 1 do mes seguinte.
-  const primeiroDoSeguinte =
-    mes === 12
-      ? `${ano + 1}-01-01`
-      : `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
-  const ultimo = somarDiaCivil(primeiroDoSeguinte, -1);
+  const { primeiro, ultimo } = limitesDoMes(ano, mes);
 
   const inicio = somarDiaCivil(primeiro, -diaDaSemana(primeiro));
   const fim = somarDiaCivil(ultimo, 6 - diaDaSemana(ultimo));

@@ -616,7 +616,6 @@ export function criarSupabaseDouble(
       "neq",
       "is",
       "in",
-      "not",
       "ilike",
       "gte",
       "lte",
@@ -637,6 +636,19 @@ export function criarSupabaseDouble(
         return q;
       };
     }
+    // `.not(coluna, operador, valor)` tem TRES argumentos, e por isso ficou de
+    // fora do laco acima, que liga `(coluna, valor)`. Registrado por ele, o
+    // campo `valor` guardaria o OPERADOR ("is") e o valor real (null) sumiria
+    // em silencio: um teste que afirmasse esse filtro estaria afirmando uma
+    // consulta que o banco nao faz. O tipo sai COMPOSTO (`not.is`), carregando
+    // o valor de verdade.
+    q.not = (coluna: string, operador: string, valor: unknown) => {
+      if (typeof coluna === "string") {
+        chamada.filtros.push({ tipo: `not.${operador}`, coluna, valor });
+        validarColunas(table, [coluna]);
+      }
+      return q;
+    };
     q.order = (coluna: string, opts?: { ascending?: boolean }) => {
       if (typeof coluna === "string") {
         validarColunas(table, [coluna]);
@@ -743,10 +755,15 @@ export function criarSupabaseDouble(
  *
  * Para a rota que consulta a MESMA tabela mais de uma vez com filtros
  * diferentes (o painel de creator le `creator_events` como primeiro evento,
- * ultimo clique e ultima venda). Simula so `eq`, `is` e `in`, e a ordem por
- * coluna com direcao. Qualquer outro filtro LANCA: um responder que ignorasse
- * um filtro desconhecido devolveria linhas que o banco nao devolveria, e o
- * teste passaria sobre uma consulta errada.
+ * ultimo clique e ultima venda). Simula so `eq`, `is`, `in` e `not.is`, e a
+ * ordem por coluna com direcao. Qualquer outro filtro LANCA: um responder que
+ * ignorasse um filtro desconhecido devolveria linhas que o banco nao
+ * devolveria, e o teste passaria sobre uma consulta errada.
+ *
+ * `not` entrou SO na forma `is` porque e a unica que o codigo de producao usa
+ * (19 sitios, todos `.not(coluna, "is", null)`). `not.neq`, `not.in` e afins
+ * continuam lancando: simular uma negacao que ninguem escreveu seria inventar
+ * cobertura, que e o defeito que este responder existe para nao ter.
  */
 export function respostaQueFiltra(
   linhas: LinhaQualquer[],
@@ -759,6 +776,7 @@ export function respostaQueFiltra(
         if (f.tipo === "in") {
           return Array.isArray(f.valor) && f.valor.includes(valor);
         }
+        if (f.tipo === "not.is") return valor !== f.valor;
         throw new Error(
           `[double] respostaQueFiltra nao simula o filtro "${f.tipo}"`,
         );

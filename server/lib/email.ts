@@ -398,6 +398,113 @@ export async function sendProUpgradeEmail(
 }
 
 /**
+ * Pedido de collab no calendario compartilhado dos creators (lote 10).
+ *
+ * VAI PARA O DONO DA MARCACAO, e carrega o que ele precisa para decidir sem
+ * abrir a plataforma: quem pediu, o dia, a rede e o recado. O botao leva para a
+ * aba Comunidade, que e onde se aceita ou recusa.
+ *
+ * FROM_TRANSACTIONAL, e nao FROM_RELATIONSHIP: e um aviso sobre algo que
+ * aconteceu na conta da pessoa e que espera resposta dela, nao comunicacao de
+ * relacionamento.
+ *
+ * O RECADO E DE OUTRO USUARIO, entao passa por escapeHtml como todo o resto: e
+ * o unico campo deste e-mail que alguem de fora escreve.
+ */
+export async function sendCreatorCollabRequestEmail(
+  to: string,
+  params: {
+    donoNome: string;
+    pedinteNome: string;
+    diaLabel: string;
+    redeLabel: string;
+    mensagem: string | null;
+  },
+) {
+  const theme = NEUTRAL_THEME;
+  const safeDono = escapeHtml(params.donoNome);
+  const safePedinte = escapeHtml(params.pedinteNome);
+  const safeDia = escapeHtml(params.diaLabel);
+  const safeRede = escapeHtml(params.redeLabel);
+  // TODO(Ana): subject e copy do e-mail de pedido de collab.
+  const title = "Pediram collab na sua marcação";
+  const body = `
+    ${paragraph(`${safeDono}, ${safePedinte} quer gravar uma collab com você.`)}
+    ${list(theme, [
+      `Dia: <strong>${safeDia}</strong>`,
+      `Rede: <strong>${safeRede}</strong>`,
+    ])}
+    ${
+      params.mensagem
+        ? paragraph(`Recado: "${escapeHtml(params.mensagem)}"`)
+        : ""
+    }
+    ${button("Ver o pedido", `${APP_URL}/creator?aba=comunidade`, theme)}
+    ${paragraph("Você aceita ou recusa por lá. O combinado do conteúdo fica entre vocês dois.")}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
+}
+
+/**
+ * Resposta a um pedido de collab (lote 10).
+ *
+ * VAI PARA QUEM PEDIU. A copy MUDA com o veredito, e o e-mail sai nos dois
+ * casos: saber que foi recusado e o que permite procurar outra data, e silencio
+ * seria indistinguivel de "ainda nao respondeu".
+ *
+ * A RECUSA NAO PEDE JUSTIFICATIVA e o e-mail nao inventa uma: dizer "sem
+ * explicacao" seria pior que so dizer o fato.
+ */
+export async function sendCreatorCollabResponseEmail(
+  to: string,
+  params: {
+    pedinteNome: string;
+    donoNome: string;
+    diaLabel: string;
+    redeLabel: string;
+    aceita: boolean;
+  },
+) {
+  const theme = NEUTRAL_THEME;
+  const safePedinte = escapeHtml(params.pedinteNome);
+  const safeDono = escapeHtml(params.donoNome);
+  const safeDia = escapeHtml(params.diaLabel);
+  const safeRede = escapeHtml(params.redeLabel);
+  // TODO(Ana): subject e copy das duas variantes (aceita e recusada).
+  const title = params.aceita
+    ? "Sua collab foi aceita!"
+    : "Resposta sobre a sua collab";
+  const body = `
+    ${paragraph(
+      params.aceita
+        ? `${safePedinte}, ${safeDono} aceitou a sua collab.`
+        : `${safePedinte}, ${safeDono} não vai fechar collab nessa data.`,
+    )}
+    ${list(theme, [
+      `Dia: <strong>${safeDia}</strong>`,
+      `Rede: <strong>${safeRede}</strong>`,
+    ])}
+    ${paragraph(
+      params.aceita
+        ? "Agora é combinar o conteúdo direto com a pessoa."
+        : "O calendário continua aberto: dá para pedir collab em outra marcação.",
+    )}
+    ${button("Ver o calendário", `${APP_URL}/creator?aba=comunidade`, theme)}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
+}
+
+/**
  * Nota fiscal emitida.
  *
  * O ANEXO E OPCIONAL, e a copy muda com ele. Quando o PDF nao chegou ao nosso
