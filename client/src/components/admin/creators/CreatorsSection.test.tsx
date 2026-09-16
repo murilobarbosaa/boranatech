@@ -402,6 +402,21 @@ describe("painel de um creator", () => {
     ).toBe(`/admin?section=usuarios&user=${UUID_A}`);
   });
 
+  it("a visao admin nao ganhou abas nem faixa de pendencias (lote 08b)", async () => {
+    // As abas sao da PAGINA /creator. Aqui quem olha e o admin, e o painel
+    // aparece dentro da aba Creators, que ja tem a navegacao dela.
+    rotear();
+    montar();
+    expect(await screen.findByTestId("creators-quadro")).toBeTruthy();
+    expect(screen.queryByTestId("creator-abas")).toBeNull();
+    expect(screen.queryByTestId("creator-pendencias")).toBeNull();
+
+    fireEvent.click(screen.getByTestId(`creators-linha-${UUID_A}`));
+    await screen.findByTestId("view-mock");
+    expect(screen.queryByTestId("creator-abas")).toBeNull();
+    expect(screen.queryByTestId("creator-pendencias")).toBeNull();
+  });
+
   it("Voltar ao quadro nao busca o resumo de novo", async () => {
     rotear();
     montar();

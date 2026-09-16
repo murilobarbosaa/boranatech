@@ -381,3 +381,119 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 });
+
+describe("pagina /creator: as abas na URL (lote 08b)", () => {
+  it("sem parametro: Numeros, e a URL fica limpa", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    const history = montar();
+    await screen.findByTestId("view");
+    expect(
+      screen.getByTestId("creator-aba-numeros").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(history).toEqual(["/creator"]);
+  });
+
+  it("?aba= desconhecido cai em Numeros, sem pagina em branco", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar("/creator?aba=xpto");
+    await screen.findByTestId("view");
+    expect(
+      screen.getByTestId("creator-aba-numeros").getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("trocar de aba escreve a URL e monta so o painel ativo", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    const history = montar();
+    await screen.findByTestId("view");
+    expect(estado.fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("creator-aba-comunidade"));
+    expect(history[history.length - 1]).toBe("/creator?aba=comunidade");
+    expect(screen.getByTestId("creator-comunidade")).toBeTruthy();
+    expect(screen.queryByTestId("view")).toBeNull();
+    // A aba Comunidade nao chama rede nenhuma: o lote 11 e que vai preenche-la.
+    expect(estado.fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId("creator-aba-perfil"));
+    expect(history[history.length - 1]).toBe("/creator?aba=perfil");
+    expect(screen.getByTestId("creator-card-redes")).toBeTruthy();
+    expect(screen.queryByTestId("creator-comunidade")).toBeNull();
+  });
+
+  it("voltar para Numeros limpa o parametro e busca de novo", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    const history = montar("/creator?aba=perfil");
+    await screen.findByTestId("creator-card-redes");
+    expect(estado.fetch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("creator-aba-numeros"));
+    expect(history[history.length - 1]).toBe("/creator");
+    await screen.findByTestId("view");
+    // Sem cache entre abas neste lote: voltar para Numeros busca outra vez.
+    expect(estado.fetch).toHaveBeenCalledTimes(1);
+    expect(estado.redesForm.montagens).toBe(1);
+  });
+
+  it("a faixa aparece nos quatro estados da pagina", async () => {
+    // Carregando.
+    estado.fetch = vi.fn(() => new Promise(() => {}));
+    montar();
+    expect(screen.getByTestId("creator-abas")).toBeTruthy();
+    cleanup();
+
+    // Erro.
+    estado.fetch = vi.fn(async () => {
+      throw new AdminApiError("Erro ao carregar o painel.", 500, "db_error");
+    });
+    montar();
+    await screen.findByTestId("creator-erro");
+    expect(screen.getByTestId("creator-abas")).toBeTruthy();
+    cleanup();
+
+    // Nao creator.
+    estado.fetch = vi.fn(async () => {
+      throw new AdminApiError(
+        "Acesso de creator necessário.",
+        403,
+        "not_creator",
+      );
+    });
+    montar();
+    await screen.findByTestId("creator-nao-creator");
+    expect(screen.getByTestId("creator-abas")).toBeTruthy();
+    cleanup();
+
+    // Painel ok.
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.getByTestId("creator-abas")).toBeTruthy();
+  });
+
+  it("as pendencias da faixa saem do perfil que a pagina leu", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_SEM_CHAVE };
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.getByTestId("creator-pendencia-pix")).toBeTruthy();
+    // O @ esta preenchido nesse perfil, entao so ha uma pendencia.
+    expect(screen.queryByTestId("creator-pendencia-redes")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("creator-pendencia-pix"));
+    expect(screen.getByTestId("creator-card-pagamento")).toBeTruthy();
+  });
+
+  it("enquanto o perfil nao respondeu a faixa nao acusa pendencia", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "carregando" };
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.getByTestId("creator-abas")).toBeTruthy();
+    expect(screen.queryByTestId("creator-pendencias")).toBeNull();
+  });
+});
