@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  AtSign,
-  CalendarDays,
-  KeyRound,
-  Receipt,
-  Sparkles,
-  Trophy,
-} from "lucide-react";
+import { AtSign, KeyRound, Receipt, Sparkles, Trophy } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
 import Layout from "@/components/Layout";
@@ -15,6 +8,7 @@ import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CreatorAbas } from "@/components/creator/CreatorAbas";
+import { CreatorCalendario } from "@/components/creator/CreatorCalendario";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
 import { CreatorPublicacoes } from "@/components/creator/CreatorPublicacoes";
@@ -298,25 +292,27 @@ function PainelDeNumeros() {
   );
 }
 
-/** Aba Comunidade: o calendario compartilhado, que chega no lote 10. */
+/**
+ * Aba Comunidade, segundo cartao: o calendario compartilhado (lote 10).
+ *
+ * O cabecalho mora DENTRO do componente, como no cartao de publicacoes: aqui
+ * fica so a casca. O `data-testid` continua `creator-comunidade` de proposito,
+ * porque e por ele que os testes da pagina afirmam qual painel esta montado.
+ */
 function Comunidade() {
   return (
-    <section
-      data-testid="creator-comunidade"
-      aria-labelledby="creator-comunidade-titulo"
-      className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+    <BlocoBoundary
+      // TODO(Ana)
+      nome="Calendário dos creators"
     >
-      <CabecalhoDeSecao
-        id="creator-comunidade-titulo"
-        icone={<CalendarDays aria-hidden="true" className="h-4 w-4" />}
-        // TODO(Ana)
-        selo="em breve"
-        // TODO(Ana)
-        titulo="Calendário dos creators"
-        // TODO(Ana)
-        frase="Aqui vai aparecer o calendário compartilhado, com o que cada creator publica e quando, para ninguém repetir o assunto do outro no mesmo dia."
-      />
-    </section>
+      <section
+        data-testid="creator-comunidade"
+        aria-labelledby="creator-calendario-titulo"
+        className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+      >
+        <CreatorCalendario />
+      </section>
+    </BlocoBoundary>
   );
 }
 

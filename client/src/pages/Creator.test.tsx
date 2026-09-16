@@ -113,6 +113,12 @@ vi.mock("@/components/creator/CreatorPixForm", () => ({
 vi.mock("@/components/creator/CreatorPublicacoes", () => ({
   CreatorPublicacoes: () => <div data-testid="publicacoes" />,
 }));
+// O calendario (lote 10) tambem busca sozinho, e por conta propria: dublado
+// aqui, o que se afirma e onde a pagina o poe. Sem o dublê, montar a aba
+// Comunidade dispararia duas requisicoes reais dentro do teste da pagina.
+vi.mock("@/components/creator/CreatorCalendario", () => ({
+  CreatorCalendario: () => <div data-testid="calendario" />,
+}));
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -453,7 +459,9 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     expect(history[history.length - 1]).toBe("/creator?aba=comunidade");
     expect(screen.getByTestId("creator-comunidade")).toBeTruthy();
     expect(screen.queryByTestId("view")).toBeNull();
-    // A aba Comunidade nao chama rede nenhuma: o lote 11 e que vai preenche-la.
+    // A PAGINA nao busca nada na aba Comunidade: quem busca sao os dois
+    // cartoes, cada um por conta propria, e aqui os dois estao dublados. O que
+    // esta assercao guarda e que trocar de aba nao refaz a busca do painel.
     expect(estado.fetch).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByTestId("creator-aba-perfil"));
@@ -535,17 +543,19 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     expect(screen.queryByTestId("creator-pendencias")).toBeNull();
   });
 
-  it("aba Comunidade: as publicacoes vem ANTES do calendario em breve", async () => {
+  it("aba Comunidade: as publicacoes vem ANTES do calendario", async () => {
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar("/creator?aba=comunidade");
     const publicacoes = await screen.findByTestId("creator-card-publicacoes");
     const calendario = screen.getByTestId("creator-comunidade");
     expect(screen.getByTestId("publicacoes")).toBeTruthy();
+    // O calendario esta montado de verdade, e nao e mais o aviso de "em breve".
+    expect(screen.getByTestId("calendario")).toBeTruthy();
     expect(
       publicacoes.compareDocumentPosition(calendario) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    // O calendario continua sendo so o aviso de "em breve": sem rede nenhuma.
+    // A PAGINA continua sem buscar o painel de Numeros nesta aba.
     expect(estado.fetch).not.toHaveBeenCalled();
   });
 
