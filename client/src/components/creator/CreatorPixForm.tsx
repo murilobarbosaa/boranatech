@@ -226,7 +226,7 @@ export function CreatorPixForm({
           {/* TODO(Ana) */}
           <span className={labelClass}>Tipo da chave</span>
           <BntSelect
-            accent="gold"
+            accent="neutral"
             // TODO(Ana)
             label="Tipo da chave Pix"
             // TODO(Ana)

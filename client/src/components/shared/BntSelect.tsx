@@ -27,7 +27,8 @@ export type BntSelectAccent =
   | "orange"
   | "teal"
   | "pink"
-  | "gold";
+  | "gold"
+  | "neutral";
 
 const accentItemClasses: Record<BntSelectAccent, string> = {
   yellow: "focus:bg-[var(--brand-yellow)]/20 data-[state=checked]:bg-[var(--brand-yellow)]/30",
@@ -40,6 +41,12 @@ const accentItemClasses: Record<BntSelectAccent, string> = {
   // Gold (goldenrod, saturado) usa opacidade maior (/25, /40) que as demais: e
   // mais escuro, precisa de mais presenca pra ler como "dourado" e nao lavar.
   gold: "focus:bg-[#DAA520]/25 data-[state=checked]:bg-[#DAA520]/40",
+  // Neutral (lote 10) e o unico SEM cor de acento: usa o token `secondary`, o
+  // mesmo do cupom e do hover da Visao. Existe para o select do tipo da chave
+  // Pix, onde o realce ambar competia com o amarelo do botao ao lado e sugeria
+  // destaque onde a escolha e so administrativa. Token, e nao hex, porque o
+  // `secondary` ja muda sozinho entre o tema claro e o escuro.
+  neutral: "focus:bg-secondary data-[state=checked]:bg-secondary",
 };
 
 export type BntSelectProps = {
