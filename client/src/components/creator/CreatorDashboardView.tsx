@@ -5,7 +5,6 @@ import {
   CalendarDays,
   DollarSign,
   Hourglass,
-  KeyRound,
   Link2Off,
   MousePointerClick,
   Percent,
@@ -567,7 +566,6 @@ export function CreatorDashboardView({
   onJanelaChange,
   visao,
   identidade = "embutida",
-  semChavePix = false,
   userId,
 }: {
   painel: CreatorDashboard;
@@ -581,12 +579,6 @@ export function CreatorDashboardView({
    * nao traz o user_id, e quem sabe e quem abriu o painel.
    */
   userId?: string;
-  /**
-   * O creator ainda nao cadastrou chave Pix (lote 08). Quem sabe e a pagina
-   * /creator, pelo perfil que ela busca a parte; o padrao e false, entao o
-   * admin nunca ve o aviso.
-   */
-  semChavePix?: boolean;
 }) {
   const agoraMs = Date.now();
   const { perfil, creator, totais, codigos } = painel;
@@ -601,26 +593,6 @@ export function CreatorDashboardView({
           perfilCreator={painel.perfil_creator}
           userId={userId}
         />
-      ) : null}
-
-      {semChavePix && visao === "creator" ? (
-        <section
-          data-testid="creator-sem-pix"
-          className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-slate-400 bg-white px-6 py-8 text-center"
-        >
-          <KeyRound aria-hidden="true" className="h-8 w-8 text-slate-400" />
-          <p className="font-display text-lg font-black text-slate-950">
-            {/* TODO(Ana) */}
-            Cadastre a sua chave Pix para receber a comissão.
-          </p>
-          <a
-            href="#creator-perfil"
-            className="text-sm font-black text-slate-900 underline underline-offset-2"
-          >
-            {/* TODO(Ana) */}
-            Ir para a chave Pix
-          </a>
-        </section>
       ) : null}
 
       {codigos.length === 0 ? (

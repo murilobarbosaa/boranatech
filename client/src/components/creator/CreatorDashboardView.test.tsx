@@ -542,40 +542,14 @@ describe("CreatorDashboardView: forma do admin", () => {
     expect(screen.queryByTestId("creator-revogado")).toBeNull();
   });
 
-  it("sem chave Pix, a visao creator mostra o aviso antes de Seus numeros, com o link do perfil", () => {
-    render(
-      <CreatorDashboardView
-        painel={painelBase()}
-        janela="7d"
-        onJanelaChange={onJanelaChange}
-        visao="creator"
-        identidade="nenhuma"
-        semChavePix
-      />,
-    );
-    const aviso = screen.getByTestId("creator-sem-pix");
-    expect(within(aviso).getByRole("link").getAttribute("href")).toBe(
-      "#creator-perfil",
-    );
-    const titulo = screen.getByRole("heading", { name: "Seus números" });
-    expect(
-      aviso.compareDocumentPosition(titulo) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("o aviso de chave Pix nunca aparece na visao admin, nem sem a prop", () => {
-    render(
-      <CreatorDashboardView
-        painel={painelAdmin()}
-        janela="7d"
-        onJanelaChange={onJanelaChange}
-        visao="admin"
-        semChavePix
-      />,
-    );
+  it("o aviso de chave Pix saiu da view para a faixa de abas da pagina", () => {
+    // Lote 08b: quem avisa que falta a chave e a faixa do /creator, que e quem
+    // sabe do perfil. A view nao recebe mais `semChavePix` (o tsc reprova quem
+    // tentar passar) e nao desenha aviso nenhum, em nenhuma das duas visoes.
+    desenhar(painelBase(), "creator");
     expect(screen.queryByTestId("creator-sem-pix")).toBeNull();
     cleanup();
-    desenhar(painelBase(), "creator");
+    desenhar(painelAdmin(), "admin");
     expect(screen.queryByTestId("creator-sem-pix")).toBeNull();
   });
 

@@ -31,7 +31,6 @@ type PropsDoView = {
   onJanelaChange: (janela: "7d" | "30d" | "90d" | "all") => void;
   visao: string;
   identidade?: string;
-  semChavePix?: boolean;
 };
 
 const estado = vi.hoisted(() => ({
@@ -41,7 +40,6 @@ const estado = vi.hoisted(() => ({
     janela: string;
     visao: string;
     identidade: string | undefined;
-    semChavePix: boolean | undefined;
   },
   // O perfil (lote 08b) vem do hook useCreatorPerfil, dublado aqui: quem busca
   // e a PAGINA, e o que se afirma e o que ela faz com o que voltou. Os dois
@@ -78,7 +76,6 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
       janela: props.janela,
       visao: props.visao,
       identidade: props.identidade,
-      semChavePix: props.semChavePix,
     };
     return (
       <div data-testid="view">
@@ -157,10 +154,10 @@ const PAINEL: CreatorDashboard = {
   },
 };
 
-function montar() {
-  const { hook, history } = memoryLocation({ path: "/creator", record: true });
+function montar(path = "/creator") {
+  const { hook, searchHook, history } = memoryLocation({ path, record: true });
   render(
-    <Router hook={hook}>
+    <Router hook={hook} searchHook={searchHook}>
       <Creator />
     </Router>,
   );
@@ -337,41 +334,22 @@ const PERFIL_COM_CHAVE = {
 
 const PERFIL_SEM_CHAVE = { ...PERFIL_COM_CHAVE, pix: null };
 
-describe("pagina /creator: perfil de creator (lote 08b)", () => {
-  it("perfil carregado: os dois formularios aparecem, e o aviso segue a chave", async () => {
-    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+describe("pagina /creator: aba Perfil (lote 08b)", () => {
+  it("?aba=perfil abre os dois cartoes, e o painel de numeros nem e buscado", async () => {
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
-    montar();
-    await screen.findByTestId("view");
+    montar("/creator?aba=perfil");
+    expect(await screen.findByTestId("creator-card-redes")).toBeTruthy();
+    expect(screen.getByTestId("creator-card-pagamento")).toBeTruthy();
     expect(screen.getByTestId("redes-form")).toBeTruthy();
     expect(screen.getByTestId("pix-form")).toBeTruthy();
-    expect(estado.props?.semChavePix).toBe(false);
+    expect(screen.queryByTestId("view")).toBeNull();
+    expect(estado.fetch).not.toHaveBeenCalled();
   });
 
-  it("perfil sem chave liga o aviso", async () => {
-    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
-    estado.perfil = { tipo: "ok", perfil: PERFIL_SEM_CHAVE };
-    montar();
-    await screen.findByTestId("view");
-    expect(estado.props?.semChavePix).toBe(true);
-  });
-
-  it("enquanto o perfil nao respondeu o aviso fica desligado", async () => {
-    // "Nao sei" nao e "sem chave".
-    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
-    estado.perfil = { tipo: "carregando" };
-    montar();
-    await screen.findByTestId("view");
-    expect(estado.props?.semChavePix).toBe(false);
-    expect(screen.queryByTestId("redes-form")).toBeNull();
-  });
-
-  it("erro no perfil: bloco de erro com tentar de novo, e o painel continua", async () => {
-    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+  it("erro no perfil: bloco de erro com tentar de novo, e nenhum formulario", async () => {
     estado.perfil = { tipo: "erro" };
-    montar();
-    await screen.findByTestId("view");
-    const erro = screen.getByTestId("creator-perfil-erro");
+    montar("/creator?aba=perfil");
+    const erro = await screen.findByTestId("creator-perfil-erro");
     fireEvent.click(
       within(erro).getByRole("button", { name: "Tentar de novo" }),
     );
@@ -379,17 +357,16 @@ describe("pagina /creator: perfil de creator (lote 08b)", () => {
     expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 
-  it("trocar a janela do grafico NAO remonta o formulario de redes", async () => {
+  it("na aba Numeros a secao de perfil nao existe", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
-    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    estado.perfil = { tipo: "ok", perfil: PERFIL_SEM_CHAVE };
     montar();
-    fireEvent.click(await screen.findByText("trocar para 90 dias"));
     await screen.findByTestId("view");
-    expect(estado.fetch).toHaveBeenLastCalledWith("/creator/me?janela=90d");
-    expect(estado.redesForm.montagens).toBe(1);
+    expect(screen.queryByTestId("creator-card-redes")).toBeNull();
+    expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 
-  it("quem nao e creator nao ve a secao de perfil", async () => {
+  it("quem nao e creator: o cartao proprio na aba Numeros, sem perfil junto", async () => {
     estado.fetch = vi.fn(async () => {
       throw new AdminApiError(
         "Acesso de creator necessário.",
@@ -400,7 +377,7 @@ describe("pagina /creator: perfil de creator (lote 08b)", () => {
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar();
     await screen.findByTestId("creator-nao-creator");
-    expect(screen.queryByTestId("creator-perfil")).toBeNull();
+    expect(screen.queryByTestId("creator-card-redes")).toBeNull();
     expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 });
