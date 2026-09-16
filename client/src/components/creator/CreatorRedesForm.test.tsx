@@ -101,9 +101,62 @@ afterEach(() => {
   cleanup();
 });
 
-describe("CreatorRedesForm: leitura", () => {
-  it("preenche os campos com o perfil recebido, sem buscar nada", () => {
+describe("CreatorRedesForm: resumo do que esta salvo (lote 10)", () => {
+  it("com @ salvo: mostra o resumo, e o formulario fica atras do Alterar", () => {
     desenhar(PERFIL_COMPLETO);
+    expect(screen.getByTestId("creator-redes-instagram").textContent).toContain(
+      "@ana.cria",
+    );
+    // O numero sai formatado, como no cartao do admin.
+    expect(screen.getByTestId("creator-redes-instagram").textContent).toContain(
+      "12.500 seguidores",
+    );
+    expect(screen.getByTestId("creator-redes-tiktok").textContent).toContain(
+      "800 seguidores",
+    );
+    expect(
+      screen.getByTestId("creator-perfil-seguidores-data").textContent,
+    ).toBe("Seguidores informados em 14/09/2026");
+    // Nenhum campo de texto na tela: o cadastro esta pronto, nao pendente.
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.queryByTestId("creator-perfil-salvar")).toBeNull();
+    expect(estado.chamadas).toHaveLength(0);
+  });
+
+  it("so uma rede salva: so a linha dela aparece", () => {
+    desenhar({
+      ...PERFIL_COMPLETO,
+      tiktok_handle: null,
+      tiktok_followers: null,
+    });
+    expect(screen.getByTestId("creator-redes-instagram")).toBeTruthy();
+    expect(screen.queryByTestId("creator-redes-tiktok")).toBeNull();
+  });
+
+  it("o chip diz o que esta valendo: visivel ou so o time", () => {
+    desenhar(PERFIL_COMPLETO);
+    expect(screen.getByTestId("creator-redes-visivel").textContent).toBe(
+      "visível aos creators",
+    );
+    expect(screen.queryByTestId("creator-redes-reservado")).toBeNull();
+    cleanup();
+
+    desenhar({ ...PERFIL_COMPLETO, visible_to_creators: false });
+    expect(screen.getByTestId("creator-redes-reservado").textContent).toBe(
+      "só o time vê",
+    );
+    expect(screen.queryByTestId("creator-redes-visivel")).toBeNull();
+  });
+
+  it("sem seguidores informados nao ha data para mostrar", () => {
+    desenhar({ ...PERFIL_COMPLETO, followers_updated_at: null });
+    expect(screen.queryByTestId("creator-perfil-seguidores-data")).toBeNull();
+  });
+
+  it("Alterar abre o formulario ja preenchido, e Cancelar volta ao resumo", () => {
+    desenhar(PERFIL_COMPLETO);
+    fireEvent.click(screen.getByTestId("creator-redes-alterar"));
+
     expect(campo("Instagram @").value).toBe("ana.cria");
     expect(campo("Seguidores no Instagram").value).toBe("12500");
     expect(campo("TikTok @").value).toBe("ana.cria");
@@ -111,15 +164,21 @@ describe("CreatorRedesForm: leitura", () => {
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
       true,
     );
-    expect(
-      screen.getByTestId("creator-perfil-seguidores-data").textContent,
-    ).toBe("Seguidores informados em 14/09/2026");
+
+    fireEvent.click(screen.getByTestId("creator-redes-cancelar"));
+    expect(screen.getByTestId("creator-redes-instagram")).toBeTruthy();
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    // Nada foi ao servidor: abrir e fechar a edicao nao grava.
     expect(estado.chamadas).toHaveLength(0);
   });
 
-  it("sem seguidores informados nao ha data para mostrar", () => {
+  it("sem @ salvo: o formulario aparece direto, e nao ha Cancelar", () => {
     desenhar(PERFIL_VAZIO);
-    expect(screen.queryByTestId("creator-perfil-seguidores-data")).toBeNull();
+    expect(campo("Instagram @").value).toBe("");
+    expect(screen.getByTestId("creator-perfil-salvar")).toBeTruthy();
+    // Sem cadastro, nao existe resumo para onde voltar.
+    expect(screen.queryByTestId("creator-redes-cancelar")).toBeNull();
+    expect(screen.queryByTestId("creator-redes-alterar")).toBeNull();
   });
 });
 

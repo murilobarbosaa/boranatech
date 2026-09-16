@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Instagram, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   BOTAO_PRIMARIO,
+  BOTAO_SECUNDARIO,
   erroClass,
   inputClass,
   labelClass,
@@ -59,6 +61,11 @@ function dataCurta(iso: string | null): string {
   return dia ? formatarDiaCivil(dia) : "";
 }
 
+/** 12500 vira "12.500", como no cartao do admin. */
+function inteiro(valor: number): string {
+  return valor.toLocaleString("pt-BR");
+}
+
 /** "" vira null; so digitos vira numero; qualquer outra coisa e invalido. */
 function seguidoresDoTexto(texto: string): number | null | "invalido" {
   const limpo = texto.trim();
@@ -101,6 +108,12 @@ export function CreatorRedesForm({
   const [visivel, setVisivel] = useState(perfil.visible_to_creators);
   const [erros, setErros] = useState<ErrosDasRedes>({});
   const [salvando, setSalvando] = useState(false);
+  const [editando, setEditando] = useState(false);
+
+  // Uma rede basta para o resumo existir: quem preencheu so o Instagram ja tem
+  // o que ler, e a linha do TikTok simplesmente nao aparece.
+  const temRedeSalva =
+    perfil.instagram_handle !== null || perfil.tiktok_handle !== null;
 
   // O perfil so muda de identidade quando a pagina rele ou quando este
   // formulario salva. Nao e a cada render do pai, entao isto NAO apaga o que a
@@ -160,6 +173,9 @@ export function CreatorRedesForm({
       });
       const salvo = perfilDaResposta(json);
       if (salvo) onSalvo(salvo);
+      // Volta para o resumo: quem salvou terminou de editar, e continuar no
+      // formulario faria parecer que a gravacao nao aconteceu.
+      setEditando(false);
       // TODO(Ana)
       toast.success("Perfil salvo.");
     } catch (err) {
@@ -177,6 +193,94 @@ export function CreatorRedesForm({
     } finally {
       setSalvando(false);
     }
+  }
+
+  // ESTADO PREENCHIDO (lote 10), no mesmo par do CreatorPixForm: com pelo menos
+  // um @ salvo, a tela mostra o que ESTA valendo, e o formulario so aparece no
+  // "Alterar". Antes, quem ja tinha preenchido reabria a pagina e via quatro
+  // campos de texto, que parecem pendencia em vez de cadastro pronto.
+  if (temRedeSalva && !editando) {
+    return (
+      <div data-testid="creator-perfil-redes" className="space-y-3">
+        <div className="space-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 p-4">
+          {perfil.instagram_handle ? (
+            <p
+              data-testid="creator-redes-instagram"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <Instagram aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="font-display text-lg font-black text-slate-950">
+                {`@${perfil.instagram_handle}`}
+              </span>
+              {perfil.instagram_followers !== null ? (
+                <span className="text-sm font-semibold text-slate-600">
+                  {/* TODO(Ana) */}
+                  {`${inteiro(perfil.instagram_followers)} seguidores`}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {perfil.tiktok_handle ? (
+            <p
+              data-testid="creator-redes-tiktok"
+              className="flex flex-wrap items-center gap-2"
+            >
+              {/* O lucide nao tem marca do TikTok; `Video` e o mais proximo sem
+                  inventar um icone de marca (mesma escolha das publicacoes). */}
+              <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="font-display text-lg font-black text-slate-950">
+                {`@${perfil.tiktok_handle}`}
+              </span>
+              {perfil.tiktok_followers !== null ? (
+                <span className="text-sm font-semibold text-slate-600">
+                  {/* TODO(Ana) */}
+                  {`${inteiro(perfil.tiktok_followers)} seguidores`}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {perfil.followers_updated_at ? (
+            <p
+              data-testid="creator-perfil-seguidores-data"
+              className="text-xs font-bold text-slate-500"
+            >
+              {/* TODO(Ana) */}
+              {`Seguidores informados em ${dataCurta(perfil.followers_updated_at)}`}
+            </p>
+          ) : null}
+          {/* O chip mostra o que esta SALVO, nao o estado do checkbox do
+              formulario: aqui ninguem esta editando. Emerald e o mesmo chip do
+              cartao do admin (CreatorIdentidade), para as duas telas dizerem a
+              mesma coisa do mesmo jeito. */}
+          {perfil.visible_to_creators ? (
+            <span
+              data-testid="creator-redes-visivel"
+              className="inline-block rounded-full border-2 border-emerald-700 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-800"
+            >
+              {/* TODO(Ana) */}
+              visível aos creators
+            </span>
+          ) : (
+            <span
+              data-testid="creator-redes-reservado"
+              className="inline-block rounded-full border-2 border-slate-400 bg-white px-2.5 py-0.5 text-xs font-black text-slate-600"
+            >
+              {/* TODO(Ana) */}
+              só o time vê
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          data-testid="creator-redes-alterar"
+          onClick={() => setEditando(true)}
+          className={BOTAO_SECUNDARIO}
+        >
+          {/* TODO(Ana) */}
+          Alterar
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -243,15 +347,6 @@ export function CreatorRedesForm({
           ) : null}
         </label>
       </div>
-      {perfil.followers_updated_at ? (
-        <p
-          data-testid="creator-perfil-seguidores-data"
-          className="text-xs font-bold text-slate-500"
-        >
-          {/* TODO(Ana) */}
-          {`Seguidores informados em ${dataCurta(perfil.followers_updated_at)}`}
-        </p>
-      ) : null}
       <label
         htmlFor="creator-perfil-visivel"
         className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-slate-900 bg-slate-50 p-3"
@@ -273,16 +368,32 @@ export function CreatorRedesForm({
           </span>
         </span>
       </label>
-      <button
-        type="button"
-        data-testid="creator-perfil-salvar"
-        onClick={() => void salvar()}
-        disabled={salvando}
-        className={BOTAO_PRIMARIO}
-      >
-        {/* TODO(Ana) */}
-        {salvando ? "Salvando..." : "Salvar redes"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          data-testid="creator-perfil-salvar"
+          onClick={() => void salvar()}
+          disabled={salvando}
+          className={BOTAO_PRIMARIO}
+        >
+          {/* TODO(Ana) */}
+          {salvando ? "Salvando..." : "Salvar redes"}
+        </button>
+        {/* Sem @ salvo nao ha resumo para onde voltar, entao o Cancelar so
+            existe em cima de um cadastro que ja vale. */}
+        {temRedeSalva ? (
+          <button
+            type="button"
+            data-testid="creator-redes-cancelar"
+            onClick={() => setEditando(false)}
+            disabled={salvando}
+            className={BOTAO_SECUNDARIO}
+          >
+            {/* TODO(Ana) */}
+            Cancelar
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
