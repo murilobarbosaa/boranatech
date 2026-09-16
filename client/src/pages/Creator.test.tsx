@@ -108,6 +108,11 @@ vi.mock("@/components/creator/CreatorRedesForm", async () => {
 vi.mock("@/components/creator/CreatorPixForm", () => ({
   CreatorPixForm: () => <div data-testid="pix-form" />,
 }));
+// O cartao de publicacoes (lote 09) busca sozinho; aqui o que se afirma e onde
+// a pagina o poe, nao o que ele desenha.
+vi.mock("@/components/creator/CreatorPublicacoes", () => ({
+  CreatorPublicacoes: () => <div data-testid="publicacoes" />,
+}));
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -501,6 +506,20 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     await screen.findByTestId("view");
     expect(screen.getByTestId("creator-abas")).toBeTruthy();
     expect(screen.queryByTestId("creator-pendencias")).toBeNull();
+  });
+
+  it("aba Comunidade: as publicacoes vem ANTES do calendario em breve", async () => {
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar("/creator?aba=comunidade");
+    const publicacoes = await screen.findByTestId("creator-card-publicacoes");
+    const calendario = screen.getByTestId("creator-comunidade");
+    expect(screen.getByTestId("publicacoes")).toBeTruthy();
+    expect(
+      publicacoes.compareDocumentPosition(calendario) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // O calendario continua sendo so o aviso de "em breve": sem rede nenhuma.
+    expect(estado.fetch).not.toHaveBeenCalled();
   });
 
   it("?aba=ranking abre o card em breve, sem buscar o painel", async () => {

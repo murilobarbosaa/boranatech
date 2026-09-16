@@ -47,6 +47,16 @@ vi.mock("@/components/UserAvatar", () => ({
   default: () => <span data-testid="avatar" />,
 }));
 
+// A lista de publicacoes do admin (lote 09) busca sozinha, pelo adminFetch.
+// Aqui o que se afirma e ONDE a view a poe, e nao o que ela desenha; sem este
+// duble, os testes da visao admin fariam chamada de rede de verdade no jsdom,
+// engolida pelo catch do componente e invisivel no verde.
+vi.mock("@/components/creator/CreatorPublicacoesAdmin", () => ({
+  CreatorPublicacoesAdmin: ({ userId }: { userId: string }) => (
+    <div data-testid="publicacoes-admin" data-user-id={userId} />
+  ),
+}));
+
 import type { CreatorDashboard } from "@shared/creatorDashboard";
 import {
   CreatorDashboardView,
@@ -591,6 +601,34 @@ describe("CreatorDashboardView: forma do admin", () => {
     desenhar(painelAdmin(), "admin");
     expect(screen.queryByTestId("creator-pix-admin")).toBeNull();
     expect(screen.queryByTestId("creator-redes")).toBeNull();
+  });
+
+  it("publicacoes (lote 09): so na visao admin, e so quando se sabe de quem", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelAdmin()}
+        janela="7d"
+        onJanelaChange={onJanelaChange}
+        visao="admin"
+        userId="11111111-1111-1111-1111-111111111111"
+      />,
+    );
+    expect(screen.getByTestId("creator-card-publicacoes-admin")).toBeTruthy();
+    expect(
+      screen.getByTestId("publicacoes-admin").getAttribute("data-user-id"),
+    ).toBe("11111111-1111-1111-1111-111111111111");
+    cleanup();
+
+    // Sem userId nao ha rota a chamar (ela e por creator), entao o bloco nao
+    // aparece em vez de aparecer vazio.
+    desenhar(painelAdmin(), "admin");
+    expect(screen.queryByTestId("creator-card-publicacoes-admin")).toBeNull();
+    cleanup();
+
+    // Na visao creator quem mostra isso e a aba Comunidade do /creator, com o
+    // formulario de registrar.
+    desenhar(painelBase(), "creator");
+    expect(screen.queryByTestId("creator-card-publicacoes-admin")).toBeNull();
   });
 
   it("no padrao a view desenha a identidade; na visao admin, com e-mail e revogado", () => {

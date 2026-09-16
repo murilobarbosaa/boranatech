@@ -37,6 +37,7 @@ import { relativeTime } from "@/components/admin/tasks/relativeTime";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CreatorIdentidade } from "@/components/creator/CreatorIdentidade";
 import { CreatorMetricCard } from "@/components/creator/CreatorMetricCard";
+import { CreatorPublicacoesAdmin } from "@/components/creator/CreatorPublicacoesAdmin";
 import { CupomDoCodigo } from "@/components/creator/CupomDoCodigo";
 import {
   diaBrasilia,
@@ -734,6 +735,35 @@ export function CreatorDashboardView({
               </div>
             </section>
           </BlocoBoundary>
+
+          {/* Publicacoes registradas (lote 09), so na visao admin e so quando
+              se sabe de quem e o painel: a rota e por creator. O creator ve as
+              dele na aba Comunidade do /creator, com formulario; aqui nao ha
+              formulario, so a remocao auditada. */}
+          {visao === "admin" && userId ? (
+            <BlocoBoundary
+              // TODO(Ana)
+              nome="Publicações"
+            >
+              <section
+                data-testid="creator-card-publicacoes-admin"
+                aria-labelledby="creator-publicacoes-admin-titulo"
+                className="space-y-5"
+              >
+                <CabecalhoDeSecao
+                  id="creator-publicacoes-admin-titulo"
+                  icone={<Ticket className={ICONE_DO_SELO} />}
+                  // TODO(Ana)
+                  selo="instagram e tiktok"
+                  // TODO(Ana)
+                  titulo="Publicações"
+                  // TODO(Ana)
+                  frase="O que este creator registrou. Remover tira do ranking, e fica registrado quem removeu."
+                />
+                <CreatorPublicacoesAdmin userId={userId} />
+              </section>
+            </BlocoBoundary>
+          ) : null}
 
           <BlocoBoundary
             // TODO(Ana)

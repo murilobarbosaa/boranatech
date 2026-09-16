@@ -365,6 +365,13 @@ function LinhaDoQuadro({
         ) : null}
       </td>
       <td className="px-3 py-3 text-right font-bold tabular-nums">
+        {/* Lote 09: zero e um numero (nao publicou nada no mes); ausente e o
+            backend anterior, e ai a celula fica vazia. */}
+        {item.posts_no_mes === undefined ? null : (
+          <span data-testid="creators-posts-no-mes">{item.posts_no_mes}</span>
+        )}
+      </td>
+      <td className="px-3 py-3 text-right font-bold tabular-nums">
         {inteiro(item.totais.clicks)}
       </td>
       <td className="px-3 py-3 text-right font-bold tabular-nums">
@@ -474,6 +481,7 @@ function Quadro({
               <th className="px-3 py-3">Tipo</th>
               <th className="min-w-[10rem] px-3 py-3">Códigos</th>
               <th className="px-3 py-3">Pix</th>
+              <th className="px-3 py-3 text-right">Posts (mês)</th>
               <th className="px-3 py-3 text-right">Cliques</th>
               <th className="px-3 py-3 text-right">Vendas</th>
               <th className="px-3 py-3 text-right">Receita</th>

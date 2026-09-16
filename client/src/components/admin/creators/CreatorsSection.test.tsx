@@ -374,6 +374,41 @@ describe("quadro", () => {
     expect(within(antigo).queryByTestId("creators-com-pix")).toBeNull();
   });
 
+  it("coluna Posts (mes): zero e zero; ausente deixa a celula vazia", async () => {
+    rotear({
+      pagina: {
+        data: {
+          rows: [
+            item({ posts_no_mes: 2 }),
+            item({ user_id: UUID_B, name: "Bia Souza", posts_no_mes: 0 }),
+            // Backend anterior ao lote 09: o campo nao vem, e "nao sei" nao e
+            // "nenhuma publicacao".
+            item({ user_id: "c0a8e2f4-1b3d-4e5f-8a9b-0c1d2e3f4a5b" }),
+          ],
+          total: 3,
+          page: 1,
+          pageSize: 25,
+        },
+      },
+    });
+    montar();
+
+    const comPosts = await screen.findByTestId(`creators-linha-${UUID_A}`);
+    expect(
+      within(comPosts).getByTestId("creators-posts-no-mes").textContent,
+    ).toBe("2");
+
+    const semPosts = screen.getByTestId(`creators-linha-${UUID_B}`);
+    expect(
+      within(semPosts).getByTestId("creators-posts-no-mes").textContent,
+    ).toBe("0");
+
+    const antigo = screen.getByTestId(
+      "creators-linha-c0a8e2f4-1b3d-4e5f-8a9b-0c1d2e3f4a5b",
+    );
+    expect(within(antigo).queryByTestId("creators-posts-no-mes")).toBeNull();
+  });
+
   it("falha do quadro vira erro com tentar de novo, nao lista vazia", async () => {
     rotear({ pagina: new Error("timeout") });
     montar();

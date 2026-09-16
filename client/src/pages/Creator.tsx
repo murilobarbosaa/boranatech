@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { AtSign, CalendarDays, KeyRound, Sparkles, Trophy } from "lucide-react";
+import {
+  AtSign,
+  CalendarDays,
+  KeyRound,
+  Link2,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
 import Layout from "@/components/Layout";
@@ -10,6 +17,7 @@ import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CreatorAbas } from "@/components/creator/CreatorAbas";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
+import { CreatorPublicacoes } from "@/components/creator/CreatorPublicacoes";
 import { CreatorRedesForm } from "@/components/creator/CreatorRedesForm";
 import {
   CREATOR_ABA_PADRAO,
@@ -156,7 +164,30 @@ export default function Creator() {
               role="tabpanel"
               id={idDoPainel("comunidade")}
               aria-labelledby={idDaAba("comunidade")}
+              className="space-y-8"
             >
+              <BlocoBoundary
+                // TODO(Ana)
+                nome="Suas publicações"
+              >
+                <section
+                  data-testid="creator-card-publicacoes"
+                  aria-labelledby="creator-publicacoes-titulo"
+                  className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8"
+                >
+                  <CabecalhoDeSecao
+                    id="creator-publicacoes-titulo"
+                    icone={<Link2 aria-hidden="true" className="h-4 w-4" />}
+                    // TODO(Ana)
+                    selo="instagram e tiktok"
+                    // TODO(Ana)
+                    titulo="Suas publicações"
+                    // TODO(Ana)
+                    frase="Cole o link do post, reel ou vídeo sobre a Bora na Tech. Cada publicação registrada conta no ranking do mês."
+                  />
+                  <CreatorPublicacoes />
+                </section>
+              </BlocoBoundary>
               <Comunidade />
             </div>
           ) : null}
