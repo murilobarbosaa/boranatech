@@ -33,6 +33,7 @@ import { javascript } from "./javascript";
 import { python } from "./python";
 import { git } from "./git";
 import { css } from "./css";
+import { typescript } from "./typescript";
 import { html } from "./html";
 
 export {
@@ -103,4 +104,5 @@ export const roadmapsV2: RoadmapV2[] = [
   git,
   html,
   css,
+  typescript,
 ];

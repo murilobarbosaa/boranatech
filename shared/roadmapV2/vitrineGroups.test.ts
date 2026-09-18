@@ -29,6 +29,7 @@ describe("trailGroups: grupos de trilha da vitrine derivados do meta", () => {
       "python",
       "html",
       "css",
+      "typescript",
     ]);
     expect(grupos[1].entries.map((e) => e.slug)).toEqual(["git"]);
   });

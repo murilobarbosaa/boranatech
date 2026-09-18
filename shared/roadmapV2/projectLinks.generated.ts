@@ -158,6 +158,10 @@ export const projectTrailLinks: Record<
     {
       "slug": "git",
       "nodeId": "projeto.cli"
+    },
+    {
+      "slug": "typescript",
+      "nodeId": "projeto.cli"
     }
   ],
   "landing-page-pessoal": [

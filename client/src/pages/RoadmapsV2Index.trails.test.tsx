@@ -91,6 +91,7 @@ describe("vitrine /roadmaps: grupos de trilha de linguagem e de ferramenta", () 
       "/roadmaps/python",
       "/roadmaps/html",
       "/roadmaps/css",
+      "/roadmaps/typescript",
     ]);
     const linguagens = links(grupo(container, "linguagem"));
     expect(linguagens.indexOf("/roadmaps/html")).toBe(

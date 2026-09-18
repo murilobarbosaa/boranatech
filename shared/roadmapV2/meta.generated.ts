@@ -475,5 +475,18 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 42,
     "hasProject": true,
     "hasQuiz": true
+  },
+  {
+    "slug": "typescript",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "TypeScript do Zero",
+    "level": "Iniciante",
+    "description": "Do primeiro arquivo tipado a genéricos e ao modo estrito, com a camada que confere o seu JavaScript antes de ele rodar. Conclua uma etapa pra liberar a próxima.",
+    "summary": "A camada de tipos do JavaScript, do primeiro arquivo ao projeto tipado.",
+    "sectionCount": 10,
+    "stepCount": 44,
+    "hasProject": true,
+    "hasQuiz": false
   }
 ];
