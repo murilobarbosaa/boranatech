@@ -410,7 +410,9 @@ interface ExemploCompletar {
   errado: string;
 }
 
-function completarExemplo(codeLanguages: string[]): ExemploCompletar | null {
+export function completarExemplo(
+  codeLanguages: string[],
+): ExemploCompletar | null {
   if (codeLanguages[0] === "python") {
     return {
       trecho: `x = ${CODE_PLACEHOLDER}`,
@@ -423,6 +425,19 @@ function completarExemplo(codeLanguages: string[]): ExemploCompletar | null {
       trecho: `$ git ${CODE_PLACEHOLDER} -m "ajusta o titulo"`,
       alternativas: "commit, add, push e status",
       errado: 'git commit -m "ajusta o titulo"',
+    };
+  }
+  // ts ANTES do ramo compartilhado com js, e nao dentro dele: o prompt de js
+  // precisa ficar byte a byte (a pool dele esta publicada, mesmo criterio do
+  // exemplo negativo logo abaixo). Em TypeScript a lacuna natural e sobre a
+  // ANOTACAO DE TIPO, nao sobre o valor: com o exemplo de valor herdado do js,
+  // o modelo devolveu tres completar SEM lacuna e deixou tres secoes sem
+  // completar utilizavel (Lote 10, primeira geracao, 36,8% de violacao).
+  if (codeLanguages[0] === "ts") {
+    return {
+      trecho: `const nome: ${CODE_PLACEHOLDER} = "Ana";`,
+      alternativas: "string, number, boolean e unknown",
+      errado: 'const nome: string = "Ana";',
     };
   }
   if (codeLanguages.some((lang) => lang === "js" || lang === "ts")) {

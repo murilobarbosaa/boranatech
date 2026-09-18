@@ -8,6 +8,7 @@ import {
   buildQuestionSchema,
   buildUserPrompt,
   codeLeafIds,
+  completarExemplo,
   codeQuotaFor,
   codeRuleViolations,
   codeRuleWarnings,
@@ -1630,5 +1631,30 @@ describe("codeLeafIds com metadado na cerca", () => {
 
   it("folha cujo unico codigo depende de import continua fora", () => {
     expect(codeLeafIds(secao, ["ts"])).not.toContain("t.import");
+  });
+});
+
+// Lote 10. O exemplo de `completar` guia o modelo, e em ts ele precisa ser
+// sobre a ANOTACAO DE TIPO. Com o exemplo de valor herdado do js, a primeira
+// geracao devolveu tres completar sem lacuna e tres secoes sem completar.
+describe("completarExemplo por linguagem", () => {
+  it("ts recebe lacuna de anotacao de tipo", () => {
+    const ex = completarExemplo(["ts"])!;
+    expect(ex.trecho).toBe('const nome: ____ = "Ana";');
+    expect(ex.alternativas).toContain("string");
+    expect(ex.errado).toBe('const nome: string = "Ana";');
+  });
+
+  it("CONTROLE: o exemplo de js fica byte a byte, porque a pool dele esta publicada", () => {
+    expect(completarExemplo(["js"])).toEqual({
+      trecho: "const x = ____;",
+      alternativas: "1, 2, 3 e 4",
+      errado: "const x = 1;",
+    });
+  });
+
+  it("python e bash seguem intocados", () => {
+    expect(completarExemplo(["python"])!.trecho).toBe("x = ____");
+    expect(completarExemplo(["bash"])!.trecho).toContain("$ git ____");
   });
 });
