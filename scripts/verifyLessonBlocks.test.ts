@@ -647,3 +647,38 @@ describe("arquivo= agrupa os blocos do passo", () => {
     expect(r[1].problemas.join(" ")).toContain("triplo");
   }, 30000);
 });
+
+// Lote 10a-fix. A conferencia de `lanca=` era por substring, e por isso
+// `lanca=Error` passava num bloco que lanca `TypeError`. O controle anterior
+// nao pegava porque testava um par em que nenhum nome e substring do outro.
+describe("lanca= confere o tipo por palavra inteira", () => {
+  const js = capabilityOf("js").runner!;
+
+  it("reprova lanca=Error num bloco que lanca TypeError", () => {
+    const r = conferirBloco(
+      {
+        linguagem: "js",
+        corpo: "const pedido = undefined;\nconsole.log(pedido.itens);",
+        lanca: "Error",
+      },
+      ["js"],
+      makeExecutor(js),
+    );
+    expect(r.veredito).toBe("falhou");
+    expect(r.problemas.join(" ")).toContain("TypeError");
+  }, 30000);
+
+  it("aceita lanca=TypeError num bloco que lanca TypeError", () => {
+    const r = conferirBloco(
+      {
+        linguagem: "js",
+        corpo: "throw new TypeError('sem itens');",
+        lanca: "TypeError",
+      },
+      ["js"],
+      makeExecutor(js),
+    );
+    expect(r.veredito).toBe("lancou-como-esperado");
+    expect(r.problemas).toEqual([]);
+  }, 30000);
+});

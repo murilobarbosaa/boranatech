@@ -339,7 +339,14 @@ function vereditoDaExecucao(
       };
     }
     const saida = `${r.stderr ?? ""}\n${r.erro}`;
-    if (!saida.includes(bloco.lanca)) {
+    // Palavra inteira, e nao substring: com includes, lanca=Error passava num
+    // bloco que lanca TypeError, e o instrumento aprovava uma declaracao que
+    // nao descreve o erro real. O valor vem do conteudo, entao e escapado
+    // antes de virar expressao.
+    const declarado = new RegExp(
+      `\\b${bloco.lanca.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+    );
+    if (!declarado.test(saida)) {
       return {
         veredito: "falhou",
         problemas: [
