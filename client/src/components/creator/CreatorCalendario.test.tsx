@@ -451,3 +451,116 @@ describe("CreatorCalendario: glifos das redes (lote 10b)", () => {
     ).toBeTruthy();
   });
 });
+
+// DOIS BUGS DO LOTE 10, reproduzidos antes da correcao (lote 10c). O primeiro
+// e de layout: "Pedir collab" colado no nome quando a marcacao nao tem nota e
+// encostado na direita quando tem. O segundo e de estado: depois de "Enviar
+// pedido" o botao continuava la, porque o servidor nao dizia que a pessoa ja
+// tinha pedido (nao existia `meu_pedido`) e o client nao recarregava.
+describe("CreatorCalendario: acao alinhada e estado do pedido (lote 10c)", () => {
+  const SEM_NOTA = {
+    ...DE_OUTRO,
+    id: "3c9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+    note: null,
+  };
+
+  it("bug 1: o botao carrega ml-auto na linha com nota e na linha sem nota", async () => {
+    responderCom([MINHA, DE_OUTRO, { ...SEM_NOTA, meu_pedido: null }]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    for (const id of [DE_OUTRO.id, SEM_NOTA.id]) {
+      const botao = screen.getByTestId(`creator-collab-pedir-${id}`);
+      expect(botao.className, id).toContain("ml-auto");
+      expect(botao.className, id).toContain("shrink-0");
+      // A nota (ou o espaco dela) esta la nas duas linhas, ocupando o meio.
+      const nota = screen.getByTestId(`creator-marcacao-nota-${id}`);
+      expect(nota.className).toContain("flex-1");
+      expect(nota.className).toContain("min-w-0");
+      expect(nota.className).toContain("truncate");
+    }
+    // A minha tem o Desmarcar na mesma coluna.
+    expect(
+      screen.getByTestId(`creator-marcacao-remover-${MINHA.id}`).className,
+    ).toContain("ml-auto");
+  });
+
+  it("bug 2: depois de Enviar pedido, o mes e recarregado e o botao vira o chip 'pedido enviado'", async () => {
+    responderCom([{ ...DE_OUTRO, meu_pedido: null }]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    expect(chamadasCom("GET")).toHaveLength(2);
+
+    fireEvent.click(screen.getByTestId(`creator-collab-pedir-${DE_OUTRO.id}`));
+    // Depois do POST o servidor passa a dizer que EU pedi nesta marcacao.
+    estado.responder = async (path, method) => {
+      if (method === "POST") return { data: { pedido: PEDIDO } };
+      return path.startsWith("/creator/collabs")
+        ? { data: { recebidos: [], enviados: [] } }
+        : {
+            data: {
+              marcacoes: [
+                {
+                  ...DE_OUTRO,
+                  meu_pedido: { id: PEDIDO.id, status: "pendente" },
+                },
+              ],
+            },
+          };
+    };
+    fireEvent.click(screen.getByTestId(`creator-collab-enviar-${DE_OUTRO.id}`));
+
+    const chip = await screen.findByTestId(
+      `creator-collab-status-${DE_OUTRO.id}`,
+    );
+    expect(chip.textContent).toBe("pedido enviado");
+    expect(chip.className).toContain("ml-auto");
+    expect(
+      screen.queryByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeNull();
+    // As duas buscas foram refeitas (2 da carga, 2 da revalidacao), e o
+    // calendario nao passou pelo bloco de carregando: o dia continua aberto.
+    expect(chamadasCom("GET")).toHaveLength(4);
+    expect(screen.getByTestId("creator-dia-painel")).toBeTruthy();
+  });
+
+  it("pedido recusado: chip rose, e o botao NAO volta", async () => {
+    responderCom([
+      { ...DE_OUTRO, meu_pedido: { id: PEDIDO.id, status: "recusada" } },
+    ]);
+    render(<CreatorCalendario />);
+    const chip = await screen.findByTestId(
+      `creator-collab-status-${DE_OUTRO.id}`,
+    );
+    expect(chip.textContent).toBe("pedido recusado");
+    expect(chip.className).toContain("rose");
+    expect(
+      screen.queryByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeNull();
+  });
+
+  it("backend anterior (sem meu_pedido): o botao continua, porque ausente nao e 'nao pedi'", async () => {
+    responderCom([DE_OUTRO]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    expect(
+      screen.getByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeTruthy();
+  });
+
+  it("responder um pedido tambem recarrega o mes e os pedidos", async () => {
+    responderCom([MINHA], [PEDIDO]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-collabs-pendentes");
+    expect(chamadasCom("GET")).toHaveLength(2);
+    estado.responder = async (path, method) => {
+      if (method === "POST")
+        return { data: { pedido: { ...PEDIDO, status: "aceita" } } };
+      return path.startsWith("/creator/collabs")
+        ? { data: { recebidos: [], enviados: [] } }
+        : { data: { marcacoes: [MINHA] } };
+    };
+    fireEvent.click(screen.getByTestId(`creator-collab-aceitar-${PEDIDO.id}`));
+    await waitFor(() => expect(chamadasCom("GET")).toHaveLength(4));
+    expect(screen.queryByTestId("creator-collabs-pendentes")).toBeNull();
+  });
+});

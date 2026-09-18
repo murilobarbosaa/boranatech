@@ -1241,6 +1241,7 @@ describe("GET /api/creator/calendar", () => {
     montar({
       creators: concessaoAtiva(),
       creator_calendar_events: { rows: [MARCACAO, MARCACAO_DE_OUTRO] },
+      creator_collab_requests: respostaQueFiltra([]),
       profiles: perfis(),
     });
     estado.usuario = USUARIO;
@@ -1258,6 +1259,60 @@ describe("GET /api/creator/calendar", () => {
       name: "Cria",
       handle: "cria",
     });
+    // Sem pedido, `meu_pedido` e null EXPLICITO, nao ausente: ausente e o
+    // backend anterior ao lote 10c, e o client trata os dois diferente.
+    expect(r.body.data.marcacoes[1].meu_pedido).toBeNull();
+  });
+
+  it("meu_pedido (lote 10c): o pedido de QUEM OLHA em cada marcacao, lido numa consulta so; o de outra pessoa nao aparece", async () => {
+    const MARCACAO_DE_TERCEIRO = {
+      ...MARCACAO,
+      id: "9d2c1b0a-8f7e-4d6c-b5a4-3f2e1d0c9b8a",
+      user_id: "55555555-5555-5555-5555-555555555555",
+    };
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: {
+        rows: [MARCACAO_DE_OUTRO, MARCACAO_DE_TERCEIRO],
+      },
+      creator_collab_requests: respostaQueFiltra([
+        // O meu, pendente, na marcacao de OUTRO.
+        {
+          id: PEDIDO_ID,
+          event_id: MARCACAO_DE_OUTRO.id,
+          requester_id: UID,
+          owner_id: OUTRO_UID,
+          status: "recusada",
+        },
+        // O de OUTRA pessoa na marcacao do terceiro: nao e meu, nao aparece.
+        {
+          id: "2b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+          event_id: MARCACAO_DE_TERCEIRO.id,
+          requester_id: OUTRO_UID,
+          owner_id: MARCACAO_DE_TERCEIRO.user_id,
+          status: "pendente",
+        },
+      ]),
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.marcacoes[0].meu_pedido).toEqual({
+      id: PEDIDO_ID,
+      status: "recusada",
+    });
+    expect(r.body.data.marcacoes[1].meu_pedido).toBeNull();
+    // Uma leitura de pedidos para o mes inteiro, pelos ids das marcacoes.
+    const leituras = double.de("creator_collab_requests");
+    expect(leituras).toHaveLength(1);
+    expect(leituras[0].filtros).toEqual([
+      {
+        tipo: "in",
+        coluna: "event_id",
+        valor: [MARCACAO_DE_OUTRO.id, MARCACAO_DE_TERCEIRO.id],
+      },
+    ]);
   });
 
   it("quem nao e creator: 403 not_creator", async () => {

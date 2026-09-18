@@ -71,6 +71,18 @@ export type MarcacaoDoCalendario = {
   autor: AutorDaMarcacao | null;
 };
 
+/**
+ * O pedido de collab que QUEM OLHA fez nesta marcacao (lote 10c), em qualquer
+ * status, ou null. E o que faz o botao "Pedir collab" virar chip: sem isto o
+ * calendario nao tinha como saber que a pessoa ja pediu, e o botao voltava a
+ * cada carga. Nulo tambem na propria marcacao (ninguem pede collab de si).
+ */
+export type MeuPedidoNaMarcacao = { id: string; status: StatusDoPedido };
+
+export type MarcacaoDoMes = MarcacaoDoCalendario & {
+  meu_pedido: MeuPedidoNaMarcacao | null;
+};
+
 export type StatusDoPedido = "pendente" | "aceita" | "recusada";
 
 export type PedidoDeCollab = {
@@ -269,10 +281,31 @@ function janelaDoDia(agora: Date): { inicio: string; fim: string } {
 }
 
 /** As marcacoes de TODOS os creators no mes pedido, do dia 1 ao ultimo. */
+/**
+ * Pedidos de collab das marcacoes do mes, numa consulta so (`in`): e daqui
+ * que sai o `meu_pedido` de quem olha. Uma consulta por MES, e nao uma por
+ * marcacao, pelo mesmo motivo de `lerAutores`.
+ */
+async function lerPedidosDasMarcacoes(eventIds: string[]): Promise<Linha[]> {
+  if (eventIds.length === 0) return [];
+  const { data, error } = await supabaseAdmin
+    .from("creator_collab_requests")
+    .select("id, event_id, requester_id, status")
+    .in("event_id", eventIds);
+  if (error) throw erroEncadeavel(error);
+  return data ?? [];
+}
+
+/**
+ * Marcacoes do mes, de TODOS os creators, com o autor de cada uma e, para
+ * quem olha (`viewerId`), o pedido de collab que essa pessoa fez em cada
+ * marcacao.
+ */
 export async function listarMesDoCalendario(
   ano: number,
   mes: number,
-): Promise<MarcacaoDoCalendario[]> {
+  viewerId: string,
+): Promise<MarcacaoDoMes[]> {
   const { primeiro, ultimo } = limitesDoMes(ano, mes);
 
   const { data, error } = await supabaseAdmin
@@ -286,10 +319,24 @@ export async function listarMesDoCalendario(
   if (error) throw erroEncadeavel(error);
 
   const linhas: Linha[] = data ?? [];
-  const autores = await lerAutores(
-    linhas.map((linha) => textoDe(linha.user_id, "user_id")),
-  );
-  return linhas.map((linha) => lerMarcacao(linha, autores));
+  const [autores, pedidos] = await Promise.all([
+    lerAutores(linhas.map((linha) => textoDe(linha.user_id, "user_id"))),
+    lerPedidosDasMarcacoes(linhas.map((linha) => textoDe(linha.id, "id"))),
+  ]);
+
+  const meusPedidos = new Map<string, MeuPedidoNaMarcacao>();
+  for (const pedido of pedidos) {
+    if (textoDe(pedido.requester_id, "requester_id") !== viewerId) continue;
+    meusPedidos.set(textoDe(pedido.event_id, "event_id"), {
+      id: textoDe(pedido.id, "id"),
+      status: statusDaLinha(pedido.status),
+    });
+  }
+
+  return linhas.map((linha) => {
+    const marcacao = lerMarcacao(linha, autores);
+    return { ...marcacao, meu_pedido: meusPedidos.get(marcacao.id) ?? null };
+  });
 }
 
 /**

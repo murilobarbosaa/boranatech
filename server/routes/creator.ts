@@ -578,7 +578,11 @@ router.get("/calendar", requireCreator, async (req, res, next) => {
     );
   }
   try {
-    const marcacoes = await listarMesDoCalendario(mes.ano, mes.mes);
+    const marcacoes = await listarMesDoCalendario(
+      mes.ano,
+      mes.mes,
+      req.user!.id,
+    );
     res.json({ data: { marcacoes } });
   } catch (err) {
     return next(

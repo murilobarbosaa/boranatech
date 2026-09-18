@@ -53,6 +53,8 @@ import type { RedeDeCreator } from "@shared/creatorProfile";
 
 type Autor = { user_id: string; name: string | null; handle: string | null };
 
+type StatusDoPedido = "pendente" | "aceita" | "recusada";
+
 type Marcacao = {
   id: string;
   user_id: string;
@@ -61,6 +63,12 @@ type Marcacao = {
   note: string | null;
   created_at: string;
   autor: Autor | null;
+  /**
+   * O pedido de collab que EU fiz nesta marcacao (lote 10c). Opcional por
+   * causa da janela de deploy: o backend anterior nao manda o campo, e
+   * ausente e "nao sei" (o botao continua), nunca "nao pedi".
+   */
+  meu_pedido?: { id: string; status: StatusDoPedido } | null;
 };
 
 type Pedido = {
@@ -124,6 +132,55 @@ function nomeDoAutor(autor: Autor | null): string {
   return handle ? `@${handle}` : "Outro creator";
 }
 
+/**
+ * O que virou o "Pedir collab" depois que a pessoa pediu (lote 10c): slate
+ * enquanto o dono nao respondeu, rose se recusou. Aceito vira collab de
+ * verdade e e desenhado pela marcacao. Status que este bundle nao conhece nao
+ * desenha nada, em vez de derrubar o dia.
+ */
+function ChipDoMeuPedido({
+  marcacaoId,
+  status,
+}: {
+  marcacaoId: string;
+  status: string;
+}) {
+  if (status === "pendente") {
+    return (
+      <span
+        data-testid={`creator-collab-status-${marcacaoId}`}
+        className="ml-auto shrink-0 rounded-full border-2 border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-600"
+      >
+        {/* TODO(Ana) */}
+        pedido enviado
+      </span>
+    );
+  }
+  if (status === "recusada") {
+    return (
+      <span
+        data-testid={`creator-collab-status-${marcacaoId}`}
+        className="ml-auto shrink-0 rounded-full border-2 border-rose-700 bg-rose-50 px-2 py-0.5 text-[11px] font-black text-rose-800"
+      >
+        {/* TODO(Ana) */}
+        pedido recusado
+      </span>
+    );
+  }
+  if (status === "aceita") {
+    return (
+      <span
+        data-testid={`creator-collab-status-${marcacaoId}`}
+        className="ml-auto shrink-0 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
+      >
+        {/* TODO(Ana) */}
+        collab aceita
+      </span>
+    );
+  }
+  return null;
+}
+
 function listaDaResposta(json: unknown, chave: string): unknown[] | null {
   if (typeof json !== "object" || json === null) return null;
   const data = (json as { data?: unknown }).data;
@@ -141,7 +198,11 @@ export function CreatorCalendario() {
     ano: Number(hoje.slice(0, 4)),
     mes: Number(hoje.slice(5, 7)),
   }));
-  const [tentativa, setTentativa] = useState(0);
+  // `silencioso` e a REVALIDACAO depois de uma acao (pedir collab, responder):
+  // refaz as duas buscas sem trocar a tela pelo bloco de carregando, porque a
+  // pessoa esta no meio do calendario e o dia escolhido tem de continuar
+  // na tela. A carga inicial e o "tentar de novo" nao sao silenciosos.
+  const [busca, setBusca] = useState({ n: 0, silencioso: false });
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [dia, setDia] = useState<string | null>(hoje || null);
 
@@ -157,7 +218,7 @@ export function CreatorCalendario() {
 
   useEffect(() => {
     let cancelado = false;
-    setEstado({ tipo: "carregando" });
+    if (!busca.silencioso) setEstado({ tipo: "carregando" });
     Promise.all([
       contentFetch(`/creator/calendar?mes=${chaveDoMes}`),
       contentFetch("/creator/collabs"),
@@ -184,10 +245,20 @@ export function CreatorCalendario() {
     return () => {
       cancelado = true;
     };
-  }, [chaveDoMes, tentativa]);
+  }, [chaveDoMes, busca]);
 
   function recarregar() {
-    setTentativa((n) => n + 1);
+    setBusca((b) => ({ n: b.n + 1, silencioso: false }));
+  }
+
+  /**
+   * Refaz as buscas depois de uma acao. E o que faz o "Pedir collab" virar
+   * chip na hora e a collab aceita aparecer na marcacao: o estado do pedido
+   * vem do servidor (`meu_pedido`), nao de uma conta local que divergiria
+   * dele na primeira recarga.
+   */
+  function revalidar() {
+    setBusca((b) => ({ n: b.n + 1, silencioso: true }));
   }
 
   function andarMes(passo: number) {
@@ -295,6 +366,7 @@ export function CreatorCalendario() {
       });
       setPedindo(null);
       setRecado("");
+      revalidar();
       // TODO(Ana)
       toast.success("Pedido de collab enviado.");
     } catch (err) {
@@ -321,6 +393,8 @@ export function CreatorCalendario() {
           ? { ...atual, recebidos: atual.recebidos.filter((p) => p.id !== id) }
           : atual,
       );
+      // A collab aceita passa a fazer parte da marcacao: recarrega o mes.
+      revalidar();
       // TODO(Ana)
       toast.success(aceita ? "Collab aceita." : "Pedido recusado.");
     } catch (err) {
@@ -536,11 +610,21 @@ export function CreatorCalendario() {
                 // com 400 `own_event`).
                 const minha = meuId !== null && marcacao.user_id === meuId;
                 const deOutro = meuId !== null && !minha;
+                // Sem `meu_pedido` (nulo ou ausente) o botao existe; com ele,
+                // o chip do status no lugar, e o botao NAO volta nem depois
+                // de recusa: pedir de novo e o 409 do servidor.
+                const meuPedido = marcacao.meu_pedido ?? null;
                 return (
                   <li
                     key={marcacao.id}
                     data-testid={`creator-marcacao-${marcacao.id}`}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 border-slate-300 bg-white px-3 py-2"
+                    // A acao (botao ou chip) fica na MESMA coluna em toda
+                    // linha, com ou sem nota (lote 10c): a nota, ou o espaco
+                    // dela, ocupa o meio com `flex-1`, e a acao vai para a
+                    // direita com `ml-auto`. `flex-wrap` continua por causa
+                    // do formulario do recado, que precisa de uma linha
+                    // inteira (`w-full`).
+                    className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-slate-300 bg-white px-3 py-2"
                   >
                     <IconeDaRede rede={marcacao.network} />
                     <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
@@ -552,24 +636,27 @@ export function CreatorCalendario() {
                           "Você"
                         : nomeDoAutor(marcacao.autor)}
                     </span>
-                    {marcacao.note ? (
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-600">
-                        {marcacao.note}
-                      </span>
-                    ) : null}
+                    <span
+                      data-testid={`creator-marcacao-nota-${marcacao.id}`}
+                      className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-600"
+                    >
+                      {marcacao.note ?? ""}
+                    </span>
                     {minha ? (
                       <button
                         type="button"
                         data-testid={`creator-marcacao-remover-${marcacao.id}`}
                         onClick={() => void desmarcar(marcacao.id)}
-                        className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+                        className="bnt-pressable ml-auto shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
                         // TODO(Ana)
                         aria-label="Desmarcar"
                       >
                         <Trash2 aria-hidden="true" className="h-4 w-4" />
                       </button>
                     ) : null}
-                    {deOutro && pedindo !== marcacao.id ? (
+                    {deOutro &&
+                    meuPedido === null &&
+                    pedindo !== marcacao.id ? (
                       <button
                         type="button"
                         data-testid={`creator-collab-pedir-${marcacao.id}`}
@@ -577,13 +664,21 @@ export function CreatorCalendario() {
                           setPedindo(marcacao.id);
                           setErro(null);
                         }}
-                        className={BOTAO_SECUNDARIO}
+                        className={`${BOTAO_SECUNDARIO} ml-auto shrink-0`}
                       >
                         {/* TODO(Ana) */}
                         Pedir collab
                       </button>
                     ) : null}
-                    {deOutro && pedindo === marcacao.id ? (
+                    {deOutro && meuPedido !== null ? (
+                      <ChipDoMeuPedido
+                        marcacaoId={marcacao.id}
+                        status={meuPedido.status}
+                      />
+                    ) : null}
+                    {deOutro &&
+                    meuPedido === null &&
+                    pedindo === marcacao.id ? (
                       <span className="flex w-full flex-wrap items-center gap-2">
                         <label className="min-w-0 flex-1">
                           <span className="sr-only">
