@@ -269,6 +269,10 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   { tabela: "creator_posts", coluna: "status" },
   { tabela: "creator_posts", coluna: "confirmed_at" },
   { tabela: "creator_posts", coluna: "confirmed_by" },
+  // Declarada em `20260918100000_creator_calendar_color.sql` (creators, lote
+  // 10c): a cor do creator no calendario. `creator_profiles` ja esta em
+  // TABELAS_PENDENTES (colunas do CREATE TABLE); esta vem de ADD COLUMN.
+  { tabela: "creator_profiles", coluna: "calendar_color" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
