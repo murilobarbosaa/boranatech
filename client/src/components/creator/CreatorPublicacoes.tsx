@@ -11,20 +11,27 @@ import {
   inputClass,
 } from "@/components/creator/creatorFormEstilos";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
+  ehTipoDePublicacao,
   normalizarLinkDePublicacao,
+  TIPO_DE_PUBLICACAO_META,
+  TIPOS_DE_PUBLICACAO,
   type RedeDePublicacao,
   type TipoDePublicacao,
 } from "@shared/creatorPost";
 
-// PUBLICACOES REGISTRADAS (lote 09): o creator cola o link do post, reel ou
-// video sobre a Bora na Tech, e a lista dele aparece aqui.
+// PUBLICACOES REGISTRADAS (lote 09, tipo no lote 10b): o creator escolhe o
+// tipo (post, reel, story ou video), cola o link sobre a Bora na Tech, e a
+// lista dele aparece aqui.
 //
 // AS REGRAS SAO AS DE shared/creatorPost.ts, as mesmas do servidor: o link
-// invalido e recusado ANTES do envio, com a mesma mensagem. O 409 (repetida) e
-// o 429 (teto do dia) so o servidor sabe, e a mensagem deles vem dele.
+// invalido, e o link que nao e do tipo escolhido, sao recusados ANTES do
+// envio, com a mesma mensagem (o tipo detectado vem da mesma regra, entao a
+// tela nao depende de le-lo da resposta). O 409 (repetida) e o 429 (teto do
+// dia) so o servidor sabe, e a mensagem deles vem dele.
 //
 // BUSCA E GRAVA SOZINHO, como os formularios do perfil: a aba Comunidade nao
 // tem estado proprio, e este cartao e o unico dono da lista.
@@ -42,12 +49,20 @@ type Estado =
   | { tipo: "erro" }
   | { tipo: "ok"; posts: Publicacao[]; no_mes: number };
 
+// Rotulo CURTO do chip da lista; o do select e o do shared ("Vídeo do
+// TikTok"), que nao cabe num chip ao lado do glifo da rede.
 // TODO(Ana)
 const ROTULO_DO_TIPO: Record<TipoDePublicacao, string> = {
   post: "post",
   reel: "reel",
+  story: "story",
   video: "vídeo",
 };
+
+const OPCOES_DE_TIPO = TIPOS_DE_PUBLICACAO.map((t) => ({
+  value: t,
+  label: TIPO_DE_PUBLICACAO_META[t].rotulo,
+}));
 
 /**
  * Rotulo do tipo vindo do servidor. Resolver com fallback neutro: um tipo novo
@@ -88,6 +103,9 @@ export function CreatorPublicacoes() {
   const [tentativa, setTentativa] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [link, setLink] = useState("");
+  // Vazio ate a pessoa escolher: o botao fica desabilitado, porque o tipo
+  // decide o status inicial e nao pode ser deduzido em silencio.
+  const [tipo, setTipo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -115,16 +133,30 @@ export function CreatorPublicacoes() {
   }, [tentativa]);
 
   async function registrar() {
+    if (!ehTipoDePublicacao(tipo)) {
+      // TODO(Ana)
+      setErro("Escolha o tipo da publicação.");
+      return;
+    }
     // A mesma regra do servidor, antes do envio: link que nem forma de
-    // publicacao tem nao vira requisicao.
-    const conferido = normalizarLinkDePublicacao(link);
+    // publicacao tem, ou que e de outro tipo, nao vira requisicao.
+    const conferido = normalizarLinkDePublicacao(link, tipo);
     if (!conferido.ok) {
+      if (conferido.code === "post_type_mismatch") {
+        const detectado =
+          TIPO_DE_PUBLICACAO_META[
+            conferido.tipo_detectado
+          ].rotulo.toLowerCase();
+        // TODO(Ana)
+        setErro(`Esse link é de um ${detectado}. Troque o tipo ou o link.`);
+        return;
+      }
       setErro(
         conferido.code === "short_link_unsupported"
           ? // TODO(Ana)
             "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação."
           : // TODO(Ana)
-            "Link inválido. Cole o link de um post ou reel do Instagram, ou de um vídeo do TikTok.",
+            "Link inválido. Cole o link de um post, reel ou story do Instagram, ou de um vídeo do TikTok.",
       );
       return;
     }
@@ -134,7 +166,7 @@ export function CreatorPublicacoes() {
       const json: unknown = await contentFetch("/creator/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: link }),
+        body: JSON.stringify({ url: link, tipo }),
       });
       const post = (json as { data?: { post?: Publicacao } }).data?.post;
       if (post) {
@@ -236,10 +268,25 @@ export function CreatorPublicacoes() {
           // TODO(Ana)
           titulo="Suas publicações"
           // TODO(Ana)
-          frase="Cole o link do post, reel ou vídeo sobre a Bora na Tech. Cada publicação registrada conta no ranking do mês."
+          frase="Escolha o tipo e cole o link da publicação sobre a Bora na Tech. Cada publicação confirmada conta no ranking do mês."
         />
         <div className="space-y-2">
+          {/* Tipo em cima no celular, ao lado no desktop. O select vem ANTES
+              do link: e a escolha que define o que o link precisa ser. */}
           <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="sm:w-44">
+              <BntSelect
+                accent="neutral"
+                // TODO(Ana)
+                label="Tipo da publicação"
+                // TODO(Ana)
+                placeholder="Tipo"
+                value={tipo}
+                onValueChange={setTipo}
+                options={OPCOES_DE_TIPO}
+                fullWidth
+              />
+            </div>
             <label className="flex-1">
               <span className="sr-only">
                 {/* TODO(Ana) */}
@@ -258,7 +305,7 @@ export function CreatorPublicacoes() {
               type="button"
               data-testid="creator-publicacoes-registrar"
               onClick={() => void registrar()}
-              disabled={salvando}
+              disabled={salvando || !ehTipoDePublicacao(tipo)}
               className={BOTAO_PRIMARIO}
             >
               {/* TODO(Ana) */}

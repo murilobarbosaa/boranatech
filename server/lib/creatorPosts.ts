@@ -4,31 +4,36 @@ import {
   somarDiaCivil,
 } from "../../shared/brasiliaDay";
 import {
+  ehTipoDePublicacao,
   LIMITE_DE_REGISTROS_POR_DIA,
   normalizarLinkDePublicacao,
   REDES_DE_PUBLICACAO,
+  STATUS_DE_PUBLICACAO,
+  statusInicialDaPublicacao,
   TIPOS_DE_PUBLICACAO,
-  type CodigoDeLinkDePublicacao,
   type RedeDePublicacao,
+  type StatusDePublicacao,
   type TipoDePublicacao,
 } from "../../shared/creatorPost";
-import type { Resultado } from "../../shared/creatorProfile";
 import type { Linha } from "./creatorDashboard";
 import { textoDe } from "./creatorDashboard";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 /**
- * PUBLICACOES REGISTRADAS PELO CREATOR (lote 09): toda leitura e escrita de
- * `creator_posts` passa por aqui.
+ * PUBLICACOES REGISTRADAS PELO CREATOR (lote 09, status no lote 10b): toda
+ * leitura e escrita de `creator_posts` passa por aqui.
  *
- * NAO HA VERIFICACAO DE CONTEUDO. Isto guarda o link que a pessoa colou, e a
- * contagem alimenta o ranking do lote 11. Quem julga se a publicacao e sobre a
- * Bora na Tech e o admin, que ve a lista e remove.
+ * NAO HA VERIFICACAO DE CONTEUDO AUTOMATICA. Isto guarda o link que a pessoa
+ * colou com o status inicial que o shared decide (`statusInicialDaPublicacao`:
+ * pendente, salvo story), e so o que o admin CONFIRMA vale ponto no ranking.
+ * Quem julga se a publicacao e sobre a Bora na Tech e o admin, na lista de
+ * pendentes.
  *
- * DUAS DEFESAS, e so duas: o teto diario (`LIMITE_DE_REGISTROS_POR_DIA`) e o
- * unique por creator. A primeira torna trabalhoso inflar o ranking colando
- * link em serie; a segunda impede contar a mesma publicacao duas vezes.
+ * DUAS DEFESAS contra inflar a lista, e so duas: o teto diario
+ * (`LIMITE_DE_REGISTROS_POR_DIA`) e o unique por creator. A primeira torna
+ * trabalhoso colar link em serie; a segunda impede contar a mesma publicacao
+ * duas vezes.
  *
  * ERRO LANCA, e linha fora do formato tambem: a rota transforma em 500. Uma
  * lista vazia com 200 seria indistinguivel de "ainda nao registrei nada".
@@ -44,22 +49,44 @@ export type PublicacaoDoCreator = {
   network: RedeDePublicacao;
   kind: TipoDePublicacao;
   url: string;
+  status: StatusDePublicacao;
+  /** Quando foi confirmada (story: o instante do registro). Nulo se pendente. */
+  confirmed_at: string | null;
   created_at: string;
 };
 
 export type ListaDePublicacoes = {
   posts: PublicacaoDoCreator[];
   total: number;
-  /** Quantas caem no mes civil de Brasilia corrente. E o numero do ranking. */
+  /** CONFIRMADAS no mes civil de Brasilia corrente. E o numero do ranking. */
   no_mes: number;
+  /** Pendentes no mesmo mes: o que ainda nao vale ponto. */
+  aguardando: number;
 };
 
-export type CodigoDeRegistro =
-  | CodigoDeLinkDePublicacao
-  | "post_already_registered"
-  | "post_daily_limit";
+/**
+ * Recusa do registro. O `post_type_mismatch` carrega o tipo detectado no link
+ * (vem do shared) para a rota montar a mensagem com o nome dele.
+ */
+export type RegistroRecusado =
+  | {
+      ok: false;
+      code:
+        | "invalid_post_url"
+        | "short_link_unsupported"
+        | "invalid_post_type"
+        | "post_already_registered"
+        | "post_daily_limit";
+    }
+  | { ok: false; code: "post_type_mismatch"; tipo_detectado: TipoDePublicacao };
 
-const COLUNAS = "id, network, kind, url, created_at";
+export type CodigoDeRegistro = RegistroRecusado["code"];
+
+export type ResultadoDoRegistro =
+  | { ok: true; valor: PublicacaoDoCreator }
+  | RegistroRecusado;
+
+const COLUNAS = "id, network, kind, url, status, confirmed_at, created_at";
 
 function redeDaLinha(valor: unknown): RedeDePublicacao {
   if (
@@ -81,12 +108,29 @@ function tipoDaLinha(valor: unknown): TipoDePublicacao {
   return valor as TipoDePublicacao;
 }
 
+function statusDaLinha(valor: unknown): StatusDePublicacao {
+  if (
+    typeof valor !== "string" ||
+    !(STATUS_DE_PUBLICACAO as readonly string[]).includes(valor)
+  ) {
+    throw new Error(`[creatorPosts] status desconhecido: ${String(valor)}`);
+  }
+  return valor as StatusDePublicacao;
+}
+
+function instanteOuNulo(valor: unknown, campo: string): string | null {
+  if (valor === null || valor === undefined) return null;
+  return textoDe(valor, campo);
+}
+
 function lerItem(linha: Linha): PublicacaoDoCreator {
   return {
     id: textoDe(linha.id, "id"),
     network: redeDaLinha(linha.network),
     kind: tipoDaLinha(linha.kind),
     url: textoDe(linha.url, "url"),
+    status: statusDaLinha(linha.status),
+    confirmed_at: instanteOuNulo(linha.confirmed_at, "confirmed_at"),
     created_at: textoDe(linha.created_at, "created_at"),
   };
 }
@@ -129,7 +173,8 @@ export async function listarPublicacoes(
   userId: string,
   agora: Date = new Date(),
 ): Promise<ListaDePublicacoes> {
-  const [linhas, total, mes] = await Promise.all([
+  const inicio = inicioDoMes(agora);
+  const [linhas, total, confirmadas, pendentes] = await Promise.all([
     supabaseAdmin
       .from("creator_posts")
       .select(COLUNAS)
@@ -140,35 +185,55 @@ export async function listarPublicacoes(
       .from("creator_posts")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId),
+    // Duas contagens separadas, e nao uma leitura do mes filtrada aqui: cada
+    // uma e um HEAD com count, sem trazer linha, e a tabela nao e lida duas
+    // vezes por status alem do que o PostgREST ja faria por filtro.
     supabaseAdmin
       .from("creator_posts")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .gte("created_at", inicioDoMes(agora)),
+      .eq("status", "confirmado")
+      .gte("created_at", inicio),
+    supabaseAdmin
+      .from("creator_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "pendente")
+      .gte("created_at", inicio),
   ]);
   if (linhas.error) throw erroEncadeavel(linhas.error);
   if (total.error) throw erroEncadeavel(total.error);
-  if (mes.error) throw erroEncadeavel(mes.error);
+  if (confirmadas.error) throw erroEncadeavel(confirmadas.error);
+  if (pendentes.error) throw erroEncadeavel(pendentes.error);
 
   const dados: Linha[] = linhas.data ?? [];
   return {
     posts: dados.map(lerItem),
     total: total.count ?? 0,
-    no_mes: mes.count ?? 0,
+    no_mes: confirmadas.count ?? 0,
+    aguardando: pendentes.count ?? 0,
   };
 }
 
 /**
- * Registra o link colado. O 409 (`post_already_registered`) vem do banco, pelo
- * unique, e NAO de um select antes: entre o select e o insert cabe outra
- * requisicao da mesma pessoa, e o banco e quem decide sem corrida.
+ * Registra o link colado com o tipo escolhido. O 409
+ * (`post_already_registered`) vem do banco, pelo unique, e NAO de um select
+ * antes: entre o select e o insert cabe outra requisicao da mesma pessoa, e o
+ * banco e quem decide sem corrida.
+ *
+ * O status inicial e o do shared: pendente, salvo story, que nasce confirmado
+ * com `confirmed_at` no instante do registro e `confirmed_by` nulo, porque a
+ * confirmacao e automatica e nao ha admin a nomear.
  */
 export async function registrarPublicacao(
   userId: string,
   url: unknown,
+  tipo: unknown,
   agora: Date = new Date(),
-): Promise<Resultado<PublicacaoDoCreator, CodigoDeRegistro>> {
-  const link = normalizarLinkDePublicacao(url);
+): Promise<ResultadoDoRegistro> {
+  if (!ehTipoDePublicacao(tipo))
+    return { ok: false, code: "invalid_post_type" };
+  const link = normalizarLinkDePublicacao(url, tipo);
   if (!link.ok) return link;
 
   const { inicio, fim } = janelaDoDia(agora);
@@ -183,6 +248,7 @@ export async function registrarPublicacao(
     return { ok: false, code: "post_daily_limit" };
   }
 
+  const status = statusInicialDaPublicacao(tipo);
   const { data, error } = await supabaseAdmin
     .from("creator_posts")
     .insert({
@@ -191,6 +257,9 @@ export async function registrarPublicacao(
       kind: link.valor.kind,
       external_id: link.valor.external_id,
       url: link.valor.url,
+      status,
+      confirmed_at: status === "confirmado" ? agora.toISOString() : null,
+      confirmed_by: null,
     })
     .select(COLUNAS)
     .maybeSingle();

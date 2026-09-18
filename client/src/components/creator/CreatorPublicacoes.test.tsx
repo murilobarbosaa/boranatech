@@ -6,7 +6,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 /**
  * CreatorPublicacoes: o registro de publicacoes na aba Comunidade (lote 09).
@@ -74,8 +82,48 @@ const VIDEO = {
   created_at: "2026-09-10T12:00:00Z",
 };
 
+const STORY = {
+  id: "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
+  network: "instagram",
+  kind: "story",
+  url: "https://www.instagram.com/stories/ana.cria/3456789012345678901/",
+  created_at: "2026-09-16T12:00:00Z",
+};
+
 function chamadasCom(method: string): Chamada[] {
   return estado.chamadas.filter((c) => c.method === method);
+}
+
+// O jsdom nao tem estas APIs, e o Radix Select (o BntSelect do tipo) as chama
+// ao abrir o popup. Mesmos stubs de CreatorPixForm.test.tsx.
+beforeAll(() => {
+  if (!("ResizeObserver" in globalThis)) {
+    class ResizeObserverDeTeste {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+      ResizeObserverDeTeste;
+  }
+  Element.prototype.scrollIntoView ||= () => {};
+  Element.prototype.hasPointerCapture ||= () => false;
+  Element.prototype.releasePointerCapture ||= () => {};
+});
+
+/**
+ * Escolhe o tipo pelo teclado, como a pessoa faria: abre com a seta, confirma
+ * com Enter e ESPERA o popup fechar. Enquanto ele esta aberto o resto do
+ * formulario fica fora de alcance.
+ */
+async function escolherTipo(nome: string): Promise<void> {
+  fireEvent.keyDown(
+    screen.getByRole("combobox", { name: "Tipo da publicação" }),
+    { key: "ArrowDown" },
+  );
+  const opcao = await screen.findByRole("option", { name: nome });
+  fireEvent.keyDown(opcao, { key: "Enter" });
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 }
 
 function responderLista(posts: unknown[], no_mes: number) {
@@ -176,16 +224,24 @@ describe("CreatorPublicacoes: registro", () => {
       method === "POST"
         ? { data: { post: REEL } }
         : { data: { posts: [VIDEO], total: 1, no_mes: 1 } };
+    // Sem tipo escolhido o botao nem responde: o tipo decide o status inicial
+    // e nao pode ser deduzido em silencio.
+    const registrar = screen.getByTestId(
+      "creator-publicacoes-registrar",
+    ) as HTMLButtonElement;
+    expect(registrar.disabled).toBe(true);
+    await escolherTipo("Reel");
+    expect(registrar.disabled).toBe(false);
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc" },
     });
-    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    fireEvent.click(registrar);
 
     await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
     expect(chamadasCom("POST")[0]).toEqual({
       path: "/creator/posts",
       method: "POST",
-      body: { url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc" },
+      body: { url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc", tipo: "reel" },
     });
     await screen.findByTestId(`creator-publicacao-${POST_ID}`);
     expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
@@ -199,6 +255,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Post");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://www.instagram.com/ana.cria/" },
     });
@@ -213,6 +270,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Vídeo do TikTok");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://vm.tiktok.com/ZMabc1234/" },
     });
@@ -227,6 +285,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Reel");
 
     estado.responder = async (_path, method) => {
       if (method === "POST") {
@@ -338,5 +397,72 @@ describe("CreatorPublicacoes: glifos e estado vazio (lote 10b)", () => {
     }
     // A rolagem interna e da lista com itens; vazia, nao ha o que rolar.
     expect(coluna.className).not.toContain("overflow-y-auto");
+  });
+});
+
+describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
+  it("as quatro opcoes, na ordem do shared, e a frase pede o tipo", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    fireEvent.keyDown(
+      screen.getByRole("combobox", { name: "Tipo da publicação" }),
+      { key: "ArrowDown" },
+    );
+    const opcoes = await screen.findAllByRole("option");
+    expect(opcoes.map((o) => o.textContent)).toEqual([
+      "Post",
+      "Reel",
+      "Story",
+      "Vídeo do TikTok",
+    ]);
+  });
+
+  it("link de outro tipo: a mensagem diz qual tipo o link e, e NENHUMA requisicao", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Post");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: REEL.url },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe("Esse link é de um reel. Troque o tipo ou o link.");
+    expect(chamadasCom("POST")).toHaveLength(0);
+
+    // TikTok com tipo do Instagram: o nome do tipo detectado e o do shared.
+    await escolherTipo("Story");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: VIDEO.url },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe("Esse link é de um vídeo do tiktok. Troque o tipo ou o link.");
+    expect(chamadasCom("POST")).toHaveLength(0);
+  });
+
+  it("story: manda tipo story e entra na lista como as outras", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    estado.responder = async (_path, method) =>
+      method === "POST"
+        ? { data: { post: STORY } }
+        : { data: { posts: [], total: 0, no_mes: 0 } };
+    await escolherTipo("Story");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: STORY.url },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
+    expect(chamadasCom("POST")[0].body).toEqual({
+      url: STORY.url,
+      tipo: "story",
+    });
+    const linha = await screen.findByTestId(`creator-publicacao-${STORY.id}`);
+    expect(linha.textContent).toContain("story");
   });
 });

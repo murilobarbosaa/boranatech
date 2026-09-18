@@ -738,21 +738,60 @@ const PUBLICACAO = {
   network: "instagram",
   kind: "reel",
   url: LINK_VALIDO,
+  status: "pendente",
+  // `as string | null`: a fixture confirmada abaixo espalha esta e troca o
+  // instante, e o literal `null` faria o tsc travar o tipo em `null`.
+  confirmed_at: null as string | null,
   created_at: "2026-09-16T12:00:00Z",
 };
 
+// Uma segunda, ja confirmada, no mesmo mes: e o que separa `no_mes` (so as
+// confirmadas) de `aguardando` (so as pendentes) na leitura.
+const CONFIRMADA = {
+  ...PUBLICACAO,
+  id: "9d2c1b0a-8f7e-4d6c-b5a4-3f2e1d0c9b8a",
+  url: "https://www.instagram.com/p/Cx9ZyXwVu_-/",
+  kind: "post",
+  status: "confirmado",
+  confirmed_at: "2026-09-16T13:00:00Z",
+};
+
+const LINK_STORY =
+  "https://www.instagram.com/stories/ana.cria/3456789012345678901/";
+const LINK_VIDEO = "https://www.tiktok.com/@ana.cria/video/7311122233344455566";
+const LINK_POST = "https://www.instagram.com/p/Cx1AbCdEf_-/";
+
+/** Publicacoes que respondem por STATUS ao count do mes: o double nao simula
+ * `gte`, entao o responder olha o filtro de status e devolve as linhas certas
+ * para cada uma das duas contagens. */
+function postsPorStatus(...linhas: Array<typeof PUBLICACAO>) {
+  return (c: Chamada): RespostaTabela => {
+    const status = c.filtros.find((f) => f.coluna === "status");
+    if (!status) return { rows: linhas };
+    return { rows: linhas.filter((l) => l.status === status.valor) };
+  };
+}
+
 describe("GET /api/creator/posts", () => {
-  it("lista do proprio creator, com total e o do mes", async () => {
+  it("lista do proprio creator, com status em cada linha; no_mes conta SO as confirmadas e aguardando SO as pendentes", async () => {
     montar({
       creators: concessaoAtiva(),
-      creator_posts: { rows: [PUBLICACAO] },
+      creator_posts: postsPorStatus(PUBLICACAO, CONFIRMADA),
     });
     estado.usuario = USUARIO;
     const r = await chamar("GET", "/posts");
     expect(r.status).toBe(200);
-    expect(r.body.data.posts).toEqual([PUBLICACAO]);
-    expect(r.body.data.total).toBe(1);
+    expect(r.body.data.posts).toEqual([PUBLICACAO, CONFIRMADA]);
+    expect(r.body.data.total).toBe(2);
     expect(r.body.data.no_mes).toBe(1);
+    expect(r.body.data.aguardando).toBe(1);
+    // As duas contagens do mes filtram por status, cada uma pelo seu.
+    const contagens = double
+      .de("creator_posts")
+      .filter((c) => c.filtros.some((f) => f.coluna === "status"))
+      .map((c) => c.filtros.find((f) => f.coluna === "status")!.valor)
+      .sort();
+    expect(contagens).toEqual(["confirmado", "pendente"]);
   });
 
   it("quem nao e creator: 403 not_creator", async () => {
@@ -774,19 +813,114 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc",
+      tipo: "reel",
     });
     expect(r.status).toBe(201);
     expect(r.body.data.post).toEqual(PUBLICACAO);
     const escritas = escritasEm("creator_posts");
     expect(escritas).toHaveLength(1);
-    // O que vai para o banco e a forma CANONICA, nao o que foi colado.
+    // O que vai para o banco e a forma CANONICA, nao o que foi colado, e o
+    // status inicial e pendente: reel so vale ponto depois da conferencia.
     expect(escritas[0].payload).toEqual({
       user_id: UID,
       network: "instagram",
       kind: "reel",
       external_id: "Cx1AbCdEf_-",
       url: LINK_VALIDO,
+      status: "pendente",
+      confirmed_at: null,
+      confirmed_by: null,
     });
+  });
+
+  it("cada tipo com o link certo grava o kind escolhido; post, reel e video nascem pendentes", async () => {
+    for (const [tipo, url] of [
+      ["post", LINK_POST],
+      ["reel", LINK_VALIDO],
+      ["video", LINK_VIDEO],
+    ] as const) {
+      montar({
+        creators: concessaoAtiva(),
+        creator_posts: (c) =>
+          c.op === "insert"
+            ? { rows: [{ ...PUBLICACAO, kind: tipo }] }
+            : { rows: [] },
+      });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", { url, tipo });
+      expect(r.status, tipo).toBe(201);
+      const payload = escritasEm("creator_posts")[0].payload!;
+      expect(payload.kind, tipo).toBe(tipo);
+      expect(payload.status, tipo).toBe("pendente");
+      expect(payload.confirmed_at, tipo).toBeNull();
+    }
+  });
+
+  it("story nasce CONFIRMADO, com confirmed_at no instante do registro e confirmed_by nulo", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-16T15:00:00.000Z"));
+    const story = {
+      ...PUBLICACAO,
+      kind: "story",
+      url: LINK_STORY,
+      status: "confirmado",
+      confirmed_at: "2026-09-16T15:00:00.000Z",
+    };
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert" ? { rows: [story] } : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: LINK_STORY,
+      tipo: "story",
+    });
+    vi.useRealTimers();
+    expect(r.status).toBe(201);
+    expect(r.body.data.post.status).toBe("confirmado");
+    expect(escritasEm("creator_posts")[0].payload).toEqual({
+      user_id: UID,
+      network: "instagram",
+      kind: "story",
+      external_id: "3456789012345678901",
+      url: LINK_STORY,
+      status: "confirmado",
+      confirmed_at: "2026-09-16T15:00:00.000Z",
+      // Sem admin a nomear: a confirmacao do story e automatica.
+      confirmed_by: null,
+    });
+  });
+
+  it("link de um tipo com outro escolhido: 400 post_type_mismatch, com o tipo detectado na mensagem, e nada gravado", async () => {
+    for (const [url, tipo, detectado] of [
+      [LINK_VALIDO, "post", "reel"],
+      [LINK_POST, "reel", "post"],
+      [LINK_STORY, "post", "story"],
+      [LINK_VIDEO, "reel", "vídeo do tiktok"],
+      [LINK_VALIDO, "video", "reel"],
+    ] as const) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", { url, tipo });
+      expect(r.status, `${tipo} ${url}`).toBe(400);
+      expect(r.body.error.code).toBe("post_type_mismatch");
+      expect(r.body.error.message).toBe(
+        `Esse link é de um ${detectado}. Troque o tipo ou o link.`,
+      );
+      expect(escritasEm("creator_posts")).toHaveLength(0);
+    }
+  });
+
+  it("sem tipo, ou com tipo que nao existe: 400 invalid_post_type, sem tocar no banco", async () => {
+    for (const tipo of [undefined, "", "carrossel", 3]) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", { url: LINK_VALIDO, tipo });
+      expect(r.status, String(tipo)).toBe(400);
+      expect(r.body.error.code).toBe("invalid_post_type");
+      expect(double.de("creator_posts")).toHaveLength(0);
+    }
   });
 
   it("link invalido: 400 invalid_post_url e NADA e gravado", async () => {
@@ -794,6 +928,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://www.instagram.com/ana.cria/",
+      tipo: "post",
     });
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("invalid_post_url");
@@ -805,6 +940,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vm.tiktok.com/ZMabc1234/",
+      tipo: "video",
     });
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("short_link_unsupported");
@@ -826,7 +962,10 @@ describe("POST /api/creator/posts", () => {
           : { rows: [] },
     });
     estado.usuario = USUARIO;
-    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    const r = await chamar("POST", "/posts", {
+      url: LINK_VALIDO,
+      tipo: "reel",
+    });
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe("post_already_registered");
   });
@@ -847,7 +986,10 @@ describe("POST /api/creator/posts", () => {
           : { rows: [] },
     });
     estado.usuario = USUARIO;
-    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    const r = await chamar("POST", "/posts", {
+      url: LINK_VALIDO,
+      tipo: "reel",
+    });
     expect(r.status).toBe(500);
     expect(r.body.error.code).toBe("db_error");
   });
@@ -862,7 +1004,10 @@ describe("POST /api/creator/posts", () => {
       creator_posts: { rows: dezDeHoje },
     });
     estado.usuario = USUARIO;
-    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    const r = await chamar("POST", "/posts", {
+      url: LINK_VALIDO,
+      tipo: "reel",
+    });
     expect(r.status).toBe(429);
     expect(r.body.error.code).toBe("post_daily_limit");
     expect(escritasEm("creator_posts")).toHaveLength(0);
@@ -871,7 +1016,10 @@ describe("POST /api/creator/posts", () => {
   it("quem nao e creator: 403 e nada e gravado", async () => {
     montar({ creators: respostaQueFiltra([]), creator_posts: { rows: [] } });
     estado.usuario = USUARIO;
-    const r = await chamar("POST", "/posts", { url: LINK_VALIDO });
+    const r = await chamar("POST", "/posts", {
+      url: LINK_VALIDO,
+      tipo: "reel",
+    });
     expect(r.status).toBe(403);
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });

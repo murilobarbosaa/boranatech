@@ -8,7 +8,11 @@ import {
   NOTA_MAX,
   parseMesDoCalendario,
 } from "../../shared/creatorCalendar";
-import { LIMITE_DE_REGISTROS_POR_DIA } from "../../shared/creatorPost";
+import {
+  LIMITE_DE_REGISTROS_POR_DIA,
+  TIPO_DE_PUBLICACAO_META,
+  type TipoDePublicacao,
+} from "../../shared/creatorPost";
 import type {
   CodigoDeChavePix,
   RedeDeCreator,
@@ -246,13 +250,14 @@ router.delete("/pix", requireCreator, async (req, res, next) => {
   }
 });
 
-// PUBLICACOES REGISTRADAS (lote 09): o creator cola o link de um post ou reel
-// do Instagram, ou de um video do TikTok, e a plataforma registra. Sem
-// verificacao de conteudo: quem julga e o admin, que ve a lista e remove.
+// PUBLICACOES REGISTRADAS (lote 09, tipo e status no lote 10b): o creator
+// escolhe o tipo, cola o link, e a plataforma registra com o status inicial do
+// shared (pendente, salvo story). Quem julga e o admin, que confirma ou remove.
 //
-// Um codigo por causa, e um status por codigo: link errado e 400, publicacao
+// Um codigo por causa, e um status por codigo: link errado, tipo ausente e
+// tipo que nao casa com o link sao 400 (tres mensagens diferentes), publicacao
 // repetida e 409 (vem do unique do banco, nao de um select antes), e teto
-// diario e 429. Tres coisas diferentes que a tela precisa dizer diferente.
+// diario e 429. Coisas diferentes que a tela precisa dizer diferente.
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -260,21 +265,41 @@ const UUID_RE =
 const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   invalid_post_url: 400,
   short_link_unsupported: 400,
+  invalid_post_type: 400,
+  post_type_mismatch: 400,
   post_already_registered: 409,
   post_daily_limit: 429,
 };
 
 // TODO(Ana)
-const MENSAGEM_DA_PUBLICACAO: Record<CodigoDeRegistro, string> = {
+const MENSAGEM_DA_PUBLICACAO: Record<
+  Exclude<CodigoDeRegistro, "post_type_mismatch">,
+  string
+> = {
   invalid_post_url:
-    "Link inválido. Cole o link de um post ou reel do Instagram, ou de um vídeo do TikTok.",
+    "Link inválido. Cole o link de um post, reel ou story do Instagram, ou de um vídeo do TikTok.",
   short_link_unsupported:
     "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação.",
+  invalid_post_type:
+    "Escolha o tipo da publicação: post, reel, story ou vídeo do TikTok.",
   post_already_registered: "Você já registrou esta publicação.",
   // O numero sai da constante: mensagem com o teto escrito a mao diverge da
   // regra na primeira vez que alguem mudar o teto.
   post_daily_limit: `Você já registrou ${LIMITE_DE_REGISTROS_POR_DIA} publicações hoje. Tente de novo amanhã.`,
 };
+
+/**
+ * Mensagem do tipo que nao casa com o link. O tipo detectado vai NA mensagem,
+ * pelo nome: o handler central de erro (server/middleware/error.ts) so emite
+ * `code` e `message`, e abrir um campo a mais nele e no AdminApiError do client
+ * e mudanca fora deste lote. O client roda a mesma regra do shared antes de
+ * enviar, entao ele ja sabe o tipo detectado sem precisar le-lo daqui.
+ */
+function mensagemDeTipoErrado(tipoDetectado: TipoDePublicacao): string {
+  const rotulo = TIPO_DE_PUBLICACAO_META[tipoDetectado].rotulo.toLowerCase();
+  // TODO(Ana)
+  return `Esse link é de um ${rotulo}. Troque o tipo ou o link.`;
+}
 
 router.get("/posts", requireCreator, async (req, res, next) => {
   try {
@@ -296,13 +321,19 @@ router.post("/posts", requireCreator, async (req, res, next) => {
   const corpo: Record<string, unknown> =
     typeof req.body === "object" && req.body !== null ? req.body : {};
   try {
-    const registro = await registrarPublicacao(req.user!.id, corpo.url);
+    const registro = await registrarPublicacao(
+      req.user!.id,
+      corpo.url,
+      corpo.tipo,
+    );
     if (!registro.ok) {
       return next(
         createError(
           STATUS_DA_PUBLICACAO[registro.code],
           registro.code,
-          MENSAGEM_DA_PUBLICACAO[registro.code],
+          registro.code === "post_type_mismatch"
+            ? mensagemDeTipoErrado(registro.tipo_detectado)
+            : MENSAGEM_DA_PUBLICACAO[registro.code],
         ),
       );
     }

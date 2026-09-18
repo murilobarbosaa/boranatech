@@ -670,6 +670,8 @@ const PUBLICACAO = {
   network: "instagram",
   kind: "reel",
   url: "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+  status: "pendente",
+  confirmed_at: null,
   created_at: "2026-09-15T12:00:00Z",
 };
 
@@ -682,7 +684,11 @@ describe("GET /creators/:userId/posts", () => {
     expect(r.status).toBe(200);
     expect(r.body.data.posts).toEqual([PUBLICACAO]);
     expect(r.body.data.total).toBe(1);
+    // A fixture e pendente e o double devolve as mesmas linhas para as duas
+    // contagens por status: o que se afirma aqui e o formato da resposta; a
+    // separacao confirmadas/pendentes e provada em creator.test.ts.
     expect(r.body.data.no_mes).toBe(1);
+    expect(r.body.data.aguardando).toBe(1);
   });
 
   it("uuid invalido: 400, sem tocar no banco", async () => {
