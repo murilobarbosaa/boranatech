@@ -58,7 +58,10 @@ describe("manifesto administrativo fechado", () => {
     // lote 08), no grupo users.pii.reveal ao lado do reveal-cpf.
     // 130 -> 132 com as duas de publicacoes (creators, lote 09): o GET entra em
     // creators.read, e o DELETE na capacidade nova creators.posts.moderate.
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(132);
+    // 132 -> 134 com a conferencia (creators, lote 10b): o GET da lista de
+    // pendentes entra em creators.read, e o POST de confirmar em
+    // creators.posts.moderate, ao lado do DELETE.
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(134);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

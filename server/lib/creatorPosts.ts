@@ -118,6 +118,7 @@ function statusDaLinha(valor: unknown): StatusDePublicacao {
   return valor as StatusDePublicacao;
 }
 
+/** Texto ou nulo: colunas nullable (confirmed_at, name, avatar_url). */
 function instanteOuNulo(valor: unknown, campo: string): string | null {
   if (valor === null || valor === undefined) return null;
   return textoDe(valor, campo);
@@ -315,32 +316,173 @@ export async function removerPublicacao(
 }
 
 /**
- * Quantas publicacoes cada creator da pagina registrou no mes civil corrente.
- *
- * Uma consulta por PAGINA (`in`), e a contagem e feita aqui, sobre os ids
- * lidos: o PostgREST nao agrupa, e pedir contagem por creator seria uma
- * consulta por linha da pagina.
+ * Contadores de publicacoes do QUADRO do admin, para uma pagina de creators:
+ * confirmadas no mes civil corrente (o numero do ranking) e pendentes no
+ * total, sem corte de mes (o que o admin ainda precisa conferir, de qualquer
+ * data). Uma consulta por contador e por PAGINA (`in`), e a contagem e feita
+ * aqui, sobre os ids lidos: o PostgREST nao agrupa, e pedir contagem por
+ * creator seria uma consulta por linha da pagina.
  */
-export async function contarPublicacoesDoMes(
+export async function contarPublicacoesDoQuadro(
   userIds: string[],
   agora: Date = new Date(),
-): Promise<Map<string, number>> {
-  const mapa = new Map<string, number>();
-  for (const id of userIds) mapa.set(id, 0);
+): Promise<Map<string, { no_mes: number; aguardando: number }>> {
+  const mapa = new Map<string, { no_mes: number; aguardando: number }>();
+  for (const id of userIds) mapa.set(id, { no_mes: 0, aguardando: 0 });
   if (userIds.length === 0) return mapa;
 
-  const { data, error } = await supabaseAdmin
-    .from("creator_posts")
-    .select("user_id")
-    .in("user_id", userIds)
-    .gte("created_at", inicioDoMes(agora));
-  if (error) throw erroEncadeavel(error);
+  const [confirmadas, pendentes] = await Promise.all([
+    supabaseAdmin
+      .from("creator_posts")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("status", "confirmado")
+      .gte("created_at", inicioDoMes(agora)),
+    supabaseAdmin
+      .from("creator_posts")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("status", "pendente"),
+  ]);
+  if (confirmadas.error) throw erroEncadeavel(confirmadas.error);
+  if (pendentes.error) throw erroEncadeavel(pendentes.error);
 
+  const somar = (linhas: Linha[], campo: "no_mes" | "aguardando") => {
+    for (const linha of linhas) {
+      const item = mapa.get(textoDe(linha.user_id, "user_id"));
+      if (item) item[campo] += 1;
+    }
+  };
+  somar(confirmadas.data ?? [], "no_mes");
+  somar(pendentes.data ?? [], "aguardando");
+  return mapa;
+}
+
+/** Publicacao com o dono: a lista de conferencia do admin cruza creators. */
+export type PublicacaoPendente = PublicacaoDoCreator & { user_id: string };
+
+export type PaginaDePendentes = {
+  rows: PublicacaoPendente[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Publicacoes PENDENTES de todos os creators, mais antigas primeiro (quem
+ * espera ha mais tempo e conferido antes), paginadas. E a lista "Publicacoes
+ * para conferir" da aba Creators; o indice `creator_posts_status_idx` cobre
+ * exatamente esta ordem.
+ */
+export async function listarPendentes(
+  page: number,
+  pageSize: number,
+): Promise<PaginaDePendentes> {
+  const offset = (page - 1) * pageSize;
+  const { data, error, count } = await supabaseAdmin
+    .from("creator_posts")
+    .select(`user_id, ${COLUNAS}`, { count: "exact" })
+    .eq("status", "pendente")
+    .order("created_at", { ascending: true })
+    .range(offset, offset + pageSize - 1);
+  if (error) throw erroEncadeavel(error);
   const linhas: Linha[] = data ?? [];
-  for (const linha of linhas) {
-    const dono = textoDe(linha.user_id, "user_id");
-    const atual = mapa.get(dono);
-    if (atual !== undefined) mapa.set(dono, atual + 1);
+  return {
+    rows: linhas.map((linha) => ({
+      ...lerItem(linha),
+      user_id: textoDe(linha.user_id, "user_id"),
+    })),
+    total: count ?? 0,
+    page,
+    pageSize,
+  };
+}
+
+export type DonoDaPublicacao = {
+  name: string | null;
+  avatar_url: string | null;
+  instagram_handle: string | null;
+};
+
+/**
+ * Nome, avatar e @ do Instagram de cada dono da pagina de pendentes, em duas
+ * consultas (`in`) para a pagina inteira: `profiles` para nome e avatar,
+ * `creator_profiles` para o @. Quem nao tem perfil aparece com os tres nulos,
+ * e a tela cai no rotulo neutro; a lista nao deixa de existir por isso.
+ */
+export async function resolverDonosDasPublicacoes(
+  userIds: string[],
+): Promise<Map<string, DonoDaPublicacao>> {
+  const mapa = new Map<string, DonoDaPublicacao>();
+  const unicos: string[] = [];
+  for (const id of userIds) {
+    if (mapa.has(id)) continue;
+    mapa.set(id, { name: null, avatar_url: null, instagram_handle: null });
+    unicos.push(id);
+  }
+  if (unicos.length === 0) return mapa;
+
+  const [perfis, deCreator] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("user_id, name, avatar_url")
+      .in("user_id", unicos),
+    supabaseAdmin
+      .from("creator_profiles")
+      .select("user_id, instagram_handle")
+      .in("user_id", unicos),
+  ]);
+  if (perfis.error) throw erroEncadeavel(perfis.error);
+  if (deCreator.error) throw erroEncadeavel(deCreator.error);
+
+  const linhasPerfil: Linha[] = perfis.data ?? [];
+  for (const linha of linhasPerfil) {
+    const dono = mapa.get(textoDe(linha.user_id, "user_id"));
+    if (!dono) continue;
+    dono.name = instanteOuNulo(linha.name, "name");
+    dono.avatar_url = instanteOuNulo(linha.avatar_url, "avatar_url");
+  }
+  const linhasCreator: Linha[] = deCreator.data ?? [];
+  for (const linha of linhasCreator) {
+    const dono = mapa.get(textoDe(linha.user_id, "user_id"));
+    if (!dono) continue;
+    dono.instagram_handle = instanteOuNulo(
+      linha.instagram_handle,
+      "instagram_handle",
+    );
   }
   return mapa;
+}
+
+/**
+ * Confirma uma publicacao PENDENTE do creator. Devolve a linha confirmada, ou
+ * `null` quando nao havia pendente com esse id para esse dono (ja confirmada,
+ * de outra pessoa, ou inexistente): a rota distingue os casos com a leitura
+ * que faz antes, e este `null` cobre a corrida entre a leitura e o update.
+ *
+ * O `status = pendente` esta no proprio UPDATE, pelo mesmo motivo do dono no
+ * DELETE: nao existe caminho em que uma confirmacao seja gravada duas vezes,
+ * nem por corrida nem por esquecimento de quem chamar.
+ */
+export async function confirmarPublicacao(
+  userId: string,
+  postId: string,
+  adminId: string,
+  agora: Date = new Date(),
+): Promise<PublicacaoDoCreator | null> {
+  const { data, error } = await supabaseAdmin
+    .from("creator_posts")
+    .update({
+      status: "confirmado",
+      confirmed_at: agora.toISOString(),
+      confirmed_by: adminId,
+    })
+    .eq("user_id", userId)
+    .eq("id", postId)
+    .eq("status", "pendente")
+    .select(COLUNAS)
+    .maybeSingle();
+  if (error) throw erroEncadeavel(error);
+  const linha: Linha | null = data;
+  return linha ? lerItem(linha) : null;
 }

@@ -51,8 +51,14 @@ const EXPECTED_ACOES_NO_CHECK = 15;
  * linha inteira em `before_json` (depois do delete nao ha o que guardar). A
  * acao e `delete`, que a CHECK aceita desde a criacao da tabela, entao tambem
  * nao houve migration.
+ *
+ * 14 desde o lote 10b de creators: `POST /creators/:userId/posts/:postId/
+ * confirmar` em server/routes/admin.ts grava a auditoria ANTES do update que
+ * confirma a publicacao, com a linha em `before_json` e o que vai ficar em
+ * `after_json`. A acao e `update`, aceita desde a criacao da tabela: sem
+ * migration.
  */
-const EXPECTED_SITIOS_INSERT_DIRETO = 13;
+const EXPECTED_SITIOS_INSERT_DIRETO = 14;
 /**
  * Chamadas de `logAudit(...)`.
  *

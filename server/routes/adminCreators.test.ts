@@ -153,6 +153,7 @@ const ITEM_DO_QUADRO = {
   tem_pix: true,
   instagram_handle: "ana.cria",
   posts_no_mes: 2,
+  posts_aguardando: 1,
 };
 
 // Perfil de creator e chave Pix (lote 08). A chave e um CPF de teste valido: a
@@ -182,11 +183,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Publicacoes do mes (lote 09): o enriquecimento conta linhas de
-// `creator_posts` desde o inicio do mes civil de Brasilia. Duas linhas aqui
-// viram `posts_no_mes: 2` no item do quadro.
-const PUBLICACOES_DO_MES = {
-  rows: [{ user_id: UID }, { user_id: UID }],
+// Publicacoes do quadro (lote 09, status no lote 10b): o enriquecimento conta
+// em `creator_posts` as CONFIRMADAS desde o inicio do mes civil de Brasilia e
+// as PENDENTES de qualquer data. O double nao simula `gte`, entao o responder
+// olha o filtro de status: duas confirmadas viram `posts_no_mes: 2`, e uma
+// pendente vira `posts_aguardando: 1`.
+const PUBLICACOES_DO_MES = (c: Chamada): RespostaTabela => {
+  const status = c.filtros.find((f) => f.coluna === "status")?.valor;
+  if (status === "confirmado")
+    return { rows: [{ user_id: UID }, { user_id: UID }] };
+  if (status === "pendente") return { rows: [{ user_id: UID }] };
+  throw new Error(`[teste] contagem de creator_posts sem filtro de status`);
 };
 
 // 16/09/2026 ao meio-dia UTC. O mes civil de Brasilia comeca em 01/09 00h de
@@ -238,18 +245,29 @@ describe("GET /creators", () => {
         ["user_id", "instagram_handle"],
         [{ tipo: "in", coluna: "user_id", valor: [UID] }],
       ],
-      // A terceira leitura e a das publicacoes do mes, tambem UMA para a pagina
-      // inteira, com o corte no inicio do mes civil de Brasilia.
+      // As duas leituras seguintes sao as das publicacoes, tambem UMA de
+      // cada para a pagina inteira: as confirmadas com o corte no inicio do
+      // mes civil de Brasilia (o numero do ranking), e as pendentes sem corte
+      // (a pendencia do admin, de qualquer data).
       [
         "creator_posts",
         ["user_id"],
         [
           { tipo: "in", coluna: "user_id", valor: [UID] },
+          { tipo: "eq", coluna: "status", valor: "confirmado" },
           {
             tipo: "gte",
             coluna: "created_at",
             valor: INICIO_DO_MES_ISO,
           },
+        ],
+      ],
+      [
+        "creator_posts",
+        ["user_id"],
+        [
+          { tipo: "in", coluna: "user_id", valor: [UID] },
+          { tipo: "eq", coluna: "status", valor: "pendente" },
         ],
       ],
     ]);
@@ -270,6 +288,7 @@ describe("GET /creators", () => {
     expect(r.body.data.rows[0].tem_pix).toBe(false);
     expect(r.body.data.rows[0].instagram_handle).toBeNull();
     expect(r.body.data.rows[0].posts_no_mes).toBe(0);
+    expect(r.body.data.rows[0].posts_aguardando).toBe(0);
   });
 
   it("erro na leitura das chaves: 500, nunca tem_pix false", async () => {
@@ -795,6 +814,298 @@ describe("DELETE /creators/:userId/posts/:postId", () => {
     );
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("invalid_post_id");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+});
+
+// CONFERENCIA DE PUBLICACOES (lote 10b): a lista de pendentes de todos os
+// creators e a confirmacao, que e o que faz a publicacao valer ponto.
+const OUTRO_UID = "44444444-4444-4444-4444-444444444444";
+const OUTRO_POST_ID = "9d2c1b0a-8f7e-4d6c-b5a4-3f2e1d0c9b8a";
+
+const PENDENTE_DE_OUTRO = {
+  ...PUBLICACAO,
+  id: OUTRO_POST_ID,
+  user_id: OUTRO_UID,
+  url: "https://www.tiktok.com/@bia.souza/video/7311122233344455566",
+  network: "tiktok",
+  kind: "video",
+  created_at: "2026-09-14T12:00:00Z",
+};
+const PENDENTE = { ...PUBLICACAO, user_id: UID };
+
+const CONFIRMADA = {
+  ...PUBLICACAO,
+  status: "confirmado",
+  confirmed_at: AGORA_ISO,
+};
+
+describe("GET /creators/posts", () => {
+  it("lista as pendentes de todos os creators, mais antigas primeiro, com o dono resolvido em lote", async () => {
+    montar({
+      creator_posts: respostaQueFiltra([PENDENTE, PENDENTE_DE_OUTRO]),
+      profiles: respostaQueFiltra([
+        { user_id: UID, name: "Ana Cria", avatar_url: "https://a/ana.png" },
+        { user_id: OUTRO_UID, name: null, avatar_url: null },
+      ]),
+      creator_profiles: respostaQueFiltra([
+        { user_id: UID, instagram_handle: "ana.cria" },
+      ]),
+    });
+    const r = await chamarAdmin("GET", "/creators/posts?status=pendente");
+    expect(r.status).toBe(200);
+    expect(r.body.data.total).toBe(2);
+    expect(r.body.data.page).toBe(1);
+    // Padrao 50, e nao os 25 do resto do admin.
+    expect(r.body.data.pageSize).toBe(50);
+    expect(r.body.data.rows.map((x: { id: string }) => x.id)).toEqual([
+      OUTRO_POST_ID,
+      POST_ID,
+    ]);
+    expect(r.body.data.rows[1].creator).toEqual({
+      name: "Ana Cria",
+      avatar_url: "https://a/ana.png",
+      instagram_handle: "ana.cria",
+    });
+    // Sem perfil de creator: os campos existem, nulos; a linha nao some.
+    expect(r.body.data.rows[0].creator).toEqual({
+      name: null,
+      avatar_url: null,
+      instagram_handle: null,
+    });
+
+    const leitura = estado.double.de("creator_posts")[0];
+    expect(leitura.filtros).toEqual([
+      { tipo: "eq", coluna: "status", valor: "pendente" },
+    ]);
+    expect(leitura.ordemDetalhe).toEqual([
+      { coluna: "created_at", ascending: true },
+    ]);
+    // Uma consulta por tabela para a pagina inteira, nunca uma por linha.
+    expect(estado.double.de("profiles")).toHaveLength(1);
+    expect(estado.double.de("profiles")[0].filtros).toEqual([
+      // Na ordem da pagina (mais antiga primeiro), sem repetir dono.
+      { tipo: "in", coluna: "user_id", valor: [OUTRO_UID, UID] },
+    ]);
+    expect(estado.double.de("creator_profiles")).toHaveLength(1);
+  });
+
+  it("page e pageSize entram no range; pageSize acima de 100 cai em 100", async () => {
+    montar({
+      creator_posts: respostaQueFiltra([]),
+      profiles: respostaQueFiltra([]),
+      creator_profiles: respostaQueFiltra([]),
+    });
+    const r = await chamarAdmin("GET", "/creators/posts?page=3&pageSize=500");
+    expect(r.status).toBe(200);
+    expect(r.body.data).toEqual({ rows: [], total: 0, page: 3, pageSize: 100 });
+  });
+
+  it("status que nao e pendente: 400, nunca o padrao em silencio", async () => {
+    montar({});
+    const r = await chamarAdmin("GET", "/creators/posts?status=confirmado");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_status");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("erro de leitura: 500 db_error, nunca lista vazia", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({ creator_posts: { error: { message: "timeout" } } });
+    const r = await chamarAdmin("GET", "/creators/posts");
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+  });
+});
+
+describe("POST /creators/:userId/posts/:postId/confirmar", () => {
+  function tabelas(
+    over: Record<string, unknown> = {},
+  ): Record<string, RespostaTabela | ((c: Chamada) => RespostaTabela)> {
+    return {
+      creator_posts: (c: Chamada) =>
+        c.op === "update" ? { rows: [CONFIRMADA] } : { rows: [PUBLICACAO] },
+      content_audit_logs: { rows: [{}] },
+      profiles: respostaQueFiltra([
+        { user_id: UID, name: "Ana Cria", email: "ana@exemplo.com" },
+      ]),
+      notifications: (c: Chamada) =>
+        c.op === "insert" ? { rows: [{ id: "notif-1" }] } : { rows: [] },
+      notification_recipients: { rows: [] },
+      ...over,
+    } as Record<string, RespostaTabela | ((c: Chamada) => RespostaTabela)>;
+  }
+
+  it("audita ANTES de escrever, confirma so de pendente, e avisa o creator depois", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_ISO));
+    montar(tabelas());
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { post: CONFIRMADA } });
+
+    const ordem = estado.double.chamadas.map((c) => `${c.table}:${c.op}`);
+    // A auditoria entra ENTRE a leitura e o update; o aviso vem DEPOIS. As
+    // duas leituras de `profiles` sao o contato (e-mail do creator) e a
+    // resolucao do destinatario dentro de createTargetedNotification.
+    expect(ordem).toEqual([
+      "creator_posts:select",
+      "content_audit_logs:insert",
+      "creator_posts:update",
+      "profiles:select",
+      "profiles:select",
+      "notifications:insert",
+      "notification_recipients:insert",
+    ]);
+    const auditoria = estado.double.de("content_audit_logs")[0];
+    expect(auditoria.payload).toEqual({
+      actor_user_id: "admin-1",
+      action: "update",
+      resource_type: "creator_post",
+      resource_id: POST_ID,
+      resource_slug: null,
+      before_json: PUBLICACAO,
+      after_json: {
+        ...PUBLICACAO,
+        status: "confirmado",
+        confirmed_at: AGORA_ISO,
+        confirmed_by: "admin-1",
+      },
+    });
+    const update = estado.double.de("creator_posts")[1];
+    expect(update.payload).toEqual({
+      status: "confirmado",
+      confirmed_at: AGORA_ISO,
+      confirmed_by: "admin-1",
+    });
+    // O `status = pendente` esta no proprio UPDATE: e o que fecha a corrida.
+    expect(update.filtros).toEqual([
+      { tipo: "eq", coluna: "user_id", valor: UID },
+      { tipo: "eq", coluna: "id", valor: POST_ID },
+      { tipo: "eq", coluna: "status", valor: "pendente" },
+    ]);
+    const notificacao = estado.double.de("notifications")[0].payload!;
+    expect(notificacao.title).toBe("Publicação confirmada");
+    expect(String(notificacao.body)).toContain(PUBLICACAO.url);
+    expect(notificacao.cta_url).toBe("/creator?aba=comunidade");
+    expect(notificacao.created_by).toBe("admin-1");
+  });
+
+  it("ja confirmada: 409, sem auditar nem escrever", async () => {
+    montar(tabelas({ creator_posts: { rows: [CONFIRMADA] } }));
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("post_already_confirmed");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("creator_posts").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("corrida: pendente na leitura, mas o update nao alcanca nada: 409", async () => {
+    montar(
+      tabelas({
+        creator_posts: (c: Chamada) =>
+          c.op === "update" ? { rows: [] } : { rows: [PUBLICACAO] },
+      }),
+    );
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("post_already_confirmed");
+    expect(estado.double.de("notifications")).toHaveLength(0);
+  });
+
+  it("auditoria que falha IMPEDE a confirmacao (fail-closed)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar(tabelas({ content_audit_logs: { error: { message: "check" } } }));
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(
+      estado.double.de("creator_posts").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+    expect(estado.double.de("notifications")).toHaveLength(0);
+  });
+
+  it("notificacao que falha NAO desfaz a confirmacao: 200 e aviso no log", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    montar(tabelas({ notifications: { error: { message: "timeout" } } }));
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.data.post.status).toBe("confirmado");
+    expect(warn).toHaveBeenCalledWith(
+      "[admin] falha ao avisar da publicacao confirmada:",
+      expect.anything(),
+    );
+  });
+
+  it("creator sem e-mail: confirma e nao avisa", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    montar(
+      tabelas({
+        profiles: respostaQueFiltra([
+          { user_id: UID, name: "Ana", email: null },
+        ]),
+      }),
+    );
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(200);
+    expect(estado.double.de("notifications")).toHaveLength(0);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("publicacao de outro creator: 404 e nada e auditado nem escrito", async () => {
+    montar(tabelas({ creator_posts: { rows: [] } }));
+    const r = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("post_not_found");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("ids invalidos: 400, sem tocar no banco", async () => {
+    montar({});
+    const a = await chamarAdmin(
+      "POST",
+      `/creators/nao-e-uuid/posts/${POST_ID}/confirmar`,
+      {},
+    );
+    expect(a.status).toBe(400);
+    expect(a.body.error.code).toBe("invalid_user_id");
+    const b = await chamarAdmin(
+      "POST",
+      `/creators/${UID}/posts/nao-e-uuid/confirmar`,
+      {},
+    );
+    expect(b.status).toBe(400);
+    expect(b.body.error.code).toBe("invalid_post_id");
     expect(estado.double.chamadas).toHaveLength(0);
   });
 });

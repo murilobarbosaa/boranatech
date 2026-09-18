@@ -288,6 +288,9 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
       // Publicacoes registradas (lote 09): e mais um detalhe do creator, lido
       // junto com o painel dele, entao e a mesma capacidade e o mesmo risco.
       ["GET", "/api/admin/creators/:userId/posts"],
+      // Publicacoes para conferir (lote 10b): a lista de pendentes de todos
+      // os creators. Leitura do mesmo dado do painel, mesma capacidade.
+      ["GET", "/api/admin/creators/posts"],
       ["GET", "/api/admin/affiliates-stats"],
     ],
     SENSITIVE_READ,
@@ -300,7 +303,12 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
     "creators.posts.moderate",
     "medium",
     EDITOR_AND_OWNER,
-    [["DELETE", "/api/admin/creators/:userId/posts/:postId"]],
+    [
+      ["DELETE", "/api/admin/creators/:userId/posts/:postId"],
+      // Confirmar (lote 10b) e a outra face de moderar a mesma publicacao:
+      // mesma capacidade, mesma auditoria fail-closed, e nao uma nova.
+      ["POST", "/api/admin/creators/:userId/posts/:postId/confirmar"],
+    ],
     AUDITED_WRITE,
   ),
   ...mutation(

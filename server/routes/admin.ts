@@ -52,10 +52,15 @@ import { invalidateCreatorStatusCache } from "../lib/creatorStatusCache";
 import { listarCreatorsDoQuadro, resumoDoQuadro } from "../lib/creatorBoard";
 import { lerPerfilDoCreator, revelarChavePix } from "../lib/creatorProfile";
 import {
+  confirmarPublicacao,
   lerPublicacao,
+  listarPendentes,
   listarPublicacoes,
   removerPublicacao,
+  resolverDonosDasPublicacoes,
 } from "../lib/creatorPosts";
+import { lerContato } from "../lib/creatorCalendar";
+import { createTargetedNotification } from "../lib/targetedNotifications";
 import {
   montarPainelDoCreator,
   parseJanelaDoPainel,
@@ -4347,6 +4352,62 @@ router.get("/creators/resumo", async (_req, res, next) => {
   }
 });
 
+// Publicacoes para conferir (lote 10b): as pendentes de TODOS os creators,
+// mais antigas primeiro, com o dono resolvido em lote. Declarada ANTES de
+// `/creators/:userId` pelo mesmo motivo do resumo: "posts" casaria como userId.
+//
+// So existe lista de PENDENTES. O parametro `status` e aceito para a URL dizer
+// o que lista, e qualquer outro valor e 400 em vez de cair no padrao em
+// silencio: um admin que pedisse "confirmadas" e recebesse pendentes leria a
+// lista errada.
+router.get("/creators/posts", async (req, res, next) => {
+  const status = req.query.status ?? "pendente";
+  if (status !== "pendente") {
+    return next(
+      createError(
+        400,
+        "invalid_status",
+        // TODO(Ana)
+        "Só há lista de publicações pendentes. Use status=pendente.",
+      ),
+    );
+  }
+  // Padrao 50 por pagina (o do resto do admin e 25): conferir e ler uma lista
+  // curta de links, e uma tela cheia poupa cliques de pagina.
+  const { page, pageSize } = parsePageParams({
+    ...(req.query as Record<string, unknown>),
+    pageSize: req.query.pageSize ?? "50",
+  });
+  try {
+    const pagina = await listarPendentes(page, pageSize);
+    const donos = await resolverDonosDasPublicacoes(
+      pagina.rows.map((r) => r.user_id),
+    );
+    res.json({
+      data: {
+        ...pagina,
+        rows: pagina.rows.map((r) => ({
+          ...r,
+          creator: donos.get(r.user_id) ?? {
+            name: null,
+            avatar_url: null,
+            instagram_handle: null,
+          },
+        })),
+      },
+    });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError(
+        "creator posts pendentes",
+        err,
+        "Erro ao carregar as publicações para conferir.",
+      ),
+    );
+  }
+});
+
 // Painel de qualquer creator, na visao admin: o mesmo montador do
 // /api/creator/me, mais e-mail, notas internas e granted_by. Abre tambem o de
 // quem ja foi revogado (com revoked_at preenchido); 404 so para quem nunca
@@ -4551,6 +4612,154 @@ router.delete("/creators/:userId/posts/:postId", async (req, res, next) => {
     );
   }
 });
+
+/**
+ * Avisa o creator de que a publicacao foi confirmada. NUNCA LANCA: a
+ * confirmacao ja esta gravada e auditada, e uma notificacao que falha nao a
+ * desfaz; a falha vai para o log. Sem e-mail em `profiles` nao ha aviso, porque
+ * a notificacao in-app e chaveada por e-mail (createTargetedNotification
+ * resolve o user_id a partir dele).
+ */
+async function avisarPublicacaoConfirmada(
+  userId: string,
+  url: string,
+  adminId: string,
+): Promise<void> {
+  try {
+    const contato = await lerContato(userId);
+    if (!contato?.email) {
+      console.warn(
+        `[admin] creator ${userId} sem e-mail; publicacao confirmada sem aviso.`,
+      );
+      return;
+    }
+    await createTargetedNotification({
+      email: contato.email,
+      // TODO(Ana)
+      title: "Publicação confirmada",
+      // TODO(Ana)
+      body: `Sua publicação ${url} foi conferida e já conta no ranking do mês.`,
+      ctaUrl: "/creator?aba=comunidade",
+      // TODO(Ana)
+      ctaLabel: "Ver publicações",
+      createdBy: adminId,
+    });
+  } catch (err) {
+    console.warn("[admin] falha ao avisar da publicacao confirmada:", err);
+  }
+}
+
+// Conferencia de uma publicacao pelo admin (lote 10b): e o que faz uma
+// publicacao pendente passar a valer ponto no ranking.
+//
+// SO DE PENDENTE: confirmar duas vezes e 409, e o `status = pendente` esta no
+// proprio UPDATE (server/lib/creatorPosts.ts), entao a corrida entre a leitura
+// e a escrita tambem cai no 409, nunca numa segunda confirmacao.
+//
+// AUDITORIA ANTES DE ESCREVER, com a linha inteira em `before_json` e o que
+// vai ficar em `after_json`. Fail-closed, como a remocao: se a auditoria
+// falhar, nada e confirmado. A notificacao ao creator vem DEPOIS e nao desfaz
+// nada se falhar.
+router.post(
+  "/creators/:userId/posts/:postId/confirmar",
+  async (req, res, next) => {
+    const uid = req.params.userId;
+    const postId = req.params.postId;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+    if (!UUID_RE.test(postId)) {
+      return next(
+        createError(
+          400,
+          "invalid_post_id",
+          // TODO(Ana)
+          "Identificador de publicação inválido.",
+        ),
+      );
+    }
+    try {
+      const publicacao = await lerPublicacao(uid, postId);
+      if (!publicacao) {
+        return next(
+          createError(
+            404,
+            "post_not_found",
+            // TODO(Ana)
+            "Publicação não encontrada para este creator.",
+          ),
+        );
+      }
+      if (publicacao.status !== "pendente") {
+        return next(
+          createError(
+            409,
+            "post_already_confirmed",
+            // TODO(Ana)
+            "Esta publicação já foi confirmada.",
+          ),
+        );
+      }
+
+      const agora = new Date();
+      const adminId = req.user!.id;
+      const depois = {
+        ...publicacao,
+        status: "confirmado",
+        confirmed_at: agora.toISOString(),
+        confirmed_by: adminId,
+      };
+      const { error: auditError } = await supabaseAdmin
+        .from("content_audit_logs")
+        .insert({
+          actor_user_id: adminId,
+          action: "update",
+          resource_type: "creator_post",
+          resource_id: postId,
+          resource_slug: null,
+          before_json: publicacao,
+          after_json: depois,
+        });
+      if (auditError) {
+        return next(
+          createError(
+            500,
+            "audit_failed",
+            "Não foi possível registrar a auditoria da confirmação.",
+          ),
+        );
+      }
+
+      const confirmada = await confirmarPublicacao(uid, postId, adminId, agora);
+      if (!confirmada) {
+        // Entre a leitura e o update alguem confirmou (ou removeu): o UPDATE
+        // com `status = pendente` nao alcancou nada.
+        return next(
+          createError(
+            409,
+            "post_already_confirmed",
+            // TODO(Ana)
+            "Esta publicação já foi confirmada.",
+          ),
+        );
+      }
+
+      await avisarPublicacaoConfirmada(uid, confirmada.url, adminId);
+      res.json({ data: { post: confirmada } });
+    } catch (err) {
+      next(
+        // TODO(Ana)
+        dbError("creator post confirm", err, "Erro ao confirmar a publicação."),
+      );
+    }
+  },
+);
 
 // Teto por ADMIN para a emissão de reembolso. Ver a docstring da fábrica em
 // server/lib/refund.ts para o que ele protege e o que NÃO protege.

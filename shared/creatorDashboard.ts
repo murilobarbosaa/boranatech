@@ -91,6 +91,12 @@ export type CreatorBoardItem = {
    * campo, e ausente e "nao sei", nunca zero.
    */
   posts_no_mes?: number;
+  /**
+   * Publicacoes PENDENTES de conferencia, de qualquer mes (lote 10b). E a
+   * pendencia do admin, nao um numero do ranking; por isso sem corte de mes.
+   * Opcional pelo mesmo motivo dos outros: o backend anterior nao manda.
+   */
+  posts_aguardando?: number;
 };
 
 /** Mesmo formato das outras listas paginadas do admin: total no corpo. */

@@ -177,7 +177,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // `rotasDeclaradas().length`, nao somado. A remocao apaga conteudo de outra
 // pessoa: estar atras das duas guardas e o requisito, e a auditoria gravada
 // ANTES do delete e a segunda barreira.
-const EXPECTED_ROUTE_COUNT = 71;
+// 71 -> 73 em 2026-09-18 (creators, lote 10b), com
+// `GET /admin/creators/posts` (pendentes de todos os creators) e
+// `POST /admin/creators/:userId/posts/:postId/confirmar`. Valor MEDIDO por
+// `rotasDeclaradas().length`, nao somado. A confirmacao faz publicacao de
+// outra pessoa valer ponto: estar atras das duas guardas e o requisito, e a
+// auditoria gravada ANTES do update e a segunda barreira.
+const EXPECTED_ROUTE_COUNT = 73;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -251,9 +257,20 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /creators",
       "GET /creators/:userId",
       "GET /creators/:userId/posts",
+      "GET /creators/posts",
       "GET /creators/resumo",
+      "POST /creators/:userId/posts/:postId/confirmar",
       "POST /creators/:userId/reveal-pix",
     ]);
+  });
+
+  it("/creators/posts é declarada ANTES de /creators/:userId", () => {
+    // Mesmo motivo do resumo: na ordem inversa, "posts" casaria como :userId
+    // e a lista de conferencia responderia 400 de uuid invalido.
+    const caminhos = rotasDeclaradas().map((r) => r.caminho);
+    expect(caminhos.indexOf("/creators/posts")).toBeLessThan(
+      caminhos.indexOf("/creators/:userId"),
+    );
   });
 
   it("/creators/resumo é declarada ANTES de /creators/:userId", () => {

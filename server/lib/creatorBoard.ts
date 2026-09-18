@@ -129,7 +129,9 @@ export async function listarCreatorsDoQuadro(filtro: {
     // segunda ida, so neste caso, le o total na primeira pagina.
     const primeira = await paginaDoQuadro(status, kind, 1, 0);
     total =
-      primeira.length > 0 ? numeroDe(primeira[0].total_count, "total_count") : 0;
+      primeira.length > 0
+        ? numeroDe(primeira[0].total_count, "total_count")
+        : 0;
   }
 
   const itens = linhas.map(lerItem);
@@ -141,6 +143,7 @@ export async function listarCreatorsDoQuadro(filtro: {
       tem_pix: extra?.tem_pix ?? false,
       instagram_handle: extra?.instagram_handle ?? null,
       posts_no_mes: extra?.posts_no_mes ?? 0,
+      posts_aguardando: extra?.posts_aguardando ?? 0,
     };
   });
 

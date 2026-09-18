@@ -14,7 +14,7 @@ import {
 } from "../../shared/creatorProfile";
 import type { Linha } from "./creatorDashboard";
 import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
-import { contarPublicacoesDoMes } from "./creatorPosts";
+import { contarPublicacoesDoQuadro } from "./creatorPosts";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -321,16 +321,29 @@ export async function enriquecerPaginaDoQuadro(
     {
       tem_pix: boolean;
       instagram_handle: string | null;
+      /** Confirmadas no mes (lote 10b: so as conferidas valem ponto). */
       posts_no_mes: number;
+      /** Pendentes no total, de qualquer mes: o que falta conferir. */
+      posts_aguardando: number;
     }
   >
 > {
   const mapa = new Map<
     string,
-    { tem_pix: boolean; instagram_handle: string | null; posts_no_mes: number }
+    {
+      tem_pix: boolean;
+      instagram_handle: string | null;
+      posts_no_mes: number;
+      posts_aguardando: number;
+    }
   >();
   for (const id of userIds) {
-    mapa.set(id, { tem_pix: false, instagram_handle: null, posts_no_mes: 0 });
+    mapa.set(id, {
+      tem_pix: false,
+      instagram_handle: null,
+      posts_no_mes: 0,
+      posts_aguardando: 0,
+    });
   }
   if (userIds.length === 0) return mapa;
 
@@ -343,16 +356,18 @@ export async function enriquecerPaginaDoQuadro(
       .from("creator_profiles")
       .select("user_id, instagram_handle")
       .in("user_id", userIds),
-    contarPublicacoesDoMes(userIds, agora),
+    contarPublicacoesDoQuadro(userIds, agora),
   ]);
   if (chaves.error) throw erroEncadeavel(chaves.error);
   if (perfis.error) throw erroEncadeavel(perfis.error);
 
   // `forEach` e nao `for...of`: o tsconfig da aplicacao nao declara `target`,
   // entao iterar um Map direto exigiria `downlevelIteration` e o tsc reprova.
-  publicacoes.forEach((quantas, dono) => {
+  publicacoes.forEach((contagem, dono) => {
     const item = mapa.get(dono);
-    if (item) item.posts_no_mes = quantas;
+    if (!item) return;
+    item.posts_no_mes = contagem.no_mes;
+    item.posts_aguardando = contagem.aguardando;
   });
 
   const linhasChave: Linha[] = chaves.data ?? [];
