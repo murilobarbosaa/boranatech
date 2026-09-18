@@ -564,3 +564,81 @@ describe("CreatorCalendario: acao alinhada e estado do pedido (lote 10c)", () =>
     expect(screen.queryByTestId("creator-collabs-pendentes")).toBeNull();
   });
 });
+
+// COLLAB VISIVEL NO CALENDARIO (lote 10c): a aceita aparece na celula do dia
+// e na marcacao, dita de tres jeitos conforme quem olha.
+describe("CreatorCalendario: collab aceita visivel", () => {
+  const PARCEIRO = { user_id: OUTRO_ID, name: "Outra Cria", avatar_url: null };
+
+  it("dono: 'Collab aceita com X', o aperto de mao na celula do dia, e o Desmarcar continua", async () => {
+    responderCom([{ ...MINHA, collabs: [PARCEIRO], minha_collab: false }]);
+    render(<CreatorCalendario />);
+    const linha = await screen.findByTestId(`creator-marcacao-${MINHA.id}`);
+    expect(
+      within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
+        .textContent,
+    ).toBe("Collab aceita com Outra Cria");
+    expect(screen.getByTestId(`creator-dia-collab-${HOJE}`)).toBeTruthy();
+    expect(
+      within(linha).getByTestId(`creator-marcacao-remover-${MINHA.id}`),
+    ).toBeTruthy();
+  });
+
+  it("parceiro: 'Sua collab com <dono>', sem botao e sem chip de pedido", async () => {
+    responderCom([
+      {
+        ...DE_OUTRO,
+        collabs: [{ user_id: MEU_ID, name: "Cria", avatar_url: null }],
+        minha_collab: true,
+        meu_pedido: { id: PEDIDO.id, status: "aceita" },
+      },
+    ]);
+    render(<CreatorCalendario />);
+    const linha = await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    expect(
+      within(linha).getByTestId(`creator-collab-fechada-${DE_OUTRO.id}`)
+        .textContent,
+    ).toBe("Sua collab com Outra Cria");
+    expect(
+      screen.queryByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId(`creator-collab-status-${DE_OUTRO.id}`),
+    ).toBeNull();
+  });
+
+  it("terceiro: 'Collab com X', e o Pedir collab continua disponivel", async () => {
+    const TERCEIRO = {
+      ...DE_OUTRO,
+      user_id: "44444444-4444-4444-4444-444444444444",
+      autor: {
+        user_id: "44444444-4444-4444-4444-444444444444",
+        name: "Terceira",
+        handle: "t",
+      },
+      collabs: [PARCEIRO],
+      minha_collab: false,
+      meu_pedido: null,
+    };
+    responderCom([TERCEIRO]);
+    render(<CreatorCalendario />);
+    const linha = await screen.findByTestId(`creator-marcacao-${TERCEIRO.id}`);
+    expect(
+      within(linha).getByTestId(`creator-collab-fechada-${TERCEIRO.id}`)
+        .textContent,
+    ).toBe("Collab com Outra Cria");
+    expect(
+      screen.getByTestId(`creator-collab-pedir-${TERCEIRO.id}`),
+    ).toBeTruthy();
+  });
+
+  it("sem collab (ou backend anterior): nem chip nem aperto de mao", async () => {
+    responderCom([DE_OUTRO]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    expect(
+      screen.queryByTestId(`creator-collab-fechada-${DE_OUTRO.id}`),
+    ).toBeNull();
+    expect(screen.queryByTestId(`creator-dia-collab-${HOJE}`)).toBeNull();
+  });
+});

@@ -1258,10 +1258,102 @@ describe("GET /api/creator/calendar", () => {
       user_id: UID,
       name: "Cria",
       handle: "cria",
+      avatar_url: null,
     });
     // Sem pedido, `meu_pedido` e null EXPLICITO, nao ausente: ausente e o
     // backend anterior ao lote 10c, e o client trata os dois diferente.
     expect(r.body.data.marcacoes[1].meu_pedido).toBeNull();
+    expect(r.body.data.marcacoes[1].collabs).toEqual([]);
+    expect(r.body.data.marcacoes[1].minha_collab).toBe(false);
+  });
+
+  it("collabs (lote 10c): a aceita aparece em `collabs` para um TERCEIRO, com nome e avatar; a pendente nao; minha_collab so para o parceiro", async () => {
+    const TERCEIRO_UID = "55555555-5555-5555-5555-555555555555";
+    const MARCACAO_DE_TERCEIRO = {
+      ...MARCACAO,
+      id: "9d2c1b0a-8f7e-4d6c-b5a4-3f2e1d0c9b8a",
+      user_id: TERCEIRO_UID,
+    };
+    const tabelas = () => ({
+      // Os dois que olham sao creators ativos.
+      creators: respostaQueFiltra([
+        { user_id: UID, kind: "afiliado", revoked_at: null },
+        { user_id: TERCEIRO_UID, kind: "influencer", revoked_at: null },
+      ]),
+      creator_calendar_events: {
+        rows: [MARCACAO_DE_OUTRO, MARCACAO_DE_TERCEIRO],
+      },
+      creator_collab_requests: respostaQueFiltra([
+        // Aceita: EU (UID) fechei collab na marcacao de OUTRO.
+        {
+          id: PEDIDO_ID,
+          event_id: MARCACAO_DE_OUTRO.id,
+          requester_id: UID,
+          owner_id: OUTRO_UID,
+          status: "aceita",
+        },
+        // Pendente: OUTRO pediu na do terceiro. Nao e collab ainda.
+        {
+          id: "2b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+          event_id: MARCACAO_DE_TERCEIRO.id,
+          requester_id: OUTRO_UID,
+          owner_id: TERCEIRO_UID,
+          status: "pendente",
+        },
+      ]),
+      profiles: respostaQueFiltra([
+        {
+          user_id: UID,
+          name: "Cria",
+          handle: "cria",
+          email: "cria@exemplo.com",
+          avatar_url: "https://a/cria.png",
+        },
+        {
+          user_id: OUTRO_UID,
+          name: "Outra Cria",
+          handle: "outracria",
+          email: "outra@exemplo.com",
+        },
+        { user_id: TERCEIRO_UID, name: "Terceira", handle: "terceira" },
+      ]),
+    });
+
+    // Visao do TERCEIRO: ve a collab dos outros dois, e nao e dele.
+    montar(tabelas());
+    estado.usuario = { ...USUARIO, id: TERCEIRO_UID };
+    const terceiro = await chamar(
+      "GET",
+      `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`,
+    );
+    expect(terceiro.status).toBe(200);
+    expect(terceiro.body.data.marcacoes[0].collabs).toEqual([
+      { user_id: UID, name: "Cria", avatar_url: "https://a/cria.png" },
+    ]);
+    expect(terceiro.body.data.marcacoes[0].minha_collab).toBe(false);
+    expect(terceiro.body.data.marcacoes[1].collabs).toEqual([]);
+    // Uma leitura de pedidos e uma de perfis para o mes inteiro: o parceiro
+    // entra no MESMO lote dos donos.
+    expect(double.de("creator_collab_requests")).toHaveLength(1);
+    expect(double.de("profiles")).toHaveLength(1);
+    expect(double.de("profiles")[0].filtros[0].valor).toEqual([
+      OUTRO_UID,
+      TERCEIRO_UID,
+      UID,
+    ]);
+
+    // Visao do PARCEIRO (eu): a mesma collab, agora minha.
+    montar(tabelas());
+    estado.usuario = USUARIO;
+    const parceiro = await chamar(
+      "GET",
+      `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`,
+    );
+    expect(parceiro.body.data.marcacoes[0].minha_collab).toBe(true);
+    expect(parceiro.body.data.marcacoes[0].meu_pedido).toEqual({
+      id: PEDIDO_ID,
+      status: "aceita",
+    });
   });
 
   it("meu_pedido (lote 10c): o pedido de QUEM OLHA em cada marcacao, lido numa consulta so; o de outra pessoa nao aparece", async () => {

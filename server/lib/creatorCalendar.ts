@@ -59,6 +59,8 @@ export type AutorDaMarcacao = {
   user_id: string;
   name: string | null;
   handle: string | null;
+  /** Lote 10c: o parceiro de collab aparece no dia com avatar. */
+  avatar_url: string | null;
 };
 
 export type MarcacaoDoCalendario = {
@@ -79,8 +81,19 @@ export type MarcacaoDoCalendario = {
  */
 export type MeuPedidoNaMarcacao = { id: string; status: StatusDoPedido };
 
+/** Quem fechou collab nesta marcacao (pedido ACEITO). Publico por natureza. */
+export type ParceiroDeCollab = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
 export type MarcacaoDoMes = MarcacaoDoCalendario & {
   meu_pedido: MeuPedidoNaMarcacao | null;
+  /** Collabs aceitas, visiveis a todos: e o que aparece NO calendario. */
+  collabs: ParceiroDeCollab[];
+  /** Quem olha e um dos parceiros aceitos desta marcacao. */
+  minha_collab: boolean;
 };
 
 export type StatusDoPedido = "pendente" | "aceita" | "recusada";
@@ -195,7 +208,7 @@ async function lerAutores(
 
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .select("user_id, name, handle")
+    .select("user_id, name, handle, avatar_url")
     .in("user_id", unicos);
   if (error) throw erroEncadeavel(error);
 
@@ -206,6 +219,7 @@ async function lerAutores(
       user_id: userId,
       name: textoOuNulo(linha.name),
       handle: textoOuNulo(linha.handle),
+      avatar_url: textoOuNulo(linha.avatar_url),
     });
   }
   return mapa;
@@ -297,9 +311,12 @@ async function lerPedidosDasMarcacoes(eventIds: string[]): Promise<Linha[]> {
 }
 
 /**
- * Marcacoes do mes, de TODOS os creators, com o autor de cada uma e, para
- * quem olha (`viewerId`), o pedido de collab que essa pessoa fez em cada
- * marcacao.
+ * Marcacoes do mes, de TODOS os creators, com o autor de cada uma, as collabs
+ * ACEITAS de cada uma (visiveis a todos: collab fechada e publica por
+ * natureza, e e no calendario que ela tem de aparecer) e, para quem olha
+ * (`viewerId`), o pedido que essa pessoa fez em cada marcacao. Os pedidos do
+ * mes vem de UMA consulta, e os nomes e avatares dos parceiros entram no
+ * mesmo lote dos donos.
  */
 export async function listarMesDoCalendario(
   ano: number,
@@ -319,23 +336,50 @@ export async function listarMesDoCalendario(
   if (error) throw erroEncadeavel(error);
 
   const linhas: Linha[] = data ?? [];
-  const [autores, pedidos] = await Promise.all([
-    lerAutores(linhas.map((linha) => textoDe(linha.user_id, "user_id"))),
-    lerPedidosDasMarcacoes(linhas.map((linha) => textoDe(linha.id, "id"))),
-  ]);
+  const pedidos = await lerPedidosDasMarcacoes(
+    linhas.map((linha) => textoDe(linha.id, "id")),
+  );
 
   const meusPedidos = new Map<string, MeuPedidoNaMarcacao>();
+  const aceitos = new Map<string, string[]>();
   for (const pedido of pedidos) {
-    if (textoDe(pedido.requester_id, "requester_id") !== viewerId) continue;
-    meusPedidos.set(textoDe(pedido.event_id, "event_id"), {
-      id: textoDe(pedido.id, "id"),
-      status: statusDaLinha(pedido.status),
-    });
+    const eventId = textoDe(pedido.event_id, "event_id");
+    const requesterId = textoDe(pedido.requester_id, "requester_id");
+    const status = statusDaLinha(pedido.status);
+    if (requesterId === viewerId) {
+      meusPedidos.set(eventId, { id: textoDe(pedido.id, "id"), status });
+    }
+    if (status === "aceita") {
+      aceitos.set(eventId, [...(aceitos.get(eventId) ?? []), requesterId]);
+    }
   }
+
+  // Donos e parceiros no MESMO lote de perfis.
+  const idsDeParceiros: string[] = [];
+  aceitos.forEach((ids) => idsDeParceiros.push(...ids));
+  const autores = await lerAutores([
+    ...linhas.map((linha) => textoDe(linha.user_id, "user_id")),
+    ...idsDeParceiros,
+  ]);
 
   return linhas.map((linha) => {
     const marcacao = lerMarcacao(linha, autores);
-    return { ...marcacao, meu_pedido: meusPedidos.get(marcacao.id) ?? null };
+    const collabs: ParceiroDeCollab[] = (aceitos.get(marcacao.id) ?? []).map(
+      (id) => {
+        const autor = autores.get(id);
+        return {
+          user_id: id,
+          name: autor?.name ?? null,
+          avatar_url: autor?.avatar_url ?? null,
+        };
+      },
+    );
+    return {
+      ...marcacao,
+      meu_pedido: meusPedidos.get(marcacao.id) ?? null,
+      collabs,
+      minha_collab: collabs.some((c) => c.user_id === viewerId),
+    };
   });
 }
 

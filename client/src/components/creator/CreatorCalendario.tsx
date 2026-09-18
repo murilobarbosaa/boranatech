@@ -4,6 +4,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Handshake,
   Trash2,
   X,
 } from "lucide-react";
@@ -69,6 +70,17 @@ type Marcacao = {
    * ausente e "nao sei" (o botao continua), nunca "nao pedi".
    */
   meu_pedido?: { id: string; status: StatusDoPedido } | null;
+  /** Collabs ACEITAS nesta marcacao (lote 10c), visiveis a todos. Opcional
+   * pelo mesmo motivo: ausente e o backend anterior. */
+  collabs?: Parceiro[];
+  /** Eu sou um dos parceiros aceitos. */
+  minha_collab?: boolean;
+};
+
+type Parceiro = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
 };
 
 type Pedido = {
@@ -167,18 +179,49 @@ function ChipDoMeuPedido({
       </span>
     );
   }
-  if (status === "aceita") {
-    return (
-      <span
-        data-testid={`creator-collab-status-${marcacaoId}`}
-        className="ml-auto shrink-0 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
-      >
-        {/* TODO(Ana) */}
-        collab aceita
-      </span>
-    );
-  }
+  // Aceita: a collab passa a ser da marcacao, e e `ChipDeCollab` que a
+  // desenha ("Sua collab com ..."); aqui nao ha o que dizer.
   return null;
+}
+
+/** Nome do parceiro de collab; sem nome, um rotulo neutro. */
+function nomeDoParceiro(parceiro: Parceiro): string {
+  const nome = parceiro.name?.trim();
+  // TODO(Ana)
+  return nome ? nome : "outro creator";
+}
+
+/**
+ * A collab aceita NA marcacao (lote 10c), dita de tres jeitos conforme quem
+ * olha: o dono ("Collab aceita com X"), o parceiro ("Sua collab com <dono>")
+ * e todo o resto ("Collab com X"). Emerald como o chip de consentimento do
+ * admin: collab fechada e um estado bom, nao um alerta.
+ */
+function ChipDeCollab({
+  marcacao,
+  minha,
+}: {
+  marcacao: Marcacao;
+  minha: boolean;
+}) {
+  const parceiros = marcacao.collabs ?? [];
+  if (parceiros.length === 0) return null;
+  const nomes = parceiros.map(nomeDoParceiro).join(", ");
+  // TODO(Ana)
+  const texto = minha
+    ? `Collab aceita com ${nomes}`
+    : marcacao.minha_collab
+      ? `Sua collab com ${nomeDoAutor(marcacao.autor)}`
+      : `Collab com ${nomes}`;
+  return (
+    <span
+      data-testid={`creator-collab-fechada-${marcacao.id}`}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
+    >
+      <Handshake aria-hidden="true" className="h-3 w-3" />
+      {texto}
+    </span>
+  );
 }
 
 function listaDaResposta(json: unknown, chave: string): unknown[] | null {
@@ -547,7 +590,13 @@ export function CreatorCalendario() {
           </p>
         ))}
         {grade.flat().map((quadrado: DiaDaGrade) => {
-          const quantas = porDia.get(quadrado.dia)?.length ?? 0;
+          const marcacoesDoDia = porDia.get(quadrado.dia) ?? [];
+          const quantas = marcacoesDoDia.length;
+          // Collab fechada no dia (lote 10c): o aperto de mao entra na celula,
+          // para a collab aparecer NO calendario e nao so no painel do dia.
+          const temCollab = marcacoesDoDia.some(
+            (m) => (m.collabs?.length ?? 0) > 0,
+          );
           const selecionado = quadrado.dia === dia;
           return (
             <button
@@ -572,11 +621,20 @@ export function CreatorCalendario() {
             >
               <span>{Number(quadrado.dia.slice(8, 10))}</span>
               {quantas > 0 ? (
-                <span
-                  data-testid={`creator-dia-contagem-${quadrado.dia}`}
-                  className="mt-0.5 rounded-full bg-violet-800 px-1.5 text-[10px] font-black text-white"
-                >
-                  {quantas}
+                <span className="mt-0.5 flex items-center gap-1">
+                  <span
+                    data-testid={`creator-dia-contagem-${quadrado.dia}`}
+                    className="rounded-full bg-violet-800 px-1.5 text-[10px] font-black text-white"
+                  >
+                    {quantas}
+                  </span>
+                  {temCollab ? (
+                    <Handshake
+                      aria-hidden="true"
+                      data-testid={`creator-dia-collab-${quadrado.dia}`}
+                      className="h-3 w-3 text-emerald-800"
+                    />
+                  ) : null}
                 </span>
               ) : null}
             </button>
@@ -642,6 +700,7 @@ export function CreatorCalendario() {
                     >
                       {marcacao.note ?? ""}
                     </span>
+                    <ChipDeCollab marcacao={marcacao} minha={minha} />
                     {minha ? (
                       <button
                         type="button"
