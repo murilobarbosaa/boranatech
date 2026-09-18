@@ -352,7 +352,15 @@ export function codeLeafIds(
   const langs = codeLanguages
     .map((lang) => lang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
-  const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n([\\s\\S]*?)```", "g");
+  // A cerca pode levar metadados depois da linguagem (`ts lanca=TS7006`,
+  // Lote 10a). O lookahead exige que a linguagem termine em espaco,
+  // tabulacao ou fim de linha, entao ```tsx continua NAO casando como ts;
+  // sem ele, uma folha cuja unica cerca tem metadado sumia da lista em
+  // silencio, e o gerador nunca pediria pergunta dali.
+  const re = new RegExp(
+    "```(?:" + langs + ")(?=[ \\t\\n])[^\\n]*\\n([\\s\\S]*?)```",
+    "g",
+  );
   return section.leaves
     .filter((leaf) =>
       Array.from(leaf.content.matchAll(re)).some(

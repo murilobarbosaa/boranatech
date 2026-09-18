@@ -1593,3 +1593,42 @@ describe("FRASE_RE vira aviso em linguagem de saida de ferramenta", () => {
     expect(codeRuleWarnings([q], ["js"])).toEqual([]);
   });
 });
+
+// Lote 10. A cerca pode levar metadados depois da linguagem desde o Lote 10a,
+// e o regex de codeLeafIds exigia \n logo apos a linguagem: a folha cuja unica
+// cerca tinha metadado sumia da lista, em silencio, e o gerador nunca pediria
+// pergunta dali.
+describe("codeLeafIds com metadado na cerca", () => {
+  const folha = (id: string, content: string) => ({
+    id,
+    title: id,
+    description: "",
+    content,
+  });
+
+  const secao: SectionMaterial = {
+    title: "Ts",
+    leaves: [
+      folha("t.meta", "Texto.\n\n```ts lanca=TS7006\nfunction f(n) {}\n```"),
+      folha("t.simples", "Texto.\n\n```ts\nconst n: number = 1;\n```"),
+      folha("t.tsx", "Texto.\n\n```tsx\nconst a = <div />;\n```"),
+      folha("t.import", "Texto.\n\n```ts\nimport { x } from './y';\n```"),
+    ],
+  };
+
+  it("folha com metadado na cerca ENTRA (era o caso que sumia)", () => {
+    expect(codeLeafIds(secao, ["ts"])).toContain("t.meta");
+  });
+
+  it("folha com cerca simples continua entrando", () => {
+    expect(codeLeafIds(secao, ["ts"])).toContain("t.simples");
+  });
+
+  it("tsx continua FORA: a linguagem tem que terminar a palavra", () => {
+    expect(codeLeafIds(secao, ["ts"])).not.toContain("t.tsx");
+  });
+
+  it("folha cujo unico codigo depende de import continua fora", () => {
+    expect(codeLeafIds(secao, ["ts"])).not.toContain("t.import");
+  });
+});
