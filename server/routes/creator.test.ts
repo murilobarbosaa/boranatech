@@ -1080,6 +1080,27 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });
 
+  it("no teto do dia, o decimo primeiro link curto recebe 429 SEM nenhuma chamada ao resolvedor", async () => {
+    const dezDeHoje = Array.from({ length: 10 }, (_, i) => ({
+      id: `id-${i}`,
+    }));
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: { rows: dezDeHoje },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://vm.tiktok.com/ZMabc1234/",
+      tipo: "video",
+    });
+    expect(r.status).toBe(429);
+    expect(r.body.error.code).toBe("post_daily_limit");
+    expect(estado.resolver).not.toHaveBeenCalled();
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+    // A contagem do dia foi a unica ida ao banco.
+    expect(double.de("creator_posts")).toHaveLength(1);
+  });
+
   it("link curto do TikTok com OUTRO tipo escolhido: continua short_link_unsupported, sem abrir a URL", async () => {
     montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
     estado.usuario = USUARIO;

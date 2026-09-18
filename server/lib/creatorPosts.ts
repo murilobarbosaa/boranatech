@@ -245,18 +245,18 @@ export async function registrarPublicacao(
   // todo chamador ganhar a resolucao sem lembrar dela. Com outro tipo
   // escolhido nao ha o que resolver: o link e de video de qualquer forma, e a
   // pessoa precisa trocar o tipo. `instagr.am` nao entra: nao e do TikTok.
-  if (
+  const precisaResolver =
     !link.ok &&
     link.code === "short_link_unsupported" &&
     tipo === "video" &&
-    ehLinkCurtoDoTikTok(url)
-  ) {
-    const resolvido = await resolverLinkCurtoDoTikTok(url);
-    if (!resolvido.ok) return resolvido;
-    link = resolvido;
-  }
-  if (!link.ok) return link;
+    ehLinkCurtoDoTikTok(url);
+  // Link que nem forma de publicacao tem sai aqui, sem tocar no banco.
+  if (!link.ok && !precisaResolver) return link;
 
+  // O TETO DO DIA VEM ANTES DE ABRIR CONEXAO: o decimo primeiro link curto do
+  // dia recebe 429 sem uma unica requisicao ao TikTok. Na ordem inversa, o
+  // teto que existe para tornar trabalhoso inflar a lista deixaria o servidor
+  // abrir uma conexao de saida por tentativa, sem limite.
   const { inicio, fim } = janelaDoDia(agora);
   const hoje = await supabaseAdmin
     .from("creator_posts")
@@ -268,6 +268,13 @@ export async function registrarPublicacao(
   if ((hoje.count ?? 0) >= LIMITE_DE_REGISTROS_POR_DIA) {
     return { ok: false, code: "post_daily_limit" };
   }
+
+  if (precisaResolver) {
+    const resolvido = await resolverLinkCurtoDoTikTok(url);
+    if (!resolvido.ok) return resolvido;
+    link = resolvido;
+  }
+  if (!link.ok) return link;
 
   const status = statusInicialDaPublicacao(tipo);
   const { data, error } = await supabaseAdmin
