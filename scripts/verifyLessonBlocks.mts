@@ -460,8 +460,11 @@ async function main() {
   const naoExecuta: Executor = () => {
     throw new Error("[verify:lesson-blocks] linguagem sem runner executada");
   };
+  // Uma travessia so: o Map de grupo e indexado pelo PROPRIO objeto do bloco,
+  // entao as duas passagens precisam ver a mesma lista.
+  const blocos = blocosDaTrilha(roadmap);
   const gruposDeArquivo = new Map<string, BlocoDoPasso[]>();
-  for (const bloco of blocosDaTrilha(roadmap)) {
+  for (const bloco of blocos) {
     if (!bloco.arquivo) continue;
     const chave = `${bloco.passo}|${bloco.linguagem}`;
     gruposDeArquivo.set(chave, [...(gruposDeArquivo.get(chave) ?? []), bloco]);
@@ -479,13 +482,8 @@ async function main() {
     const conferencias = conferirGrupo(grupo, codeLanguages, executarGrupo);
     grupo.forEach((bloco, i) => conferidosEmGrupo.set(bloco, conferencias[i]));
   }
-  const linhas: LinhaBloco[] = blocosDaTrilha(roadmap).map((bloco) => {
-    const daqui = [...conferidosEmGrupo.entries()].find(
-      ([b]) =>
-        b.passo === bloco.passo &&
-        b.arquivo === bloco.arquivo &&
-        b.corpo === bloco.corpo,
-    )?.[1];
+  const linhas: LinhaBloco[] = blocos.map((bloco) => {
+    const daqui = conferidosEmGrupo.get(bloco);
     if (daqui) {
       return { passo: bloco.passo, linguagem: bloco.linguagem, ...daqui };
     }
