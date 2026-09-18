@@ -35,9 +35,20 @@ import { avisoSemRunner, capabilityOf } from "./languageCapabilities.mts";
 // daqui continua importando daqui.
 export { estruturaCss, estruturaHtml, validarCss } from "./htmlStructure.mts";
 import { estruturaHtml, validarCss } from "./htmlStructure.mts";
-import { type Executor, makeExecutor } from "./verifyQuizPoolByExecution.mts";
+import {
+  type Execucao,
+  type Executor,
+  type ExecutorDeGrupo,
+  makeExecutor,
+  makeGroupExecutor,
+} from "./verifyQuizPoolByExecution.mts";
 
-export const BLOCO_MAX_LINHAS = 10;
+// Duas contagens desde o Lote 10a: a PEP 8 (e a legibilidade em geral) pede
+// linha em branco entre definicoes, e contar essas linhas junto com o codigo
+// punia justamente o bloco bem escrito. O limite de tela continua coberto pelo
+// total.
+export const BLOCO_MAX_LINHAS_CONTEUDO = 10;
+export const BLOCO_MAX_LINHAS_TOTAL = 12;
 export const BLOCO_MAX_COLUNAS = 60;
 
 // Linha de bash que parece comando: comeca com um programa comum de terminal
@@ -53,6 +64,16 @@ const SAIDA_QUE_PARECE_COMANDO_RE = /^git version \d/;
 export interface Bloco {
   linguagem: string;
   corpo: string;
+  /** `lanca=<TipoDoErro>`: o bloco lanca de proposito. */
+  lanca?: string;
+  /** `arquivo=<nome>`: o bloco e um arquivo com esse nome dentro do passo. */
+  arquivo?: string;
+  /**
+   * Metadado desconhecido ou mal formado na cerca. Opcional porque um Bloco
+   * construido a mao (teste, chamador futuro) nao tem cerca para ter problema;
+   * extrairBlocos sempre preenche.
+   */
+  problemasDaCerca?: string[];
 }
 
 export interface BlocoDoPasso extends Bloco {
@@ -61,6 +82,11 @@ export interface BlocoDoPasso extends Bloco {
 
 export type VereditoBloco =
   | "executado"
+  // Bloco com `lanca=`: quebrou como o autor declarou. Sucesso, nao falha.
+  | "lancou-como-esperado"
+  // Bloco de um grupo `arquivo=` que nao e o ultimo: gravado no diretorio e
+  // disponivel para import, sem execucao propria.
+  | "gravado"
   | "falhou"
   | "nao-executado"
   | "fora-de-codeLanguages";
@@ -79,11 +105,57 @@ export interface LinhaBloco extends ConferenciaBloco {
 
 // ---------- puros ----------
 
+// Nome de arquivo aceito em `arquivo=`: sem barra e sem "..", para um bloco de
+// licao nao escrever fora do diretorio do executor.
+const NOME_DE_ARQUIVO_RE = /^[a-z0-9._-]+$/;
+
+const METADADOS_CONHECIDOS = new Set(["lanca", "arquivo"]);
+
+// A cerca e `linguagem` seguida de pares `chave=valor` separados por espaco.
+// Eles sao INVISIVEIS na tela: o react-markdown usa so a primeira palavra para
+// a classe `language-js` e descarta o resto (provado por teste de render no
+// Lote 10a). Chave desconhecida e problema, para erro de digitacao nao passar
+// calado deixando o bloco sem a verificacao que o autor pediu.
+export function lerCerca(info: string): {
+  linguagem: string;
+  lanca?: string;
+  arquivo?: string;
+  problemasDaCerca: string[];
+} {
+  const partes = info.trim().split(/\s+/).filter(Boolean);
+  const linguagem = partes.shift() ?? "";
+  const problemasDaCerca: string[] = [];
+  let lanca: string | undefined;
+  let arquivo: string | undefined;
+  for (const parte of partes) {
+    const igual = parte.indexOf("=");
+    const chave = igual < 0 ? parte : parte.slice(0, igual);
+    const valor = igual < 0 ? "" : parte.slice(igual + 1);
+    if (!METADADOS_CONHECIDOS.has(chave)) {
+      problemasDaCerca.push(`metadado desconhecido na cerca: ${chave}`);
+      continue;
+    }
+    if (valor === "") {
+      problemasDaCerca.push(`metadado sem valor na cerca: ${chave}`);
+      continue;
+    }
+    if (chave === "lanca") lanca = valor;
+    if (chave === "arquivo") {
+      if (!NOME_DE_ARQUIVO_RE.test(valor)) {
+        problemasDaCerca.push(`nome de arquivo invalido na cerca: ${valor}`);
+        continue;
+      }
+      arquivo = valor;
+    }
+  }
+  return { linguagem, lanca, arquivo, problemasDaCerca };
+}
+
 export function extrairBlocos(content: string): Bloco[] {
-  return Array.from(
-    content.matchAll(/```([a-z0-9]*)[ \t]*\n([\s\S]*?)```/g),
-    (m) => ({ linguagem: m[1], corpo: m[2].replace(/\n$/, "") }),
-  );
+  return Array.from(content.matchAll(/```([^\n]*)\n([\s\S]*?)```/g), (m) => ({
+    ...lerCerca(m[1]),
+    corpo: m[2].replace(/\n$/, ""),
+  }));
 }
 
 export function blocosDaTrilha(roadmap: RoadmapV2): BlocoDoPasso[] {
@@ -106,9 +178,15 @@ export function blocosDaTrilha(roadmap: RoadmapV2): BlocoDoPasso[] {
 function limites(corpo: string): string[] {
   const out: string[] = [];
   const linhas = corpo.split("\n");
-  if (linhas.length > BLOCO_MAX_LINHAS) {
+  const conteudo = linhas.filter((linha) => linha.trim() !== "").length;
+  if (conteudo > BLOCO_MAX_LINHAS_CONTEUDO) {
     out.push(
-      `bloco com ${linhas.length} linhas (maximo ${BLOCO_MAX_LINHAS} linhas)`,
+      `bloco com ${conteudo} linhas de conteudo (maximo ${BLOCO_MAX_LINHAS_CONTEUDO})`,
+    );
+  }
+  if (linhas.length > BLOCO_MAX_LINHAS_TOTAL) {
+    out.push(
+      `bloco com ${linhas.length} linhas no total (maximo ${BLOCO_MAX_LINHAS_TOTAL})`,
     );
   }
   linhas.forEach((linha, i) => {
@@ -221,7 +299,10 @@ export function conferirBloco(
   codeLanguages: string[],
   executar: Executor,
 ): ConferenciaBloco {
-  const problemas = limites(bloco.corpo);
+  const problemas = [
+    ...(bloco.problemasDaCerca ?? []),
+    ...limites(bloco.corpo),
+  ];
   if (!codeLanguages.includes(bloco.linguagem)) {
     return { veredito: "fora-de-codeLanguages", problemas };
   }
@@ -230,12 +311,51 @@ export function conferirBloco(
   if (bloco.linguagem === "css") problemas.push(...validarCss(bloco.corpo));
   const runner = capabilityOf(bloco.linguagem).runner;
   if (!runner) return { veredito: "nao-executado", problemas };
-  const r = executar(bloco.corpo);
+  return vereditoDaExecucao(bloco, executar(bloco.corpo), problemas);
+}
+
+// Traduz UMA execucao em veredito, respeitando o `lanca=` da cerca. Sem ele,
+// quebrar e falha; com ele, quebrar do jeito declarado e o sucesso, e rodar
+// limpo e o problema (o bloco existe justamente para mostrar o erro).
+function vereditoDaExecucao(
+  bloco: Bloco,
+  r: Execucao,
+  problemas: string[],
+): ConferenciaBloco {
   if (r.timeout) {
     return {
       veredito: "falhou",
       problemas: [...problemas, "execucao: estourou o timeout"],
     };
+  }
+  if (bloco.lanca) {
+    if (r.status === 0) {
+      return {
+        veredito: "falhou",
+        problemas: [
+          ...problemas,
+          `execucao: declarou lanca=${bloco.lanca} e rodou sem erro`,
+        ],
+      };
+    }
+    const saida = `${r.stderr ?? ""}\n${r.erro}`;
+    // Palavra inteira, e nao substring: com includes, lanca=Error passava num
+    // bloco que lanca TypeError, e o instrumento aprovava uma declaracao que
+    // nao descreve o erro real. O valor vem do conteudo, entao e escapado
+    // antes de virar expressao.
+    const declarado = new RegExp(
+      `\\b${bloco.lanca.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+    );
+    if (!declarado.test(saida)) {
+      return {
+        veredito: "falhou",
+        problemas: [
+          ...problemas,
+          `execucao: declarou lanca=${bloco.lanca} e lancou: ${r.erro}`,
+        ],
+      };
+    }
+    return { veredito: "lancou-como-esperado", problemas };
   }
   if (r.status !== 0) {
     return {
@@ -249,6 +369,50 @@ export function conferirBloco(
   return { veredito: "executado", problemas };
 }
 
+// Grupo de blocos `arquivo=` do MESMO passo: todos sao gravados juntos e so o
+// ultimo executa; os anteriores ficam disponiveis para import e saem como
+// "gravado". E o que torna verificavel um passo que ensina dois arquivos, como
+// o de import e export da trilha de JavaScript.
+export function conferirGrupo(
+  blocos: Bloco[],
+  codeLanguages: string[],
+  executarGrupo: ExecutorDeGrupo,
+): ConferenciaBloco[] {
+  const base = blocos.map((bloco) => [
+    ...(bloco.problemasDaCerca ?? []),
+    ...limites(bloco.corpo),
+  ]);
+  const fora = blocos.findIndex(
+    (bloco) => !codeLanguages.includes(bloco.linguagem),
+  );
+  if (fora >= 0) {
+    return blocos.map((_, i) => ({
+      veredito: "fora-de-codeLanguages" as const,
+      problemas: base[i],
+    }));
+  }
+  const nomes = new Set(blocos.map((bloco) => bloco.arquivo));
+  if (nomes.size !== blocos.length) {
+    base[base.length - 1].push("grupo com nome de arquivo repetido");
+  }
+  const runner = capabilityOf(blocos[0].linguagem).runner;
+  if (!runner) {
+    return blocos.map((_, i) => ({
+      veredito: "nao-executado" as const,
+      problemas: base[i],
+    }));
+  }
+  const r = executarGrupo(
+    blocos.map((bloco) => ({ nome: bloco.arquivo ?? "", corpo: bloco.corpo })),
+  );
+  const ultimo = blocos.length - 1;
+  return blocos.map((bloco, i) =>
+    i === ultimo
+      ? vereditoDaExecucao(bloco, r, base[i])
+      : { veredito: "gravado" as const, problemas: base[i] },
+  );
+}
+
 export function relatorioBlocos(linhas: LinhaBloco[]): string[] {
   const out = linhas.map(
     (l) =>
@@ -260,7 +424,7 @@ export function relatorioBlocos(linhas: LinhaBloco[]): string[] {
     l.problemas.some((p) => !p.startsWith("execucao:")),
   ).length;
   out.push(
-    `blocos: ${linhas.length} | executados: ${conta("executado")} | nao-executados: ${conta("nao-executado")} | falharam: ${conta("falhou")} | fora de codeLanguages: ${conta("fora-de-codeLanguages")} | divergencias de convencao: ${divergencias}`,
+    `blocos: ${linhas.length} | executados: ${conta("executado")} | lancaram como esperado: ${conta("lancou-como-esperado")} | gravados: ${conta("gravado")} | nao-executados: ${conta("nao-executado")} | falharam: ${conta("falhou")} | fora de codeLanguages: ${conta("fora-de-codeLanguages")} | divergencias de convencao: ${divergencias}`,
   );
   const semRunner = new Map<string, number>();
   linhas.forEach((l) => {
@@ -296,7 +460,33 @@ async function main() {
   const naoExecuta: Executor = () => {
     throw new Error("[verify:lesson-blocks] linguagem sem runner executada");
   };
-  const linhas: LinhaBloco[] = blocosDaTrilha(roadmap).map((bloco) => {
+  // Uma travessia so: o Map de grupo e indexado pelo PROPRIO objeto do bloco,
+  // entao as duas passagens precisam ver a mesma lista.
+  const blocos = blocosDaTrilha(roadmap);
+  const gruposDeArquivo = new Map<string, BlocoDoPasso[]>();
+  for (const bloco of blocos) {
+    if (!bloco.arquivo) continue;
+    const chave = `${bloco.passo}|${bloco.linguagem}`;
+    gruposDeArquivo.set(chave, [...(gruposDeArquivo.get(chave) ?? []), bloco]);
+  }
+  const conferidosEmGrupo = new Map<BlocoDoPasso, ConferenciaBloco>();
+  for (const grupo of gruposDeArquivo.values()) {
+    const runner = codeLanguages.includes(grupo[0].linguagem)
+      ? capabilityOf(grupo[0].linguagem).runner
+      : null;
+    const executarGrupo: ExecutorDeGrupo = runner
+      ? makeGroupExecutor(runner)
+      : () => {
+          throw new Error("[verify:lesson-blocks] grupo sem runner executado");
+        };
+    const conferencias = conferirGrupo(grupo, codeLanguages, executarGrupo);
+    grupo.forEach((bloco, i) => conferidosEmGrupo.set(bloco, conferencias[i]));
+  }
+  const linhas: LinhaBloco[] = blocos.map((bloco) => {
+    const daqui = conferidosEmGrupo.get(bloco);
+    if (daqui) {
+      return { passo: bloco.passo, linguagem: bloco.linguagem, ...daqui };
+    }
     const runner = codeLanguages.includes(bloco.linguagem)
       ? capabilityOf(bloco.linguagem).runner
       : null;

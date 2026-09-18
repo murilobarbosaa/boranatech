@@ -11,9 +11,19 @@
 // O que NAO mora aqui: os exemplos de sintaxe do prompt (completarExemplo,
 // exemploCodigoNoEnunciado em quizPoolGeneration.mts). Eles escolhem o TEXTO do
 // exemplo na linguagem da trilha, nao uma capacidade dela.
+import { fileURLToPath } from "node:url";
+
+// Caminho absoluto do wrapper de TS. Absoluto porque o executor roda com cwd
+// num diretorio temporario, onde nada do repositorio e alcancavel por caminho
+// relativo.
+const RUN_TS_SNIPPET = fileURLToPath(
+  new URL("./runTsSnippet.mjs", import.meta.url),
+);
 
 export interface Runner {
   command: string;
+  /** Argumentos ANTES do arquivo (o wrapper de TS entra aqui). */
+  args?: string[];
   ext: string;
 }
 
@@ -52,7 +62,11 @@ export const LANGUAGE_CAPABILITIES: Record<string, LanguageCapability> = {
   },
   // Sem runner: o node nao executa TypeScript sem transpilar.
   ts: {
-    runner: null,
+    // Duas etapas (Lote 10a): o wrapper confere os tipos com a API do
+    // typescript e so entao executa com o tsx. O tsx sozinho nao serviria:
+    // ele REMOVE os tipos sem conferir, e o erro de tipo, que e o defeito
+    // que uma pergunta de erro de TS mais cobra, passaria calado.
+    runner: { command: "node", args: [RUN_TS_SNIPPET], ext: ".ts" },
     saidaEsperadaAplicavel: true,
     importRule: "forbidden",
     saidaDeFerramenta: false,

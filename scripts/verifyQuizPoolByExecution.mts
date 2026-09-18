@@ -29,7 +29,7 @@
 //
 // --tabela-revisao: depois do relatorio, imprime a tabela da revisao humana
 // (tabelaRevisao), uma linha por pergunta de codigo.
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -85,7 +85,12 @@ export function fillGap(trecho: string, alternativa: string): string {
 // imprime antes dela a linha de codigo de origem, que pode conter a palavra
 // Error (new Error('...')) e era o que a versao anterior devolvia. Sem
 // nenhuma, a primeira linha nao vazia.
+// Diagnostico do compilador de TS: "trecho.ts(1,7): error TS2322: ...".
+const ERRO_TS_RE = /^(.+)\((\d+),(\d+)\): error (TS\d+): (.*)$/m;
+
 export function erroDoStderr(stderr: string): string {
+  const ts = ERRO_TS_RE.exec(stderr);
+  if (ts) return `${ts[4]}: ${ts[5]}`.trim();
   const linhas = stderr.split("\n");
   const deErro = linhas.filter(
     (linha) => /^\s*\w*Error\b/.test(linha) || linha.includes("Error:"),
@@ -109,44 +114,88 @@ export interface Execucao {
 
 export type Executor = (code: string) => Execucao;
 
+// Spawn com o ambiente saneado, num lugar so: o executor de trecho unico e o
+// de grupo de arquivos usam este mesmo caminho, para nao existir uma segunda
+// copia das protecoes que possa divergir em silencio.
+function spawnSaneado(
+  runner: Runner,
+  arquivo: string,
+  dir: string,
+): SpawnSyncReturns<string> {
+  return spawnSync(runner.command, [...(runner.args ?? []), arquivo], {
+    encoding: "utf8",
+    timeout: TIMEOUT_MS,
+    // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
+    // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
+    // criou usuario.json na raiz do worktree.
+    cwd: dir,
+    // Ambiente montado do zero, nunca process.env: o gerador carrega o .env
+    // (OPENAI_API_KEY, SUPABASE_*, REDIS_URL, STRIPE_*) e o trecho e codigo
+    // escrito por um modelo. HOME aponta para o proprio dir, entao cache e
+    // arquivo de configuracao do runner tambem ficam contidos.
+    env: {
+      PATH: process.env.PATH ?? "/usr/bin:/bin",
+      HOME: dir,
+      LANG: process.env.LANG ?? "C.UTF-8",
+      PYTHONIOENCODING: "utf-8",
+    },
+    // Entrada vazia e fechada: trecho com input() falha na hora em vez de
+    // segurar o processo ate o timeout.
+    input: "",
+    // Teto de saida: laco que imprime sem parar morre aqui, nao na memoria
+    // do processo do gerador.
+    maxBuffer: 1024 * 1024,
+  });
+}
+
+function daExecucao(r: SpawnSyncReturns<string>): Execucao {
+  return {
+    status: r.status,
+    stdout: r.stdout ?? "",
+    erro: erroDoStderr(r.stderr ?? ""),
+    timeout: r.error?.name === "Error" && /ETIMEDOUT/.test(String(r.error)),
+    stderr: r.stderr ?? "",
+    sinal: r.signal ?? null,
+  };
+}
+
 export function makeExecutor(runner: Runner): Executor {
   const dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
   let n = 0;
   return (code: string): Execucao => {
     const file = path.join(dir, `q${n++}${runner.ext}`);
     writeFileSync(file, code);
-    const r = spawnSync(runner.command, [file], {
-      encoding: "utf8",
-      timeout: TIMEOUT_MS,
-      // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
-      // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
-      // criou usuario.json na raiz do worktree.
-      cwd: dir,
-      // Ambiente montado do zero, nunca process.env: o gerador carrega o .env
-      // (OPENAI_API_KEY, SUPABASE_*, REDIS_URL, STRIPE_*) e o trecho e codigo
-      // escrito por um modelo. HOME aponta para o proprio dir, entao cache e
-      // arquivo de configuracao do runner tambem ficam contidos.
-      env: {
-        PATH: process.env.PATH ?? "/usr/bin:/bin",
-        HOME: dir,
-        LANG: process.env.LANG ?? "C.UTF-8",
-        PYTHONIOENCODING: "utf-8",
-      },
-      // Entrada vazia e fechada: trecho com input() falha na hora em vez de
-      // segurar o processo ate o timeout.
-      input: "",
-      // Teto de saida: laco que imprime sem parar morre aqui, nao na memoria
-      // do processo do gerador.
-      maxBuffer: 1024 * 1024,
-    });
-    return {
-      status: r.status,
-      stdout: r.stdout ?? "",
-      erro: erroDoStderr(r.stderr ?? ""),
-      timeout: r.error?.name === "Error" && /ETIMEDOUT/.test(String(r.error)),
-      stderr: r.stderr ?? "",
-      sinal: r.signal ?? null,
-    };
+    return daExecucao(spawnSaneado(runner, file, dir));
+  };
+}
+
+export interface ArquivoDoGrupo {
+  nome: string;
+  corpo: string;
+}
+
+export type ExecutorDeGrupo = (arquivos: ArquivoDoGrupo[]) => Execucao;
+
+// Executa um GRUPO de arquivos (cerca com `arquivo=` no verificador de blocos):
+// todos sao gravados num diretorio novo e SO O ULTIMO e executado; os demais
+// ficam disponiveis para import. Diretorio novo por grupo para um passo nao
+// enxergar o arquivo de outro.
+export function makeGroupExecutor(runner: Runner): ExecutorDeGrupo {
+  return (arquivos: ArquivoDoGrupo[]): Execucao => {
+    const dir = mkdtempSync(path.join(tmpdir(), "verify-grupo-"));
+    // Em js o import relativo entre arquivos .js so resolve como ESM com isto.
+    if (runner.ext === ".mjs" || runner.ext === ".js") {
+      writeFileSync(
+        path.join(dir, "package.json"),
+        JSON.stringify({ type: "module" }),
+      );
+    }
+    let ultimo = "";
+    for (const arquivo of arquivos) {
+      ultimo = path.join(dir, arquivo.nome);
+      writeFileSync(ultimo, arquivo.corpo);
+    }
+    return daExecucao(spawnSaneado(runner, ultimo, dir));
   };
 }
 
@@ -245,6 +294,8 @@ export function conferirCodigo(
 // padrao, e a versao anterior devolvia a linha de la (python-int-14 saiu com
 // "linha 353", de json/decoder.py, no Lote 06g).
 export function linhaDoErro(stderr: string): number | null {
+  const tsc = ERRO_TS_RE.exec(stderr);
+  if (tsc) return Number(tsc[2]);
   const py = [...stderr.matchAll(/File "([^"]*\.py)", line (\d+)/g)];
   if (py.length > 0) {
     const doTrecho = py.filter((m) => m[1] === py[0][1]);
