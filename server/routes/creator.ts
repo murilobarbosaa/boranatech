@@ -265,6 +265,7 @@ const UUID_RE =
 const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   invalid_post_url: 400,
   short_link_unsupported: 400,
+  short_link_unresolved: 400,
   invalid_post_type: 400,
   post_type_mismatch: 400,
   post_already_registered: 409,
@@ -280,6 +281,8 @@ const MENSAGEM_DA_PUBLICACAO: Record<
     "Link inválido. Cole o link de um post, reel ou story do Instagram, ou de um vídeo do TikTok.",
   short_link_unsupported:
     "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação.",
+  short_link_unresolved:
+    "Não conseguimos abrir esse link curto do TikTok. Abra o vídeo e cole o endereço completo.",
   invalid_post_type:
     "Escolha o tipo da publicação: post, reel, story ou vídeo do TikTok.",
   post_already_registered: "Você já registrou esta publicação.",

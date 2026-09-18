@@ -281,11 +281,50 @@ describe("CreatorPublicacoes: registro", () => {
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
-  it("link curto: mensagem propria, e tambem nenhuma requisicao", async () => {
+  it("link curto do Instagram: mensagem propria, e nenhuma requisicao", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Post");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "https://instagr.am/p/Cx1AbCdEf_-/" },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toContain("Link curto");
+    expect(chamadasCom("POST")).toHaveLength(0);
+  });
+
+  it("link curto do TikTok com tipo video (lote 10c): vai ao servidor, e o toast diz a canonica", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    estado.responder = async (_path, method) =>
+      method === "POST"
+        ? { data: { post: VIDEO } }
+        : { data: { posts: [], total: 0, no_mes: 0 } };
     await escolherTipo("Vídeo do TikTok");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "https://vm.tiktok.com/ZMabc1234/" },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
+    expect(chamadasCom("POST")[0].body).toEqual({
+      url: "https://vm.tiktok.com/ZMabc1234/",
+      tipo: "video",
+    });
+    await screen.findByTestId(`creator-publicacao-${OUTRO_ID}`);
+    expect(estado.toastOk).toHaveBeenCalledWith(
+      `Registramos como ${VIDEO.url}`,
+    );
+  });
+
+  it("link curto do TikTok com outro tipo: continua barrado aqui", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    await escolherTipo("Reel");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://vm.tiktok.com/ZMabc1234/" },
     });

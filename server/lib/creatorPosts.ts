@@ -19,6 +19,10 @@ import type { Linha } from "./creatorDashboard";
 import { textoDe } from "./creatorDashboard";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
+import {
+  ehLinkCurtoDoTikTok,
+  resolverLinkCurtoDoTikTok,
+} from "./tiktokShortLink";
 
 /**
  * PUBLICACOES REGISTRADAS PELO CREATOR (lote 09, status no lote 10b): toda
@@ -74,6 +78,7 @@ export type RegistroRecusado =
       code:
         | "invalid_post_url"
         | "short_link_unsupported"
+        | "short_link_unresolved"
         | "invalid_post_type"
         | "post_already_registered"
         | "post_daily_limit";
@@ -234,7 +239,22 @@ export async function registrarPublicacao(
 ): Promise<ResultadoDoRegistro> {
   if (!ehTipoDePublicacao(tipo))
     return { ok: false, code: "invalid_post_type" };
-  const link = normalizarLinkDePublicacao(url, tipo);
+  let link = normalizarLinkDePublicacao(url, tipo);
+  // Link curto do TikTok com tipo video (lote 10c): o servidor resolve o
+  // redirecionamento e segue com a canonica. Mora AQUI, e nao na rota, para
+  // todo chamador ganhar a resolucao sem lembrar dela. Com outro tipo
+  // escolhido nao ha o que resolver: o link e de video de qualquer forma, e a
+  // pessoa precisa trocar o tipo. `instagr.am` nao entra: nao e do TikTok.
+  if (
+    !link.ok &&
+    link.code === "short_link_unsupported" &&
+    tipo === "video" &&
+    ehLinkCurtoDoTikTok(url)
+  ) {
+    const resolvido = await resolverLinkCurtoDoTikTok(url);
+    if (!resolvido.ok) return resolvido;
+    link = resolvido;
+  }
   if (!link.ok) return link;
 
   const { inicio, fim } = janelaDoDia(agora);

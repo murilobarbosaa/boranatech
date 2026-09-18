@@ -26,6 +26,11 @@ const estado = vi.hoisted(() => ({
   redis: null as unknown,
   usuario: null as null | { id: string; email: string; role: string },
   sentry: vi.fn(),
+  // Resolvedor de link curto do TikTok (lote 10c), controlado por teste. O
+  // `fetch` global NAO e dublado aqui: o cliente de rota fala com o Express
+  // por ele, e um stub engoliria as proprias requisicoes do teste. O
+  // resolvedor tem teste proprio (server/lib/tiktokShortLink.test.ts).
+  resolver: vi.fn(),
 }));
 
 vi.mock("../lib/env", () => ({
@@ -49,6 +54,13 @@ vi.mock("../lib/supabaseAdmin", () => ({
 vi.mock("@sentry/node", () => ({
   captureException: (...a: unknown[]) => estado.sentry(...a),
 }));
+vi.mock("../lib/tiktokShortLink", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../lib/tiktokShortLink")>();
+  return {
+    ...real,
+    resolverLinkCurtoDoTikTok: (url: unknown) => estado.resolver(url),
+  };
+});
 
 import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import {
@@ -108,6 +120,10 @@ beforeEach(() => {
   estado.redis = null;
   estado.usuario = null;
   estado.sentry = vi.fn();
+  estado.resolver = vi.fn(async () => ({
+    ok: false,
+    code: "short_link_unresolved",
+  }));
 });
 
 afterEach(() => {
@@ -935,16 +951,83 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });
 
-  it("link curto tem codigo proprio, e o servidor NAO abre a URL", async () => {
+  it("link curto do Instagram tem codigo proprio, e o servidor NAO abre a URL", async () => {
     montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://instagr.am/p/Cx1AbCdEf_-/",
+      tipo: "post",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("short_link_unsupported");
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+    expect(estado.resolver).not.toHaveBeenCalled();
+  });
+
+  it("link curto do TikTok com tipo video (lote 10c): o servidor resolve e grava a canonica", async () => {
+    estado.resolver = vi.fn(async () => ({
+      ok: true,
+      valor: {
+        network: "tiktok",
+        kind: "video",
+        external_id: "7311122233344455566",
+        url: LINK_VIDEO,
+      },
+    }));
+    const video = {
+      ...PUBLICACAO,
+      kind: "video",
+      network: "tiktok",
+      url: LINK_VIDEO,
+    };
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert" ? { rows: [video] } : { rows: [] },
+    });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vm.tiktok.com/ZMabc1234/",
       tipo: "video",
     });
+    expect(r.status).toBe(201);
+    expect(r.body.data.post.url).toBe(LINK_VIDEO);
+    expect(estado.resolver).toHaveBeenCalledWith(
+      "https://vm.tiktok.com/ZMabc1234/",
+    );
+    expect(escritasEm("creator_posts")[0].payload).toMatchObject({
+      network: "tiktok",
+      kind: "video",
+      external_id: "7311122233344455566",
+      url: LINK_VIDEO,
+      status: "pendente",
+    });
+  });
+
+  it("link curto do TikTok que nao resolve: 400 short_link_unresolved, nada gravado", async () => {
+    // O resolvedor padrao do beforeEach ja responde short_link_unresolved.
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://vt.tiktok.com/ZSabc12/",
+      tipo: "video",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("short_link_unresolved");
+    expect(estado.resolver).toHaveBeenCalledTimes(1);
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("link curto do TikTok com OUTRO tipo escolhido: continua short_link_unsupported, sem abrir a URL", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://vm.tiktok.com/ZMabc1234/",
+      tipo: "reel",
+    });
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("short_link_unsupported");
-    expect(escritasEm("creator_posts")).toHaveLength(0);
+    expect(estado.resolver).not.toHaveBeenCalled();
   });
 
   it("publicacao repetida: 409 pelo 23505 da constraint, sem select antes", async () => {

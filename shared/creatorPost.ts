@@ -112,8 +112,14 @@ export const LIMITE_DE_REGISTROS_POR_DIA = 10;
 
 // Hospedeiros de link curto. Recusados com codigo proprio para a tela poder
 // dizer "cole o link completo" em vez de "link invalido", que mandaria a
-// pessoa conferir uma URL que ela copiou certo.
+// pessoa conferir uma URL que ela copiou certo. Os do TikTok o SERVIDOR
+// resolve (lote 10c, server/lib/tiktokShortLink.ts) quando o tipo escolhido e
+// video; o do Instagram continua recusado.
 const HOSTS_CURTOS = ["vm.tiktok.com", "vt.tiktok.com", "instagr.am"];
+
+// `tiktok.com/t/<codigo>` e a terceira forma de link curto do app do TikTok,
+// no host principal: e reconhecida pelo CAMINHO, nao pelo host.
+const CAMINHO_CURTO_DO_TIKTOK_RE = /^t\/[A-Za-z0-9]{4,32}$/;
 
 // Shortcode do Instagram. Ele e SENSIVEL A MAIUSCULA, entao o caminho nunca e
 // passado por toLowerCase: so o host e os nomes de usuario sao normalizados
@@ -218,6 +224,9 @@ function detectarPublicacao(
   }
 
   if (host === "tiktok.com") {
+    if (CAMINHO_CURTO_DO_TIKTOK_RE.test(caminho)) {
+      return { ok: false, code: "short_link_unsupported" };
+    }
     const m = TIKTOK_RE.exec(caminho);
     if (!m) return { ok: false, code: "invalid_post_url" };
     const usuario = m[1].toLowerCase();

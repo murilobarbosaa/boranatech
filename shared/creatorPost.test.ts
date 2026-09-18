@@ -295,6 +295,9 @@ describe("normalizarLinkDePublicacao: recusas", () => {
       "https://vm.tiktok.com/ZMabc1234/",
       "https://vt.tiktok.com/ZSabc12/",
       "vm.tiktok.com/ZMabc1234",
+      // A terceira forma do app do TikTok, no host principal (lote 10c).
+      "https://www.tiktok.com/t/ZTabc123/",
+      "tiktok.com/t/ZTabc123",
       `https://instagr.am/p/${CODIGO_IG}/`,
     ]) {
       expect(normalizarLinkDePublicacao(entrada, "video")).toEqual({

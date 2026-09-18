@@ -151,7 +151,16 @@ export function CreatorPublicacoes() {
     // A mesma regra do servidor, antes do envio: link que nem forma de
     // publicacao tem, ou que e de outro tipo, nao vira requisicao.
     const conferido = normalizarLinkDePublicacao(link, tipo);
-    if (!conferido.ok) {
+    // Link curto do TikTok com tipo video (lote 10c): o SERVIDOR resolve o
+    // redirecionamento, entao aqui ele passa; o do Instagram continua barrado.
+    const curtoDoTikTok =
+      !conferido.ok &&
+      conferido.code === "short_link_unsupported" &&
+      tipo === "video" &&
+      /(^|\/\/|\.)(vm\.tiktok\.com|vt\.tiktok\.com|tiktok\.com\/t\/)/i.test(
+        link.trim(),
+      );
+    if (!conferido.ok && !curtoDoTikTok) {
       if (conferido.code === "post_type_mismatch") {
         const detectado =
           TIPO_DE_PUBLICACAO_META[
@@ -195,8 +204,14 @@ export function CreatorPublicacoes() {
         );
       }
       setLink("");
+      // Link curto resolvido pelo servidor: a pessoa ve QUAL video ficou
+      // registrado, porque o que ela colou nao dizia.
       // TODO(Ana)
-      toast.success("Publicação registrada.");
+      toast.success(
+        curtoDoTikTok && post
+          ? `Registramos como ${post.url}`
+          : "Publicação registrada.",
+      );
     } catch (err) {
       // 409 e 429 tem mensagem propria do servidor, e ela e mais precisa do
       // que qualquer texto generico daqui.
