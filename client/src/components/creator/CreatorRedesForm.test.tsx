@@ -5,7 +5,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 /**
  * CreatorRedesForm: as redes do creator (lote 08b, metade do antigo
@@ -205,6 +213,8 @@ describe("CreatorRedesForm: gravacao", () => {
         instagram_followers: 12500,
         tiktok_followers: null,
         visible_to_creators: true,
+        // Sem escolha, a cor padrao vai junto: o PUT grava o perfil inteiro.
+        calendar_color: "violet",
       },
     });
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith(salvo));
@@ -248,5 +258,65 @@ describe("CreatorRedesForm: gravacao", () => {
     );
     expect(estado.toastErro).toHaveBeenCalledTimes(1);
     expect(onSalvo).not.toHaveBeenCalled();
+  });
+});
+
+// COR NO CALENDARIO (lote 10c): escolhida no formulario das redes, salva
+// junto, e mostrada no resumo com o marcador.
+describe("CreatorRedesForm: cor no calendario", () => {
+  // Stubs do Radix Select no jsdom, os mesmos de CreatorPixForm.test.tsx.
+  beforeAll(() => {
+    if (!("ResizeObserver" in globalThis)) {
+      class ResizeObserverDeTeste {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+      (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+        ResizeObserverDeTeste;
+    }
+    Element.prototype.scrollIntoView ||= () => {};
+    Element.prototype.hasPointerCapture ||= () => false;
+    Element.prototype.releasePointerCapture ||= () => {};
+  });
+
+  it("o select lista as 15 cores, cada opcao com o marcador na propria cor, e a escolha vai no PUT", async () => {
+    estado.responder = async () => ({
+      data: { ...PERFIL_VAZIO, calendar_color: "emerald" },
+    });
+    desenhar({ ...PERFIL_VAZIO, calendar_color: "violet" });
+    fireEvent.keyDown(
+      screen.getByRole("combobox", { name: "Cor no calendário" }),
+      { key: "ArrowDown" },
+    );
+    const opcoes = await screen.findAllByRole("option");
+    expect(opcoes).toHaveLength(15);
+    expect(opcoes[0].textContent).toBe("Violeta");
+    // O marcador dentro da opcao carrega a classe literal da familia.
+    const esmeralda = opcoes.find((o) => o.textContent === "Esmeralda")!;
+    expect(
+      esmeralda.querySelector("[data-cor='emerald']")?.className,
+    ).toContain("bg-emerald-200");
+    fireEvent.keyDown(esmeralda, { key: "Enter" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+
+    fireEvent.change(campo("Instagram @"), { target: { value: "ana.cria" } });
+    fireEvent.click(screen.getByTestId("creator-perfil-salvar"));
+    await waitFor(() => expect(chamadasCom("PUT")).toHaveLength(1));
+    expect(
+      (chamadasCom("PUT")[0].body as { calendar_color: string }).calendar_color,
+    ).toBe("emerald");
+  });
+
+  it("resumo: o marcador e o nome da cor salva; sem o campo (backend anterior) a linha nao aparece", () => {
+    desenhar({ ...PERFIL_COMPLETO, calendar_color: "rose" });
+    const linha = screen.getByTestId("creator-redes-cor");
+    expect(linha.textContent).toBe("Rosé no calendário");
+    expect(linha.querySelector("[data-cor='rose']")?.className).toContain(
+      "bg-rose-200",
+    );
+    cleanup();
+    desenhar(PERFIL_COMPLETO);
+    expect(screen.queryByTestId("creator-redes-cor")).toBeNull();
   });
 });

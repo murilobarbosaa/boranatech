@@ -9,11 +9,17 @@ import {
   inputClass,
   labelClass,
 } from "@/components/creator/creatorFormEstilos";
+import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
+  COR_PADRAO_DO_CALENDARIO,
+  CORES_DO_CALENDARIO,
+  ehCorDoCalendario,
   normalizarHandle,
   normalizarSeguidores,
+  ROTULO_DA_COR,
   type CreatorPerfilDados,
 } from "@shared/creatorProfile";
 
@@ -55,6 +61,16 @@ const CAMPO_DO_CODIGO: Record<string, CampoDasRedes | undefined> = {
   invalid_instagram_followers: "instagram_followers",
   invalid_tiktok_followers: "tiktok_followers",
 };
+
+const OPCOES_DE_COR = CORES_DO_CALENDARIO.map((cor) => ({
+  value: cor,
+  label: ROTULO_DA_COR[cor],
+}));
+
+/** Rotulo da cor salva; cor que o bundle nao conhece mostra o nome cru. */
+function rotuloDaCor(cor: string): string {
+  return (ROTULO_DA_COR as Record<string, string | undefined>)[cor] ?? cor;
+}
 
 function dataCurta(iso: string | null): string {
   const dia = diaBrasilia(iso);
@@ -106,6 +122,11 @@ export function CreatorRedesForm({
     perfil.tiktok_followers === null ? "" : String(perfil.tiktok_followers),
   );
   const [visivel, setVisivel] = useState(perfil.visible_to_creators);
+  // Cor no calendario (lote 10c). Sem o campo (backend anterior) o select
+  // mostra o padrao, que e o que o banco gravaria de qualquer forma.
+  const [cor, setCor] = useState<string>(
+    perfil.calendar_color ?? COR_PADRAO_DO_CALENDARIO,
+  );
   const [erros, setErros] = useState<ErrosDasRedes>({});
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -130,6 +151,7 @@ export function CreatorRedesForm({
       perfil.tiktok_followers === null ? "" : String(perfil.tiktok_followers),
     );
     setVisivel(perfil.visible_to_creators);
+    setCor(perfil.calendar_color ?? COR_PADRAO_DO_CALENDARIO);
   }, [perfil]);
 
   async function salvar() {
@@ -169,6 +191,9 @@ export function CreatorRedesForm({
           instagram_followers: segIg.valor,
           tiktok_followers: segTt.valor,
           visible_to_creators: visivel,
+          calendar_color: ehCorDoCalendario(cor)
+            ? cor
+            : COR_PADRAO_DO_CALENDARIO,
         }),
       });
       const salvo = perfilDaResposta(json);
@@ -246,6 +271,17 @@ export function CreatorRedesForm({
             >
               {/* TODO(Ana) */}
               {`Seguidores informados em ${dataCurta(perfil.followers_updated_at)}`}
+            </p>
+          ) : null}
+          {/* Cor no calendario (lote 10c), como esta salva. */}
+          {perfil.calendar_color ? (
+            <p
+              data-testid="creator-redes-cor"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-600"
+            >
+              <MarcadorDeCor cor={perfil.calendar_color} />
+              {/* TODO(Ana) */}
+              {`${rotuloDaCor(perfil.calendar_color)} no calendário`}
             </p>
           ) : null}
           {/* O chip mostra o que esta SALVO, nao o estado do checkbox do
@@ -346,6 +382,26 @@ export function CreatorRedesForm({
             <span className={erroClass}>{erros.tiktok_followers}</span>
           ) : null}
         </label>
+      </div>
+      <div className="sm:w-64">
+        {/* TODO(Ana) */}
+        <span className={labelClass}>Cor no calendário</span>
+        <BntSelect
+          accent="neutral"
+          // TODO(Ana)
+          label="Cor no calendário"
+          value={cor}
+          onValueChange={setCor}
+          options={OPCOES_DE_COR}
+          // O marcador na cor da opcao, antes do nome: e a cor que a pessoa
+          // esta escolhendo, e o nome sozinho nao diz como ela fica.
+          renderOption={(opcao) => (
+            <span className="inline-flex items-center gap-2">
+              <MarcadorDeCor cor={opcao.value} />
+              {opcao.label}
+            </span>
+          )}
+        />
       </div>
       <label
         htmlFor="creator-perfil-visivel"

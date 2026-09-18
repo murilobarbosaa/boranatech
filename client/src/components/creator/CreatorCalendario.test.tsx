@@ -136,10 +136,13 @@ describe("CreatorCalendario: leitura", () => {
       { path: `/creator/calendar?mes=${MES}`, method: "GET", body: null },
       { path: "/creator/collabs", method: "GET", body: null },
     ]);
-    // O dia de hoje traz a contagem de quem marcou.
-    expect(screen.getByTestId(`creator-dia-contagem-${HOJE}`).textContent).toBe(
-      "1",
-    );
+    // O dia de hoje traz um marcador por quem marcou (lote 10c), na cor da
+    // pessoa, e o meu com o anel.
+    const marcadores = screen.getByTestId(`creator-dia-marcadores-${HOJE}`);
+    expect(marcadores.querySelectorAll("[data-cor]")).toHaveLength(1);
+    expect(
+      screen.getByTestId(`creator-marcador-${MINHA.id}`).className,
+    ).toContain("ring-2");
   });
 
   it("mostra as marcacoes de TODOS, com o nome de quem marcou", async () => {
@@ -640,5 +643,76 @@ describe("CreatorCalendario: collab aceita visivel", () => {
       screen.queryByTestId(`creator-collab-fechada-${DE_OUTRO.id}`),
     ).toBeNull();
     expect(screen.queryByTestId(`creator-dia-collab-${HOJE}`)).toBeNull();
+  });
+});
+
+// COR DO CREATOR NA GRADE (lote 10c): um marcador por marcacao, na cor de
+// quem marcou; o parceiro de collab entra na cor dele; os meus com o anel.
+describe("CreatorCalendario: marcadores de cor", () => {
+  const C = (n: number) => `${n}c9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed`;
+
+  it("cada marcacao vira um marcador na cor do creator; a minha e a minha collab levam o anel; sem cor cai no violeta", async () => {
+    responderCom([
+      { ...MINHA, calendar_color: "amber" },
+      {
+        ...DE_OUTRO,
+        calendar_color: "emerald",
+        collabs: [
+          {
+            user_id: MEU_ID,
+            name: "Cria",
+            avatar_url: null,
+            calendar_color: "amber",
+          },
+        ],
+        minha_collab: true,
+      },
+      {
+        ...DE_OUTRO,
+        id: C(4),
+        user_id: "44444444-4444-4444-4444-444444444444",
+      },
+    ]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-painel");
+    const minha = screen.getByTestId(`creator-marcador-${MINHA.id}`);
+    expect(minha.className).toContain("bg-amber-200");
+    expect(minha.className).toContain("ring-2");
+    const deOutro = screen.getByTestId(`creator-marcador-${DE_OUTRO.id}`);
+    expect(deOutro.className).toContain("bg-emerald-200");
+    expect(deOutro.className).not.toContain("ring-2");
+    // O parceiro (eu) entra no dia com a minha cor e o meu anel.
+    const parceiro = screen.getByTestId(
+      `creator-marcador-${DE_OUTRO.id}-${MEU_ID}`,
+    );
+    expect(parceiro.className).toContain("bg-amber-200");
+    expect(parceiro.className).toContain("ring-2");
+    // Sem cor (backend anterior): violeta, sem anel.
+    expect(screen.getByTestId(`creator-marcador-${C(4)}`).className).toContain(
+      "bg-violet-200",
+    );
+    // O chip de contagem saiu.
+    expect(screen.queryByTestId(`creator-dia-contagem-${HOJE}`)).toBeNull();
+    // No painel do dia, o marcador vem antes do nome.
+    expect(
+      screen.getByTestId(`creator-marcacao-cor-${DE_OUTRO.id}`).className,
+    ).toContain("bg-emerald-200");
+  });
+
+  it("ate quatro marcadores por dia; depois, +N", async () => {
+    const cinco = [1, 2, 3, 4, 5].map((n) => ({
+      ...DE_OUTRO,
+      id: C(n),
+      user_id: `${n}4444444-4444-4444-4444-444444444444`,
+      calendar_color: "sky",
+    }));
+    responderCom(cinco);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-painel");
+    const celula = screen.getByTestId(`creator-dia-marcadores-${HOJE}`);
+    expect(celula.querySelectorAll("[data-cor]")).toHaveLength(4);
+    expect(screen.getByTestId(`creator-dia-mais-${HOJE}`).textContent).toBe(
+      "+1",
+    );
   });
 });

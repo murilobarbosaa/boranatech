@@ -228,6 +228,18 @@ describe("CreatorIdentidade: perfil de creator na visao admin", () => {
     expect(screen.queryByTestId("creator-visivel")).toBeNull();
   });
 
+  it("cor no calendario (lote 10c): chip com o marcador e o nome; sem o campo, nada", () => {
+    desenharAdmin(perfilCreator({ calendar_color: "lime" }));
+    const chip = screen.getByTestId("creator-cor");
+    expect(chip.textContent).toBe("Lima no calendário");
+    expect(chip.querySelector("[data-cor='lime']")?.className).toContain(
+      "bg-lime-200",
+    );
+    cleanup();
+    desenharAdmin(perfilCreator());
+    expect(screen.queryByTestId("creator-cor")).toBeNull();
+  });
+
   it("chave mascarada com o tipo, e a inteira nao esta na tela", () => {
     desenharAdmin(perfilCreator());
     const pix = screen.getByTestId("creator-pix-admin");

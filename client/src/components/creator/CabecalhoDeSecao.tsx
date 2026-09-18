@@ -14,12 +14,16 @@ export function CabecalhoDeSecao({
   selo,
   titulo,
   frase,
+  aoLadoDoTitulo,
 }: {
   id: string;
   icone: ReactNode;
   selo: string;
   titulo: string;
   frase: string;
+  /** Algo pequeno ao lado do titulo (lote 10c: o marcador de cor do creator
+   * no cartao Redes). Fora do h2, para o nome acessivel continuar so o titulo. */
+  aoLadoDoTitulo?: ReactNode;
 }) {
   return (
     <div>
@@ -27,12 +31,26 @@ export function CabecalhoDeSecao({
         {icone}
         {selo}
       </p>
-      <h2
-        id={id}
-        className="font-display mt-3 text-3xl font-black text-slate-950"
-      >
-        {titulo}
-      </h2>
+      {/* So embrulha quando ha algo ao lado: sem isso o h2 continua filho
+          direto, logo abaixo do selo, como sempre foi. */}
+      {aoLadoDoTitulo ? (
+        <div className="mt-3 flex items-center gap-3">
+          <h2
+            id={id}
+            className="font-display text-3xl font-black text-slate-950"
+          >
+            {titulo}
+          </h2>
+          {aoLadoDoTitulo}
+        </div>
+      ) : (
+        <h2
+          id={id}
+          className="font-display mt-3 text-3xl font-black text-slate-950"
+        >
+          {titulo}
+        </h2>
+      )}
       <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
         {frase}
       </p>

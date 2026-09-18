@@ -449,6 +449,8 @@ describe("GET /api/creator/profile", () => {
         tiktok_followers: null,
         followers_updated_at: null,
         visible_to_creators: false,
+        // Sem linha, a cor e o padrao do banco (lote 10c).
+        calendar_color: "violet",
         pix: null,
       },
     });
@@ -549,10 +551,70 @@ describe("PUT /api/creator/profile", () => {
       tiktok_followers: null,
       followers_updated_at: AGORA_ISO,
       visible_to_creators: true,
+      // Sem cor no corpo e sem linha anterior: o padrao (lote 10c).
+      calendar_color: "violet",
       updated_at: AGORA_ISO,
     });
     expect(r.body.data.instagram_handle).toBe("ana.cria");
     expect(r.body.data.followers_updated_at).toBe(AGORA_ISO);
+  });
+
+  it("calendar_color (lote 10c): valida pela lista, grava a escolhida, e sem ela mantem a gravada", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_profiles: (c) =>
+        c.op === "select"
+          ? {
+              rows: [
+                {
+                  user_id: UID,
+                  instagram_handle: "ana.cria",
+                  tiktok_handle: null,
+                  instagram_followers: null,
+                  tiktok_followers: null,
+                  followers_updated_at: null,
+                  visible_to_creators: false,
+                  calendar_color: "rose",
+                },
+              ],
+            }
+          : { rows: [] },
+      creator_pix_keys: respostaQueFiltra([]),
+    });
+    estado.usuario = USUARIO;
+    const corpo = {
+      instagram_handle: "ana.cria",
+      tiktok_handle: null,
+      instagram_followers: null,
+      tiktok_followers: null,
+      visible_to_creators: false,
+    };
+    // Fora da lista: 400, nada gravado.
+    const invalida = await chamar("PUT", "/profile", {
+      ...corpo,
+      calendar_color: "magenta",
+    });
+    expect(invalida.status).toBe(400);
+    expect(invalida.body.error.code).toBe("invalid_calendar_color");
+    expect(escritasEm("creator_profiles")).toHaveLength(0);
+
+    // Escolhida: vai no upsert.
+    const escolhida = await chamar("PUT", "/profile", {
+      ...corpo,
+      calendar_color: "emerald",
+    });
+    expect(escolhida.status).toBe(200);
+    expect(escritasEm("creator_profiles")[0].payload?.calendar_color).toBe(
+      "emerald",
+    );
+
+    // Ausente (client anterior ao lote): a gravada continua, nao o padrao.
+    const semCor = await chamar("PUT", "/profile", corpo);
+    expect(semCor.status).toBe(200);
+    expect(escritasEm("creator_profiles")[1].payload?.calendar_color).toBe(
+      "rose",
+    );
+    expect(semCor.body.data.calendar_color).toBe("rose");
   });
 
   it("sem seguidor nenhum: followers_updated_at vai null", async () => {
@@ -1243,6 +1305,10 @@ describe("GET /api/creator/calendar", () => {
       creator_calendar_events: { rows: [MARCACAO, MARCACAO_DE_OUTRO] },
       creator_collab_requests: respostaQueFiltra([]),
       profiles: perfis(),
+      // So OUTRO escolheu cor; o meu perfil nao tem linha: padrao.
+      creator_profiles: respostaQueFiltra([
+        { user_id: OUTRO_UID, calendar_color: "emerald" },
+      ]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("GET", `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`);
@@ -1265,6 +1331,14 @@ describe("GET /api/creator/calendar", () => {
     expect(r.body.data.marcacoes[1].meu_pedido).toBeNull();
     expect(r.body.data.marcacoes[1].collabs).toEqual([]);
     expect(r.body.data.marcacoes[1].minha_collab).toBe(false);
+    // A cor de cada creator vem em cada marcacao (lote 10c), numa leitura so
+    // de creator_profiles para o mes, e sem linha e o padrao.
+    expect(r.body.data.marcacoes[0].calendar_color).toBe("violet");
+    expect(r.body.data.marcacoes[1].calendar_color).toBe("emerald");
+    expect(double.de("creator_profiles")).toHaveLength(1);
+    expect(double.de("creator_profiles")[0].filtros).toEqual([
+      { tipo: "in", coluna: "user_id", valor: [UID, OUTRO_UID] },
+    ]);
   });
 
   it("collabs (lote 10c): a aceita aparece em `collabs` para um TERCEIRO, com nome e avatar; a pendente nao; minha_collab so para o parceiro", async () => {
@@ -1301,6 +1375,9 @@ describe("GET /api/creator/calendar", () => {
           status: "pendente",
         },
       ]),
+      creator_profiles: respostaQueFiltra([
+        { user_id: UID, calendar_color: "sky" },
+      ]),
       profiles: respostaQueFiltra([
         {
           user_id: UID,
@@ -1328,7 +1405,13 @@ describe("GET /api/creator/calendar", () => {
     );
     expect(terceiro.status).toBe(200);
     expect(terceiro.body.data.marcacoes[0].collabs).toEqual([
-      { user_id: UID, name: "Cria", avatar_url: "https://a/cria.png" },
+      {
+        user_id: UID,
+        name: "Cria",
+        avatar_url: "https://a/cria.png",
+        // A cor do parceiro entra no dia, na cor dele.
+        calendar_color: "sky",
+      },
     ]);
     expect(terceiro.body.data.marcacoes[0].minha_collab).toBe(false);
     expect(terceiro.body.data.marcacoes[1].collabs).toEqual([]);
@@ -1367,6 +1450,7 @@ describe("GET /api/creator/calendar", () => {
       creator_calendar_events: {
         rows: [MARCACAO_DE_OUTRO, MARCACAO_DE_TERCEIRO],
       },
+      creator_profiles: respostaQueFiltra([]),
       creator_collab_requests: respostaQueFiltra([
         // O meu, pendente, na marcacao de OUTRO.
         {

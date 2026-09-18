@@ -31,10 +31,12 @@ export type BntSelectAccent =
   | "neutral";
 
 const accentItemClasses: Record<BntSelectAccent, string> = {
-  yellow: "focus:bg-[var(--brand-yellow)]/20 data-[state=checked]:bg-[var(--brand-yellow)]/30",
+  yellow:
+    "focus:bg-[var(--brand-yellow)]/20 data-[state=checked]:bg-[var(--brand-yellow)]/30",
   blue: "focus:bg-[#3b82f6]/20 data-[state=checked]:bg-[#3b82f6]/30",
   green: "focus:bg-[#10b981]/20 data-[state=checked]:bg-[#10b981]/30",
-  violet: "focus:bg-[var(--color-violet-500)]/20 data-[state=checked]:bg-[var(--color-violet-500)]/30",
+  violet:
+    "focus:bg-[var(--color-violet-500)]/20 data-[state=checked]:bg-[var(--color-violet-500)]/30",
   orange: "focus:bg-[#f97316]/20 data-[state=checked]:bg-[#f97316]/30",
   teal: "focus:bg-[#14b8a6]/20 data-[state=checked]:bg-[#14b8a6]/30",
   pink: "focus:bg-[#ec4899]/20 data-[state=checked]:bg-[#ec4899]/30",
@@ -77,6 +79,14 @@ export type BntSelectProps = {
   // Icone decorativo a esquerda do valor no trigger (ex.: <MapPin ... />). O
   // BntSelect embrulha em aria-hidden; o nome acessivel segue de label/id.
   leadingIcon?: ReactNode;
+  /**
+   * Como desenhar cada opcao (lote 10c): recebe a opcao e devolve o conteudo
+   * do item, para uma opcao poder levar um marcador colorido antes do rotulo.
+   * O que ela devolve tambem e o que o trigger mostra depois de escolher
+   * (o Radix copia o `ItemText` selecionado para o `SelectValue`). Sem ela,
+   * o item e o `label`, como sempre: nenhuma chamada existente muda.
+   */
+  renderOption?: (opt: BntSelectOption) => ReactNode;
 };
 
 // Alturas alinhadas ao ui/input.tsx (h-9) para "sm"; "md" um pouco mais alto
@@ -152,6 +162,7 @@ export function BntSelect({
   fullWidth = true,
   accent = "yellow",
   leadingIcon,
+  renderOption,
 }: BntSelectProps) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
@@ -214,7 +225,7 @@ export function BntSelect({
               accentItemClasses[accent],
             )}
           >
-            {opt.label}
+            {renderOption ? renderOption(opt) : opt.label}
           </SelectItem>
         ))}
       </SelectContent>

@@ -7,7 +7,8 @@ import { adminFetch } from "@/lib/adminApi";
 import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
-import type { CreatorPerfilDados } from "@shared/creatorProfile";
+import { ROTULO_DA_COR, type CreatorPerfilDados } from "@shared/creatorProfile";
+import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 
 // QUEM E O CREATOR: avatar, nome, @handle, kind e desde quando. Hoje so o admin
 // o desenha, dentro do CreatorDashboardView (`identidade="embutida"`), porque la
@@ -102,8 +103,26 @@ function RedesDoCreator({ perfil }: { perfil: CreatorPerfilDados }) {
           visível aos creators
         </span>
       ) : null}
+      {/* Cor no calendario (lote 10c). Sem o campo (backend anterior), o chip
+          nao aparece: ausente e "nao sei", nao "violeta". */}
+      {perfil.calendar_color ? (
+        <span
+          data-testid="creator-cor"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-400 bg-white px-2.5 py-0.5 text-xs font-black text-slate-700"
+        >
+          <MarcadorDeCor cor={perfil.calendar_color} />
+          {/* TODO(Ana) */}
+          {`${rotuloDaCor(perfil.calendar_color)} no calendário`}
+        </span>
+      ) : null}
     </div>
   );
+}
+
+/** Rotulo da cor vindo do servidor; cor que o bundle nao conhece vira o nome
+ * cru, em vez de derrubar o cartao. */
+function rotuloDaCor(cor: string): string {
+  return (ROTULO_DA_COR as Record<string, string | undefined>)[cor] ?? cor;
 }
 
 function PixDoCreator({

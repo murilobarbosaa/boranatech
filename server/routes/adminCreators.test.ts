@@ -532,6 +532,8 @@ describe("GET /creators/:userId", () => {
       tiktok_followers: null,
       followers_updated_at: "2026-09-14T12:00:00Z",
       visible_to_creators: true,
+      // Fixture sem a coluna: o padrao (lote 10c).
+      calendar_color: "violet",
       pix: {
         tipo: "cpf",
         mascarada: "***.***.247-**",

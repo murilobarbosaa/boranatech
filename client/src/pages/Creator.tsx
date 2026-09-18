@@ -13,6 +13,7 @@ import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView"
 import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
 import { CreatorPublicacoes } from "@/components/creator/CreatorPublicacoes";
 import { CreatorRedesForm } from "@/components/creator/CreatorRedesForm";
+import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import {
   CREATOR_ABA_PADRAO,
   idDaAba,
@@ -394,6 +395,13 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
             titulo="Redes"
             // TODO(Ana)
             frase="Seus @ e quantos seguidores você tem hoje, informados por você."
+            // A cor com que este creator aparece no calendario (lote 10c).
+            aoLadoDoTitulo={
+              <MarcadorDeCor
+                cor={estado.perfil.calendar_color}
+                testId="creator-redes-cor-titulo"
+              />
+            }
           />
           <CreatorRedesForm perfil={estado.perfil} onSalvo={definirPerfil} />
         </section>

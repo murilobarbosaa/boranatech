@@ -151,6 +151,7 @@ const MENSAGEM_DO_PERFIL: Record<CodigoDoPerfil, string> = {
   invalid_body: "Envie os dados do perfil.",
   invalid_visible_to_creators:
     "Diga se o seu @ pode aparecer para outros creators.",
+  invalid_calendar_color: "Escolha uma das cores do calendário.",
   invalid_instagram_handle:
     "@ do Instagram inválido. Use até 30 letras, números, ponto ou sublinhado.",
   invalid_tiktok_handle:

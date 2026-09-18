@@ -11,6 +11,9 @@ import {
   type CreatorPixMascarada,
   type Resultado,
   type TipoDeChavePix,
+  COR_PADRAO_DO_CALENDARIO,
+  ehCorDoCalendario,
+  type CorDoCalendario,
 } from "../../shared/creatorProfile";
 import type { Linha } from "./creatorDashboard";
 import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
@@ -41,7 +44,21 @@ function perfilVazio(): Omit<CreatorPerfilDados, "pix"> {
     tiktok_followers: null,
     followers_updated_at: null,
     visible_to_creators: false,
+    calendar_color: COR_PADRAO_DO_CALENDARIO,
   };
+}
+
+/**
+ * Cor gravada, ou o padrao quando a linha nao tem (nula ou ausente). Valor
+ * que existe e nao esta na lista LANCA: e o dado em si, e degradar para o
+ * violeta produziria um perfil que alguem confundiria com correto.
+ */
+function corDaLinha(valor: unknown): CorDoCalendario {
+  if (valor === null || valor === undefined) return COR_PADRAO_DO_CALENDARIO;
+  if (ehCorDoCalendario(valor)) return valor;
+  throw new Error(
+    `[creatorProfile] calendar_color fora da lista: ${String(valor)}`,
+  );
 }
 
 function inteiroOuNull(valor: unknown, campo: string): number | null {
@@ -81,7 +98,7 @@ async function lerLinhaDoPerfil(userId: string): Promise<Linha | null> {
   const { data, error } = await supabaseAdmin
     .from("creator_profiles")
     .select(
-      "instagram_handle, tiktok_handle, instagram_followers, tiktok_followers, followers_updated_at, visible_to_creators",
+      "instagram_handle, tiktok_handle, instagram_followers, tiktok_followers, followers_updated_at, visible_to_creators, calendar_color",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -119,6 +136,7 @@ export async function lerPerfilDoCreator(
       "followers_updated_at",
     ),
     visible_to_creators: linha.visible_to_creators,
+    calendar_color: corDaLinha(linha.calendar_color),
     pix,
   };
 }
@@ -129,11 +147,19 @@ export type EntradaDoPerfil = {
   instagram_followers: number | null;
   tiktok_followers: number | null;
   visible_to_creators: boolean;
+  /**
+   * Cor no calendario (lote 10c). OPCIONAL no corpo, ao contrario do
+   * consentimento: o client anterior ao lote nao a manda, e um PUT sem ela
+   * mantem a que ja esta gravada (ou o padrao), em vez de apagar a escolha
+   * de quem so corrigiu o @.
+   */
+  calendar_color?: CorDoCalendario;
 };
 
 export type CodigoDoPerfil =
   | "invalid_body"
   | "invalid_visible_to_creators"
+  | "invalid_calendar_color"
   | CodigoDeHandle
   | CodigoDeSeguidores;
 
@@ -167,6 +193,9 @@ export function validarEntradaDoPerfil(
   if (typeof c.visible_to_creators !== "boolean") {
     return { ok: false, code: "invalid_visible_to_creators" };
   }
+  if (c.calendar_color !== undefined && !ehCorDoCalendario(c.calendar_color)) {
+    return { ok: false, code: "invalid_calendar_color" };
+  }
   return {
     ok: true,
     valor: {
@@ -175,6 +204,9 @@ export function validarEntradaDoPerfil(
       instagram_followers: seguidoresInstagram.valor,
       tiktok_followers: seguidoresTiktok.valor,
       visible_to_creators: c.visible_to_creators,
+      ...(c.calendar_color === undefined
+        ? {}
+        : { calendar_color: c.calendar_color }),
     },
   };
 }
@@ -237,6 +269,12 @@ export async function salvarPerfilDoCreator(
       tiktok_followers: entrada.tiktok_followers,
       followers_updated_at: dataDosSeguidores(entrada, anterior, instante),
       visible_to_creators: entrada.visible_to_creators,
+      // Sem cor no corpo, a gravada continua; sem nada gravado, o padrao.
+      calendar_color:
+        entrada.calendar_color ??
+        (anterior
+          ? corDaLinha(anterior.calendar_color)
+          : COR_PADRAO_DO_CALENDARIO),
       updated_at: instante,
     },
     { onConflict: "user_id" },

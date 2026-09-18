@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COR_PADRAO_DO_CALENDARIO,
+  CORES_DO_CALENDARIO,
+  ehCorDoCalendario,
   isTipoDeChavePix,
+  ROTULO_DA_COR,
   mascararChavePix,
   normalizarChavePix,
   normalizarHandle,
@@ -283,6 +287,25 @@ describe("mascararChavePix", () => {
     ];
     for (const [tipo, valor] of chaves) {
       expect(mascararChavePix(tipo, valor), tipo).not.toContain(valor);
+    }
+  });
+});
+
+describe("CORES_DO_CALENDARIO (lote 10c)", () => {
+  it("sao 15, com rotulo para cada uma, e o padrao esta na lista", () => {
+    expect(CORES_DO_CALENDARIO).toHaveLength(15);
+    expect(new Set(CORES_DO_CALENDARIO).size).toBe(15);
+    for (const cor of CORES_DO_CALENDARIO) {
+      expect(ROTULO_DA_COR[cor].length, cor).toBeGreaterThan(0);
+      expect(ehCorDoCalendario(cor)).toBe(true);
+    }
+    expect(ehCorDoCalendario(COR_PADRAO_DO_CALENDARIO)).toBe(true);
+    expect(COR_PADRAO_DO_CALENDARIO).toBe("violet");
+  });
+
+  it("recusa o que nao esta na lista: red e teal (livres de proposito), maiuscula, vazio e nao-texto", () => {
+    for (const valor of ["red", "teal", "Violet", "", null, undefined, 3]) {
+      expect(ehCorDoCalendario(valor), String(valor)).toBe(false);
     }
   });
 });

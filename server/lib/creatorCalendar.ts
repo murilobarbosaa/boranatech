@@ -18,6 +18,11 @@ import {
   type RedeDeCreator,
   type Resultado,
 } from "../../shared/creatorProfile";
+import {
+  COR_PADRAO_DO_CALENDARIO,
+  ehCorDoCalendario,
+  type CorDoCalendario,
+} from "../../shared/creatorProfile";
 import type { Linha } from "./creatorDashboard";
 import { textoDe } from "./creatorDashboard";
 import { erroEncadeavel } from "./supabaseError";
@@ -86,9 +91,17 @@ export type ParceiroDeCollab = {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  /** Cor do parceiro no calendario: o marcador dele tambem entra no dia. */
+  calendar_color: CorDoCalendario;
 };
 
 export type MarcacaoDoMes = MarcacaoDoCalendario & {
+  /**
+   * Cor do CREATOR da marcacao no calendario (lote 10c). Sai sempre, com ou
+   * sem consentimento de visibilidade: cor nao e dado pessoal, e so existe
+   * para ser vista.
+   */
+  calendar_color: CorDoCalendario;
   meu_pedido: MeuPedidoNaMarcacao | null;
   /** Collabs aceitas, visiveis a todos: e o que aparece NO calendario. */
   collabs: ParceiroDeCollab[];
@@ -296,6 +309,44 @@ function janelaDoDia(agora: Date): { inicio: string; fim: string } {
 
 /** As marcacoes de TODOS os creators no mes pedido, do dia 1 ao ultimo. */
 /**
+ * Cor de cada creator no calendario, numa consulta so (`in`). Quem nao tem
+ * linha de perfil fica com o padrao; valor fora da lista lanca, como no
+ * perfil: e o dado em si.
+ */
+async function lerCoresDosCreators(
+  userIds: string[],
+): Promise<Map<string, CorDoCalendario>> {
+  const mapa = new Map<string, CorDoCalendario>();
+  const vistos = new Set<string>();
+  const unicos: string[] = [];
+  for (const id of userIds) {
+    if (vistos.has(id)) continue;
+    vistos.add(id);
+    unicos.push(id);
+    mapa.set(id, COR_PADRAO_DO_CALENDARIO);
+  }
+  if (unicos.length === 0) return mapa;
+
+  const { data, error } = await supabaseAdmin
+    .from("creator_profiles")
+    .select("user_id, calendar_color")
+    .in("user_id", unicos);
+  if (error) throw erroEncadeavel(error);
+  const linhas: Linha[] = data ?? [];
+  for (const linha of linhas) {
+    const cor = linha.calendar_color;
+    if (cor === null || cor === undefined) continue;
+    if (!ehCorDoCalendario(cor)) {
+      throw new Error(
+        `[creatorCalendar] calendar_color fora da lista: ${String(cor)}`,
+      );
+    }
+    mapa.set(textoDe(linha.user_id, "user_id"), cor);
+  }
+  return mapa;
+}
+
+/**
  * Pedidos de collab das marcacoes do mes, numa consulta so (`in`): e daqui
  * que sai o `meu_pedido` de quem olha. Uma consulta por MES, e nao uma por
  * marcacao, pelo mesmo motivo de `lerAutores`.
@@ -354,12 +405,16 @@ export async function listarMesDoCalendario(
     }
   }
 
-  // Donos e parceiros no MESMO lote de perfis.
+  // Donos e parceiros no MESMO lote de perfis, e no mesmo lote de cores.
   const idsDeParceiros: string[] = [];
   aceitos.forEach((ids) => idsDeParceiros.push(...ids));
-  const autores = await lerAutores([
+  const todos = [
     ...linhas.map((linha) => textoDe(linha.user_id, "user_id")),
     ...idsDeParceiros,
+  ];
+  const [autores, cores] = await Promise.all([
+    lerAutores(todos),
+    lerCoresDosCreators(todos),
   ]);
 
   return linhas.map((linha) => {
@@ -371,11 +426,13 @@ export async function listarMesDoCalendario(
           user_id: id,
           name: autor?.name ?? null,
           avatar_url: autor?.avatar_url ?? null,
+          calendar_color: cores.get(id) ?? COR_PADRAO_DO_CALENDARIO,
         };
       },
     );
     return {
       ...marcacao,
+      calendar_color: cores.get(marcacao.user_id) ?? COR_PADRAO_DO_CALENDARIO,
       meu_pedido: meusPedidos.get(marcacao.id) ?? null,
       collabs,
       minha_collab: collabs.some((c) => c.user_id === viewerId),

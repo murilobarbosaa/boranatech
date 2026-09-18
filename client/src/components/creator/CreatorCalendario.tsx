@@ -19,6 +19,7 @@ import {
   inputClass,
 } from "@/components/creator/creatorFormEstilos";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
+import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import { useAuth } from "@/contexts/AuthContext";
 import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
@@ -64,6 +65,9 @@ type Marcacao = {
   note: string | null;
   created_at: string;
   autor: Autor | null;
+  /** Cor do creator da marcacao no calendario (lote 10c). Ausente no backend
+   * anterior: o marcador cai no violeta. */
+  calendar_color?: string;
   /**
    * O pedido de collab que EU fiz nesta marcacao (lote 10c). Opcional por
    * causa da janela de deploy: o backend anterior nao manda o campo, e
@@ -81,7 +85,51 @@ type Parceiro = {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  calendar_color?: string;
 };
+
+/** Quantos marcadores cabem na celula do dia antes do "+N". */
+const MARCADORES_POR_DIA = 4;
+
+type MarcadorDoDia = {
+  chave: string;
+  cor: string | undefined;
+  nome: string;
+  meu: boolean;
+};
+
+/**
+ * Os marcadores de um dia (lote 10c): um por marcacao, na cor de quem marcou,
+ * mais um por parceiro de collab aceita, na cor do parceiro. Os MEUS (minha
+ * marcacao ou minha collab) sao os que ganham o anel.
+ */
+function marcadoresDoDia(
+  marcacoes: Marcacao[],
+  meuId: string | null,
+): MarcadorDoDia[] {
+  const lista: MarcadorDoDia[] = [];
+  for (const m of marcacoes) {
+    const minha = meuId !== null && m.user_id === meuId;
+    lista.push({
+      chave: m.id,
+      cor: m.calendar_color,
+      // TODO(Ana)
+      nome: minha ? "Você" : nomeDoAutor(m.autor),
+      meu: minha,
+    });
+    for (const p of m.collabs ?? []) {
+      const meu = meuId !== null && p.user_id === meuId;
+      lista.push({
+        chave: `${m.id}-${p.user_id}`,
+        cor: p.calendar_color,
+        // TODO(Ana)
+        nome: meu ? "Você" : nomeDoParceiro(p),
+        meu,
+      });
+    }
+  }
+  return lista;
+}
 
 type Pedido = {
   id: string;
@@ -592,6 +640,7 @@ export function CreatorCalendario() {
         {grade.flat().map((quadrado: DiaDaGrade) => {
           const marcacoesDoDia = porDia.get(quadrado.dia) ?? [];
           const quantas = marcacoesDoDia.length;
+          const marcadores = marcadoresDoDia(marcacoesDoDia, meuId);
           // Collab fechada no dia (lote 10c): o aperto de mao entra na celula,
           // para a collab aparecer NO calendario e nao so no painel do dia.
           const temCollab = marcacoesDoDia.some(
@@ -620,14 +669,31 @@ export function CreatorCalendario() {
               ].join(" ")}
             >
               <span>{Number(quadrado.dia.slice(8, 10))}</span>
+              {/* Os marcadores por creator (lote 10c) no lugar do chip com a
+                  contagem: quem marcou o dia passa a ser legivel de relance,
+                  pela cor, e o meu dia pelo anel. Ate quatro, depois "+N". */}
               {quantas > 0 ? (
-                <span className="mt-0.5 flex items-center gap-1">
-                  <span
-                    data-testid={`creator-dia-contagem-${quadrado.dia}`}
-                    className="rounded-full bg-violet-800 px-1.5 text-[10px] font-black text-white"
-                  >
-                    {quantas}
-                  </span>
+                <span
+                  data-testid={`creator-dia-marcadores-${quadrado.dia}`}
+                  className="mt-1 flex items-center gap-1"
+                >
+                  {marcadores.slice(0, MARCADORES_POR_DIA).map((marcador) => (
+                    <MarcadorDeCor
+                      key={marcador.chave}
+                      cor={marcador.cor}
+                      nome={marcador.nome}
+                      meu={marcador.meu}
+                      testId={`creator-marcador-${marcador.chave}`}
+                    />
+                  ))}
+                  {marcadores.length > MARCADORES_POR_DIA ? (
+                    <span
+                      data-testid={`creator-dia-mais-${quadrado.dia}`}
+                      className="text-[10px] font-black text-slate-600"
+                    >
+                      {`+${marcadores.length - MARCADORES_POR_DIA}`}
+                    </span>
+                  ) : null}
                   {temCollab ? (
                     <Handshake
                       aria-hidden="true"
@@ -688,6 +754,11 @@ export function CreatorCalendario() {
                     <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
                       {rotuloDaRede(marcacao.network)}
                     </span>
+                    <MarcadorDeCor
+                      cor={marcacao.calendar_color}
+                      meu={minha}
+                      testId={`creator-marcacao-cor-${marcacao.id}`}
+                    />
                     <span className="text-sm font-bold text-slate-900">
                       {minha
                         ? // TODO(Ana)
