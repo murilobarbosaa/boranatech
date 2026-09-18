@@ -58,12 +58,22 @@ const REEL = {
   network: "instagram",
   kind: "reel",
   url: "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+  status: "pendente",
+  confirmed_at: null,
   created_at: "2026-09-15T12:00:00Z",
 };
 
-function responderLista(posts: unknown[], no_mes: number) {
+const CONFIRMADA = {
+  ...REEL,
+  status: "confirmado",
+  confirmed_at: "2026-09-16T12:00:00Z",
+};
+
+function responderLista(posts: unknown[], no_mes: number, aguardando = 0) {
   estado.responder = async (_path, method) =>
-    method === "GET" ? { data: { posts, total: posts.length, no_mes } } : {};
+    method === "GET"
+      ? { data: { posts, total: posts.length, no_mes, aguardando } }
+      : {};
 }
 
 beforeEach(() => {
@@ -90,7 +100,7 @@ describe("CreatorPublicacoesAdmin", () => {
     expect(linha.textContent).toContain("15/09");
     expect(
       screen.getByTestId("creator-publicacoes-admin-no-mes").textContent,
-    ).toBe("1 este mês");
+    ).toBe("1 confirmadas este mês");
     // Ninguem registra publicacao pelo outro.
     expect(screen.queryByRole("textbox")).toBeNull();
   });
@@ -103,7 +113,7 @@ describe("CreatorPublicacoesAdmin", () => {
   });
 
   it("remover pede confirmacao e chama a rota do admin", async () => {
-    responderLista([REEL], 1);
+    responderLista([REEL], 0, 1);
     render(<CreatorPublicacoesAdmin userId={UID} />);
     await screen.findByTestId(`creator-publicacao-admin-${POST_ID}`);
 
@@ -126,7 +136,86 @@ describe("CreatorPublicacoesAdmin", () => {
     await screen.findByTestId("creator-publicacoes-admin-vazio");
     expect(
       screen.getByTestId("creator-publicacoes-admin-no-mes").textContent,
-    ).toBe("0 este mês");
+    ).toBe("0 confirmadas este mês");
+    expect(
+      screen.queryByTestId("creator-publicacoes-admin-aguardando"),
+    ).toBeNull();
+  });
+
+  it("pendente mostra o chip e o Confirmar; confirmar chama a rota do admin e a linha vira confirmada", async () => {
+    responderLista([REEL], 0, 1);
+    render(<CreatorPublicacoesAdmin userId={UID} />);
+    const linha = await screen.findByTestId(
+      `creator-publicacao-admin-${POST_ID}`,
+    );
+    expect(
+      within(linha).getByTestId("publicacao-status-pendente"),
+    ).toBeTruthy();
+    expect(linha.className).toContain("opacity-70");
+    expect(
+      screen.getByTestId("creator-publicacoes-admin-aguardando").textContent,
+    ).toBe("1 aguardando");
+
+    estado.responder = async () => ({ data: { post: CONFIRMADA } });
+    fireEvent.click(
+      screen.getByTestId(`creator-publicacao-admin-conferir-${POST_ID}`),
+    );
+    await waitFor(() =>
+      expect(estado.chamadas.filter((c) => c.method === "POST")).toEqual([
+        { path: `/creators/${UID}/posts/${POST_ID}/confirmar`, method: "POST" },
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByTestId(`creator-publicacao-admin-${POST_ID}`),
+        ).getByTestId("publicacao-status-confirmada"),
+      ).toBeTruthy(),
+    );
+    // Confirmada nao oferece Confirmar de novo, e continua removivel.
+    expect(
+      screen.queryByTestId(`creator-publicacao-admin-conferir-${POST_ID}`),
+    ).toBeNull();
+    expect(
+      screen.getByTestId(`creator-publicacao-admin-remover-${POST_ID}`),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("creator-publicacoes-admin-no-mes").textContent,
+    ).toBe("1 confirmadas este mês");
+    expect(
+      screen.queryByTestId("creator-publicacoes-admin-aguardando"),
+    ).toBeNull();
+    expect(estado.toastOk).toHaveBeenCalledTimes(1);
+  });
+
+  it("confirmada nao tem Confirmar; falha ao confirmar avisa e a linha continua pendente", async () => {
+    responderLista([CONFIRMADA], 1);
+    render(<CreatorPublicacoesAdmin userId={UID} />);
+    await screen.findByTestId(`creator-publicacao-admin-${POST_ID}`);
+    expect(
+      screen.queryByTestId(`creator-publicacao-admin-conferir-${POST_ID}`),
+    ).toBeNull();
+    cleanup();
+
+    responderLista([REEL], 0, 1);
+    render(<CreatorPublicacoesAdmin userId={UID} />);
+    await screen.findByTestId(`creator-publicacao-admin-${POST_ID}`);
+    estado.responder = async () => {
+      throw new AdminApiError(
+        "Esta publicação já foi confirmada.",
+        409,
+        "post_already_confirmed",
+      );
+    };
+    fireEvent.click(
+      screen.getByTestId(`creator-publicacao-admin-conferir-${POST_ID}`),
+    );
+    await waitFor(() => expect(estado.toastErro).toHaveBeenCalledTimes(1));
+    expect(
+      within(
+        screen.getByTestId(`creator-publicacao-admin-${POST_ID}`),
+      ).getByTestId("publicacao-status-pendente"),
+    ).toBeTruthy();
   });
 
   it("falha na remocao: avisa e a linha continua", async () => {

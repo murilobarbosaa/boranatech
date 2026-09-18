@@ -11,6 +11,11 @@ import {
   inputClass,
 } from "@/components/creator/creatorFormEstilos";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
+import {
+  ChipDeAguardando,
+  ChipDeStatusDaPublicacao,
+  classeDaLinhaPorStatus,
+} from "@/components/creator/StatusDaPublicacao";
 import { BntSelect } from "@/components/shared/BntSelect";
 import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
@@ -41,13 +46,16 @@ type Publicacao = {
   network: RedeDePublicacao;
   kind: TipoDePublicacao;
   url: string;
+  /** Opcionais por causa da janela de deploy: o backend anterior nao manda. */
+  status?: string;
+  confirmed_at?: string | null;
   created_at: string;
 };
 
 type Estado =
   | { tipo: "carregando" }
   | { tipo: "erro" }
-  | { tipo: "ok"; posts: Publicacao[]; no_mes: number };
+  | { tipo: "ok"; posts: Publicacao[]; no_mes: number; aguardando: number };
 
 // Rotulo CURTO do chip da lista; o do select e o do shared ("Vídeo do
 // TikTok"), que nao cabe num chip ao lado do glifo da rede.
@@ -90,13 +98,19 @@ function diaCurto(iso: string): string {
 function listaDaResposta(json: unknown): {
   posts: Publicacao[];
   no_mes: number;
+  aguardando: number;
 } | null {
   if (typeof json !== "object" || json === null) return null;
   const data = (json as { data?: unknown }).data;
   if (typeof data !== "object" || data === null) return null;
-  const d = data as { posts?: unknown; no_mes?: unknown };
+  const d = data as { posts?: unknown; no_mes?: unknown; aguardando?: unknown };
   if (!Array.isArray(d.posts) || typeof d.no_mes !== "number") return null;
-  return { posts: d.posts as Publicacao[], no_mes: d.no_mes };
+  return {
+    posts: d.posts as Publicacao[],
+    no_mes: d.no_mes,
+    // Ausente no backend anterior: zero, e o chip de aguardando nao aparece.
+    aguardando: typeof d.aguardando === "number" ? d.aguardando : 0,
+  };
 }
 
 export function CreatorPublicacoes() {
@@ -118,11 +132,7 @@ export function CreatorPublicacoes() {
       .then((json: unknown) => {
         if (cancelado) return;
         const lista = listaDaResposta(json);
-        setEstado(
-          lista
-            ? { tipo: "ok", posts: lista.posts, no_mes: lista.no_mes }
-            : { tipo: "erro" },
-        );
+        setEstado(lista ? { tipo: "ok", ...lista } : { tipo: "erro" });
       })
       .catch(() => {
         if (!cancelado) setEstado({ tipo: "erro" });
@@ -170,12 +180,16 @@ export function CreatorPublicacoes() {
       });
       const post = (json as { data?: { post?: Publicacao } }).data?.post;
       if (post) {
+        // Story nasce confirmado e ja conta; o resto entra em "aguardando".
+        // Sem status (backend anterior) conta como antes, no mes.
+        const pendente = post.status === "pendente";
         setEstado((atual) =>
           atual.tipo === "ok"
             ? {
                 tipo: "ok",
                 posts: [post, ...atual.posts],
-                no_mes: atual.no_mes + 1,
+                no_mes: pendente ? atual.no_mes : atual.no_mes + 1,
+                aguardando: pendente ? atual.aguardando + 1 : atual.aguardando,
               }
             : atual,
         );
@@ -202,15 +216,19 @@ export function CreatorPublicacoes() {
     setRemovendo(true);
     try {
       await contentFetch(`/creator/posts/${id}`, { method: "DELETE" });
-      setEstado((atual) =>
-        atual.tipo === "ok"
-          ? {
-              tipo: "ok",
-              posts: atual.posts.filter((p) => p.id !== id),
-              no_mes: Math.max(0, atual.no_mes - 1),
-            }
-          : atual,
-      );
+      setEstado((atual) => {
+        if (atual.tipo !== "ok") return atual;
+        const pendente =
+          atual.posts.find((p) => p.id === id)?.status === "pendente";
+        return {
+          tipo: "ok",
+          posts: atual.posts.filter((p) => p.id !== id),
+          no_mes: pendente ? atual.no_mes : Math.max(0, atual.no_mes - 1),
+          aguardando: pendente
+            ? Math.max(0, atual.aguardando - 1)
+            : atual.aguardando,
+        };
+      });
       setConfirmando(null);
       // TODO(Ana)
       toast.success("Publicação removida.");
@@ -322,13 +340,19 @@ export function CreatorPublicacoes() {
           ) : null}
         </div>
 
-        <p
-          data-testid="creator-publicacoes-no-mes"
-          className="inline-flex items-center rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black text-violet-900"
-        >
-          {/* TODO(Ana) */}
-          {`${estado.no_mes} este mês`}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p
+            data-testid="creator-publicacoes-no-mes"
+            className="inline-flex items-center rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black text-violet-900"
+          >
+            {/* TODO(Ana) */}
+            {`${estado.no_mes} confirmadas este mês`}
+          </p>
+          <ChipDeAguardando
+            quantas={estado.aguardando}
+            testId="creator-publicacoes-aguardando"
+          />
+        </div>
       </div>
 
       {/* A lista rola por dentro: com muitas publicacoes, a coluna da esquerda
@@ -359,12 +383,13 @@ export function CreatorPublicacoes() {
               <li
                 key={post.id}
                 data-testid={`creator-publicacao-${post.id}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
+                className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2 ${classeDaLinhaPorStatus(post.status)}`}
               >
                 <IconeDaRede rede={post.network} />
                 <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
                   {rotuloDoTipo(post.kind)}
                 </span>
+                <ChipDeStatusDaPublicacao status={post.status} />
                 <a
                   href={post.url}
                   target="_blank"

@@ -66,11 +66,14 @@ import { CreatorPublicacoes } from "./CreatorPublicacoes";
 const POST_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
 const OUTRO_ID = "1b4e28ba-2fa1-11d2-883f-0016d3cca427";
 
+// REEL ainda aguarda conferencia; VIDEO ja foi conferido (lote 10b).
 const REEL = {
   id: POST_ID,
   network: "instagram",
   kind: "reel",
   url: "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+  status: "pendente",
+  confirmed_at: null,
   created_at: "2026-09-15T12:00:00Z",
 };
 
@@ -79,6 +82,8 @@ const VIDEO = {
   network: "tiktok",
   kind: "video",
   url: "https://www.tiktok.com/@ana.cria/video/7311122233344455566",
+  status: "confirmado",
+  confirmed_at: "2026-09-10T13:00:00Z",
   created_at: "2026-09-10T12:00:00Z",
 };
 
@@ -87,6 +92,9 @@ const STORY = {
   network: "instagram",
   kind: "story",
   url: "https://www.instagram.com/stories/ana.cria/3456789012345678901/",
+  // Story nasce confirmado: o servidor grava assim e a lista mostra assim.
+  status: "confirmado",
+  confirmed_at: "2026-09-16T12:00:00Z",
   created_at: "2026-09-16T12:00:00Z",
 };
 
@@ -126,9 +134,11 @@ async function escolherTipo(nome: string): Promise<void> {
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 }
 
-function responderLista(posts: unknown[], no_mes: number) {
+function responderLista(posts: unknown[], no_mes: number, aguardando = 0) {
   estado.responder = async (_path, method) =>
-    method === "GET" ? { data: { posts, total: posts.length, no_mes } } : {};
+    method === "GET"
+      ? { data: { posts, total: posts.length, no_mes, aguardando } }
+      : {};
 }
 
 beforeEach(() => {
@@ -158,7 +168,7 @@ describe("CreatorPublicacoes: leitura", () => {
     expect(linha.textContent).toContain("reel");
     expect(linha.textContent).toContain("15/09");
     expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
-      "2 este mês",
+      "2 confirmadas este mês",
     );
   });
 
@@ -186,8 +196,9 @@ describe("CreatorPublicacoes: leitura", () => {
     await screen.findByTestId("creator-publicacoes-vazio");
     expect(screen.queryByRole("listitem")).toBeNull();
     expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
-      "0 este mês",
+      "0 confirmadas este mês",
     );
+    expect(screen.queryByTestId("creator-publicacoes-aguardando")).toBeNull();
   });
 
   it("erro na busca: bloco de erro, e tentar de novo refaz a mesma busca", async () => {
@@ -244,9 +255,13 @@ describe("CreatorPublicacoes: registro", () => {
       body: { url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc", tipo: "reel" },
     });
     await screen.findByTestId(`creator-publicacao-${POST_ID}`);
+    // O reel nasce pendente: nao entra nas confirmadas, entra no aguardando.
     expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
-      "2 este mês",
+      "1 confirmadas este mês",
     );
+    expect(
+      screen.getByTestId("creator-publicacoes-aguardando").textContent,
+    ).toBe("1 aguardando");
     expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("");
     expect(estado.toastOk).toHaveBeenCalledTimes(1);
   });
@@ -329,7 +344,7 @@ describe("CreatorPublicacoes: registro", () => {
 
 describe("CreatorPublicacoes: remocao", () => {
   it("pede confirmacao antes de apagar, e so entao chama o DELETE", async () => {
-    responderLista([REEL], 1);
+    responderLista([REEL], 0, 1);
     render(<CreatorPublicacoes />);
     await screen.findByTestId(`creator-publicacao-${POST_ID}`);
 
@@ -348,9 +363,11 @@ describe("CreatorPublicacoes: remocao", () => {
       ]),
     );
     await screen.findByTestId("creator-publicacoes-vazio");
+    // Era pendente: sai do aguardando, e as confirmadas nao mudam.
     expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
-      "0 este mês",
+      "0 confirmadas este mês",
     );
+    expect(screen.queryByTestId("creator-publicacoes-aguardando")).toBeNull();
   });
 
   it("Manter fecha a confirmacao sem chamar o servidor", async () => {
@@ -464,5 +481,72 @@ describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
     });
     const linha = await screen.findByTestId(`creator-publicacao-${STORY.id}`);
     expect(linha.textContent).toContain("story");
+  });
+});
+
+describe("CreatorPublicacoes: status (lote 10b)", () => {
+  it("pendente ganha o chip cinza e a linha apagada; confirmada ganha o chip verde", async () => {
+    responderLista([REEL, VIDEO], 1, 1);
+    render(<CreatorPublicacoes />);
+    const pendente = await screen.findByTestId(`creator-publicacao-${POST_ID}`);
+    expect(
+      within(pendente).getByTestId("publicacao-status-pendente").textContent,
+    ).toBe("aguardando conferência");
+    expect(pendente.className).toContain("opacity-70");
+
+    const confirmada = screen.getByTestId(`creator-publicacao-${OUTRO_ID}`);
+    expect(
+      within(confirmada).getByTestId("publicacao-status-confirmada")
+        .textContent,
+    ).toBe("confirmada");
+    expect(confirmada.className).not.toContain("opacity-70");
+
+    expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
+      "1 confirmadas este mês",
+    );
+    expect(
+      screen.getByTestId("creator-publicacoes-aguardando").textContent,
+    ).toBe("1 aguardando");
+  });
+
+  it("backend anterior (sem status nem aguardando): nenhum chip, e a contagem como antes", async () => {
+    const { status: _s, confirmed_at: _c, ...semStatus } = REEL;
+    estado.responder = async (_path, method) =>
+      method === "GET"
+        ? { data: { posts: [semStatus], total: 1, no_mes: 1 } }
+        : {};
+    render(<CreatorPublicacoes />);
+    const linha = await screen.findByTestId(`creator-publicacao-${POST_ID}`);
+    expect(
+      within(linha).queryByTestId("publicacao-status-pendente"),
+    ).toBeNull();
+    expect(
+      within(linha).queryByTestId("publicacao-status-confirmada"),
+    ).toBeNull();
+    expect(linha.className).not.toContain("opacity-70");
+    expect(screen.queryByTestId("creator-publicacoes-aguardando")).toBeNull();
+  });
+
+  it("story registrada entra como confirmada e soma nas confirmadas", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    estado.responder = async (_path, method) =>
+      method === "POST"
+        ? { data: { post: STORY } }
+        : { data: { posts: [], total: 0, no_mes: 0, aguardando: 0 } };
+    await escolherTipo("Story");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: STORY.url },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    const linha = await screen.findByTestId(`creator-publicacao-${STORY.id}`);
+    expect(
+      within(linha).getByTestId("publicacao-status-confirmada"),
+    ).toBeTruthy();
+    expect(screen.getByTestId("creator-publicacoes-no-mes").textContent).toBe(
+      "1 confirmadas este mês",
+    );
+    expect(screen.queryByTestId("creator-publicacoes-aguardando")).toBeNull();
   });
 });

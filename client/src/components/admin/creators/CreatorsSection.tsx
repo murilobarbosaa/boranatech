@@ -26,6 +26,7 @@ import {
 } from "@shared/creatorDashboard";
 
 import { CHAVES_DA_URL_DE_CREATORS as CHAVE } from "./creatorsUrlKeys";
+import { PublicacoesParaConferir } from "./PublicacoesParaConferir";
 
 // ABA CREATORS DO ADMIN: resumo, quadro paginado e o painel de um creator.
 //
@@ -366,9 +367,23 @@ function LinhaDoQuadro({
       </td>
       <td className="px-3 py-3 text-right font-bold tabular-nums">
         {/* Lote 09: zero e um numero (nao publicou nada no mes); ausente e o
-            backend anterior, e ai a celula fica vazia. */}
+            backend anterior, e ai a celula fica vazia. Lote 10b: o numero e
+            das CONFIRMADAS, e o chip ambar e a pendencia do admin, so quando
+            ha alguma (zero nao e pendencia). */}
         {item.posts_no_mes === undefined ? null : (
-          <span data-testid="creators-posts-no-mes">{item.posts_no_mes}</span>
+          <span className="inline-flex flex-wrap items-center justify-end gap-1">
+            <span data-testid="creators-posts-no-mes">{item.posts_no_mes}</span>
+            {item.posts_aguardando !== undefined &&
+            item.posts_aguardando > 0 ? (
+              <span
+                data-testid="creators-posts-aguardando"
+                className="rounded-full border-2 border-amber-600 bg-amber-50 px-2 py-0.5 text-[11px] font-black text-amber-900"
+              >
+                {/* TODO(Ana) */}
+                {`${item.posts_aguardando} aguardando`}
+              </span>
+            ) : null}
+          </span>
         )}
       </td>
       <td className="px-3 py-3 text-right font-bold tabular-nums">
@@ -566,7 +581,9 @@ function PainelDoCreator({ userId }: { userId: string }) {
           err instanceof AdminApiError &&
           err.status === 404 &&
           err.code === "creator_not_found";
-        setEstado(naoEncontrado ? { tipo: "nao_encontrado" } : { tipo: "erro" });
+        setEstado(
+          naoEncontrado ? { tipo: "nao_encontrado" } : { tipo: "erro" },
+        );
       });
     return () => {
       cancelado = true;
@@ -687,6 +704,16 @@ export function CreatorsSection() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Lote 10b: a pendencia do admin vem ANTES do quadro, porque e a
+              unica coisa da aba que espera uma acao. Some quando um painel esta
+              aberto: la o bloco de publicacoes do proprio creator ja oferece
+              o Confirmar. */}
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Publicações para conferir"
+          >
+            <PublicacoesParaConferir />
+          </BlocoBoundary>
           <div className="flex flex-wrap items-center gap-3">
             <Pilulas
               // TODO(Ana)

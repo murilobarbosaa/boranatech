@@ -143,15 +143,36 @@ const PAINEL = {
 };
 
 function responder(valor: unknown) {
-  return valor instanceof Error ? Promise.reject(valor) : Promise.resolve(valor);
+  return valor instanceof Error
+    ? Promise.reject(valor)
+    : Promise.resolve(valor);
 }
 
+// Publicacoes para conferir (lote 10b): vazias por padrao, para os testes do
+// quadro e do painel nao dependerem do bloco novo.
+const SEM_PENDENTES = {
+  data: { rows: [], total: 0, page: 1, pageSize: 50 },
+};
+
 function rotear(
-  over: { resumo?: unknown; pagina?: unknown; painel?: unknown } = {},
+  over: {
+    resumo?: unknown;
+    pagina?: unknown;
+    painel?: unknown;
+    pendentes?: unknown;
+    acao?: unknown;
+  } = {},
 ) {
-  fetchMock.mockImplementation((path: string) => {
+  fetchMock.mockImplementation((path: string, options?: RequestInit) => {
     if (path === "/creators/resumo") return responder(over.resumo ?? RESUMO);
     if (path.startsWith("/creators?")) return responder(over.pagina ?? PAGINA);
+    // ANTES do painel: `/creators/posts?` tambem comeca com `/creators/`.
+    if (path.startsWith("/creators/posts?")) {
+      return responder(over.pendentes ?? SEM_PENDENTES);
+    }
+    if (options?.method === "POST" || options?.method === "DELETE") {
+      return responder(over.acao ?? { data: {} });
+    }
     if (path.startsWith("/creators/")) return responder(over.painel ?? PAINEL);
     return Promise.reject(new Error(`rota nao mockada: ${path}`));
   });
@@ -541,5 +562,181 @@ describe("paridade com limparChavesDeSecao", () => {
     });
     expect(escritas.sort()).toEqual([...CHAVES_DA_ABA_CREATORS].sort());
     expect(limparChavesDeSecao(search)).toBe("?section=creators&window=30d");
+  });
+});
+
+describe("publicacoes para conferir (lote 10b)", () => {
+  const PENDENTE_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+  const OUTRA_ID = "9d2c1b0a-8f7e-4d6c-b5a4-3f2e1d0c9b8a";
+  const PENDENTES = {
+    data: {
+      rows: [
+        {
+          id: OUTRA_ID,
+          user_id: UUID_B,
+          network: "tiktok",
+          kind: "video",
+          url: "https://www.tiktok.com/@bia.souza/video/7311122233344455566",
+          status: "pendente",
+          confirmed_at: null,
+          created_at: "2026-09-14T12:00:00Z",
+          creator: { name: null, avatar_url: null, instagram_handle: "bia" },
+        },
+        {
+          id: PENDENTE_ID,
+          user_id: UUID_A,
+          network: "instagram",
+          kind: "reel",
+          url: "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+          status: "pendente",
+          confirmed_at: null,
+          created_at: "2026-09-15T12:00:00Z",
+          creator: {
+            name: "Rafa Lima",
+            avatar_url: null,
+            instagram_handle: "rafalima",
+          },
+        },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 50,
+    },
+  };
+
+  it("busca as pendentes com status, pagina e pageSize 50, e lista dono, rede, tipo, link e data", async () => {
+    rotear({ pendentes: PENDENTES });
+    montar();
+    const bloco = await screen.findByTestId("creators-para-conferir");
+    expect(chamadas()).toContain(
+      "/creators/posts?status=pendente&page=1&pageSize=50",
+    );
+    expect(
+      within(bloco).getByTestId("creators-para-conferir-total").textContent,
+    ).toBe("2 aguardando");
+
+    const linha = within(bloco).getByTestId(`creators-pendente-${PENDENTE_ID}`);
+    expect(
+      within(linha).getByTestId("creators-pendente-dono").textContent,
+    ).toBe("Rafa Lima");
+    expect(within(linha).getByTestId("icone-da-rede-instagram")).toBeTruthy();
+    expect(linha.textContent).toContain("Instagram");
+    expect(linha.textContent).toContain("Reel");
+    const link = within(linha).getByRole("link");
+    expect(link.getAttribute("href")).toBe(
+      "https://www.instagram.com/reel/Cx1AbCdEf_-/",
+    );
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(linha.textContent).toContain("15/09/2026");
+
+    // Sem nome: o @ do Instagram faz as vezes.
+    const outra = within(bloco).getByTestId(`creators-pendente-${OUTRA_ID}`);
+    expect(
+      within(outra).getByTestId("creators-pendente-dono").textContent,
+    ).toBe("@bia");
+    expect(outra.textContent).toContain("Vídeo do TikTok");
+  });
+
+  it("confirmar chama a rota do creator dono, tira a linha e desconta o total", async () => {
+    rotear({ pendentes: PENDENTES, acao: { data: { post: {} } } });
+    montar();
+    await screen.findByTestId(`creators-pendente-${PENDENTE_ID}`);
+    fireEvent.click(
+      screen.getByTestId(`creators-pendente-confirmar-${PENDENTE_ID}`),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId(`creators-pendente-${PENDENTE_ID}`),
+      ).toBeNull(),
+    );
+    const post = fetchMock.mock.calls.find(
+      (c) => (c[1] as RequestInit | undefined)?.method === "POST",
+    );
+    expect(post?.[0]).toBe(
+      `/creators/${UUID_A}/posts/${PENDENTE_ID}/confirmar`,
+    );
+    expect(screen.getByTestId("creators-para-conferir-total").textContent).toBe(
+      "1 aguardando",
+    );
+    // A outra continua na lista.
+    expect(screen.getByTestId(`creators-pendente-${OUTRA_ID}`)).toBeTruthy();
+  });
+
+  it("remover pede confirmacao e chama o DELETE do dono", async () => {
+    rotear({ pendentes: PENDENTES, acao: { data: { id: OUTRA_ID } } });
+    montar();
+    await screen.findByTestId(`creators-pendente-${OUTRA_ID}`);
+    fireEvent.click(
+      screen.getByTestId(`creators-pendente-remover-${OUTRA_ID}`),
+    );
+    expect(
+      fetchMock.mock.calls.some(
+        (c) => (c[1] as RequestInit | undefined)?.method === "DELETE",
+      ),
+    ).toBe(false);
+    fireEvent.click(
+      screen.getByTestId(`creators-pendente-confirmar-remocao-${OUTRA_ID}`),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId(`creators-pendente-${OUTRA_ID}`)).toBeNull(),
+    );
+    const del = fetchMock.mock.calls.find(
+      (c) => (c[1] as RequestInit | undefined)?.method === "DELETE",
+    );
+    expect(del?.[0]).toBe(`/creators/${UUID_B}/posts/${OUTRA_ID}`);
+  });
+
+  it("sem pendentes: a linha propria, e zero aguardando sem tom de alarme", async () => {
+    rotear();
+    montar();
+    const bloco = await screen.findByTestId("creators-para-conferir");
+    expect(
+      within(bloco).getByTestId("creators-para-conferir-vazio").textContent,
+    ).toBe("Nada para conferir.");
+    const total = within(bloco).getByTestId("creators-para-conferir-total");
+    expect(total.textContent).toBe("0 aguardando");
+    expect(total.className).not.toContain("amber");
+  });
+
+  it("falha da lista vira erro com tentar de novo, sem derrubar o quadro", async () => {
+    rotear({ pendentes: new Error("timeout") });
+    montar();
+    expect(
+      await screen.findByTestId("creators-para-conferir-erro"),
+    ).toBeTruthy();
+    expect(await screen.findByTestId("creators-quadro")).toBeTruthy();
+  });
+
+  it("quadro: chip ambar de aguardando so quando ha pendencia", async () => {
+    rotear({
+      pagina: {
+        data: {
+          rows: [
+            item({ posts_no_mes: 2, posts_aguardando: 3 }),
+            item({
+              user_id: UUID_B,
+              name: "Bia Souza",
+              posts_no_mes: 1,
+              posts_aguardando: 0,
+            }),
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 25,
+        },
+      },
+    });
+    montar();
+    const comPendencia = await screen.findByTestId(`creators-linha-${UUID_A}`);
+    expect(
+      within(comPendencia).getByTestId("creators-posts-no-mes").textContent,
+    ).toBe("2");
+    expect(
+      within(comPendencia).getByTestId("creators-posts-aguardando").textContent,
+    ).toBe("3 aguardando");
+    const semPendencia = screen.getByTestId(`creators-linha-${UUID_B}`);
+    expect(
+      within(semPendencia).queryByTestId("creators-posts-aguardando"),
+    ).toBeNull();
   });
 });
