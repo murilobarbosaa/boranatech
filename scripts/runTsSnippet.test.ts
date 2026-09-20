@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { capabilityOf } from "./languageCapabilities.mts";
+import { conferirGrupo } from "./verifyLessonBlocks.mts";
 import {
   conferirCodigo,
   erroDoStderr,
   linhaDoErro,
   makeExecutor,
+  makeGroupExecutor,
 } from "./verifyQuizPoolByExecution.mts";
 
 // Lote 10a. Controles do runner de TypeScript, pelo EXECUTOR REAL: o que eles
@@ -156,5 +158,51 @@ describe("verificacao de pool em ts, com uma pergunta de cada tipo", () => {
     );
     expect(r.veredito).toBe("OK");
     expect(pool.slug).toBe("ts-teste");
+  }, LIMITE);
+});
+
+// Lote 10b. O Passo 0 do Lote 10 achou um verificador que falha PASSANDO: a
+// checagem de tipos so olhava o diagnostico do arquivo EXECUTADO, entao erro
+// de tipo no primeiro arquivo de um grupo `arquivo=` passava calado. Em SQL,
+// onde esquema e consulta ficam em arquivos separados, ele mentiria na maioria
+// dos casos. O nome do arquivo entra no TEXTO do diagnostico, e nao so no
+// prefixo, porque erroDoStderr descarta o prefixo: sem isso a pessoa leria
+// "TS2322" e procuraria no arquivo errado.
+describe("runner de ts: erro de tipo em QUALQUER arquivo do grupo", () => {
+  const executarGrupo = makeGroupExecutor(runner);
+  const grupo = (mat: string, app: string) =>
+    conferirGrupo(
+      [
+        { linguagem: "ts", arquivo: "mat.ts", corpo: mat },
+        { linguagem: "ts", arquivo: "app.ts", corpo: app },
+      ],
+      ["ts"],
+      executarGrupo,
+    );
+
+  const MAT_OK =
+    "export function dobro(n: number): number {\n  return n * 2;\n}\n";
+  const APP_OK = "import { dobro } from './mat';\nconsole.log(dobro(2));\n";
+
+  it("erro no PRIMEIRO arquivo reprova e diz em qual arquivo ele esta", () => {
+    const r = grupo('const x: number = "texto";\n' + MAT_OK, APP_OK);
+    // O veredito cai no ULTIMO bloco: conferirGrupo marca os anteriores como
+    // "gravado" sem olhar a execucao. Quem precisa citar mat.ts e a mensagem.
+    expect(r.map((c) => c.veredito)).toEqual(["gravado", "falhou"]);
+    expect(r[1].problemas.join(" ")).toContain("TS2322");
+    expect(r[1].problemas.join(" ")).toContain("mat.ts");
+  }, LIMITE);
+
+  it("CONTROLE: com os dois limpos continua gravado e executado", () => {
+    const r = grupo(MAT_OK, APP_OK);
+    expect(r.map((c) => c.veredito)).toEqual(["gravado", "executado"]);
+  }, LIMITE);
+
+  it("CONTROLE: erro no ULTIMO arquivo continua reprovando como antes", () => {
+    // Sem prefixo de arquivo aqui de proposito: o diagnostico e do proprio
+    // arquivo executado, e o trecho de arquivo unico fica byte a byte.
+    const r = grupo(MAT_OK, 'const y: number = "texto";\n' + APP_OK);
+    expect(r.map((c) => c.veredito)).toEqual(["gravado", "falhou"]);
+    expect(r[1].problemas.join(" ")).toContain("TS2322");
   }, LIMITE);
 });

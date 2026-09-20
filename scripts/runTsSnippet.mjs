@@ -62,18 +62,41 @@ const programa = ts.createProgram([arquivo, ambiente], {
   types: [],
 });
 
-const diagnosticos = ts
-  .getPreEmitDiagnostics(programa)
-  .filter((d) => d.file && path.resolve(d.file.fileName) === path.resolve(arquivo));
+// Lote 10b: o diagnostico vale para QUALQUER arquivo do diretorio do trecho, e
+// nao so para o executado. Antes, erro de tipo no PRIMEIRO arquivo de um grupo
+// `arquivo=` passava calado, que e a classe "verificador que falha passando".
+// Ficam de fora a declaracao ambiente (escrita aqui, nao pelo autor) e as libs
+// do TypeScript, que moram em node_modules e ja caem fora do diretorio.
+//
+// O diretorio do executor de trecho unico e reutilizado (q0.ts, q1.ts, ...),
+// mas isso nao contamina nada: as raizes do programa sao [arquivo, ambiente],
+// e um q anterior nao e importado por ninguem, entao nem entra no programa.
+const dirDoTrecho = path.resolve(path.dirname(arquivo));
+const executado = path.resolve(arquivo);
+const ambienteResolvido = path.resolve(ambiente);
+
+const diagnosticos = ts.getPreEmitDiagnostics(programa).filter((d) => {
+  if (!d.file) return false;
+  const alvo = path.resolve(d.file.fileName);
+  return path.dirname(alvo) === dirDoTrecho && alvo !== ambienteResolvido;
+});
 
 if (diagnosticos.length > 0) {
-  const nome = path.basename(arquivo);
   for (const d of diagnosticos) {
+    const alvo = path.resolve(d.file.fileName);
+    const nome = path.basename(alvo);
     const { line, character } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
     const texto = ts.flattenDiagnosticMessageText(d.messageText, " ");
+    // O nome entra TAMBEM no texto quando o erro nao e do arquivo executado:
+    // erroDoStderr descarta o prefixo (ERRO_TS_RE devolve so codigo e texto),
+    // entao sem isto a pessoa leria "TS2322" e procuraria no arquivo errado.
+    // Trecho de arquivo unico fica byte a byte como antes: ali nao ha prefixo.
+    const ondeEsta = alvo === executado ? "" : `em ${nome}: `;
     // Formato com arquivo, linha e coluna: e o que erroDoStderr e linhaDoErro
     // leem para a tabela de revisao.
-    console.error(`${nome}(${line + 1},${character + 1}): error TS${d.code}: ${texto}`);
+    console.error(
+      `${nome}(${line + 1},${character + 1}): error TS${d.code}: ${ondeEsta}${texto}`,
+    );
   }
   process.exit(1);
 }
