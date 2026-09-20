@@ -229,11 +229,11 @@ describe("CreatorIdentidade: perfil de creator na visao admin", () => {
   });
 
   it("cor no calendario (lote 10c): chip com o marcador e o nome; sem o campo, nada", () => {
-    desenharAdmin(perfilCreator({ calendar_color: "lime" }));
+    desenharAdmin(perfilCreator({ calendar_color: "cyan" }));
     const chip = screen.getByTestId("creator-cor");
-    expect(chip.textContent).toBe("Lima no calendário");
-    expect(chip.querySelector("[data-cor='lime']")?.className).toContain(
-      "bg-lime-200",
+    expect(chip.textContent).toBe("Ciano no calendário");
+    expect(chip.querySelector("[data-cor='cyan']")?.className).toContain(
+      "bg-cyan-500",
     );
     cleanup();
     desenharAdmin(perfilCreator());

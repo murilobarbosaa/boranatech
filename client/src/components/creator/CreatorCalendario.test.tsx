@@ -719,7 +719,7 @@ describe("CreatorCalendario: marcadores de cor", () => {
 
   it("cada marcacao vira um marcador na cor do creator; a minha e a minha collab levam o anel; sem cor cai no violeta", async () => {
     responderCom([
-      { ...MINHA, calendar_color: "amber" },
+      { ...MINHA, calendar_color: "orange" },
       {
         ...DE_OUTRO,
         calendar_color: "emerald",
@@ -728,7 +728,7 @@ describe("CreatorCalendario: marcadores de cor", () => {
             user_id: MEU_ID,
             name: "Cria",
             avatar_url: null,
-            calendar_color: "amber",
+            calendar_color: "orange",
           },
         ],
         minha_collab: true,
@@ -742,27 +742,27 @@ describe("CreatorCalendario: marcadores de cor", () => {
     render(<CreatorCalendario />);
     await screen.findByTestId("creator-dia-painel");
     const minha = screen.getByTestId(`creator-marcador-${MINHA.id}`);
-    expect(minha.className).toContain("bg-amber-200");
+    expect(minha.className).toContain("bg-orange-500");
     expect(minha.className).toContain("ring-2");
     const deOutro = screen.getByTestId(`creator-marcador-${DE_OUTRO.id}`);
-    expect(deOutro.className).toContain("bg-emerald-200");
+    expect(deOutro.className).toContain("bg-emerald-500");
     expect(deOutro.className).not.toContain("ring-2");
     // O parceiro (eu) entra no dia com a minha cor e o meu anel.
     const parceiro = screen.getByTestId(
       `creator-marcador-${DE_OUTRO.id}-${MEU_ID}`,
     );
-    expect(parceiro.className).toContain("bg-amber-200");
+    expect(parceiro.className).toContain("bg-orange-500");
     expect(parceiro.className).toContain("ring-2");
     // Sem cor (backend anterior): violeta, sem anel.
     expect(screen.getByTestId(`creator-marcador-${C(4)}`).className).toContain(
-      "bg-violet-200",
+      "bg-violet-500",
     );
     // O chip de contagem saiu.
     expect(screen.queryByTestId(`creator-dia-contagem-${HOJE}`)).toBeNull();
     // No painel do dia, o marcador vem antes do nome.
     expect(
       screen.getByTestId(`creator-marcacao-cor-${DE_OUTRO.id}`).className,
-    ).toContain("bg-emerald-200");
+    ).toContain("bg-emerald-500");
   });
 
   it("ate quatro marcadores por dia; depois, +N", async () => {
@@ -770,7 +770,7 @@ describe("CreatorCalendario: marcadores de cor", () => {
       ...DE_OUTRO,
       id: C(n),
       user_id: `${n}4444444-4444-4444-4444-444444444444`,
-      calendar_color: "sky",
+      calendar_color: "cyan",
     }));
     responderCom(cinco);
     render(<CreatorCalendario />);
@@ -823,5 +823,33 @@ describe("CreatorCalendario: janela retroativa", () => {
       screen.getByTestId("creator-dia-fora-da-janela").textContent,
     ).toContain("13/09/2026");
     expect(screen.queryByTestId("creator-marcar-dia")).toBeNull();
+  });
+});
+
+// A COR QUE NAO MUDAVA (lote 10d): a linha devolvida pelo POST leva a cor do
+// perfil, entao o marcador do dia ja nasce na cor certa, sem recarregar.
+describe("CreatorCalendario: cor do marcador logo depois de marcar", () => {
+  it("marcar com perfil ciano deixa o marcador do dia com a classe do ciano antes da revalidacao", async () => {
+    responderCom([]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-vazio");
+    estado.responder = async (path, method) => {
+      if (method === "POST") {
+        return {
+          data: {
+            marcacoes: [{ ...MINHA, calendar_color: "cyan" }],
+            ja_existiam: [],
+          },
+        };
+      }
+      return path.startsWith("/creator/collabs")
+        ? { data: { recebidos: [], enviados: [] } }
+        : { data: { marcacoes: [{ ...MINHA, calendar_color: "cyan" }] } };
+    };
+    fireEvent.click(screen.getByTestId("creator-marcar-dia"));
+    const marcador = await screen.findByTestId(`creator-marcador-${MINHA.id}`);
+    expect(marcador.className).toContain("bg-cyan-500");
+    expect(marcador.className).toContain("ring-2");
+    expect(marcador.className).toContain("h-3 w-3");
   });
 });

@@ -81,29 +81,24 @@ export type CreatorPixMascarada = {
 };
 
 /**
- * Cores do creator no calendario compartilhado (lote 10c): as 15 familias
- * pastel da plataforma, as mesmas do `TagFamily` de client/src/lib/tagPalette.ts.
+ * Cores do creator no calendario compartilhado (lote 10c; sete desde o 10d).
+ * Familias pastel da plataforma (do `TagFamily` de client/src/lib/tagPalette.ts),
+ * escolhidas bem separadas no circulo: quinze eram demais para uma grade de
+ * pontinhos, e tres verdes nao ajudavam ninguem a se achar. Amber e yellow
+ * ficaram de fora tambem porque o anel de "meu dia" e o amarelo da marca.
  * A lista vive AQUI porque o servidor valida o PUT e o banco tem o mesmo CHECK
- * (20260918100000_creator_calendar_color.sql); o tagPalette continua onde
- * esta, e o client mapeia cada familia para as classes do marcador em
- * client/src/lib/corDoCalendario.ts, com um teste que trava os dois lados.
+ * (20260919110000_creator_calendar_color_palette.sql); o client mapeia cada
+ * familia para as classes do marcador em client/src/lib/corDoCalendario.ts,
+ * com um teste que trava os dois lados.
  */
 export const CORES_DO_CALENDARIO = [
   "violet",
-  "green",
-  "amber",
-  "pink",
-  "orange",
-  "emerald",
-  "sky",
-  "purple",
-  "fuchsia",
-  "indigo",
-  "lime",
-  "cyan",
   "blue",
+  "cyan",
+  "emerald",
+  "orange",
   "rose",
-  "yellow",
+  "fuchsia",
 ] as const;
 export type CorDoCalendario = (typeof CORES_DO_CALENDARIO)[number];
 
@@ -114,20 +109,12 @@ export const COR_PADRAO_DO_CALENDARIO: CorDoCalendario = "violet";
 // TODO(Ana)
 export const ROTULO_DA_COR: Record<CorDoCalendario, string> = {
   violet: "Violeta",
-  green: "Verde",
-  amber: "Âmbar",
-  pink: "Rosa",
-  orange: "Laranja",
-  emerald: "Esmeralda",
-  sky: "Azul-céu",
-  purple: "Roxo",
-  fuchsia: "Fúcsia",
-  indigo: "Índigo",
-  lime: "Lima",
-  cyan: "Ciano",
   blue: "Azul",
-  rose: "Rosé",
-  yellow: "Amarelo",
+  cyan: "Ciano",
+  emerald: "Verde",
+  orange: "Laranja",
+  rose: "Rosa",
+  fuchsia: "Fúcsia",
 };
 
 export function ehCorDoCalendario(valor: unknown): valor is CorDoCalendario {

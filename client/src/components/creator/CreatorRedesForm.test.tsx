@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   afterEach,
@@ -280,7 +281,7 @@ describe("CreatorRedesForm: cor no calendario", () => {
     Element.prototype.releasePointerCapture ||= () => {};
   });
 
-  it("o select lista as 15 cores, cada opcao com o marcador na propria cor, e a escolha vai no PUT", async () => {
+  it("o select lista as 7 cores, cada opcao com o marcador na propria cor, e a escolha vai no PUT", async () => {
     estado.responder = async () => ({
       data: { ...PERFIL_VAZIO, calendar_color: "emerald" },
     });
@@ -290,13 +291,13 @@ describe("CreatorRedesForm: cor no calendario", () => {
       { key: "ArrowDown" },
     );
     const opcoes = await screen.findAllByRole("option");
-    expect(opcoes).toHaveLength(15);
+    expect(opcoes).toHaveLength(7);
     expect(opcoes[0].textContent).toBe("Violeta");
     // O marcador dentro da opcao carrega a classe literal da familia.
-    const esmeralda = opcoes.find((o) => o.textContent === "Esmeralda")!;
+    const esmeralda = opcoes.find((o) => o.textContent === "Verde")!;
     expect(
       esmeralda.querySelector("[data-cor='emerald']")?.className,
-    ).toContain("bg-emerald-200");
+    ).toContain("bg-emerald-500");
     fireEvent.keyDown(esmeralda, { key: "Enter" });
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 
@@ -308,14 +309,35 @@ describe("CreatorRedesForm: cor no calendario", () => {
     ).toBe("emerald");
   });
 
-  it("resumo: o marcador e o nome da cor salva; sem o campo (backend anterior) a linha nao aparece", () => {
-    desenhar({ ...PERFIL_COMPLETO, calendar_color: "rose" });
+  it("resumo (lote 10d): o select da cor com o marcador; trocar salva na hora, com os handles gravados e sem entrar em edicao", async () => {
+    const salvo = { ...PERFIL_COMPLETO, calendar_color: "cyan" as const };
+    estado.responder = async () => ({ data: salvo });
+    const onSalvo = desenhar({ ...PERFIL_COMPLETO, calendar_color: "rose" });
     const linha = screen.getByTestId("creator-redes-cor");
-    expect(linha.textContent).toBe("Rosé no calendário");
-    expect(linha.querySelector("[data-cor='rose']")?.className).toContain(
-      "bg-rose-200",
+    const select = within(linha).getByRole("combobox", {
+      name: "Cor no calendário",
+    });
+    // O valor escolhido mostra o marcador na cor salva.
+    expect(select.querySelector("[data-cor='rose']")?.className).toContain(
+      "bg-rose-500",
     );
+    fireEvent.keyDown(select, { key: "ArrowDown" });
+    const ciano = await screen.findByRole("option", { name: "Ciano" });
+    fireEvent.keyDown(ciano, { key: "Enter" });
+    await waitFor(() => expect(chamadasCom("PUT")).toHaveLength(1));
+    expect(chamadasCom("PUT")[0].body).toEqual({
+      instagram_handle: "ana.cria",
+      tiktok_handle: "ana.cria",
+      instagram_followers: 12500,
+      tiktok_followers: 800,
+      visible_to_creators: true,
+      calendar_color: "cyan",
+    });
+    await waitFor(() => expect(onSalvo).toHaveBeenCalledWith(salvo));
+    // Continua no resumo: nenhum campo de texto apareceu.
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     cleanup();
+    // Sem o campo (backend anterior) a linha nao aparece.
     desenhar(PERFIL_COMPLETO);
     expect(screen.queryByTestId("creator-redes-cor")).toBeNull();
   });

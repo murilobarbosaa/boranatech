@@ -1465,7 +1465,7 @@ describe("GET /api/creator/calendar", () => {
         },
       ]),
       creator_profiles: respostaQueFiltra([
-        { user_id: UID, calendar_color: "sky" },
+        { user_id: UID, calendar_color: "cyan" },
       ]),
       profiles: respostaQueFiltra([
         {
@@ -1499,7 +1499,7 @@ describe("GET /api/creator/calendar", () => {
         name: "Cria",
         avatar_url: "https://a/cria.png",
         // A cor do parceiro entra no dia, na cor dele.
-        calendar_color: "sky",
+        calendar_color: "cyan",
       },
     ]);
     expect(terceiro.body.data.marcacoes[0].minha_collab).toBe(false);
@@ -1599,6 +1599,7 @@ describe("POST /api/creator/calendar", () => {
       creator_calendar_events: (c) =>
         c.op === "upsert" ? { rows: [MARCACAO] } : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
@@ -1611,6 +1612,8 @@ describe("POST /api/creator/calendar", () => {
     expect(r.body.data.marcacao.id).toBe(EVENTO_ID);
     expect(r.body.data.marcacoes).toHaveLength(1);
     expect(r.body.data.ja_existiam).toEqual([]);
+    // Sem linha de perfil: a cor padrao vai na resposta (lote 10d).
+    expect(r.body.data.marcacoes[0].calendar_color).toBe("violet");
     const escritas = escritasEm("creator_calendar_events");
     expect(escritas).toHaveLength(1);
     expect(escritas[0].op).toBe("upsert");
@@ -1635,6 +1638,7 @@ describe("POST /api/creator/calendar", () => {
       creator_calendar_events: (c) =>
         c.op === "upsert" ? { rows: tres } : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
@@ -1659,7 +1663,7 @@ describe("POST /api/creator/calendar", () => {
     ]);
   });
 
-  it("duas redes com uma ja marcada: cria uma, reporta a outra em ja_existiam", async () => {
+  it("duas redes com uma ja marcada: cria uma, reporta a outra em ja_existiam, e a linha leva a cor do perfil", async () => {
     montar({
       creators: concessaoAtiva(),
       // O banco pula a duplicada (ignoreDuplicates) e devolve so a nova.
@@ -1668,6 +1672,9 @@ describe("POST /api/creator/calendar", () => {
           ? { rows: [{ ...MARCACAO, network: "linkedin" }] }
           : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([
+        { user_id: UID, calendar_color: "cyan" },
+      ]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
@@ -1677,6 +1684,7 @@ describe("POST /api/creator/calendar", () => {
     expect(r.status).toBe(201);
     expect(r.body.data.marcacoes).toHaveLength(1);
     expect(r.body.data.marcacoes[0].network).toBe("linkedin");
+    expect(r.body.data.marcacoes[0].calendar_color).toBe("cyan");
     expect(r.body.data.ja_existiam).toEqual(["instagram"]);
   });
 
@@ -1686,6 +1694,7 @@ describe("POST /api/creator/calendar", () => {
       creator_calendar_events: (c) =>
         c.op === "upsert" ? { rows: [] } : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
@@ -1727,6 +1736,7 @@ describe("POST /api/creator/calendar", () => {
           ? { rows: [{ ...MARCACAO, note: null }] }
           : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
@@ -1769,6 +1779,7 @@ describe("POST /api/creator/calendar", () => {
             ? { rows: [{ ...MARCACAO, event_date: dia }] }
             : { rows: [] },
         profiles: perfis(),
+        creator_profiles: respostaQueFiltra([]),
       });
       estado.usuario = USUARIO;
       const ok = await chamar("POST", "/calendar", {

@@ -428,7 +428,9 @@ export async function listarMesDoCalendario(
 }
 
 export type MarcacaoCriada = {
-  criadas: MarcacaoDoCalendario[];
+  /** Cada linha criada leva a cor do creator (lote 10d): e o que o client
+   * desenha no dia sem esperar a revalidacao. */
+  criadas: Array<MarcacaoDoCalendario & { calendar_color: CorDoCalendario }>;
   /** Redes em que aquele dia JA estava marcado por este creator. */
   ja_existiam: RedeDeCreator[];
 };
@@ -503,8 +505,15 @@ export async function marcarDia(
   const linhas: Linha[] = inseridas.data ?? [];
   if (linhas.length === 0) return { ok: false, code: "event_already_marked" };
 
-  const autores = await lerAutores([userId]);
-  const criadas = linhas.map((linha) => lerMarcacao(linha, autores));
+  const [autores, cores] = await Promise.all([
+    lerAutores([userId]),
+    lerCoresDosCreators([userId]),
+  ]);
+  const cor = cores.get(userId) ?? COR_PADRAO_DO_CALENDARIO;
+  const criadas = linhas.map((linha) => ({
+    ...lerMarcacao(linha, autores),
+    calendar_color: cor,
+  }));
   const novas = new Set(criadas.map((m) => m.network));
   return {
     ok: true,

@@ -296,9 +296,9 @@ describe("mascararChavePix", () => {
 });
 
 describe("CORES_DO_CALENDARIO (lote 10c)", () => {
-  it("sao 15, com rotulo para cada uma, e o padrao esta na lista", () => {
-    expect(CORES_DO_CALENDARIO).toHaveLength(15);
-    expect(new Set(CORES_DO_CALENDARIO).size).toBe(15);
+  it("sao 7 (lote 10d), com rotulo para cada uma, e o padrao esta na lista", () => {
+    expect(CORES_DO_CALENDARIO).toHaveLength(7);
+    expect(new Set(CORES_DO_CALENDARIO).size).toBe(7);
     for (const cor of CORES_DO_CALENDARIO) {
       expect(ROTULO_DA_COR[cor].length, cor).toBeGreaterThan(0);
       expect(ehCorDoCalendario(cor)).toBe(true);
@@ -307,8 +307,24 @@ describe("CORES_DO_CALENDARIO (lote 10c)", () => {
     expect(COR_PADRAO_DO_CALENDARIO).toBe("violet");
   });
 
-  it("recusa o que nao esta na lista: red e teal (livres de proposito), maiuscula, vazio e nao-texto", () => {
-    for (const valor of ["red", "teal", "Violet", "", null, undefined, 3]) {
+  it("recusa o que nao esta na lista: as que sairam no 10d, red e teal, maiuscula, vazio e nao-texto", () => {
+    for (const valor of [
+      "green",
+      "lime",
+      "sky",
+      "indigo",
+      "purple",
+      "pink",
+      "amber",
+      "yellow",
+      "red",
+      "teal",
+      "Violet",
+      "",
+      null,
+      undefined,
+      3,
+    ]) {
       expect(ehCorDoCalendario(valor), String(valor)).toBe(false);
     }
   });

@@ -129,7 +129,45 @@ export function CreatorRedesForm({
   );
   const [erros, setErros] = useState<ErrosDasRedes>({});
   const [salvando, setSalvando] = useState(false);
+  const [salvandoCor, setSalvandoCor] = useState(false);
   const [editando, setEditando] = useState(false);
+
+  /**
+   * Troca a cor a partir do resumo: PUT com o perfil que JA esta gravado e a
+   * cor nova. Nao passa pelo formulario, entao nada do que a pessoa poderia
+   * estar digitando entra junto.
+   */
+  async function salvarCor(nova: string) {
+    if (!ehCorDoCalendario(nova) || nova === perfil.calendar_color) return;
+    setSalvandoCor(true);
+    try {
+      const json: unknown = await contentFetch("/creator/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instagram_handle: perfil.instagram_handle,
+          tiktok_handle: perfil.tiktok_handle,
+          instagram_followers: perfil.instagram_followers,
+          tiktok_followers: perfil.tiktok_followers,
+          visible_to_creators: perfil.visible_to_creators,
+          calendar_color: nova,
+        }),
+      });
+      const salvo = perfilDaResposta(json);
+      if (salvo) onSalvo(salvo);
+      // TODO(Ana)
+      toast.success("Cor do calendário salva.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : // TODO(Ana)
+            "Não foi possível salvar a cor.",
+      );
+    } finally {
+      setSalvandoCor(false);
+    }
+  }
 
   // Uma rede basta para o resumo existir: quem preencheu so o Instagram ja tem
   // o que ler, e a linha do TikTok simplesmente nao aparece.
@@ -273,16 +311,35 @@ export function CreatorRedesForm({
               {`Seguidores informados em ${dataCurta(perfil.followers_updated_at)}`}
             </p>
           ) : null}
-          {/* Cor no calendario (lote 10c), como esta salva. */}
+          {/* Cor no calendario, escolhida AQUI mesmo (lote 10d): trocar salva
+              na hora, com as redes que ja estao gravadas, sem entrar no modo
+              de edicao. Ficou escondida atras do Alterar no 10c. */}
           {perfil.calendar_color ? (
-            <p
+            <div
               data-testid="creator-redes-cor"
-              className="flex items-center gap-2 text-sm font-semibold text-slate-600"
+              className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600"
             >
-              <MarcadorDeCor cor={perfil.calendar_color} />
               {/* TODO(Ana) */}
-              {`${rotuloDaCor(perfil.calendar_color)} no calendário`}
-            </p>
+              <span>Cor no calendário</span>
+              <div className="w-44">
+                <BntSelect
+                  accent="neutral"
+                  size="campo"
+                  // TODO(Ana)
+                  label="Cor no calendário"
+                  value={perfil.calendar_color}
+                  onValueChange={(nova) => void salvarCor(nova)}
+                  options={OPCOES_DE_COR}
+                  disabled={salvandoCor}
+                  renderOption={(opcao) => (
+                    <span className="inline-flex items-center gap-2">
+                      <MarcadorDeCor cor={opcao.value} />
+                      {opcao.label}
+                    </span>
+                  )}
+                />
+              </div>
+            </div>
           ) : null}
           {/* O chip mostra o que esta SALVO, nao o estado do checkbox do
               formulario: aqui ninguem esta editando. Emerald e o mesmo chip do

@@ -29,7 +29,7 @@ export function MarcadorDeCor({
       title={nome}
       data-testid={testId}
       data-cor={cor ?? ""}
-      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${classeDoMarcador(cor)} ${
+      className={`inline-block h-3 w-3 shrink-0 rounded-full ${classeDoMarcador(cor)} ${
         meu ? "ring-2 ring-[var(--bnt-accent-solid)] ring-offset-1" : ""
       } ${className}`}
     />
