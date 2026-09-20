@@ -300,12 +300,75 @@ export function validateQuizPool(
 // do piloto sem completar no intermediario). Canal separado de
 // validateQuizPool de proposito: validateQuizPool.mts e generateRoadmapMeta
 // --check imprimem com prefixo [aviso] e nao reprovam.
+//
+// Lote 10c. Portugues sem acento em string que o usuario le. A lista e
+// DELIBERADAMENTE curta: so palavra comum cuja forma sem acento nao existe em
+// portugues. Ela nao tenta ser corretor ortografico, e cresce quando um caso
+// novo aparecer, no commit que o encontrar.
+const SEM_ACENTO = [
+  "nao",
+  "voce",
+  "sao",
+  "codigo",
+  "funcao",
+  "numero",
+  "parametro",
+  "entao",
+  "execucao",
+  "padrao",
+  "metodo",
+  "tambem",
+  "alem",
+  "unico",
+  "valido",
+  "invalido",
+  "opcao",
+  "generico",
+  "variavel",
+  "possivel",
+  "assercao",
+  "incompativel",
+];
+
+// Duas exclusoes, sem as quais o guarda vira ruido. A primeira e o que esta
+// entre crases, onde mora identificador e nome de tipo. A segunda sao as
+// alternativas de pergunta com alternativasCodigo, que sao codigo e nao prosa:
+// medido nas 29 pools, sem ela as quatro alternativas de javascript-ini-11
+// (`numero % 2 === 0 ? 'par' : 'impar'`) viram quatro acusacoes sobre um
+// identificador legitimo. codigo.trecho nunca entra porque textFields nao o
+// devolve.
+export function portuguesSemAcento(texto: string): string[] {
+  const semCrases = texto.replace(/`[^`]*`/g, " ");
+  return SEM_ACENTO.filter((palavra) =>
+    new RegExp(`\\b${palavra}\\b`, "i").test(semCrases),
+  );
+}
+
 export function quizPoolWarnings(
   pool: QuizPool,
   roadmap: RoadmapV2 | null,
 ): string[] {
-  if (!roadmap?.codeLanguages || roadmap.codeLanguages.length === 0) return [];
   const out: string[] = [];
+  // ANTES do corte por codeLanguages de proposito: ortografia vale para as 29
+  // pools, e 27 delas nao tem codeLanguages nenhuma.
+  //
+  // Entra como AVISO, e nao como erro em validateQuizPool, porque pool
+  // PUBLICADA ainda acusa: javascript-int-14 cita no enunciado a mensagem
+  // literal `id invalido` que o proprio trecho imprime, e acentuar mudaria a
+  // mensagem. Para virar erro falta essa pool sair limpa, o que e lote proprio.
+  for (const question of pool.questions) {
+    for (const [field, value] of textFields(question)) {
+      if (question.alternativasCodigo && field.startsWith("alternativa ")) {
+        continue;
+      }
+      for (const palavra of portuguesSemAcento(value)) {
+        out.push(
+          `pool ${pool.slug}: ${question.id} ${field} tem "${palavra}" sem acento`,
+        );
+      }
+    }
+  }
+  if (!roadmap?.codeLanguages || roadmap.codeLanguages.length === 0) return out;
   for (const nivel of NIVEIS) {
     for (const tipo of CODE_QUESTION_TIPOS) {
       const tem = pool.questions.some(

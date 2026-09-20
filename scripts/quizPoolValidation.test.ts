@@ -375,6 +375,73 @@ describe("quizPoolWarnings: variedade de tipo de codigo por nivel", () => {
   });
 });
 
+// Lote 10c. O defeito que motivou este guarda passou por validateQuizPool, por
+// verifyQuizPoolByExecution e pela leitura humana das 18 linhas da tabela de
+// revisao: 14 perguntas da pool de TypeScript tinham portugues sem acento em
+// string que o usuario le. Nenhum dos tres olha ortografia, e nao deviam; o
+// que faltava era um guarda barato. Roadmap null nos casos abaixo para provar
+// que a checagem acontece ANTES do corte por codeLanguages.
+describe("quizPoolWarnings: portugues sem acento em string visivel", () => {
+  const poolCom = (campos: Partial<QuizQuestion>): QuizPool => ({
+    slug: "a+b",
+    questions: [{ ...pergunta("a+b-ini-01"), ...campos }],
+  });
+
+  it("palavra sem acento em string visivel avisa, com pergunta, campo e palavra", () => {
+    expect(
+      quizPoolWarnings(poolCom({ pergunta: "Isto nao roda?" }), null),
+    ).toEqual(['pool a+b: a+b-ini-01 pergunta tem "nao" sem acento']);
+  });
+
+  it("CONTROLE: a mesma palavra entre crases passa, porque e identificador", () => {
+    expect(
+      quizPoolWarnings(poolCom({ pergunta: "Isto `nao` roda?" }), null),
+    ).toEqual([]);
+  });
+
+  it("CONTROLE: a mesma palavra em codigo.trecho passa", () => {
+    expect(
+      quizPoolWarnings(
+        poolCom({
+          tipo: "saida",
+          codigo: {
+            linguagem: "js",
+            trecho: "const nao = 1;\nconsole.log(nao);",
+          },
+          alternativasCodigo: true,
+        }),
+        null,
+      ),
+    ).toEqual([]);
+  });
+
+  it("CONTROLE: pergunta limpa passa", () => {
+    expect(quizPoolWarnings(poolCom({}), null)).toEqual([]);
+  });
+
+  // A exclusao de alternativasCodigo nao estava no desenho original: veio da
+  // medicao sobre as 29 pools, onde as quatro alternativas de javascript-ini-11
+  // (`numero % 2 === 0 ? 'par' : 'impar'`) eram acusadas sobre um identificador.
+  // Sem este par de casos a exclusao seria um silencio nao provado.
+  it("CONTROLE: alternativa de codigo nao e acusada", () => {
+    const alternativas = { a: "numero > 0", b: "numero", c: "1", d: "2" };
+    expect(
+      quizPoolWarnings(
+        poolCom({ alternativas, alternativasCodigo: true }),
+        null,
+      ),
+    ).toEqual([]);
+  });
+
+  it("CONTROLE NEGATIVO: a mesma alternativa em prosa E acusada", () => {
+    const alternativas = { a: "numero > 0", b: "numero", c: "1", d: "2" };
+    expect(quizPoolWarnings(poolCom({ alternativas }), null)).toEqual([
+      'pool a+b: a+b-ini-01 alternativa a tem "numero" sem acento',
+      'pool a+b: a+b-ini-01 alternativa b tem "numero" sem acento',
+    ]);
+  });
+});
+
 describe("saidaEsperada condicionada a capacidade da linguagem", () => {
   const trilhaEm = (linguagem: string): RoadmapV2 => ({
     ...roadmap,
