@@ -7,7 +7,14 @@ afterEach(() => cleanup());
 
 describe("TrailLogo: logo real da trilha no card da vitrine", () => {
   it("slug conhecido renderiza o svg com o path oficial da marca", () => {
-    for (const slug of ["javascript", "python", "git", "html", "css"]) {
+    for (const slug of [
+      "javascript",
+      "python",
+      "git",
+      "html",
+      "css",
+      "typescript",
+    ]) {
       const { container } = render(
         <TrailLogo slug={slug} fallback={Braces} className="h-5 w-5" />,
       );
@@ -22,6 +29,9 @@ describe("TrailLogo: logo real da trilha no card da vitrine", () => {
     expect(TRAIL_LOGOS.git.path.startsWith("M13.09 23.549")).toBe(true);
     expect(TRAIL_LOGOS.html.path.startsWith("M1.5 0h21")).toBe(true);
     expect(TRAIL_LOGOS.css.path.startsWith("M0 0v20.16A3.84")).toBe(true);
+    expect(TRAIL_LOGOS.typescript.path.startsWith("M1.125 0C.502 0")).toBe(
+      true,
+    );
   });
 
   it("a tinta vem da paleta da trilha, sobre currentColor", () => {
