@@ -188,12 +188,21 @@
      defeito volta, e volta VISIVEL (a sombra escura reaparece), nao em
      silencio. */
   --bnt-accent-solid: var(--brand-yellow);
+  /* Tinta do aperto de mao (collab aceita) no calendario dos creators (lote
+     10d). Existe como token porque o pedido e roxo no claro e AMARELO no
+     escuro: a inversao automatica do `.dark` levaria o violet-700 para um roxo
+     claro, e nao para o amarelo do anel de "meu dia", que e o que a collab
+     deve acompanhar. Roxo de tinta e o violet-700, a familia mais usada como
+     tinta nesta base. */
+  --bnt-collab-ink: var(--color-violet-700);
 }
 
 .dark {
   /* Violeta mais claro que o do modo claro: o primario precisa de contraste
      contra superficie escura, e oklch(0.42 ...) sobre fundo 0.15 nao tem. */
   --brand-violet: oklch(0.72 0.17 290);
+  /* O aperto de mao acompanha o anel de "meu dia" no escuro. */
+  --bnt-collab-ink: var(--bnt-accent-solid);
   --brand-cream: oklch(0.17 0.025 290);
 
   --background: oklch(0.17 0.025 290);

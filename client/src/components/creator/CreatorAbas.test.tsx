@@ -32,31 +32,33 @@ afterEach(() => {
 
 describe("CreatorAbas: as quatro abas", () => {
   it("a ativa e a unica com aria-selected, e cada uma aponta o seu painel", () => {
-    desenhar("comunidade", true, true);
+    desenhar("calendario", true, true);
     const numeros = screen.getByTestId(idDaAba("numeros"));
-    const comunidade = screen.getByTestId(idDaAba("comunidade"));
+    const calendario = screen.getByTestId(idDaAba("calendario"));
     const ranking = screen.getByTestId(idDaAba("ranking"));
     const perfil = screen.getByTestId(idDaAba("perfil"));
-    expect(comunidade.getAttribute("aria-selected")).toBe("true");
+    expect(calendario.getAttribute("aria-selected")).toBe("true");
     expect(numeros.getAttribute("aria-selected")).toBe("false");
     expect(ranking.getAttribute("aria-selected")).toBe("false");
     expect(perfil.getAttribute("aria-selected")).toBe("false");
-    expect(comunidade.getAttribute("aria-controls")).toBe(
-      idDoPainel("comunidade"),
+    expect(calendario.getAttribute("aria-controls")).toBe(
+      idDoPainel("calendario"),
     );
+    // Lote 10d: a aba chama Calendário.
+    expect(calendario.textContent).toContain("Calendário");
     expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.getAllByRole("tab")).toHaveLength(4);
   });
 
-  it("a ordem na faixa e Numeros, Comunidade, Ranking e Perfil", () => {
-    // O Ranking entra ENTRE Comunidade e Perfil (lote 09): a ordem e a da
+  it("a ordem na faixa e Numeros, Calendario, Ranking e Perfil", () => {
+    // O Ranking entra ENTRE Calendario e Perfil (lote 09): a ordem e a da
     // lista em creatorAbas.ts, e este teste e o que trava isso.
     desenhar("numeros", true, true);
     expect(
       screen.getAllByRole("tab").map((b) => b.getAttribute("data-testid")),
     ).toEqual([
       idDaAba("numeros"),
-      idDaAba("comunidade"),
+      idDaAba("calendario"),
       idDaAba("ranking"),
       idDaAba("perfil"),
     ]);

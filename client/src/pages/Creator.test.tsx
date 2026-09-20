@@ -211,7 +211,11 @@ describe("pagina /creator", () => {
 
   it("403 not_creator: tela propria, com link para a home, sem redirecionar", async () => {
     estado.fetch = vi.fn(async () => {
-      throw new AdminApiError("Acesso de creator necessário.", 403, "not_creator");
+      throw new AdminApiError(
+        "Acesso de creator necessário.",
+        403,
+        "not_creator",
+      );
     });
     const history = montar();
     const tela = await screen.findByTestId("creator-nao-creator");
@@ -245,7 +249,9 @@ describe("pagina /creator", () => {
       .mockResolvedValueOnce({ data: PAINEL });
     montar();
     const erro = await screen.findByTestId("creator-erro");
-    fireEvent.click(within(erro).getByRole("button", { name: "Tentar de novo" }));
+    fireEvent.click(
+      within(erro).getByRole("button", { name: "Tentar de novo" }),
+    );
     await screen.findByTestId("view");
     expect(estado.fetch).toHaveBeenCalledTimes(2);
     expect(estado.fetch.mock.calls).toEqual([
@@ -455,11 +461,11 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     await screen.findByTestId("view");
     expect(estado.fetch).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("creator-aba-comunidade"));
-    expect(history[history.length - 1]).toBe("/creator?aba=comunidade");
+    fireEvent.click(screen.getByTestId("creator-aba-calendario"));
+    expect(history[history.length - 1]).toBe("/creator?aba=calendario");
     expect(screen.getByTestId("creator-comunidade")).toBeTruthy();
     expect(screen.queryByTestId("view")).toBeNull();
-    // A PAGINA nao busca nada na aba Comunidade: quem busca sao os dois
+    // A PAGINA nao busca nada na aba Calendario: quem busca sao os dois
     // cartoes, cada um por conta propria, e aqui os dois estao dublados. O que
     // esta assercao guarda e que trocar de aba nao refaz a busca do painel.
     expect(estado.fetch).toHaveBeenCalledTimes(1);
@@ -543,20 +549,31 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     expect(screen.queryByTestId("creator-pendencias")).toBeNull();
   });
 
-  it("aba Comunidade: as publicacoes vem ANTES do calendario", async () => {
+  it("aba Calendario: o calendario vem ANTES das publicacoes (lote 10d)", async () => {
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
-    montar("/creator?aba=comunidade");
+    montar("/creator?aba=calendario");
     const publicacoes = await screen.findByTestId("creator-card-publicacoes");
     const calendario = screen.getByTestId("creator-comunidade");
     expect(screen.getByTestId("publicacoes")).toBeTruthy();
-    // O calendario esta montado de verdade, e nao e mais o aviso de "em breve".
     expect(screen.getByTestId("calendario")).toBeTruthy();
     expect(
-      publicacoes.compareDocumentPosition(calendario) &
+      calendario.compareDocumentPosition(publicacoes) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     // A PAGINA continua sem buscar o painel de Numeros nesta aba.
     expect(estado.fetch).not.toHaveBeenCalled();
+  });
+
+  it("?aba=comunidade (link antigo das notificacoes) abre a MESMA aba Calendario", async () => {
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar("/creator?aba=comunidade");
+    expect(await screen.findByTestId("creator-comunidade")).toBeTruthy();
+    expect(
+      screen
+        .getByTestId("creator-aba-calendario")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.queryByTestId("view")).toBeNull();
   });
 
   it("?aba=ranking abre o card em breve, sem buscar o painel", async () => {

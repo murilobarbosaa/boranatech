@@ -510,6 +510,13 @@ describe("CreatorPublicacoes: rede e tipo escolhidos (lotes 10b e 10d)", () => {
     expect(opcoes.map((o) => o.textContent)).toEqual(["Post", "Reel", "Story"]);
     fireEvent.keyDown(opcoes[0], { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    // Mesma altura do input ao lado (lote 10d): as classes do inputClass. Lida
+    // com o popup FECHADO: aberto, o Radix esconde o trigger da arvore.
+    expect(
+      screen
+        .getByRole("combobox", { name: "Tipo da publicação" })
+        .getAttribute("class") ?? "",
+    ).toContain("border-[2.5px]");
     // LinkedIn so tem post: sem select, e o botao ja pode registrar.
     escolherRede("linkedin");
     expect(screen.queryByRole("combobox")).toBeNull();

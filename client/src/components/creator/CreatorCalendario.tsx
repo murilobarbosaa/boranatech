@@ -706,7 +706,9 @@ export function CreatorCalendario() {
                     <Handshake
                       aria-hidden="true"
                       data-testid={`creator-dia-collab-${quadrado.dia}`}
-                      className="h-3 w-3 text-emerald-800"
+                      // Token, e nao `dark:`: roxo no claro e amarelo no
+                      // escuro (ver --bnt-collab-ink no index.css).
+                      className="h-3 w-3 text-[var(--bnt-collab-ink)]"
                     />
                   ) : null}
                 </span>

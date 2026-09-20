@@ -72,7 +72,14 @@ export type BntSelectProps = {
    * muda.
    */
   contentClassName?: string;
-  size?: "sm" | "md";
+  /**
+   * `campo` (lote 10d) e o select ao lado de um input dos formularios de
+   * creator: leva as MESMAS classes de padding, texto e borda do `inputClass`
+   * de creatorFormEstilos.ts (`py-2.5 text-sm border-[2.5px]`), e nao uma
+   * altura fixa, para os dois continuarem iguais se o input mudar. `sm` e
+   * `md` continuam para os filtros de pagina, onde nao ha input ao lado.
+   */
+  size?: "sm" | "md" | "campo";
   fullWidth?: boolean;
   // Cor do item selecionado/hover (default "yellow" = identico a hoje).
   accent?: BntSelectAccent;
@@ -94,6 +101,11 @@ export type BntSelectProps = {
 const sizeClasses: Record<NonNullable<BntSelectProps["size"]>, string> = {
   sm: "h-9 px-3 text-sm",
   md: "h-10 px-3 text-sm",
+  // Sem `h-*`: a altura sai do padding, como no input. O primitivo poe
+  // `data-[size=default]:h-9` no trigger, e essa variante ganha de um `h-*`
+  // solto por especificidade, entao ela e desligada pela mesma variante.
+  campo:
+    "data-[size=default]:h-auto rounded-[11px] border-[2.5px] px-3.5 py-2.5 text-sm",
 };
 
 // Folga de colisao no topo para o header fixo do site (medido constante: 66px em

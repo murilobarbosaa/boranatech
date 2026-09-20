@@ -521,7 +521,7 @@ async function avisarPedidoDeCollab(
       // TODO(Ana)
       title: "Pediram collab na sua marcação",
       body: `${pedinteNome} quer gravar uma collab com você em ${diaLabel}, no ${redeLabel}.`,
-      ctaUrl: "/creator?aba=comunidade",
+      ctaUrl: "/creator?aba=calendario",
       // TODO(Ana)
       ctaLabel: "Ver o pedido",
     });
@@ -567,7 +567,7 @@ async function avisarRespostaDeCollab(
       body: aceita
         ? `${donoNome} aceitou a collab de ${diaLabel}, no ${redeLabel}.`
         : `${donoNome} não vai fechar collab em ${diaLabel}, no ${redeLabel}.`,
-      ctaUrl: "/creator?aba=comunidade",
+      ctaUrl: "/creator?aba=calendario",
       // TODO(Ana)
       ctaLabel: "Ver o calendário",
     });

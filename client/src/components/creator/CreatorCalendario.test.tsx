@@ -642,7 +642,12 @@ describe("CreatorCalendario: collab aceita visivel", () => {
       within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
         .textContent,
     ).toBe("Collab aceita com Outra Cria");
-    expect(screen.getByTestId(`creator-dia-collab-${HOJE}`)).toBeTruthy();
+    // Tinta pelo token (lote 10d): roxo no claro, amarelo no escuro, sem `dark:`.
+    const aperto = screen.getByTestId(`creator-dia-collab-${HOJE}`);
+    expect(aperto.getAttribute("class") ?? "").toContain(
+      "text-[var(--bnt-collab-ink)]",
+    );
+    expect(aperto.getAttribute("class") ?? "").not.toContain("dark:");
     expect(
       within(linha).getByTestId(`creator-marcacao-remover-${MINHA.id}`),
     ).toBeTruthy();

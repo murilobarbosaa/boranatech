@@ -76,3 +76,40 @@ describe("BntSelect: renderOption", () => {
     expect(onValueChange).toHaveBeenCalledWith("b");
   });
 });
+
+describe("BntSelect: size campo (lote 10d)", () => {
+  it("o trigger leva o padding, o texto e a borda do inputClass, e nenhuma altura fixa", () => {
+    render(
+      <BntSelect
+        label="Campo"
+        size="campo"
+        value="a"
+        onValueChange={vi.fn()}
+        options={OPCOES}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Campo" });
+    const classes = trigger.getAttribute("class") ?? "";
+    for (const c of ["py-2.5", "text-sm", "border-[2.5px]", "px-3.5"]) {
+      expect(classes, c).toContain(c);
+    }
+    expect(classes).not.toMatch(/\bh-(9|10|11|\[45px\])\b/);
+    // A variante do primitivo (`data-[size=default]:h-9`) e desligada.
+    expect(classes).toContain("data-[size=default]:h-auto");
+  });
+
+  it("sem size, continua o md de sempre (h-10)", () => {
+    render(
+      <BntSelect
+        label="Filtro"
+        value="a"
+        onValueChange={vi.fn()}
+        options={OPCOES}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Filtro" }).getAttribute("class") ??
+        "",
+    ).toContain("h-10");
+  });
+});

@@ -375,6 +375,7 @@ export function CreatorPublicacoes() {
               <div className="sm:w-44">
                 <BntSelect
                   accent="neutral"
+                  size="campo"
                   // TODO(Ana)
                   label="Tipo da publicação"
                   // TODO(Ana)

@@ -4639,7 +4639,7 @@ async function avisarPublicacaoConfirmada(
       title: "Publicação confirmada",
       // TODO(Ana)
       body: `Sua publicação ${url} foi conferida e já conta no ranking do mês.`,
-      ctaUrl: "/creator?aba=comunidade",
+      ctaUrl: "/creator?aba=calendario",
       // TODO(Ana)
       ctaLabel: "Ver publicações",
       createdBy: adminId,

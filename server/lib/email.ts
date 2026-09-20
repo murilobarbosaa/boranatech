@@ -439,7 +439,7 @@ export async function sendCreatorCollabRequestEmail(
         ? paragraph(`Recado: "${escapeHtml(params.mensagem)}"`)
         : ""
     }
-    ${button("Ver o pedido", `${APP_URL}/creator?aba=comunidade`, theme)}
+    ${button("Ver o pedido", `${APP_URL}/creator?aba=calendario`, theme)}
     ${paragraph("Você aceita ou recusa por lá. O combinado do conteúdo fica entre vocês dois.")}
   `;
   await sendEmail({
@@ -494,7 +494,7 @@ export async function sendCreatorCollabResponseEmail(
         ? "Agora é combinar o conteúdo direto com a pessoa."
         : "O calendário continua aberto: dá para pedir collab em outra marcação.",
     )}
-    ${button("Ver o calendário", `${APP_URL}/creator?aba=comunidade`, theme)}
+    ${button("Ver o calendário", `${APP_URL}/creator?aba=calendario`, theme)}
   `;
   await sendEmail({
     to,

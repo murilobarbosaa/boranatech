@@ -388,6 +388,7 @@ export function CreatorRedesForm({
         <span className={labelClass}>Cor no calendário</span>
         <BntSelect
           accent="neutral"
+          size="campo"
           // TODO(Ana)
           label="Cor no calendário"
           value={cor}

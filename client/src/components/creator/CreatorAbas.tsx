@@ -45,14 +45,14 @@ const CHIP_DE_PENDENCIA =
 // TODO(Ana)
 const ROTULO_DA_ABA: Record<CreatorAba, string> = {
   numeros: "Números",
-  comunidade: "Comunidade",
+  calendario: "Calendário",
   ranking: "Ranking",
   perfil: "Perfil",
 };
 
 const ICONE_DA_ABA: Record<CreatorAba, ReactNode> = {
   numeros: <BarChart3 aria-hidden="true" className="h-4 w-4" />,
-  comunidade: <CalendarDays aria-hidden="true" className="h-4 w-4" />,
+  calendario: <CalendarDays aria-hidden="true" className="h-4 w-4" />,
   ranking: <Trophy aria-hidden="true" className="h-4 w-4" />,
   perfil: <UserRound aria-hidden="true" className="h-4 w-4" />,
 };

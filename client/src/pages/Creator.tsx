@@ -18,7 +18,7 @@ import {
   CREATOR_ABA_PADRAO,
   idDaAba,
   idDoPainel,
-  isCreatorAba,
+  normalizarAba,
   type CreatorAba,
 } from "@/components/creator/creatorAbas";
 import {
@@ -94,7 +94,7 @@ export default function Creator() {
   const perfil = useCreatorPerfil();
 
   const pedida = new URLSearchParams(search).get("aba");
-  const aba: CreatorAba = isCreatorAba(pedida) ? pedida : CREATOR_ABA_PADRAO;
+  const aba: CreatorAba = normalizarAba(pedida) ?? CREATOR_ABA_PADRAO;
   const escolherAba = (nova: CreatorAba) =>
     navigate(
       nova === CREATOR_ABA_PADRAO ? "/creator" : `/creator?aba=${nova}`,
@@ -154,13 +154,16 @@ export default function Creator() {
             </div>
           ) : null}
 
-          {aba === "comunidade" ? (
+          {aba === "calendario" ? (
             <div
               role="tabpanel"
-              id={idDoPainel("comunidade")}
-              aria-labelledby={idDaAba("comunidade")}
+              id={idDoPainel("calendario")}
+              aria-labelledby={idDaAba("calendario")}
               className="space-y-8"
             >
+              {/* O calendario vem PRIMEIRO (lote 10d): a aba e o calendario,
+                  e o registro de publicacoes e o segundo cartao. */}
+              <Comunidade />
               <BlocoBoundary
                 // TODO(Ana)
                 nome="Suas publicações"
@@ -176,7 +179,6 @@ export default function Creator() {
                   <CreatorPublicacoes />
                 </section>
               </BlocoBoundary>
-              <Comunidade />
             </div>
           ) : null}
 
@@ -294,7 +296,8 @@ function PainelDeNumeros() {
 }
 
 /**
- * Aba Comunidade, segundo cartao: o calendario compartilhado (lote 10).
+ * Aba Calendario, primeiro cartao: o calendario compartilhado (lote 10; a aba
+ * chamava Comunidade ate o 10c).
  *
  * O cabecalho mora DENTRO do componente, como no cartao de publicacoes: aqui
  * fica so a casca. O `data-testid` continua `creator-comunidade` de proposito,

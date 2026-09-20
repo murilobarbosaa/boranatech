@@ -993,7 +993,7 @@ describe("POST /creators/:userId/posts/:postId/confirmar", () => {
     const notificacao = estado.double.de("notifications")[0].payload!;
     expect(notificacao.title).toBe("Publicação confirmada");
     expect(String(notificacao.body)).toContain(PUBLICACAO.url);
-    expect(notificacao.cta_url).toBe("/creator?aba=comunidade");
+    expect(notificacao.cta_url).toBe("/creator?aba=calendario");
     expect(notificacao.created_by).toBe("admin-1");
   });
 
