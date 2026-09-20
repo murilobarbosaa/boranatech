@@ -124,6 +124,10 @@ vi.mock("@/components/creator/CreatorCalendario", () => ({
 vi.mock("@/components/creator/CreatorRanking", () => ({
   CreatorRanking: () => <div data-testid="ranking" />,
 }));
+// O cartao do ranking na aba Numeros (lote 11) tambem busca sozinho.
+vi.mock("@/components/creator/CartaoDoRanking", () => ({
+  CartaoDoRanking: () => <div data-testid="cartao-ranking" />,
+}));
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -410,6 +414,19 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     );
     expect(estado.recarregar).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("redes-form")).toBeNull();
+  });
+
+  it("na aba Numeros o cartao do ranking vem ANTES do painel (lote 11)", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    const view = await screen.findByTestId("view");
+    const cartao = screen.getByTestId("cartao-ranking");
+    expect(
+      cartao.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // A PAGINA continua buscando so o painel: o cartao busca por conta propria.
+    expect(estado.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("na aba Numeros a secao de perfil nao existe", async () => {

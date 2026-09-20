@@ -7,6 +7,7 @@ import SEO from "@/components/SEO";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
+import { CartaoDoRanking } from "@/components/creator/CartaoDoRanking";
 import { CreatorAbas } from "@/components/creator/CreatorAbas";
 import { CreatorCalendario } from "@/components/creator/CreatorCalendario";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
@@ -150,7 +151,18 @@ export default function Creator() {
               role="tabpanel"
               id={idDoPainel("numeros")}
               aria-labelledby={idDaAba("numeros")}
+              className="space-y-8"
             >
+              {/* O cartao do ranking (lote 11) busca sozinho e some sem
+                  resposta; fica ANTES do painel para a posicao do mes ser a
+                  primeira coisa da aba, e fora do painel para nao esperar por
+                  ele. */}
+              <BlocoBoundary
+                // TODO(Ana)
+                nome="Ranking do mês"
+              >
+                <CartaoDoRanking />
+              </BlocoBoundary>
               <PainelDeNumeros />
             </div>
           ) : null}
