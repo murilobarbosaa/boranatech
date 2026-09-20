@@ -24,9 +24,16 @@ vi.mock("@/components/Layout", () => ({
 }));
 vi.mock("@/components/SEO", () => ({ default: () => null }));
 vi.mock("@/components/fiscal/FiscalDataModal", () => ({ default: () => null }));
-vi.mock("@/components/fiscal/FiscalInvoicesSection", () => ({
-  default: () => null,
-}));
+// `FiscalInvoicesSection` e a REAL, de proposito. Dublada para `null` ela
+// estaria ausente em qualquer cenario, e "a secao de notas continua ausente com
+// a coleta ligada" seria uma afirmacao que nao tem como falhar. O que se dubla
+// e so a chamada que ela faz.
+const getMyFiscalInvoices = vi.hoisted(() => vi.fn());
+vi.mock("@/services/subscriptionService", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("@/services/subscriptionService")>();
+  return { ...real, getMyFiscalInvoices };
+});
 vi.mock("@/components/profile/AvatarPhotoPanel", () => ({
   default: () => null,
 }));
@@ -87,6 +94,8 @@ import Perfil from "./Perfil";
 beforeEach(() => {
   estado.nfseEnabled = false;
   estado.coletaEnabled = false;
+  getMyFiscalInvoices.mockReset();
+  getMyFiscalInvoices.mockResolvedValue([]);
   vi.stubGlobal(
     "IntersectionObserver",
     class {
@@ -138,5 +147,24 @@ describe("bloco de dados fiscais do perfil", () => {
     expect(screen.getAllByText("Para emitir sua nota").length).toBeGreaterThan(
       0,
     );
+    // Controle positivo da afirmacao de ausencia do caso abaixo: com a emissao
+    // ligada a secao de notas EXISTE nesta mesma pagina e busca as notas.
+    expect(screen.getAllByText("Suas notas").length).toBeGreaterThan(0);
+    await waitFor(() => expect(getMyFiscalInvoices).toHaveBeenCalledTimes(1));
+  });
+
+  it("coleta ligada e emissao DESLIGADA: o bloco de dados aparece e a secao de notas continua ausente", async () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    render(<Perfil />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText("Dados fiscais").length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText("Para emitir sua nota").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryAllByText("Suas notas")).toHaveLength(0);
+    expect(getMyFiscalInvoices).not.toHaveBeenCalled();
   });
 });

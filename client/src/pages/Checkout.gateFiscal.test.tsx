@@ -34,13 +34,43 @@ vi.mock("@/services/nfseStatus", () => ({
 const getMyProfile = vi.hoisted(() => vi.fn());
 vi.mock("@/services/profileService", () => ({ getMyProfile }));
 
+const createCheckout = vi.hoisted(() => vi.fn());
+vi.mock("@/services/subscriptionService", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("@/services/subscriptionService")>();
+  return { ...real, createCheckout };
+});
+
 vi.mock("@/components/fiscal/FiscalDataModal", () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <div>MODAL_FISCAL_ABERTA</div> : null,
+  default: ({ open, onSaved }: { open: boolean; onSaved: () => void }) =>
+    open ? (
+      <div>
+        MODAL_FISCAL_ABERTA
+        <button type="button" onClick={onSaved}>
+          SALVAR_MODAL_FISCAL
+        </button>
+      </div>
+    ) : null,
 }));
 vi.mock("@/components/pro/PaymentMethodDialog", () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <div>DIALOG_PAGAMENTO_ABERTO</div> : null,
+  default: ({
+    open,
+    onSelect,
+  }: {
+    open: boolean;
+    onSelect: (metodo: string) => void;
+  }) =>
+    open ? (
+      <div>
+        DIALOG_PAGAMENTO_ABERTO
+        <button type="button" onClick={() => onSelect("card")}>
+          ESCOLHER_CARTAO
+        </button>
+        <button type="button" onClick={() => onSelect("boleto")}>
+          ESCOLHER_BOLETO
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("@/components/Layout", () => ({
@@ -103,6 +133,9 @@ beforeEach(() => {
   );
   estado.nfseEnabled = false;
   estado.coletaEnabled = false;
+  createCheckout.mockReset();
+  // Sem `checkoutUrl`: o ramo de redirecionar para a Stripe nao navega.
+  createCheckout.mockResolvedValue({ flow: "redirect" });
   getMyProfile.mockReset();
   // Perfil SEM dados fiscais: com a coleta ligada, isto abre a modal.
   getMyProfile.mockResolvedValue({ full_name: null, cpf: null, cnpj: null });
@@ -132,9 +165,9 @@ describe("gate fiscal do checkout", () => {
     await clicarAssinar();
 
     await waitFor(() =>
-      expect(screen.getByText("DIALOG_PAGAMENTO_ABERTO")).toBeTruthy(),
+      expect(screen.getByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeTruthy(),
     );
-    expect(screen.queryByText("MODAL_FISCAL_ABERTA")).toBeNull();
+    expect(screen.queryByText(/MODAL_FISCAL_ABERTA/)).toBeNull();
     // Nem le o perfil: nao ha decisao fiscal a tomar.
     expect(getMyProfile).not.toHaveBeenCalled();
   });
@@ -148,9 +181,77 @@ describe("gate fiscal do checkout", () => {
     await clicarAssinar();
 
     await waitFor(() =>
-      expect(screen.getByText("MODAL_FISCAL_ABERTA")).toBeTruthy(),
+      expect(screen.getByText(/MODAL_FISCAL_ABERTA/)).toBeTruthy(),
     );
-    expect(screen.queryByText("DIALOG_PAGAMENTO_ABERTO")).toBeNull();
+    expect(screen.queryByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeNull();
     expect(getMyProfile).toHaveBeenCalledTimes(1);
+  });
+
+  // O estado que este lote existe para ligar. O gate vem ANTES da escolha do
+  // meio, entao a prova por meio e a ordem inteira: modal fiscal primeiro, sem
+  // dialogo e sem checkout; salvar abre o dialogo; o meio escolhido segue ao
+  // checkout sem a modal voltar.
+  it.each([
+    ["cartao", "ESCOLHER_CARTAO", "card"],
+    ["boleto", "ESCOLHER_BOLETO", "boleto"],
+  ])(
+    "coleta ligada e emissao DESLIGADA: perfil sem documento ve a modal fiscal antes do pagamento (%s)",
+    async (_rotulo, botao, metodo) => {
+      estado.coletaEnabled = true;
+      estado.nfseEnabled = false;
+      render(<Checkout />);
+      await clicarAssinar();
+
+      await waitFor(() =>
+        expect(screen.getByText(/MODAL_FISCAL_ABERTA/)).toBeTruthy(),
+      );
+      expect(screen.queryByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeNull();
+      expect(createCheckout).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText("SALVAR_MODAL_FISCAL"));
+
+      await waitFor(() =>
+        expect(screen.getByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeTruthy(),
+      );
+      expect(screen.queryByText(/MODAL_FISCAL_ABERTA/)).toBeNull();
+
+      fireEvent.click(screen.getByText(botao));
+
+      await waitFor(() => expect(createCheckout).toHaveBeenCalledTimes(1));
+      expect(createCheckout).toHaveBeenCalledWith("pro_semiannual", metodo);
+      expect(screen.queryByText(/MODAL_FISCAL_ABERTA/)).toBeNull();
+    },
+  );
+
+  it("coleta ligada e emissao desligada: perfil COM documento vai direto ao pagamento", async () => {
+    estado.coletaEnabled = true;
+    getMyProfile.mockResolvedValue({
+      full_name: "Maria da Silva",
+      cpf: "52998224725",
+      cnpj: null,
+    });
+    render(<Checkout />);
+    await clicarAssinar();
+
+    await waitFor(() =>
+      expect(screen.getByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/MODAL_FISCAL_ABERTA/)).toBeNull();
+    expect(getMyProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it("so a emissao ligada NAO abre o gate: quem manda e o switch da coleta", async () => {
+    // Estado que o servidor nao produz (emissao implica coleta), usado aqui
+    // para provar QUAL hook o gate le.
+    estado.nfseEnabled = true;
+    estado.coletaEnabled = false;
+    render(<Checkout />);
+    await clicarAssinar();
+
+    await waitFor(() =>
+      expect(screen.getByText(/DIALOG_PAGAMENTO_ABERTO/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/MODAL_FISCAL_ABERTA/)).toBeNull();
+    expect(getMyProfile).not.toHaveBeenCalled();
   });
 });

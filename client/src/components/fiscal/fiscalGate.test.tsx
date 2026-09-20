@@ -86,6 +86,39 @@ describe("FiscalDataBanner", () => {
     render(<FiscalDataBanner />);
     expect(screen.getByText(/complete seus dados fiscais/i)).toBeTruthy();
   });
+
+  it("coleta ligada e emissao DESLIGADA: assinante ativo sem documento ve o aviso", () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    render(<FiscalDataBanner />);
+    expect(screen.getByText(/complete seus dados fiscais/i)).toBeTruthy();
+  });
+
+  it("coleta ligada e emissao desligada: status free NAO ve o aviso", () => {
+    // Cortesia de admin e influencer tem status 'free': nao ha cobranca, nao
+    // ha nota, nao ha por que pedir documento.
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    assinatura.subscription = { status: "free" };
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("coleta ligada e emissao desligada: assinante ativo COM documento nao ve o aviso", () => {
+    estado.coletaEnabled = true;
+    auth.profile = { full_name: "Maria da Silva", cpf: "52998224725" };
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("so a emissao ligada NAO mostra o aviso: quem manda e o switch da coleta", () => {
+    // Estado que o servidor nao produz (emissao implica coleta), usado aqui
+    // para provar QUAL hook o banner le.
+    estado.nfseEnabled = true;
+    estado.coletaEnabled = false;
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
+  });
 });
 
 describe("FiscalInvoicesSection", () => {
@@ -95,6 +128,15 @@ describe("FiscalInvoicesSection", () => {
     expect(container.innerHTML).toBe("");
     // A prova que importa: zero chamadas. Esconder a secao depois de ja ter
     // perguntado deixaria o 500 acontecendo em silencio.
+    expect(getMyFiscalInvoices).not.toHaveBeenCalled();
+  });
+
+  it("coleta ligada NAO liga a secao de notas: continua ausente e sem chamar o backend", async () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    const { container } = render(<FiscalInvoicesSection />);
+
+    expect(container.innerHTML).toBe("");
     expect(getMyFiscalInvoices).not.toHaveBeenCalled();
   });
 

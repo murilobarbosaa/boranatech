@@ -186,6 +186,7 @@ vi.mock("../middleware/auth", () => ({
   isDevProUser: () => false,
 }));
 
+import { fiscalCollectionSwitchLigado } from "../lib/env";
 import adminRouter from "./admin";
 import billingRouter from "./billing";
 import { criarClienteAdmin } from "./adminTestClient";
@@ -232,6 +233,75 @@ describe("GET /billing/nfse-status", () => {
 
     // E uma flag de configuracao lida do processo, nao um dado consultado.
     expect(estado.chamadas).toHaveLength(0);
+  });
+});
+
+/**
+ * MATRIZ DOS DOIS SWITCHES, do valor CRU da env ate o corpo da resposta.
+ *
+ * O lado da coleta entra como a STRING que estaria em
+ * `FISCAL_DATA_COLLECTION_ENABLED` e passa pelo leitor REAL do env.ts (o mesmo
+ * que o boot usa), para a regra "so o literal exato liga" ser exercitada junto
+ * com o OU. O lado da emissao entra como booleano, que e como este arquivo ja a
+ * controla: a leitura de `NFSE_ENABLED` nao mudou neste lote.
+ */
+describe("GET /billing/nfse-status: matriz coleta x emissao", () => {
+  function configurar(fiscalRaw: string | undefined, nfseEnabled: boolean) {
+    estado.fiscalCollectionEnabled = fiscalCollectionSwitchLigado(fiscalRaw);
+    estado.nfseEnabled = nfseEnabled;
+  }
+
+  it("FISCAL off + NFSE off: coleta disabled", async () => {
+    configurar(undefined, false);
+
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.body).toEqual({ data: { nfse: "disabled", coleta: "disabled" } });
+  });
+
+  it('FISCAL "true" + NFSE off: coleta enabled, nfse disabled', async () => {
+    configurar("true", false);
+
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.body).toEqual({ data: { nfse: "disabled", coleta: "enabled" } });
+  });
+
+  it('FISCAL off + NFSE "true": ambos enabled', async () => {
+    configurar(undefined, true);
+
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.body).toEqual({ data: { nfse: "enabled", coleta: "enabled" } });
+  });
+
+  it('FISCAL "TRUE" (caixa errada): coleta disabled', async () => {
+    configurar("TRUE", false);
+
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.body).toEqual({ data: { nfse: "disabled", coleta: "disabled" } });
+  });
+
+  it("os palpites obvios de quem liga as pressas nao ligam a coleta", async () => {
+    for (const raw of ["1", "yes", "on", " true", "true ", '"true"', "True"]) {
+      configurar(raw, false);
+
+      const r = await chamarBilling("GET", "/nfse-status");
+
+      expect(r.body).toEqual({
+        data: { nfse: "disabled", coleta: "disabled" },
+      });
+    }
+  });
+
+  it("a coleta ligada NAO liga nada de emissao: /invoices segue desligada e sem tocar o banco", async () => {
+    configurar("true", false);
+
+    const r = await chamarBilling("GET", "/invoices");
+
+    expect(r.body).toEqual({ data: [], nfse: "disabled" });
+    expect(chamadasDe("fiscal_invoices")).toHaveLength(0);
   });
 });
 
