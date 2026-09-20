@@ -6,7 +6,7 @@ import {
 } from "express";
 
 import { isCreatorKind, type CreatorKind } from "../lib/creatorKind";
-import { env } from "../lib/env";
+import { coletaFiscalLigada, env } from "../lib/env";
 import { montarDbError } from "../lib/dbError";
 import { signedFiscalUrl } from "../lib/fiscalStorage";
 import { verifyRenewalToken } from "../lib/renewalToken";
@@ -694,9 +694,24 @@ router.post("/cancel-pending", requireAuth, handleCancelPending);
  * fiscais) porque o consumidor e fail-closed: o cliente so mostra superficie
  * fiscal com o literal "enabled" na mao, e trata ausencia, erro e resposta
  * desconhecida como desligado.
+ *
+ * `coleta` e ADITIVO, ao lado de `nfse`, e a rota NAO foi renomeada apesar de
+ * agora declarar duas coisas: o bundle antigo, em aba aberta, continua lendo
+ * `nfse` no mesmo lugar, e o bundle novo contra o backend antigo (janela em que
+ * a Vercel ja subiu e o Railway ainda nao) ve `coleta` ausente e resolve para
+ * desligado. Os dois campos sao independentes de proposito: a coleta de nome
+ * civil e documento ANTECEDE a emissao, para o backlog de notas sair com
+ * tomador identificado, entao `coleta: "enabled"` com `nfse: "disabled"` e o
+ * estado esperado ate a emissao ligar. O inverso nao existe
+ * (`coletaFiscalLigada`).
  */
 router.get("/nfse-status", (_req, res) => {
-  res.json({ data: { nfse: env.nfseEnabled ? "enabled" : "disabled" } });
+  res.json({
+    data: {
+      nfse: env.nfseEnabled ? "enabled" : "disabled",
+      coleta: coletaFiscalLigada(env) ? "enabled" : "disabled",
+    },
+  });
 });
 
 /**

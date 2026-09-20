@@ -40,6 +40,7 @@ interface QueryBuilder extends PromiseLike<Resposta> {
 
 const estado = vi.hoisted(() => ({
   nfseEnabled: false,
+  fiscalCollectionEnabled: false,
   respostas: {} as Record<string, Resposta>,
   chamadas: [] as Array<{
     table: string;
@@ -81,10 +82,24 @@ function construir(table: string, op: Chamada["op"]): QueryBuilder {
   return alvo;
 }
 
-vi.mock("../lib/env", () => ({
-  env: {
+// `coletaFiscalLigada` e `fiscalCollectionSwitchLigado` vem do modulo REAL, e
+// nao de uma copia escrita aqui: um duble que reimplementasse o OU entre os dois
+// switches provaria o duble, nao a regra que a rota usa.
+vi.mock("../lib/env", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../lib/env")>();
+  return {
+    coletaFiscalLigada: real.coletaFiscalLigada,
+    fiscalCollectionSwitchLigado: real.fiscalCollectionSwitchLigado,
+    env: envDuble(),
+  };
+});
+function envDuble() {
+  return {
     get nfseEnabled() {
       return estado.nfseEnabled;
+    },
+    get fiscalCollectionEnabled() {
+      return estado.fiscalCollectionEnabled;
     },
     supabaseUrl: "https://exemplo.supabase.co",
     supabaseAnonKey: "anon",
@@ -105,8 +120,8 @@ vi.mock("../lib/env", () => ({
     posthogHost: "https://us.posthog.com",
     rateLimitMaxRequests: 1000,
     refundMaxPerMinute: 100000,
-  },
-}));
+  };
+}
 vi.mock("../lib/supabaseAdmin", () => ({
   supabaseAdmin: {
     from: (table: string) => construir(table, "select"),
@@ -182,6 +197,7 @@ const NOTA_ID = "11111111-2222-4333-8444-555555555555";
 
 beforeEach(() => {
   estado.nfseEnabled = false;
+  estado.fiscalCollectionEnabled = false;
   estado.respostas = {};
   estado.chamadas = [];
   estado.enfileirados = [];
@@ -196,7 +212,7 @@ describe("GET /billing/nfse-status", () => {
     const r = await chamarBilling("GET", "/nfse-status");
 
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ data: { nfse: "disabled" } });
+    expect(r.body).toEqual({ data: { nfse: "disabled", coleta: "disabled" } });
   });
 
   it("com a emissao ligada declara enabled", async () => {
@@ -205,7 +221,8 @@ describe("GET /billing/nfse-status", () => {
     const r = await chamarBilling("GET", "/nfse-status");
 
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ data: { nfse: "enabled" } });
+    // Emissao ligada implica coleta ligada, mesmo com o switch da coleta off.
+    expect(r.body).toEqual({ data: { nfse: "enabled", coleta: "enabled" } });
   });
 
   it("nao toca o banco em nenhum dos dois estados", async () => {
