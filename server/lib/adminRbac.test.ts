@@ -61,7 +61,9 @@ describe("manifesto administrativo fechado", () => {
     // 132 -> 134 com a conferencia (creators, lote 10b): o GET da lista de
     // pendentes entra em creators.read, e o POST de confirmar em
     // creators.posts.moderate, ao lado do DELETE.
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(134);
+    // 134 -> 135 com o calendario dos creators no admin (lote 10d), em
+    // creators.read.
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(135);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

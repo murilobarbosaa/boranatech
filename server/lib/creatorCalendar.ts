@@ -359,7 +359,9 @@ async function lerPedidosDasMarcacoes(eventIds: string[]): Promise<Linha[]> {
 export async function listarMesDoCalendario(
   ano: number,
   mes: number,
-  viewerId: string,
+  /** Quem olha; `null` e o admin (lote 10d), que nao pede collab: `meu_pedido`
+   * sai sempre null e `minha_collab` sempre false. */
+  viewerId: string | null,
 ): Promise<MarcacaoDoMes[]> {
   const { primeiro, ultimo } = limitesDoMes(ano, mes);
 
@@ -384,7 +386,7 @@ export async function listarMesDoCalendario(
     const eventId = textoDe(pedido.event_id, "event_id");
     const requesterId = textoDe(pedido.requester_id, "requester_id");
     const status = statusDaLinha(pedido.status);
-    if (requesterId === viewerId) {
+    if (viewerId !== null && requesterId === viewerId) {
       meusPedidos.set(eventId, { id: textoDe(pedido.id, "id"), status });
     }
     if (status === "aceita") {
@@ -422,7 +424,8 @@ export async function listarMesDoCalendario(
       calendar_color: cores.get(marcacao.user_id) ?? COR_PADRAO_DO_CALENDARIO,
       meu_pedido: meusPedidos.get(marcacao.id) ?? null,
       collabs,
-      minha_collab: collabs.some((c) => c.user_id === viewerId),
+      minha_collab:
+        viewerId !== null && collabs.some((c) => c.user_id === viewerId),
     };
   });
 }

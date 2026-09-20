@@ -5,6 +5,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { relativeTime } from "@/components/admin/tasks/relativeTime";
+import { CreatorCalendario } from "@/components/creator/CreatorCalendario";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorMetricTile } from "@/components/creator/CreatorMetricTile";
 import { AdminApiError, adminFetch } from "@/lib/adminApi";
@@ -713,6 +714,20 @@ export function CreatorsSection() {
             nome="Publicações para conferir"
           >
             <PublicacoesParaConferir />
+          </BlocoBoundary>
+          {/* O calendario dos creators, so leitura (lote 10d): o mesmo que
+              eles veem, para o time saber quem publica quando sem entrar na
+              conta de ninguem. */}
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Calendário dos creators"
+          >
+            <section
+              data-testid="creators-calendario"
+              className="card-brutal rounded-3xl bg-white p-5"
+            >
+              <CreatorCalendario modo="admin" />
+            </section>
           </BlocoBoundary>
           <div className="flex flex-wrap items-center gap-3">
             <Pilulas

@@ -59,7 +59,8 @@ import {
   removerPublicacao,
   resolverDonosDasPublicacoes,
 } from "../lib/creatorPosts";
-import { lerContato } from "../lib/creatorCalendar";
+import { lerContato, listarMesDoCalendario } from "../lib/creatorCalendar";
+import { parseMesDoCalendario } from "../../shared/creatorCalendar";
 import { createTargetedNotification } from "../lib/targetedNotifications";
 import {
   montarPainelDoCreator,
@@ -4348,6 +4349,32 @@ router.get("/creators/resumo", async (_req, res, next) => {
     next(
       // TODO(Ana)
       dbError("creators resumo", err, "Erro ao buscar o resumo de creators."),
+    );
+  }
+});
+
+// Calendario dos creators, so leitura (lote 10d): o mesmo mes que os creators
+// veem, com um viewer nulo (o admin nao pede collab). Declarada ANTES de
+// `/creators/:userId`: "calendar" casaria como userId.
+router.get("/creators/calendar", async (req, res, next) => {
+  const mes = parseMesDoCalendario(req.query.mes);
+  if (!mes) {
+    return next(
+      createError(
+        400,
+        "month_out_of_range",
+        // TODO(Ana)
+        "Mês inválido. Use o formato AAAA-MM.",
+      ),
+    );
+  }
+  try {
+    const marcacoes = await listarMesDoCalendario(mes.ano, mes.mes, null);
+    res.json({ data: { marcacoes } });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creators calendar", err, "Erro ao carregar o calendário."),
     );
   }
 });

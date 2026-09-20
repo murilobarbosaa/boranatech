@@ -38,6 +38,13 @@ vi.mock("@/lib/adminApi", () => {
     AdminApiError,
   };
 });
+// O calendario tem teste proprio (modo admin em CreatorCalendario.test.tsx);
+// aqui o que se afirma e ONDE a aba o poe e com qual modo.
+vi.mock("@/components/creator/CreatorCalendario", () => ({
+  CreatorCalendario: ({ modo }: { modo?: string }) => (
+    <div data-testid="calendario-mock" data-modo={modo ?? ""} />
+  ),
+}));
 vi.mock("@/components/creator/CreatorDashboardView", () => ({
   CreatorDashboardView: ({
     visao,
@@ -161,6 +168,7 @@ function rotear(
     painel?: unknown;
     pendentes?: unknown;
     acao?: unknown;
+    calendario?: unknown;
   } = {},
 ) {
   fetchMock.mockImplementation((path: string, options?: RequestInit) => {
@@ -169,6 +177,10 @@ function rotear(
     // ANTES do painel: `/creators/posts?` tambem comeca com `/creators/`.
     if (path.startsWith("/creators/posts?")) {
       return responder(over.pendentes ?? SEM_PENDENTES);
+    }
+    // O calendario so leitura (lote 10d): vazio por padrao.
+    if (path.startsWith("/creators/calendar?")) {
+      return responder(over.calendario ?? { data: { marcacoes: [] } });
     }
     if (options?.method === "POST" || options?.method === "DELETE") {
       return responder(over.acao ?? { data: {} });
@@ -738,5 +750,25 @@ describe("publicacoes para conferir (lote 10b)", () => {
     expect(
       within(semPendencia).queryByTestId("creators-posts-aguardando"),
     ).toBeNull();
+  });
+});
+
+describe("calendario dos creators no admin (lote 10d)", () => {
+  it("fica entre as publicacoes para conferir e as pilulas do quadro, em modo admin", async () => {
+    rotear();
+    montar();
+    const bloco = await screen.findByTestId("creators-calendario");
+    expect(
+      within(bloco).getByTestId("calendario-mock").getAttribute("data-modo"),
+    ).toBe("admin");
+    const conferir = screen.getByTestId("creators-para-conferir");
+    const quadro = await screen.findByTestId("creators-quadro");
+    expect(
+      conferir.compareDocumentPosition(bloco) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      bloco.compareDocumentPosition(quadro) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

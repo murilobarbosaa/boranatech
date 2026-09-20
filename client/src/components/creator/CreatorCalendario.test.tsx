@@ -40,6 +40,13 @@ vi.mock("@/lib/adminApi", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/adminApi")>();
   return {
     ...real,
+    // O modo admin (lote 10d) busca por aqui; registrado igual, com o prefixo
+    // no caminho para o teste distinguir as duas rotas.
+    adminFetch: async (path: string, options?: RequestInit) => {
+      const method = options?.method ?? "GET";
+      estado.chamadas.push({ path: `/admin${path}`, method, body: null });
+      return estado.responder(`/admin${path}`, method, null);
+    },
     contentFetch: async (path: string, options?: RequestInit) => {
       const method = options?.method ?? "GET";
       const body =
@@ -851,5 +858,65 @@ describe("CreatorCalendario: cor do marcador logo depois de marcar", () => {
     expect(marcador.className).toContain("bg-cyan-500");
     expect(marcador.className).toContain("ring-2");
     expect(marcador.className).toContain("h-3 w-3");
+  });
+});
+
+// MODO ADMIN (lote 10d): a mesma grade, so leitura, buscada pela rota do admin.
+describe("CreatorCalendario: modo admin", () => {
+  it("busca pela rota do admin, sem os pedidos, e nao desenha NENHUM botao de acao", async () => {
+    estado.auth = { user: { id: "admin-1" } };
+    estado.responder = async () => ({
+      data: {
+        marcacoes: [
+          {
+            ...MINHA,
+            user_id: "admin-1",
+            collabs: [
+              { user_id: OUTRO_ID, name: "Outra Cria", avatar_url: null },
+            ],
+          },
+          DE_OUTRO,
+        ],
+      },
+    });
+    render(<CreatorCalendario modo="admin" />);
+    await screen.findByTestId("creator-dia-painel");
+    expect(estado.chamadas).toEqual([
+      {
+        path: `/admin/creators/calendar?mes=${MES}`,
+        method: "GET",
+        body: null,
+      },
+    ]);
+    // Grade, marcadores, aperto de mao e painel do dia: iguais.
+    expect(screen.getByTestId(`creator-dia-marcadores-${HOJE}`)).toBeTruthy();
+    expect(screen.getByTestId(`creator-dia-collab-${HOJE}`)).toBeTruthy();
+    const linha = screen.getByTestId(`creator-marcacao-${MINHA.id}`);
+    expect(linha.textContent).toContain("Cria");
+    expect(
+      within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
+        .textContent,
+    ).toBe("Collab com Outra Cria");
+    // Nenhuma acao: nem marcar, nem desmarcar, nem pedir, nem responder. Nem
+    // mesmo para a marcacao cujo user_id coincide com o do admin logado.
+    expect(screen.queryByTestId("creator-marcar-dia")).toBeNull();
+    expect(
+      screen.queryByTestId(`creator-marcacao-remover-${MINHA.id}`),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeNull();
+    expect(screen.queryByTestId("creator-collabs-pendentes")).toBeNull();
+    expect(screen.queryByTestId("creator-dia-fora-da-janela")).toBeNull();
+    expect(
+      screen
+        .queryAllByRole("button")
+        .filter(
+          (b) =>
+            /collab|Desmarcar|Marcar|Aceitar|Recusar/i.test(
+              b.textContent ?? "",
+            ) || /Desmarcar/.test(b.getAttribute("aria-label") ?? ""),
+        ),
+    ).toHaveLength(0);
   });
 });

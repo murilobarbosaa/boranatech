@@ -1111,3 +1111,67 @@ describe("POST /creators/:userId/posts/:postId/confirmar", () => {
     expect(estado.double.chamadas).toHaveLength(0);
   });
 });
+
+// CALENDARIO DOS CREATORS NO ADMIN (lote 10d): so leitura, viewer nulo.
+describe("GET /creators/calendar", () => {
+  const EVENTO = {
+    id: "8f14e45f-ceea-467a-9f6b-2c1d0e2a9b77",
+    user_id: UID,
+    event_date: "2026-09-25",
+    network: "instagram",
+    note: "bastidores",
+    created_at: "2026-09-16T12:00:00Z",
+  };
+
+  it("devolve o mes com autor, cor e collabs, e meu_pedido nulo e minha_collab false para todo mundo", async () => {
+    montar({
+      creator_calendar_events: { rows: [EVENTO] },
+      creator_collab_requests: respostaQueFiltra([
+        {
+          id: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+          event_id: EVENTO.id,
+          requester_id: "44444444-4444-4444-4444-444444444444",
+          owner_id: UID,
+          status: "aceita",
+        },
+      ]),
+      profiles: respostaQueFiltra([
+        { user_id: UID, name: "Ana", handle: "ana", avatar_url: null },
+        {
+          user_id: "44444444-4444-4444-4444-444444444444",
+          name: "Bia",
+          handle: "bia",
+          avatar_url: null,
+        },
+      ]),
+      creator_profiles: respostaQueFiltra([
+        { user_id: UID, calendar_color: "cyan" },
+      ]),
+    });
+    const r = await chamarAdmin("GET", "/creators/calendar?mes=2026-09");
+    expect(r.status).toBe(200);
+    expect(r.body.data.marcacoes).toHaveLength(1);
+    const m = r.body.data.marcacoes[0];
+    expect(m.autor.name).toBe("Ana");
+    expect(m.calendar_color).toBe("cyan");
+    expect(m.collabs.map((c: { name: string }) => c.name)).toEqual(["Bia"]);
+    expect(m.meu_pedido).toBeNull();
+    expect(m.minha_collab).toBe(false);
+  });
+
+  it("mes invalido: 400 month_out_of_range, sem tocar no banco", async () => {
+    montar({});
+    const r = await chamarAdmin("GET", "/creators/calendar?mes=2026-13");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("month_out_of_range");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("erro de leitura: 500 db_error, nunca mes vazio", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({ creator_calendar_events: { error: { message: "timeout" } } });
+    const r = await chamarAdmin("GET", "/creators/calendar?mes=2026-09");
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+  });
+});

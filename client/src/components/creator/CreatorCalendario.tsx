@@ -21,7 +21,7 @@ import {
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import { useAuth } from "@/contexts/AuthContext";
-import { contentFetch } from "@/lib/adminApi";
+import { adminFetch, contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
   gerarGradeDoMes,
@@ -270,9 +270,21 @@ function listaDaResposta(json: unknown, chave: string): unknown[] | null {
   return Array.isArray(valor) ? valor : null;
 }
 
-export function CreatorCalendario() {
+/**
+ * `modo="admin"` (lote 10d): o mesmo calendario, SO LEITURA, na aba Creators
+ * do admin. Busca pela rota do admin (sem os pedidos de collab, que sao do
+ * creator), e nao desenha formulario de marcar, Desmarcar, Pedir collab nem
+ * resposta a pedido: a grade, os marcadores, o aperto de mao e o painel do dia
+ * sao os mesmos. `meuId` e nulo de proposito: o admin nao e dono de nada ali.
+ */
+export function CreatorCalendario({
+  modo = "creator",
+}: {
+  modo?: "creator" | "admin";
+} = {}) {
   const { user } = useAuth();
-  const meuId = user?.id ?? null;
+  const admin = modo === "admin";
+  const meuId = admin ? null : (user?.id ?? null);
 
   const hoje = diaBrasilia(new Date().toISOString()) ?? "";
   const [mes, setMes] = useState(() => ({
@@ -310,10 +322,17 @@ export function CreatorCalendario() {
   useEffect(() => {
     let cancelado = false;
     if (!busca.silencioso) setEstado({ tipo: "carregando" });
-    Promise.all([
-      contentFetch(`/creator/calendar?mes=${chaveDoMes}`),
-      contentFetch("/creator/collabs"),
-    ])
+    Promise.all(
+      admin
+        ? [
+            adminFetch(`/creators/calendar?mes=${chaveDoMes}`),
+            Promise.resolve({ data: { recebidos: [] } }),
+          ]
+        : [
+            contentFetch(`/creator/calendar?mes=${chaveDoMes}`),
+            contentFetch("/creator/collabs"),
+          ],
+    )
       .then(([doMes, collabs]: unknown[]) => {
         if (cancelado) return;
         const marcacoes = listaDaResposta(doMes, "marcacoes");
@@ -538,7 +557,8 @@ export function CreatorCalendario() {
     porDia.set(marcacao.event_date, lista);
   }
   const doDia = dia ? (porDia.get(dia) ?? []) : [];
-  const podeMarcar = dia ? validarDataDeMarcacao(dia, hoje).ok : false;
+  const podeMarcar =
+    !admin && (dia ? validarDataDeMarcacao(dia, hoje).ok : false);
 
   return (
     <div data-testid="creator-calendario" className="space-y-5">
@@ -924,7 +944,7 @@ export function CreatorCalendario() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : admin ? null : (
             <p
               data-testid="creator-dia-fora-da-janela"
               className="border-t-2 border-dashed border-slate-300 pt-3 text-sm font-semibold text-slate-600"

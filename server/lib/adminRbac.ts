@@ -291,6 +291,8 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
       // Publicacoes para conferir (lote 10b): a lista de pendentes de todos
       // os creators. Leitura do mesmo dado do painel, mesma capacidade.
       ["GET", "/api/admin/creators/posts"],
+      // Calendario dos creators, so leitura (lote 10d).
+      ["GET", "/api/admin/creators/calendar"],
       ["GET", "/api/admin/affiliates-stats"],
     ],
     SENSITIVE_READ,

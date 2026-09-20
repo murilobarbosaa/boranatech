@@ -183,7 +183,10 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // `rotasDeclaradas().length`, nao somado. A confirmacao faz publicacao de
 // outra pessoa valer ponto: estar atras das duas guardas e o requisito, e a
 // auditoria gravada ANTES do update e a segunda barreira.
-const EXPECTED_ROUTE_COUNT = 73;
+// 73 -> 74 em 2026-09-20 (creators, lote 10d), com
+// `GET /admin/creators/calendar`. Valor MEDIDO por `rotasDeclaradas().length`.
+// So leitura, mas atras das duas guardas como todo o resto do admin.
+const EXPECTED_ROUTE_COUNT = 74;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -257,11 +260,19 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /creators",
       "GET /creators/:userId",
       "GET /creators/:userId/posts",
+      "GET /creators/calendar",
       "GET /creators/posts",
       "GET /creators/resumo",
       "POST /creators/:userId/posts/:postId/confirmar",
       "POST /creators/:userId/reveal-pix",
     ]);
+  });
+
+  it("/creators/calendar é declarada ANTES de /creators/:userId", () => {
+    const caminhos = rotasDeclaradas().map((r) => r.caminho);
+    expect(caminhos.indexOf("/creators/calendar")).toBeLessThan(
+      caminhos.indexOf("/creators/:userId"),
+    );
   });
 
   it("/creators/posts é declarada ANTES de /creators/:userId", () => {
