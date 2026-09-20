@@ -50,7 +50,7 @@ import CompleteProfileModal from "@/components/certificates/CompleteProfileModal
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
-import { useNfseEnabled } from "@/services/nfseStatus";
+import { useFiscalCollectionEnabled } from "@/services/nfseStatus";
 import { getMyProfile } from "@/services/profileService";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
@@ -666,7 +666,7 @@ export default function Checkout() {
   // Gate fiscal: quando falta nome/documento, a modal entra ANTES do checkout e,
   // ao salvar, o fluxo continua sozinho de onde parou (sem passo extra para a
   // pessoa). `fiscalPendente` guarda o que fazer depois de salvar.
-  const nfseEnabled = useNfseEnabled();
+  const coletaFiscalEnabled = useFiscalCollectionEnabled();
   const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
   const [fiscalPendente, setFiscalPendente] = useState<
     | null
@@ -803,11 +803,15 @@ export default function Checkout() {
       | { tipo: "dialog" }
       | { tipo: "checkout"; metodo: CheckoutPaymentMethod },
   ) {
-    // Emissao desligada: NAO ha gate. Segue direto ao pagamento, sem nem ler o
-    // perfil. E o mesmo desfecho que a falha de leitura ja tem logo abaixo, e
-    // pelo mesmo motivo: a venda nao pode ser barrada por causa de um dado que
-    // so serve a uma nota que nao vai ser emitida.
-    if (!nfseEnabled) {
+    // Coleta desligada: NAO ha gate. Segue direto ao pagamento, sem nem ler o
+    // perfil. E o mesmo desfecho que a falha de leitura ja tem logo abaixo: a
+    // venda nao pode ser barrada por dado fiscal.
+    //
+    // O switch e o da COLETA, nao o da emissao: a coleta antecede a emissao,
+    // para o backlog de notas sair com tomador identificado. Com a emissao
+    // ainda desligada e a coleta ligada, o gate pede nome civil e documento
+    // de quem esta prestes a virar pagante.
+    if (!coletaFiscalEnabled) {
       if (proximo.tipo === "checkout") {
         void doCheckout(proximo.metodo);
         return;

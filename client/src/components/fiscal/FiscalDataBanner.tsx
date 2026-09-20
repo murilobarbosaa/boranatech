@@ -3,7 +3,7 @@ import { useState } from "react";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useNfseEnabled } from "@/services/nfseStatus";
+import { useFiscalCollectionEnabled } from "@/services/nfseStatus";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 
 // Aviso para quem PAGA e ainda nao tem dados fiscais completos.
@@ -11,9 +11,10 @@ import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 // TRES decisoes que valem o comentario:
 //
 // 1. SO PARA ASSINANTE ATIVO. Quem nao paga nao gera nota, entao pedir CPF a
-//    quem esta no plano gratis seria coletar dado sem finalidade (e a coleta e
-//    justificada exatamente pela emissao). Cortesia de admin e influencer tem
-//    status 'free' e tambem nao ve: nao ha cobranca, nao ha nota.
+//    quem esta no plano gratis seria coletar dado sem finalidade (a coleta e
+//    justificada pela nota de quem PAGA, inclusive a nota que ainda vai ser
+//    emitida). Cortesia de admin e influencer tem status 'free' e tambem nao
+//    ve: nao ha cobranca, nao ha nota.
 //
 // 2. A dispensa vive no sessionStorage, nao no localStorage nem no banco.
 //    O pedido e "dispensavel, mas reaparece em nova sessao": sessionStorage e
@@ -46,7 +47,7 @@ function foiDispensado(): boolean {
 export default function FiscalDataBanner() {
   const { user, profile, refreshProfile } = useAuth();
   const { subscription, loading } = useSubscription();
-  const nfseEnabled = useNfseEnabled();
+  const coletaEnabled = useFiscalCollectionEnabled();
   const [dispensado, setDispensado] = useState(() => foiDispensado());
   const [modalAberto, setModalAberto] = useState(false);
 
@@ -64,13 +65,15 @@ export default function FiscalDataBanner() {
   // transitorio nosso, e pior que demorar um pouco para pedir.
   const faltaDado = profile ? !hasFiscalIdentity(profile) : false;
 
-  // `nfseEnabled` PRIMEIRO na condicao: com a emissao desligada nao existe nota
-  // para emitir, entao pedir dado fiscal seria cobrar cadastro por um recurso
-  // que nao vai rodar. A guarda mora aqui dentro, junto das outras condicoes, e
-  // nao em quem monta o banner, para valer para todo call site (hoje so o
-  // Layout, mas a regra do projeto e proteger dentro da funcao).
+  // `coletaEnabled` PRIMEIRO na condicao, e e o switch da COLETA, nao o da
+  // emissao: a coleta antecede a emissao, para o backlog de notas sair com
+  // tomador identificado. Esperar a emissao ligar para comecar a pedir o dado
+  // faria a primeira leva de notas nascer bloqueada por falta de cadastro. A
+  // guarda mora aqui dentro, junto das outras condicoes, e nao em quem monta o
+  // banner, para valer para todo call site (hoje so o Layout, mas a regra do
+  // projeto e proteger dentro da funcao).
   if (
-    !nfseEnabled ||
+    !coletaEnabled ||
     loading ||
     !user ||
     !assinanteAtivo ||

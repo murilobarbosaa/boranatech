@@ -8,11 +8,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * O GATE FISCAL DO CHECKOUT NAO PODE EXISTIR COM A EMISSAO DESLIGADA.
+ * O GATE FISCAL DO CHECKOUT OBEDECE AO SWITCH DA COLETA, NAO AO DA EMISSAO.
  *
- * Com o kill-switch desligado, pedir CPF ou CNPJ antes do pagamento cobra
- * cadastro por uma nota que nao vai ser emitida, e coloca um formulario entre a
- * pessoa e a compra. O desfecho correto e seguir direto, que e exatamente o que
+ * A coleta de nome civil e documento antecede a emissao, para o backlog de
+ * notas sair com tomador identificado: o estado que importa e coleta LIGADA com
+ * emissao DESLIGADA. Com a coleta desligada, pedir CPF ou CNPJ antes do
+ * pagamento coloca um formulario entre a pessoa e a compra sem o produto ter
+ * decidido coletar; o desfecho correto e seguir direto, que e exatamente o que
  * a pagina JA faz quando a leitura do perfil falha: a venda nao e barrada por
  * um problema do lado fiscal.
  *
@@ -20,9 +22,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * dialog de metodo de pagamento.
  */
 
-const estado = vi.hoisted(() => ({ nfseEnabled: false }));
+const estado = vi.hoisted(() => ({
+  nfseEnabled: false,
+  coletaEnabled: false,
+}));
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => estado.coletaEnabled,
 }));
 
 const getMyProfile = vi.hoisted(() => vi.fn());
@@ -96,8 +102,9 @@ beforeEach(() => {
     }) as unknown as typeof fetch,
   );
   estado.nfseEnabled = false;
+  estado.coletaEnabled = false;
   getMyProfile.mockReset();
-  // Perfil SEM dados fiscais: com a emissao ligada, isto abriria a modal.
+  // Perfil SEM dados fiscais: com a coleta ligada, isto abre a modal.
   getMyProfile.mockResolvedValue({ full_name: null, cpf: null, cnpj: null });
 });
 
@@ -120,7 +127,7 @@ async function clicarAssinar() {
 }
 
 describe("gate fiscal do checkout", () => {
-  it("com a emissao desligada segue ao pagamento sem abrir a modal fiscal", async () => {
+  it("com a coleta desligada segue ao pagamento sem abrir a modal fiscal", async () => {
     render(<Checkout />);
     await clicarAssinar();
 
@@ -132,8 +139,11 @@ describe("gate fiscal do checkout", () => {
     expect(getMyProfile).not.toHaveBeenCalled();
   });
 
-  it("com a emissao ligada mantem o gate atual e abre a modal fiscal", async () => {
+  it("com a emissao ligada (que implica coleta ligada) abre a modal fiscal", async () => {
+    // O servidor entrega a implicacao resolvida: emissao ligada chega ao
+    // cliente como `nfse` E `coleta` enabled.
     estado.nfseEnabled = true;
+    estado.coletaEnabled = true;
     render(<Checkout />);
     await clicarAssinar();
 

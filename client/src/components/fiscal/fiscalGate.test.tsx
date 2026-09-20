@@ -4,21 +4,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * GATE DE KILL-SWITCH NAS SUPERFICIES FISCAIS DE USUARIO.
  *
- * Duas superficies moram aqui: o banner (que atravessa toda pagina pelo Layout)
- * e a secao de notas do perfil. As duas SOMEM com a emissao desligada, e a
- * secao tem uma exigencia a mais: nao pode nem CHAMAR o backend, porque era
- * essa chamada, disparada a cada abertura do /perfil por qualquer usuario
- * logado, que ia ao banco perguntar por uma tabela que pode nem existir.
+ * Duas superficies moram aqui, e cada uma obedece a UM switch: o banner (que
+ * atravessa toda pagina pelo Layout) e COLETA, a secao de notas do perfil e
+ * EMISSAO. A secao tem uma exigencia a mais: desligada, nao pode nem CHAMAR o
+ * backend, porque era essa chamada, disparada a cada abertura do /perfil por
+ * qualquer usuario logado, que ia ao banco perguntar por uma tabela que pode
+ * nem existir.
  *
- * `useNfseEnabled` esta dublado: a resolucao do estado (incluindo o fail-closed
+ * Os dois hooks estao dublados: a resolucao do estado (incluindo o fail-closed
  * da janela de deploy) e exercitada em `services/nfseStatus.test.tsx`. Aqui a
  * pergunta e outra: dado o estado, o que a tela monta.
  */
 
-const estado = vi.hoisted(() => ({ nfseEnabled: false }));
+const estado = vi.hoisted(() => ({
+  nfseEnabled: false,
+  coletaEnabled: false,
+}));
 
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => estado.coletaEnabled,
 }));
 
 const getMyFiscalInvoices = vi.hoisted(() => vi.fn());
@@ -55,6 +60,7 @@ import FiscalInvoicesSection from "./FiscalInvoicesSection";
 
 beforeEach(() => {
   estado.nfseEnabled = false;
+  estado.coletaEnabled = false;
   auth.user = { id: "u1" };
   // Perfil SEM dados fiscais: e a condicao em que o banner apareceria.
   auth.profile = { full_name: null, cpf: null };
@@ -69,13 +75,14 @@ afterEach(() => {
 });
 
 describe("FiscalDataBanner", () => {
-  it("com a emissao desligada nao renderiza, mesmo com assinante ativo sem dado fiscal", () => {
+  it("com a coleta desligada nao renderiza, mesmo com assinante ativo sem dado fiscal", () => {
     const { container } = render(<FiscalDataBanner />);
     expect(container.innerHTML).toBe("");
   });
 
-  it("com a emissao ligada renderiza o aviso, como hoje", () => {
+  it("com a emissao ligada (que implica coleta ligada) renderiza o aviso", () => {
     estado.nfseEnabled = true;
+    estado.coletaEnabled = true;
     render(<FiscalDataBanner />);
     expect(screen.getByText(/complete seus dados fiscais/i)).toBeTruthy();
   });

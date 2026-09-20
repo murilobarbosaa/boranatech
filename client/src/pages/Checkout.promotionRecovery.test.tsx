@@ -25,7 +25,10 @@ vi.mock("@/lib/supabase", () => ({
     },
   },
 }));
-vi.mock("@/services/nfseStatus", () => ({ useNfseEnabled: () => false }));
+vi.mock("@/services/nfseStatus", () => ({
+  useNfseEnabled: () => false,
+  useFiscalCollectionEnabled: () => false,
+}));
 vi.mock("@/services/profileService", () => ({ getMyProfile: vi.fn() }));
 vi.mock("@/components/Layout", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,

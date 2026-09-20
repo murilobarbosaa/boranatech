@@ -2,18 +2,21 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * O BLOCO DE DADOS FISCAIS DO PERFIL SOME COM A EMISSAO DESLIGADA.
+ * O BLOCO DE DADOS FISCAIS DO PERFIL OBEDECE AO SWITCH DA COLETA.
  *
- * Ele existe para coletar CPF, CNPJ e endereco, e a propria copy do bloco diz
- * para que serve ("dados usados na emissao das notas fiscais"). Com o
- * kill-switch desligado nao ha emissao, entao o bloco pede dado pessoal sem
- * finalidade. Some inteiro, junto com a secao de notas (coberta em
- * `components/fiscal/fiscalGate.test.tsx`).
+ * Ele existe para coletar CPF, CNPJ e endereco, e a coleta antecede a emissao,
+ * para o backlog de notas sair com tomador identificado. Com a coleta desligada
+ * o bloco some inteiro. A secao de NOTAS e outra superficie, com outro switch
+ * (emissao), coberta em `components/fiscal/fiscalGate.test.tsx`.
  */
 
-const estado = vi.hoisted(() => ({ nfseEnabled: false }));
+const estado = vi.hoisted(() => ({
+  nfseEnabled: false,
+  coletaEnabled: false,
+}));
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => estado.coletaEnabled,
 }));
 
 vi.mock("@/components/Layout", () => ({
@@ -83,6 +86,7 @@ import Perfil from "./Perfil";
 
 beforeEach(() => {
   estado.nfseEnabled = false;
+  estado.coletaEnabled = false;
   vi.stubGlobal(
     "IntersectionObserver",
     class {
@@ -109,7 +113,7 @@ afterEach(() => {
 });
 
 describe("bloco de dados fiscais do perfil", () => {
-  it("com a emissao desligada nao aparece", async () => {
+  it("com a coleta desligada nao aparece", async () => {
     render(<Perfil />);
 
     // A pagina renderizou (ancora fora do dominio fiscal), e mesmo assim o
@@ -123,8 +127,9 @@ describe("bloco de dados fiscais do perfil", () => {
     ).toHaveLength(0);
   });
 
-  it("com a emissao ligada aparece, como hoje", async () => {
+  it("com a emissao ligada (que implica coleta ligada) aparece", async () => {
     estado.nfseEnabled = true;
+    estado.coletaEnabled = true;
     render(<Perfil />);
 
     await waitFor(() =>
