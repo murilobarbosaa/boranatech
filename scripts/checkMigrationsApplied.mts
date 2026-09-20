@@ -381,7 +381,12 @@ const EXPECTED_RLS_COUNT = 91;
 // MEDIDO com `--declared`, nao somado. As tres devolvem TABLE e o PostgREST as
 // expoe em /rpc/, entao entram nas verificaveis por REST e o contador de
 // trigger abaixo NAO sobe.
-const EXPECTED_FUNCTION_COUNT = 40;
+// 41 desde 20260921100000_creator_ranking_counts.sql (cria
+// creator_ranking_counts, creators, lote 11). Valor MEDIDO com `--declared`,
+// nao somado: o script reportou "funcoes declaradas: 41 (EXPECTED_FUNCTION_COUNT
+// = 40) NAO BATE". Ela devolve TABLE e o PostgREST a expoe em /rpc/, entao entra
+// nas verificaveis por REST e o contador de trigger abaixo NAO sobe.
+const EXPECTED_FUNCTION_COUNT = 41;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
@@ -966,6 +971,25 @@ const ASSERCOES: AssercaoComportamental[] = [
     },
     descricao:
       "devolve zero linhas para uma lista vazia de codigos em qualquer janela",
+    verificar: (resultado) =>
+      Array.isArray(resultado) && resultado.length === 0
+        ? null
+        : `esperava [], veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
+  },
+  {
+    // 20260921100000_creator_ranking_counts.sql (creators, lote 11). Prova que
+    // a funcao e CHAMAVEL pelo service_role com a assinatura que o ranking usa
+    // (duas timestamptz e o teto de cliques por dia) e que um intervalo VAZIO
+    // devolve lista vazia, nunca a tabela inteira. Um `<` trocado por `<=`
+    // no limite, ou um filtro de data perdido, devolveria linhas aqui.
+    // STABLE e so leitura: chamar contra producao nao escreve nada.
+    funcao: "creator_ranking_counts",
+    args: {
+      p_inicio: "2000-01-01T00:00:00Z",
+      p_fim: "2000-01-01T00:00:00Z",
+      p_teto_cliques_dia: 30,
+    },
+    descricao: "devolve zero linhas para um intervalo vazio",
     verificar: (resultado) =>
       Array.isArray(resultado) && resultado.length === 0
         ? null
