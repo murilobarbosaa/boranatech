@@ -29,6 +29,7 @@ import produto from "./produto";
 import python from "./python";
 import git from "./git";
 import css from "./css";
+import typescript from "./typescript";
 import html from "./html";
 import qa from "./qa";
 import sre from "./sre";
@@ -60,6 +61,7 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   git,
   html,
   css,
+  typescript,
   qa,
   sre,
   uxui,

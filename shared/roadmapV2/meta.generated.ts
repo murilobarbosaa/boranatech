@@ -487,6 +487,6 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 10,
     "stepCount": 44,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   }
 ];
