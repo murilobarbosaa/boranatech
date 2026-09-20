@@ -15,6 +15,7 @@ import {
 } from "../../shared/creatorCalendar";
 import {
   REDES_DE_CREATOR,
+  ehRedeDeCreator,
   type RedeDeCreator,
   type Resultado,
 } from "../../shared/creatorProfile";
@@ -266,22 +267,6 @@ export async function lerContato(
 // MARCACOES
 // ---------------------------------------------------------------------------
 
-/**
- * Violacao do unique DESTA tabela, e nao de qualquer outra.
- *
- * Mesmo criterio de `ehPublicacaoRepetida` (creatorPosts.ts) e de
- * `isUniqueViolationOn` (certificates.ts): casa pelo NOME da constraint, que e
- * o motivo de ela ter nome na migration. "Qualquer 23505" confundiria esta
- * colisao com outra da mesma escrita.
- */
-function ehMarcacaoRepetida(erro: unknown): boolean {
-  if (typeof erro !== "object" || erro === null) return false;
-  const e = erro as { code?: unknown; message?: unknown; details?: unknown };
-  if (e.code !== "23505") return false;
-  const texto = `${String(e.message ?? "")} ${String(e.details ?? "")}`;
-  return texto.includes("creator_calendar_unico_por_dia");
-}
-
 function ehPedidoRepetido(erro: unknown): boolean {
   if (typeof erro !== "object" || erro === null) return false;
   const e = erro as { code?: unknown; message?: unknown; details?: unknown };
@@ -440,52 +425,92 @@ export async function listarMesDoCalendario(
   });
 }
 
+export type MarcacaoCriada = {
+  criadas: MarcacaoDoCalendario[];
+  /** Redes em que aquele dia JA estava marcado por este creator. */
+  ja_existiam: RedeDeCreator[];
+};
+
 /**
- * Marca um dia para o proprio creator.
+ * As redes do corpo: `redes` (lote 10d, 1 a 3, sem repetidas) ou o `network`
+ * antigo, que o client anterior a este lote manda sozinho na janela de deploy
+ * e vira `[network]` aqui. Ordem preservada, repetida descartada.
+ */
+function redesDoCorpo(corpo: {
+  network?: unknown;
+  redes?: unknown;
+}): Resultado<RedeDeCreator[], "invalid_network"> {
+  const brutas: unknown[] = Array.isArray(corpo.redes)
+    ? corpo.redes
+    : corpo.network !== undefined
+      ? [corpo.network]
+      : [];
+  const redes: RedeDeCreator[] = [];
+  for (const rede of brutas) {
+    if (!ehRedeDeCreator(rede)) return { ok: false, code: "invalid_network" };
+    if (!redes.includes(rede)) redes.push(rede);
+  }
+  if (redes.length === 0) return { ok: false, code: "invalid_network" };
+  return { ok: true, valor: redes };
+}
+
+/**
+ * Marca um dia para o proprio creator, em uma ou mais redes, numa ida so ao
+ * banco.
  *
- * O 409 (`event_already_marked`) vem do banco, pelo unique, e NAO de um select
- * antes: entre o select e o insert cabe outra requisicao da mesma pessoa, e o
- * banco e quem decide sem corrida.
+ * As redes em que o dia JA estava marcado sao puladas pelo proprio banco
+ * (`ignoreDuplicates` sobre o unique `(user_id, event_date, network)`, o
+ * mesmo padrao de server/routes/notifications.ts) e voltam em `ja_existiam`;
+ * so quando NENHUMA e nova o resultado e o 409 de sempre. Nao ha select antes
+ * do insert: entre os dois caberia outra requisicao da mesma pessoa, e o banco
+ * e quem decide sem corrida.
  */
 export async function marcarDia(
   userId: string,
-  corpo: { event_date?: unknown; network?: unknown; note?: unknown },
+  corpo: {
+    event_date?: unknown;
+    network?: unknown;
+    redes?: unknown;
+    note?: unknown;
+  },
   hoje: string,
-): Promise<Resultado<MarcacaoDoCalendario, CodigoDeMarcacao>> {
+): Promise<Resultado<MarcacaoCriada, CodigoDeMarcacao>> {
   const data = validarDataDeMarcacao(corpo.event_date, hoje);
   if (!data.ok) return data;
 
-  if (
-    typeof corpo.network !== "string" ||
-    !(REDES_DE_CREATOR as readonly string[]).includes(corpo.network)
-  ) {
-    return { ok: false, code: "invalid_network" };
-  }
+  const redes = redesDoCorpo(corpo);
+  if (!redes.ok) return redes;
 
   const nota = normalizarNota(corpo.note);
   if (!nota.ok) return nota;
 
-  const inserida = await supabaseAdmin
+  const inseridas = await supabaseAdmin
     .from("creator_calendar_events")
-    .insert({
-      user_id: userId,
-      event_date: data.valor,
-      network: corpo.network,
-      note: nota.valor,
-    })
-    .select(COLUNAS_DA_MARCACAO)
-    .maybeSingle();
-  if (inserida.error) {
-    if (ehMarcacaoRepetida(inserida.error)) {
-      return { ok: false, code: "event_already_marked" };
-    }
-    throw erroEncadeavel(inserida.error);
-  }
-  const linha: Linha | null = inserida.data;
-  if (!linha) throw new Error("[creatorCalendar] insert sem linha de volta");
+    .upsert(
+      redes.valor.map((network) => ({
+        user_id: userId,
+        event_date: data.valor,
+        network,
+        note: nota.valor,
+      })),
+      { onConflict: "user_id,event_date,network", ignoreDuplicates: true },
+    )
+    .select(COLUNAS_DA_MARCACAO);
+  if (inseridas.error) throw erroEncadeavel(inseridas.error);
+
+  const linhas: Linha[] = inseridas.data ?? [];
+  if (linhas.length === 0) return { ok: false, code: "event_already_marked" };
 
   const autores = await lerAutores([userId]);
-  return { ok: true, valor: lerMarcacao(linha, autores) };
+  const criadas = linhas.map((linha) => lerMarcacao(linha, autores));
+  const novas = new Set(criadas.map((m) => m.network));
+  return {
+    ok: true,
+    valor: {
+      criadas,
+      ja_existiam: redes.valor.filter((rede) => !novas.has(rede)),
+    },
+  };
 }
 
 /**

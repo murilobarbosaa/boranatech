@@ -230,11 +230,38 @@ describe("CreatorCalendario: marcar e desmarcar", () => {
     render(<CreatorCalendario />);
     await screen.findByTestId("creator-dia-vazio");
 
-    estado.responder = async (_path, method) =>
-      method === "POST"
-        ? { data: { marcacao: { ...MINHA, network: "tiktok" } } }
+    estado.responder = async (path, method) => {
+      if (method === "POST") {
+        return {
+          data: {
+            marcacoes: [
+              MINHA,
+              {
+                ...MINHA,
+                id: "9f14e45f-ceea-467a-9f6b-2c1d0e2a9b77",
+                network: "tiktok",
+              },
+            ],
+            ja_existiam: [],
+          },
+        };
+      }
+      return path.startsWith("/creator/collabs")
+        ? { data: { recebidos: [], enviados: [] } }
         : { data: { marcacoes: [] } };
+    };
+    // Instagram ja vem ligado; o TikTok entra junto (lote 10d: alternaveis).
     fireEvent.click(screen.getByTestId("creator-marcar-rede-tiktok"));
+    expect(
+      screen
+        .getByTestId("creator-marcar-rede-instagram")
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByTestId("creator-marcar-rede-tiktok")
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "  bastidores  " },
     });
@@ -244,12 +271,46 @@ describe("CreatorCalendario: marcar e desmarcar", () => {
     expect(chamadasCom("POST")[0]).toEqual({
       path: "/creator/calendar",
       method: "POST",
-      body: { event_date: HOJE, network: "tiktok", note: "  bastidores  " },
+      body: {
+        event_date: HOJE,
+        redes: ["instagram", "tiktok"],
+        note: "  bastidores  ",
+      },
     });
     await waitFor(() =>
       expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe(""),
     );
-    expect(estado.toastOk).toHaveBeenCalledTimes(1);
+    // O toast diz em quais redes ficou marcado, e o mes e revalidado em
+    // silencio depois (2 GETs da carga, 2 da revalidacao).
+    expect(estado.toastOk).toHaveBeenCalledWith(
+      "Marcado em Instagram e TikTok",
+    );
+    await waitFor(() => expect(chamadasCom("GET")).toHaveLength(4));
+  });
+
+  it("os botoes de rede alternam, e a ultima ligada nao desliga", async () => {
+    responderCom([]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-vazio");
+    const pressionado = (rede: string) =>
+      screen
+        .getByTestId(`creator-marcar-rede-${rede}`)
+        .getAttribute("aria-pressed");
+    expect(pressionado("instagram")).toBe("true");
+    expect(pressionado("tiktok")).toBe("false");
+    expect(pressionado("linkedin")).toBe("false");
+    // Tenta desligar a unica ligada: continua ligada.
+    fireEvent.click(screen.getByTestId("creator-marcar-rede-instagram"));
+    expect(pressionado("instagram")).toBe("true");
+    fireEvent.click(screen.getByTestId("creator-marcar-rede-linkedin"));
+    fireEvent.click(screen.getByTestId("creator-marcar-rede-instagram"));
+    expect(pressionado("instagram")).toBe("false");
+    expect(pressionado("linkedin")).toBe("true");
+    expect(
+      within(screen.getByTestId("creator-marcar-rede-linkedin")).getByTestId(
+        "icone-da-rede-linkedin",
+      ),
+    ).toBeTruthy();
   });
 
   it("nota acima do teto: erro no campo e NENHUMA requisicao", async () => {

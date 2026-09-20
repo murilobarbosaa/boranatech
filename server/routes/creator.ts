@@ -433,7 +433,7 @@ const MENSAGEM_DA_MARCACAO: Record<CodigoDeMarcacao, string> = {
   invalid_date: "Data inválida.",
   date_out_of_window: `Escolha um dia entre hoje e os próximos ${JANELA_DE_DIAS} dias.`,
   invalid_note: `O assunto pode ter até ${NOTA_MAX} caracteres.`,
-  invalid_network: "Escolha Instagram ou TikTok.",
+  invalid_network: "Escolha ao menos uma rede: Instagram, TikTok ou LinkedIn.",
   event_already_marked: "Você já marcou esse dia nessa rede.",
 };
 
@@ -627,7 +627,17 @@ router.post("/calendar", requireCreator, async (req, res, next) => {
         ),
       );
     }
-    res.status(201).json({ data: { marcacao: marcada.valor } });
+    // `marcacoes` e `ja_existiam` sao a resposta (lote 10d). `marcacao` (a
+    // primeira) fica como ALIAS para o client anterior, que le `data.marcacao`
+    // na janela de deploy; sai num lote futuro, junto com o `network` solto no
+    // corpo.
+    res.status(201).json({
+      data: {
+        marcacoes: marcada.valor.criadas,
+        ja_existiam: marcada.valor.ja_existiam,
+        marcacao: marcada.valor.criadas[0],
+      },
+    });
   } catch (err) {
     return next(
       montarDbError(

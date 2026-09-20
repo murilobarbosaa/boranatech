@@ -1593,11 +1593,11 @@ describe("GET /api/creator/calendar", () => {
 });
 
 describe("POST /api/creator/calendar", () => {
-  it("marca o dia e grava a forma canonica, com a nota sem espaco", async () => {
+  it("marca o dia e grava a forma canonica, com a nota sem espaco; `network` sozinho continua valendo", async () => {
     montar({
       creators: concessaoAtiva(),
       creator_calendar_events: (c) =>
-        c.op === "insert" ? { rows: [MARCACAO] } : { rows: [] },
+        c.op === "upsert" ? { rows: [MARCACAO] } : { rows: [] },
       profiles: perfis(),
     });
     estado.usuario = USUARIO;
@@ -1607,22 +1607,123 @@ describe("POST /api/creator/calendar", () => {
       note: "  bastidores do curso  ",
     });
     expect(r.status).toBe(201);
+    // `marcacao` e o alias do client anterior; `marcacoes` e a resposta nova.
     expect(r.body.data.marcacao.id).toBe(EVENTO_ID);
+    expect(r.body.data.marcacoes).toHaveLength(1);
+    expect(r.body.data.ja_existiam).toEqual([]);
     const escritas = escritasEm("creator_calendar_events");
     expect(escritas).toHaveLength(1);
-    expect(escritas[0].payload).toEqual({
-      user_id: UID,
-      event_date: DIA_MARCADO,
-      network: "instagram",
-      note: "bastidores do curso",
+    expect(escritas[0].op).toBe("upsert");
+    expect(escritas[0].payloadLote).toEqual([
+      {
+        user_id: UID,
+        event_date: DIA_MARCADO,
+        network: "instagram",
+        note: "bastidores do curso",
+      },
+    ]);
+  });
+
+  it("tres redes num dia vazio (lote 10d): tres linhas em UMA ida ao banco, e o toast sabe quais", async () => {
+    const tres = ["instagram", "tiktok", "linkedin"].map((network, i) => ({
+      ...MARCACAO,
+      id: `${i}f14e45f-ceea-467a-9f6b-2c1d0e2a9b77`,
+      network,
+    }));
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "upsert" ? { rows: tres } : { rows: [] },
+      profiles: perfis(),
     });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      redes: ["instagram", "tiktok", "linkedin", "tiktok"],
+      note: "",
+    });
+    expect(r.status).toBe(201);
+    expect(
+      r.body.data.marcacoes.map((m: { network: string }) => m.network),
+    ).toEqual(["instagram", "tiktok", "linkedin"]);
+    expect(r.body.data.ja_existiam).toEqual([]);
+    const escritas = escritasEm("creator_calendar_events");
+    expect(escritas).toHaveLength(1);
+    expect(escritas[0].op).toBe("upsert");
+    // Repetida no corpo e descartada: tres linhas, nao quatro.
+    expect(escritas[0].payloadLote).toHaveLength(3);
+    expect(escritas[0].payloadLote?.map((l) => l.network)).toEqual([
+      "instagram",
+      "tiktok",
+      "linkedin",
+    ]);
+  });
+
+  it("duas redes com uma ja marcada: cria uma, reporta a outra em ja_existiam", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      // O banco pula a duplicada (ignoreDuplicates) e devolve so a nova.
+      creator_calendar_events: (c) =>
+        c.op === "upsert"
+          ? { rows: [{ ...MARCACAO, network: "linkedin" }] }
+          : { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      redes: ["instagram", "linkedin"],
+    });
+    expect(r.status).toBe(201);
+    expect(r.body.data.marcacoes).toHaveLength(1);
+    expect(r.body.data.marcacoes[0].network).toBe("linkedin");
+    expect(r.body.data.ja_existiam).toEqual(["instagram"]);
+  });
+
+  it("todas ja marcadas: 409 event_already_marked, como sempre", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: (c) =>
+        c.op === "upsert" ? { rows: [] } : { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/calendar", {
+      event_date: DIA_MARCADO,
+      redes: ["instagram"],
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("event_already_marked");
+  });
+
+  it("redes vazias, rede fora da lista ou sem rede nenhuma: 400 invalid_network", async () => {
+    for (const corpo of [
+      { redes: [] },
+      { redes: ["youtube"] },
+      { redes: ["instagram", "x"] },
+      { network: "youtube" },
+      {},
+    ]) {
+      montar({
+        creators: concessaoAtiva(),
+        creator_calendar_events: { rows: [] },
+      });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/calendar", {
+        event_date: DIA_MARCADO,
+        ...corpo,
+      });
+      expect(r.status, JSON.stringify(corpo)).toBe(400);
+      expect(r.body.error.code).toBe("invalid_network");
+      expect(escritasEm("creator_calendar_events")).toHaveLength(0);
+    }
   });
 
   it("nota vazia vira null, e nao erro: marcar sem assunto vale", async () => {
     montar({
       creators: concessaoAtiva(),
       creator_calendar_events: (c) =>
-        c.op === "insert"
+        c.op === "upsert"
           ? { rows: [{ ...MARCACAO, note: null }] }
           : { rows: [] },
       profiles: perfis(),
@@ -1634,14 +1735,15 @@ describe("POST /api/creator/calendar", () => {
       note: "   ",
     });
     expect(r.status).toBe(201);
-    // O payload INTEIRO, e nao so `note`: fixa todas as colunas de uma vez, e
-    // nao esbarra no `payload` opcional de `Chamada`.
-    expect(escritasEm("creator_calendar_events")[0].payload).toEqual({
-      user_id: UID,
-      event_date: DIA_MARCADO,
-      network: "tiktok",
-      note: null,
-    });
+    // O lote INTEIRO, e nao so `note`: fixa todas as colunas de uma vez.
+    expect(escritasEm("creator_calendar_events")[0].payloadLote).toEqual([
+      {
+        user_id: UID,
+        event_date: DIA_MARCADO,
+        network: "tiktok",
+        note: null,
+      },
+    ]);
   });
 
   it("dia que ja passou: 400 date_out_of_window, nada gravado", async () => {
@@ -1703,35 +1805,12 @@ describe("POST /api/creator/calendar", () => {
     expect(r.body.error.code).toBe("invalid_note");
   });
 
-  it("mesmo dia e rede de novo: 409 pelo 23505 da constraint nomeada", async () => {
-    montar({
-      creators: concessaoAtiva(),
-      creator_calendar_events: (c) =>
-        c.op === "insert"
-          ? {
-              error: {
-                code: "23505",
-                message:
-                  'duplicate key value violates unique constraint "creator_calendar_unico_por_dia"',
-              },
-            }
-          : { rows: [] },
-    });
-    estado.usuario = USUARIO;
-    const r = await chamar("POST", "/calendar", {
-      event_date: DIA_MARCADO,
-      network: "instagram",
-    });
-    expect(r.status).toBe(409);
-    expect(r.body.error.code).toBe("event_already_marked");
-  });
-
-  it("outro 23505, de outra constraint, NAO vira 409: e 500", async () => {
+  it("23505 de outra constraint no upsert NAO vira 409: e 500 (a duplicada do dia o banco pula, nao lanca)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     montar({
       creators: concessaoAtiva(),
       creator_calendar_events: (c) =>
-        c.op === "insert"
+        c.op === "upsert"
           ? {
               error: {
                 code: "23505",

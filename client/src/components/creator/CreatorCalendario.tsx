@@ -32,7 +32,11 @@ import {
   validarDataDeMarcacao,
   type DiaDaGrade,
 } from "@shared/creatorCalendar";
-import { rotuloDaRede, type RedeDeCreator } from "@shared/creatorProfile";
+import {
+  REDES_DE_CREATOR,
+  rotuloDaRede,
+  type RedeDeCreator,
+} from "@shared/creatorProfile";
 
 // CALENDARIO COMPARTILHADO (lote 10): todo creator ve o mes inteiro, de todo
 // mundo, e e isso que permite a duas pessoas nao falarem do mesmo assunto no
@@ -281,7 +285,17 @@ export function CreatorCalendario() {
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [dia, setDia] = useState<string | null>(hoje || null);
 
-  const [rede, setRede] = useState<RedeDeCreator>("instagram");
+  // Redes do dia a marcar (lote 10d): quantas quiser, ao menos uma. Comeca
+  // no Instagram, que e a rede de quase todo mundo.
+  const [redes, setRedes] = useState<RedeDeCreator[]>(["instagram"]);
+
+  function alternarRede(rede: RedeDeCreator) {
+    setRedes((atual) => {
+      if (!atual.includes(rede)) return [...atual, rede];
+      // A ultima ligada nao desliga: marcar em rede nenhuma nao existe.
+      return atual.length === 1 ? atual : atual.filter((r) => r !== rede);
+    });
+  }
   const [nota, setNota] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -373,20 +387,28 @@ export function CreatorCalendario() {
       const json: unknown = await contentFetch("/creator/calendar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_date: dia, network: rede, note: nota }),
+        body: JSON.stringify({ event_date: dia, redes, note: nota }),
       });
-      const marcacao = (json as { data?: { marcacao?: Marcacao } }).data
-        ?.marcacao;
-      if (marcacao) {
+      const data = (json as { data?: { marcacoes?: Marcacao[] } }).data;
+      const criadas = Array.isArray(data?.marcacoes) ? data.marcacoes : [];
+      // As linhas devolvidas entram na hora, para o dia nao ficar vazio ate a
+      // resposta da revalidacao; a revalidacao vem em seguida, em silencio,
+      // porque e o servidor que sabe a cor e as collabs de cada marcacao.
+      if (criadas.length > 0) {
         setEstado((atual) =>
           atual.tipo === "ok"
-            ? { ...atual, marcacoes: [...atual.marcacoes, marcacao] }
+            ? { ...atual, marcacoes: [...atual.marcacoes, ...criadas] }
             : atual,
         );
       }
+      revalidar();
       setNota("");
       // TODO(Ana)
-      toast.success("Dia marcado.");
+      toast.success(
+        criadas.length > 0
+          ? `Marcado em ${criadas.map((m) => rotuloDaRede(m.network)).join(" e ")}`
+          : "Dia marcado.",
+      );
     } catch (err) {
       // O 409 (ja marcado) tem mensagem propria do servidor, e ela e mais
       // precisa do que qualquer texto generico daqui.
@@ -835,18 +857,20 @@ export function CreatorCalendario() {
 
           {podeMarcar ? (
             <div className="space-y-2 border-t-2 border-dashed border-slate-300 pt-3">
+              {/* Tres botoes ALTERNAVEIS (lote 10d): o mesmo dia pode ser
+                  marcado em mais de uma rede num envio so. */}
               <div className="flex flex-wrap items-center gap-2">
-                {(["instagram", "tiktok"] as const).map((opcao) => (
+                {REDES_DE_CREATOR.map((opcao) => (
                   <button
                     key={opcao}
                     type="button"
                     data-testid={`creator-marcar-rede-${opcao}`}
-                    onClick={() => setRede(opcao)}
-                    aria-pressed={rede === opcao}
+                    onClick={() => alternarRede(opcao)}
+                    aria-pressed={redes.includes(opcao)}
                     // `gap-2` entre o glifo e o nome (lote 10b): o botao base
                     // nao preve icone, e sem folga o glifo encostava no texto.
                     className={`${
-                      rede === opcao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO
+                      redes.includes(opcao) ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO
                     } gap-2`}
                   >
                     <IconeDaRede rede={opcao} />
