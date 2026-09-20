@@ -15,8 +15,38 @@ import { validateEmailForSending } from "./emailValidation";
 // numero vale o que a pessoa disse, na data em que disse, e o server grava essa
 // data a cada seguidor informado.
 
+/**
+ * AS REDES DE CREATOR, fonte UNICA (lote 10d). Ate o lote 10c havia duas
+ * listas iguais, esta e `REDES_DE_PUBLICACAO` em creatorPost.ts, e duas listas
+ * da mesma coisa divergem na primeira rede nova. O LinkedIn foi a primeira:
+ * creatorPost.ts agora reexporta esta. As CHECKs de `network` nas tabelas
+ * creator_posts e creator_calendar_events sao a mesma lista.
+ */
 export const REDES_DE_CREATOR = ["instagram", "tiktok"] as const;
 export type RedeDeCreator = (typeof REDES_DE_CREATOR)[number];
+
+export function ehRedeDeCreator(valor: unknown): valor is RedeDeCreator {
+  return (
+    typeof valor === "string" &&
+    (REDES_DE_CREATOR as readonly string[]).includes(valor)
+  );
+}
+
+// TODO(Ana)
+export const ROTULO_DA_REDE: Record<RedeDeCreator, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+};
+
+/**
+ * Rotulo de uma rede vinda do servidor. Resolver com fallback neutro: uma
+ * rede que este bundle ainda nao conhece mostra "rede" em vez de derrubar a
+ * tela. Um lugar so para o calendario, a lista de pendentes e os e-mails.
+ */
+export function rotuloDaRede(rede: string): string {
+  // TODO(Ana)
+  return (ROTULO_DA_REDE as Record<string, string | undefined>)[rede] ?? "rede";
+}
 
 export const TIPOS_DE_CHAVE_PIX = [
   "cpf",

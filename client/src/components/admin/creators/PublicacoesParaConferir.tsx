@@ -9,6 +9,7 @@ import { BOTAO_CONFIRMAR } from "@/components/creator/CreatorPublicacoesAdmin";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { adminFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
+import { rotuloDaRede } from "@shared/creatorProfile";
 import {
   TIPO_DE_PUBLICACAO_META,
   type TipoDePublicacao,
@@ -50,18 +51,6 @@ type Estado =
   | { tipo: "carregando" }
   | { tipo: "erro" }
   | { tipo: "ok"; pagina: Pagina };
-
-// TODO(Ana)
-const ROTULO_DA_REDE: Record<string, string | undefined> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-};
-
-/** Resolver com fallback neutro: rede que o bundle nao conhece vira "rede". */
-function rotuloDaRede(rede: string): string {
-  // TODO(Ana)
-  return ROTULO_DA_REDE[rede] ?? "rede";
-}
 
 /** Rotulo do tipo pelo shared; tipo desconhecido vira "publicação". */
 function rotuloDoTipo(tipo: string): string {

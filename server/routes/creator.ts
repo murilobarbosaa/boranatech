@@ -13,9 +13,10 @@ import {
   TIPO_DE_PUBLICACAO_META,
   type TipoDePublicacao,
 } from "../../shared/creatorPost";
-import type {
-  CodigoDeChavePix,
-  RedeDeCreator,
+import {
+  rotuloDaRede,
+  type CodigoDeChavePix,
+  type RedeDeCreator,
 } from "../../shared/creatorProfile";
 import {
   desmarcarDia,
@@ -452,10 +453,6 @@ const MENSAGEM_DA_RESPOSTA: Record<CodigoDaResposta, string> = {
 // vem da uniao fechada que o proprio server validou na escrita, e nao de um
 // valor livre do banco (o criterio e a ORIGEM da chave, nao a forma do acesso).
 // TODO(Ana)
-const ROTULO_DA_REDE: Record<RedeDeCreator, string> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-};
 
 /** Dia civil de Brasilia de agora. Nunca nulo: a entrada e um ISO que nos
  * mesmos acabamos de gerar, entao null aqui seria defeito nosso, nao do
@@ -497,7 +494,7 @@ async function avisarPedidoDeCollab(
     const pedinteNome = nomeOu(pedinte, "Outro creator");
     const diaLabel =
       formatarDiaCivil(marcacao.event_date) ?? marcacao.event_date;
-    const redeLabel = ROTULO_DA_REDE[marcacao.network];
+    const redeLabel = rotuloDaRede(marcacao.network);
     await createTargetedNotification({
       email: dono.email,
       // TODO(Ana)
@@ -541,7 +538,7 @@ async function avisarRespostaDeCollab(
     const donoNome = nomeOu(dono, "O creator");
     const diaLabel =
       formatarDiaCivil(marcacao.event_date) ?? marcacao.event_date;
-    const redeLabel = ROTULO_DA_REDE[marcacao.network];
+    const redeLabel = rotuloDaRede(marcacao.network);
     await createTargetedNotification({
       email: pedinte.email,
       // TODO(Ana)

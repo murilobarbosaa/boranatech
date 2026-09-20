@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   COR_PADRAO_DO_CALENDARIO,
+  ehRedeDeCreator,
+  REDES_DE_CREATOR,
+  ROTULO_DA_REDE,
+  rotuloDaRede,
   CORES_DO_CALENDARIO,
   ehCorDoCalendario,
   isTipoDeChavePix,
@@ -307,5 +311,20 @@ describe("CORES_DO_CALENDARIO (lote 10c)", () => {
     for (const valor of ["red", "teal", "Violet", "", null, undefined, 3]) {
       expect(ehCorDoCalendario(valor), String(valor)).toBe(false);
     }
+  });
+});
+
+describe("REDES_DE_CREATOR: fonte unica (lote 10d)", () => {
+  it("tem rotulo para cada rede, e o guard aceita so o que esta na lista", () => {
+    for (const rede of REDES_DE_CREATOR) {
+      expect(ehRedeDeCreator(rede)).toBe(true);
+      expect(ROTULO_DA_REDE[rede].length, rede).toBeGreaterThan(0);
+      expect(rotuloDaRede(rede)).toBe(ROTULO_DA_REDE[rede]);
+    }
+    for (const outro of ["Instagram", "youtube", "", null, 1]) {
+      expect(ehRedeDeCreator(outro), String(outro)).toBe(false);
+    }
+    // Rede que o bundle nao conhece: rotulo neutro, nunca erro.
+    expect(rotuloDaRede("youtube")).toBe("rede");
   });
 });

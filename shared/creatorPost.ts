@@ -1,3 +1,5 @@
+import { REDES_DE_CREATOR, type RedeDeCreator } from "./creatorProfile";
+
 // REGRAS DO LINK DE PUBLICACAO (lote 09, tipo e status no lote 10b): o creator
 // ESCOLHE o tipo (post, reel, story ou video) e cola a URL, e isto devolve a
 // rede, o tipo, o identificador na rede e a URL CANONICA, ou o motivo da recusa.
@@ -29,8 +31,13 @@
 // do admin, que confere a lista de pendentes e confirma ou remove. Isto so
 // entende URL.
 
-export const REDES_DE_PUBLICACAO = ["instagram", "tiktok"] as const;
-export type RedeDePublicacao = (typeof REDES_DE_PUBLICACAO)[number];
+/**
+ * As redes de publicacao SAO as redes de creator (lote 10d): reexport, e nao
+ * segunda lista, porque duas listas da mesma coisa divergem na primeira rede
+ * nova, e o LinkedIn foi a primeira.
+ */
+export const REDES_DE_PUBLICACAO = REDES_DE_CREATOR;
+export type RedeDePublicacao = RedeDeCreator;
 
 export const TIPOS_DE_PUBLICACAO = ["post", "reel", "story", "video"] as const;
 export type TipoDePublicacao = (typeof TIPOS_DE_PUBLICACAO)[number];

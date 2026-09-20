@@ -32,7 +32,7 @@ import {
   validarDataDeMarcacao,
   type DiaDaGrade,
 } from "@shared/creatorCalendar";
-import type { RedeDeCreator } from "@shared/creatorProfile";
+import { rotuloDaRede, type RedeDeCreator } from "@shared/creatorProfile";
 
 // CALENDARIO COMPARTILHADO (lote 10): todo creator ve o mes inteiro, de todo
 // mundo, e e isso que permite a duas pessoas nao falarem do mesmo assunto no
@@ -149,12 +149,6 @@ type Estado =
   | { tipo: "ok"; marcacoes: Marcacao[]; recebidos: Pedido[] };
 
 // TODO(Ana)
-const ROTULO_DA_REDE: Record<RedeDeCreator, string> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-};
-
-// TODO(Ana)
 const DIAS_DA_SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 // TODO(Ana)
@@ -172,16 +166,6 @@ const MESES = [
   "novembro",
   "dezembro",
 ];
-
-/**
- * Rotulo da rede vindo do servidor. Resolver com fallback neutro: uma rede nova
- * que este bundle ainda nao conhece mostra "rede" em vez de derrubar o mes
- * inteiro.
- */
-function rotuloDaRede(rede: string): string {
-  // TODO(Ana)
-  return (ROTULO_DA_REDE as Record<string, string | undefined>)[rede] ?? "rede";
-}
 
 /** Nome curto de quem marcou. Sem nome, o @; sem os dois, um rotulo neutro. */
 function nomeDoAutor(autor: Autor | null): string {

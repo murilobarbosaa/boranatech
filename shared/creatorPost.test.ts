@@ -16,8 +16,10 @@ import { describe, expect, it } from "vitest";
  * silencio, e o mismatch e afirmado por par (link de X, tipo Y).
  */
 
+import { REDES_DE_CREATOR } from "./creatorProfile";
 import {
   ehTipoDePublicacao,
+  REDES_DE_PUBLICACAO,
   LIMITE_DE_REGISTROS_POR_DIA,
   normalizarLinkDePublicacao,
   statusInicialDaPublicacao,
@@ -330,5 +332,11 @@ describe("normalizarLinkDePublicacao: recusas", () => {
 describe("LIMITE_DE_REGISTROS_POR_DIA", () => {
   it("e dez, e e o teto por creator por dia civil de Brasilia", () => {
     expect(LIMITE_DE_REGISTROS_POR_DIA).toBe(10);
+  });
+});
+
+describe("REDES_DE_PUBLICACAO (lote 10d)", () => {
+  it("e a MESMA lista de REDES_DE_CREATOR, nao uma copia", () => {
+    expect(REDES_DE_PUBLICACAO).toBe(REDES_DE_CREATOR);
   });
 });
