@@ -205,8 +205,12 @@ function lerMarcacao(
  * Uma consulta por PAGINA, e nao uma por marcacao: um mes cheio tem dezenas de
  * marcacoes de poucas pessoas, e perguntar o nome uma vez por linha seria o
  * mesmo dado repetido dezenas de vezes.
+ *
+ * Exportada desde o lote 11: o ranking expoe de outra pessoa EXATAMENTE o que
+ * o calendario expoe (nome, @, avatar), e reusar a leitura e o que garante que
+ * os dois nao divirjam.
  */
-async function lerAutores(
+export async function lerAutores(
   userIds: string[],
 ): Promise<Map<string, AutorDaMarcacao>> {
   const mapa = new Map<string, AutorDaMarcacao>();

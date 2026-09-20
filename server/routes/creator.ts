@@ -20,6 +20,10 @@ import {
   type RedeDeCreator,
 } from "../../shared/creatorProfile";
 import {
+  CACHE_DO_RANKING_SEGUNDOS,
+  PRIMEIRO_MES_DO_RANKING,
+} from "../../shared/creatorRanking";
+import {
   desmarcarDia,
   lerContato,
   listarMesDoCalendario,
@@ -39,6 +43,11 @@ import {
   parseJanelaDoPainel,
 } from "../lib/creatorDashboard";
 import {
+  montarRanking,
+  personalizarRanking,
+  resolverMesDoRanking,
+} from "../lib/creatorRanking";
+import {
   listarPublicacoes,
   registrarPublicacao,
   removerPublicacao,
@@ -52,6 +61,7 @@ import {
   validarEntradaDoPerfil,
   type CodigoDoPerfil,
 } from "../lib/creatorProfile";
+import { cacheKey, getOrCompute } from "../lib/cache";
 import { montarDbError } from "../lib/dbError";
 import {
   sendCreatorCollabRequestEmail,
@@ -136,6 +146,47 @@ router.get("/me", requireCreator, async (req, res, next) => {
         err,
         // TODO(Ana)
         "Erro ao carregar o painel.",
+      ),
+    );
+  }
+});
+
+// RANKING MENSAL (lote 11). Um mes por chamada, `?mes=AAAA-MM` ou o atual.
+//
+// Cache de 60 s por MES, no Redis (getOrCompute, o mesmo helper do conteudo
+// publico), invalidado por tempo e nao por evento: o ranking atrasar um minuto
+// e aceitavel, e cada chamada sem cache e uma RPC mais tres leituras. O que vai
+// para o cache e a montagem NEUTRA; `eu` e `minha_posicao` entram DEPOIS, por
+// chamada, porque um cache com o viewer marcado serviria a posicao de uma
+// pessoa para todas as outras.
+router.get("/ranking", requireCreator, async (req, res, next) => {
+  const hoje = hojeEmBrasilia();
+  const mes = resolverMesDoRanking(req.query.mes, hoje);
+  if (!mes.ok) {
+    return next(
+      createError(
+        400,
+        "month_out_of_range",
+        // TODO(Ana)
+        `Mês inválido. Use AAAA-MM, de ${PRIMEIRO_MES_DO_RANKING} até o mês atual.`,
+      ),
+    );
+  }
+  try {
+    const base = await getOrCompute(
+      cacheKey("creator/ranking", { mes: mes.valor.chave }),
+      CACHE_DO_RANKING_SEGUNDOS,
+      () => montarRanking(mes.valor.ano, mes.valor.mes, hoje),
+    );
+    res.json({ data: personalizarRanking(base, req.user!.id) });
+  } catch (err) {
+    return next(
+      montarDbError(
+        "creator",
+        "ranking do mes",
+        err,
+        // TODO(Ana)
+        "Erro ao carregar o ranking.",
       ),
     );
   }
