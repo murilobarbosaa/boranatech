@@ -9,7 +9,7 @@ const pool: QuizPool = {
       pergunta:
         "Se você tem um arquivo `.js` que funciona, o que acontece se você renomeá-lo para `.ts`?",
       alternativas: {
-        a: "Funciona: TypeScript e superconjunto de JavaScript",
+        a: "Funciona: TypeScript é superconjunto de JavaScript.",
         b: "O arquivo não funcionará mais, pois TypeScript não aceita JavaScript.",
         c: "O arquivo precisará de anotações de tipo para funcionar.",
         d: "O arquivo não poderá ser executado sem um compilador.",
@@ -39,7 +39,7 @@ const pool: QuizPool = {
       id: "typescript-ini-03",
       nivel: "iniciante",
       pergunta:
-        "Qual alternativa completa a lacuna para que a atribuicao seja valida?",
+        "Qual alternativa completa a lacuna para que a atribuição seja válida?",
       alternativas: {
         a: '"30"',
         b: "undefined",
@@ -60,7 +60,7 @@ const pool: QuizPool = {
     {
       id: "typescript-ini-04",
       nivel: "iniciante",
-      pergunta: "O que este codigo imprime?",
+      pergunta: "O que este código imprime?",
       alternativas: {
         a: 'Olá, "Ana"',
         b: 'saudar("Ana")',
@@ -123,7 +123,7 @@ const pool: QuizPool = {
       },
       correta: "c",
       explicacao:
-        "unknown nao libera metodo nenhum antes de voce provar o tipo. Com um if de typeof em volta, o valor vira string e toUpperCase passa a existir, imprimindo TEXTO.",
+        "unknown não libera método nenhum antes de você provar o tipo. Com um if de typeof em volta, o valor vira string e toUpperCase passa a existir, imprimindo TEXTO.",
       fonte: "tipos.unknown",
       tipo: "erro",
       codigo: {
@@ -137,7 +137,7 @@ const pool: QuizPool = {
       id: "typescript-ini-08",
       nivel: "iniciante",
       pergunta:
-        "Qual alternativa completa a lacuna para o metodo de texto existir?",
+        "Qual alternativa completa a lacuna para o método de texto existir?",
       alternativas: {
         a: "number",
         b: "boolean",
@@ -146,7 +146,7 @@ const pool: QuizPool = {
       },
       correta: "d",
       explicacao:
-        "So com string o compilador libera toUpperCase. number e boolean nao aceitam o valor, e unknown exige provar o tipo antes de usar qualquer metodo.",
+        "Só com string o compilador libera toUpperCase. number e boolean não aceitam o valor, e unknown exige provar o tipo antes de usar qualquer método.",
       fonte: "tipos.inferencia",
       tipo: "completar",
       codigo: {
@@ -161,7 +161,7 @@ const pool: QuizPool = {
       pergunta:
         "Você está criando um objeto para representar um usuário. Qual a melhor forma de garantir que o objeto sempre tenha as propriedades corretas?",
       alternativas: {
-        a: "Declarar uma interface para o objeto",
+        a: "Declarar uma interface para o objeto.",
         b: "Usar uma função construtora para criar o objeto.",
         c: "Criar um objeto diretamente, sem validação.",
         d: "Usar um tipo para definir as propriedades do objeto.",
@@ -207,7 +207,7 @@ const pool: QuizPool = {
       },
       correta: "c",
       explicacao:
-        "A propriedade guarda um endereco, e o tipo ja tem nome. string e { cidade: number } nao casam com o objeto, e Endereco[] seria uma lista.",
+        "A propriedade guarda um endereço, e o tipo já tem nome. string e { cidade: number } não casam com o objeto, e Endereco[] seria uma lista.",
       fonte: "objetos.aninhado",
       tipo: "completar",
       codigo: {
@@ -253,7 +253,7 @@ const pool: QuizPool = {
       id: "typescript-ini-14",
       nivel: "iniciante",
       pergunta:
-        "Qual alternativa completa a lacuna para o valor padrao ser valido?",
+        "Qual alternativa completa a lacuna para o valor padrão ser válido?",
       alternativas: {
         a: "colega",
         b: '"colega"',
@@ -262,7 +262,7 @@ const pool: QuizPool = {
       },
       correta: "b",
       explicacao:
-        "O padrao precisa ser um texto. Sem aspas vira um nome que nao existe, e numero ou undefined nao cabem num parametro declarado como string.",
+        "O padrão precisa ser um texto. Sem aspas vira um nome que não existe, e número ou undefined não cabem num parâmetro declarado como string.",
       fonte: "funcoes.opcional",
       tipo: "completar",
       codigo: {
@@ -329,7 +329,7 @@ const pool: QuizPool = {
     {
       id: "typescript-int-03",
       nivel: "intermediario",
-      pergunta: "Qual alternativa completa a lacuna para estreitar a uniao?",
+      pergunta: "Qual alternativa completa a lacuna para estreitar a união?",
       alternativas: {
         a: "instanceof",
         b: "typeof",
@@ -338,7 +338,7 @@ const pool: QuizPool = {
       },
       correta: "b",
       explicacao:
-        "typeof compara o tipo em tempo de execucao e e o que o compilador acompanha. instanceof serve para classe, keyof e de tipo e valueof nao existe.",
+        "typeof compara o tipo em tempo de execução e é o que o compilador acompanha. instanceof serve para classe, keyof é de tipo e valueof não existe.",
       fonte: "uniao.typeof",
       tipo: "completar",
       codigo: {
@@ -448,7 +448,7 @@ const pool: QuizPool = {
       },
       correta: "d",
       explicacao:
-        "A chave carla nunca foi preenchida, entao a leitura devolve undefined e a soma vira NaN. Com carla inicializada em 1, a conta fecha em 4.",
+        "A chave carla nunca foi preenchida, então a leitura devolve undefined e a soma vira NaN. Com carla inicializada em 1, a conta fecha em 4.",
       fonte: "colecoes.record",
       tipo: "erro",
       codigo: {
@@ -461,7 +461,7 @@ const pool: QuizPool = {
     {
       id: "typescript-int-10",
       nivel: "intermediario",
-      pergunta: "O que este codigo imprime?",
+      pergunta: "O que este código imprime?",
       alternativas: {
         a: "3",
         b: "2",
@@ -470,7 +470,7 @@ const pool: QuizPool = {
       },
       correta: "a",
       explicacao:
-        "O espalhamento cria uma lista nova a partir da somente leitura, entao a original fica intacta e a nova tem tres itens.",
+        "O espalhamento cria uma lista nova a partir da somente leitura, então a original fica intacta e a nova tem três itens.",
       fonte: "colecoes.readonly",
       tipo: "saida",
       codigo: {
@@ -492,7 +492,7 @@ const pool: QuizPool = {
       },
       correta: "b",
       explicacao:
-        "As chaves sao texto e os valores sao numero. Record<number, string> inverte os dois, Record<string, string> recusa o 3 e number[] nao aceita chave nomeada.",
+        "As chaves são texto e os valores são número. Record<number, string> inverte os dois, Record<string, string> recusa o 3 e number[] não aceita chave nomeada.",
       fonte: "colecoes.record",
       tipo: "completar",
       codigo: {
@@ -570,7 +570,7 @@ const pool: QuizPool = {
       },
       correta: "b",
       explicacao:
-        "Omit remove as chaves citadas. Pick faria o contrario e deixaria so o id, Record monta um dicionario e Partial recebe um argumento de tipo so.",
+        "Omit remove as chaves citadas. Pick faria o contrário e deixaria só o id, Record monta um dicionário e Partial recebe um argumento de tipo só.",
       fonte: "genericos.utilitarios",
       tipo: "completar",
       codigo: {
@@ -632,16 +632,16 @@ const pool: QuizPool = {
       id: "typescript-av-04",
       nivel: "avancado",
       pergunta:
-        "Este codigo deveria imprimir o primeiro nome iniciado por A. Qual e o defeito?",
+        "Este código deveria imprimir o primeiro nome iniciado por A. Qual é o defeito?",
       alternativas: {
-        a: "O metodo find nao aceita funcao como argumento",
-        b: "A assercao de nao-nulo afirma um achado que a lista nao tem",
+        a: "O método find não aceita função como argumento",
+        b: "A asserção de não-nulo afirma um achado que a lista não tem",
         c: "A lista precisa ser declarada como readonly",
-        d: "startsWith nao existe em string",
+        d: "startsWith não existe em string",
       },
       correta: "b",
       explicacao:
-        "find devolve undefined quando nao acha, e o ponto de exclamacao apenas cala o compilador: o erro volta na execucao. Com ?? no lugar da assercao, o padrao entra e a saida sai.",
+        "find devolve undefined quando não acha, e o ponto de exclamação apenas cala o compilador: o erro volta na execução. Com ?? no lugar da asserção, o padrão entra e a saída sai.",
       fonte: "nulos.assercao",
       tipo: "erro",
       codigo: {
@@ -664,7 +664,7 @@ const pool: QuizPool = {
       },
       correta: "c",
       explicacao:
-        "Sem congelar o literal, a propriedade e inferida como string e nao cabe na uniao. as string e as unknown trocam o tipo por outro, e o objeto inteiro nao satisfaz Status.",
+        "Sem congelar o literal, a propriedade é inferida como string e não cabe na união. as string e as unknown trocam o tipo por outro, e o objeto inteiro não satisfaz Status.",
       fonte: "nulos.asconst",
       tipo: "completar",
       codigo: {
@@ -713,7 +713,7 @@ const pool: QuizPool = {
         "Você está tentando usar uma função que espera um número, mas está passando uma string. Qual mensagem de erro você deve esperar?",
       alternativas: {
         a: "TS7006: Parameter is missing type.",
-        b: "TS2345, argumento incompativel na chamada",
+        b: "TS2345, argumento incompatível na chamada.",
         c: "TS18048: Cannot access property that may be undefined.",
         d: "TS2322: Type 'string' is not assignable to type 'number'.",
       },
@@ -735,7 +735,7 @@ const pool: QuizPool = {
       },
       correta: "c",
       explicacao:
-        "O parametro e number e a chamada passa texto, entao o compilador para em TS2345 antes de rodar. Com metade(10), a conta fecha e a saida e 5.",
+        "O parâmetro é number e a chamada passa texto, então o compilador para em TS2345 antes de rodar. Com metade(10), a conta fecha e a saída é 5.",
       fonte: "ferramenta.mensagens",
       tipo: "erro",
       codigo: {
