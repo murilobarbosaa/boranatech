@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AtSign, KeyRound, Receipt, Sparkles, Trophy } from "lucide-react";
+import { AtSign, KeyRound, Receipt, Sparkles } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
 import Layout from "@/components/Layout";
@@ -12,6 +12,7 @@ import { CreatorCalendario } from "@/components/creator/CreatorCalendario";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
 import { CreatorPublicacoes } from "@/components/creator/CreatorPublicacoes";
+import { CreatorRanking } from "@/components/creator/CreatorRanking";
 import { CreatorRedesForm } from "@/components/creator/CreatorRedesForm";
 import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import {
@@ -320,25 +321,19 @@ function Comunidade() {
   );
 }
 
-/** Aba Ranking: o ranking do mes, que chega no lote 11. */
+/**
+ * Aba Ranking: o ranking do mes (lote 11). O componente busca sozinho e
+ * desenha o proprio cartao, como o calendario; aqui fica so a fronteira de
+ * erro, para um ranking quebrado nao derrubar a faixa de abas.
+ */
 function Ranking() {
   return (
-    <section
-      data-testid="creator-ranking"
-      aria-labelledby="creator-ranking-titulo"
-      className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+    <BlocoBoundary
+      // TODO(Ana)
+      nome="Ranking do mês"
     >
-      <CabecalhoDeSecao
-        id="creator-ranking-titulo"
-        icone={<Trophy aria-hidden="true" className="h-4 w-4" />}
-        // TODO(Ana)
-        selo="em breve"
-        // TODO(Ana)
-        titulo="Ranking do mês"
-        // TODO(Ana)
-        frase="Os pontos vêm das publicações que você registrar, dos cliques no seu link e das vendas do mês. Os três primeiros levam prêmio."
-      />
-    </section>
+      <CreatorRanking />
+    </BlocoBoundary>
   );
 }
 

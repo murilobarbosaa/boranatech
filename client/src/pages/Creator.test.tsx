@@ -119,6 +119,11 @@ vi.mock("@/components/creator/CreatorPublicacoes", () => ({
 vi.mock("@/components/creator/CreatorCalendario", () => ({
   CreatorCalendario: () => <div data-testid="calendario" />,
 }));
+// O ranking (lote 11) busca sozinho, como o calendario: dublado pelo mesmo
+// motivo.
+vi.mock("@/components/creator/CreatorRanking", () => ({
+  CreatorRanking: () => <div data-testid="ranking" />,
+}));
 
 import { AdminApiError } from "@/lib/adminApi";
 import type { CreatorDashboard } from "@shared/creatorDashboard";
@@ -576,10 +581,10 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     expect(screen.queryByTestId("view")).toBeNull();
   });
 
-  it("?aba=ranking abre o card em breve, sem buscar o painel", async () => {
+  it("?aba=ranking monta o ranking (lote 11), sem buscar o painel", async () => {
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar("/creator?aba=ranking");
-    expect(await screen.findByTestId("creator-ranking")).toBeTruthy();
+    expect(await screen.findByTestId("ranking")).toBeTruthy();
     expect(screen.queryByTestId("creator-comunidade")).toBeNull();
     expect(screen.queryByTestId("view")).toBeNull();
     expect(estado.fetch).not.toHaveBeenCalled();
@@ -593,9 +598,10 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
 
     fireEvent.click(screen.getByTestId("creator-aba-ranking"));
     expect(history[history.length - 1]).toBe("/creator?aba=ranking");
-    expect(screen.getByTestId("creator-ranking")).toBeTruthy();
+    expect(screen.getByTestId("ranking")).toBeTruthy();
     expect(screen.queryByTestId("view")).toBeNull();
-    // A aba Ranking tambem nao chama rede: o lote 11 e que vai preenche-la.
+    // A PAGINA nao chama rede na aba Ranking: quem busca e o componente,
+    // dublado aqui.
     expect(estado.fetch).toHaveBeenCalledTimes(1);
   });
 });
