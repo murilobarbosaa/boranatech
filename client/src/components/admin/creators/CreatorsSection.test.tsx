@@ -634,7 +634,7 @@ describe("publicacoes para conferir (lote 10b)", () => {
     expect(
       within(outra).getByTestId("creators-pendente-dono").textContent,
     ).toBe("@bia");
-    expect(outra.textContent).toContain("Vídeo do TikTok");
+    expect(outra.textContent).toContain("Vídeo");
   });
 
   it("confirmar chama a rota do creator dono, tira a linha e desconta o total", async () => {

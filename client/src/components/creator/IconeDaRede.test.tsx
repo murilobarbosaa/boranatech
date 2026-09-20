@@ -50,6 +50,15 @@ describe("IconeDaRede", () => {
     expect(container.querySelector("svg")?.className.baseVal).toBe("h-5 w-5");
   });
 
+  it("linkedin (lote 10d) e o icone do lucide, decorativo, com o mesmo test id", () => {
+    const { container } = render(<IconeDaRede rede="linkedin" />);
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("data-testid")).toBe("icone-da-rede-linkedin");
+    expect(svg?.getAttribute("aria-hidden")).toBe("true");
+    // Nao e um dos glifos inline do simple-icons: e o lucide.
+    expect(svg?.getAttribute("class") ?? "").toContain("lucide");
+  });
+
   it("rede desconhecida nao desenha nada, e nao lanca", () => {
     const { container } = render(<IconeDaRede rede="youtube" />);
     expect(container.querySelector("svg")).toBeNull();

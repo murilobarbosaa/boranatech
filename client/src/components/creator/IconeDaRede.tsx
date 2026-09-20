@@ -1,3 +1,5 @@
+import { Linkedin, type LucideIcon } from "lucide-react";
+
 // GLIFOS OFICIAIS DAS REDES (lote 10b). Os paths sao os monocromaticos do
 // simple-icons 16.31.0 (https://simpleicons.org, licenca CC0 1.0), COPIADOS
 // para ca pelo mesmo padrao de client/src/components/roadmapV2/TrailLogo.tsx:
@@ -30,6 +32,12 @@ const GLIFOS: Record<string, { title: string; path: string }> = {
   },
 };
 
+// LINKEDIN (lote 10d) e a excecao: o simple-icons 16.31.0 NAO traz
+// `linkedin.svg` (a marca saiu do pacote a pedido do LinkedIn, conferido no
+// tarball do npm), entao esta rede usa o `Linkedin` do lucide-react 0.453.0,
+// que o repositorio ja tem, no mesmo tamanho e tambem decorativo.
+const REDES_DO_LUCIDE: Record<string, LucideIcon> = { linkedin: Linkedin };
+
 interface IconeDaRedeProps {
   /** `instagram` ou `tiktok`, como o servidor grava. Outra coisa: nada. */
   rede: string;
@@ -41,6 +49,19 @@ export function IconeDaRede({
   rede,
   className = "h-4 w-4 shrink-0",
 }: IconeDaRedeProps) {
+  const Lucide = Object.prototype.hasOwnProperty.call(REDES_DO_LUCIDE, rede)
+    ? REDES_DO_LUCIDE[rede]
+    : null;
+  if (Lucide) {
+    return (
+      <Lucide
+        aria-hidden="true"
+        focusable="false"
+        data-testid={`icone-da-rede-${rede}`}
+        className={className}
+      />
+    );
+  }
   const glifo = Object.prototype.hasOwnProperty.call(GLIFOS, rede)
     ? GLIFOS[rede]
     : null;

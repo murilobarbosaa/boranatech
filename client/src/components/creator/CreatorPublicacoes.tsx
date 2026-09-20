@@ -22,15 +22,24 @@ import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
   ehTipoDePublicacao,
   normalizarLinkDePublicacao,
-  TIPO_DE_PUBLICACAO_META,
-  TIPOS_DE_PUBLICACAO,
+  ROTULO_DO_TIPO as ROTULO_DO_TIPO_NO_SELECT,
+  TIPOS_POR_REDE,
   type RedeDePublicacao,
   type TipoDePublicacao,
 } from "@shared/creatorPost";
+import {
+  ehRedeDeCreator,
+  REDES_DE_CREATOR,
+  rotuloDaRede,
+  type RedeDeCreator,
+} from "@shared/creatorProfile";
 
-// PUBLICACOES REGISTRADAS (lote 09, tipo no lote 10b): o creator escolhe o
-// tipo (post, reel, story ou video), cola o link sobre a Bora na Tech, e a
-// lista dele aparece aqui.
+// PUBLICACOES REGISTRADAS (lote 09, tipo no 10b, rede no 10d): o creator
+// escolhe a REDE (Instagram, TikTok ou LinkedIn), depois o tipo, que so
+// aparece quando a rede tem mais de um (o TikTok so tem video e o LinkedIn so
+// tem post: escolhidos sozinhos), cola o link sobre a Bora na Tech, e a lista
+// dele aparece aqui. UM link por vez: o mesmo post em duas redes sao dois
+// links, e cada um tem a sua URL.
 //
 // AS REGRAS SAO AS DE shared/creatorPost.ts, as mesmas do servidor: o link
 // invalido, e o link que nao e do tipo escolhido, sao recusados ANTES do
@@ -67,10 +76,18 @@ const ROTULO_DO_TIPO: Record<TipoDePublicacao, string> = {
   video: "vídeo",
 };
 
-const OPCOES_DE_TIPO = TIPOS_DE_PUBLICACAO.map((t) => ({
-  value: t,
-  label: TIPO_DE_PUBLICACAO_META[t].rotulo,
-}));
+function opcoesDeTipo(rede: RedeDeCreator) {
+  return TIPOS_POR_REDE[rede].map((t) => ({
+    value: t,
+    label: ROTULO_DO_TIPO_NO_SELECT[t],
+  }));
+}
+
+/** Rede escolhida ou vazio; o tipo que ela decide sozinha, quando decide. */
+function tipoUnicoDaRede(rede: RedeDeCreator): TipoDePublicacao | "" {
+  const tipos = TIPOS_POR_REDE[rede];
+  return tipos.length === 1 ? tipos[0] : "";
+}
 
 /**
  * Rotulo do tipo vindo do servidor. Resolver com fallback neutro: um tipo novo
@@ -117,9 +134,17 @@ export function CreatorPublicacoes() {
   const [tentativa, setTentativa] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [link, setLink] = useState("");
-  // Vazio ate a pessoa escolher: o botao fica desabilitado, porque o tipo
-  // decide o status inicial e nao pode ser deduzido em silencio.
+  // Vazios ate a pessoa escolher: o botao fica desabilitado, porque o tipo
+  // decide o status inicial e nao pode ser deduzido em silencio. A rede vem
+  // primeiro e, quando ela so admite um tipo, o tipo e escolhido junto.
+  const [rede, setRede] = useState<string>("");
   const [tipo, setTipo] = useState("");
+
+  function escolherRede(nova: RedeDeCreator) {
+    setRede(nova);
+    setTipo(tipoUnicoDaRede(nova));
+    setErro(null);
+  }
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -143,29 +168,42 @@ export function CreatorPublicacoes() {
   }, [tentativa]);
 
   async function registrar() {
+    if (!ehRedeDeCreator(rede)) {
+      // TODO(Ana)
+      setErro("Escolha a rede da publicação.");
+      return;
+    }
     if (!ehTipoDePublicacao(tipo)) {
       // TODO(Ana)
       setErro("Escolha o tipo da publicação.");
       return;
     }
     // A mesma regra do servidor, antes do envio: link que nem forma de
-    // publicacao tem, ou que e de outro tipo, nao vira requisicao.
-    const conferido = normalizarLinkDePublicacao(link, tipo);
+    // publicacao tem, ou que e de outra rede ou de outro tipo, nao vira
+    // requisicao.
+    const conferido = normalizarLinkDePublicacao(link, rede, tipo);
     // Link curto do TikTok com tipo video (lote 10c): o SERVIDOR resolve o
-    // redirecionamento, entao aqui ele passa; o do Instagram continua barrado.
+    // redirecionamento, entao aqui ele passa; os do Instagram e do LinkedIn
+    // continuam barrados.
     const curtoDoTikTok =
       !conferido.ok &&
       conferido.code === "short_link_unsupported" &&
+      rede === "tiktok" &&
       tipo === "video" &&
       /(^|\/\/|\.)(vm\.tiktok\.com|vt\.tiktok\.com|tiktok\.com\/t\/)/i.test(
         link.trim(),
       );
     if (!conferido.ok && !curtoDoTikTok) {
+      if (conferido.code === "post_network_mismatch") {
+        // TODO(Ana)
+        setErro(
+          `Esse link é do ${rotuloDaRede(conferido.rede_detectada)}. Troque a rede ou o link.`,
+        );
+        return;
+      }
       if (conferido.code === "post_type_mismatch") {
         const detectado =
-          TIPO_DE_PUBLICACAO_META[
-            conferido.tipo_detectado
-          ].rotulo.toLowerCase();
+          ROTULO_DO_TIPO_NO_SELECT[conferido.tipo_detectado].toLowerCase();
         // TODO(Ana)
         setErro(`Esse link é de um ${detectado}. Troque o tipo ou o link.`);
         return;
@@ -175,7 +213,7 @@ export function CreatorPublicacoes() {
           ? // TODO(Ana)
             "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação."
           : // TODO(Ana)
-            "Link inválido. Cole o link de um post, reel ou story do Instagram, ou de um vídeo do TikTok.",
+            "Link inválido. Cole o link de um post, reel ou story do Instagram, de um vídeo do TikTok, ou de um post do LinkedIn.",
       );
       return;
     }
@@ -185,7 +223,7 @@ export function CreatorPublicacoes() {
       const json: unknown = await contentFetch("/creator/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: link, tipo }),
+        body: JSON.stringify({ url: link, rede, tipo }),
       });
       const post = (json as { data?: { post?: Publicacao } }).data?.post;
       if (post) {
@@ -304,22 +342,50 @@ export function CreatorPublicacoes() {
           frase="Escolha o tipo e cole o link da publicação sobre a Bora na Tech. Cada publicação confirmada conta no ranking do mês."
         />
         <div className="space-y-2">
-          {/* Tipo em cima no celular, ao lado no desktop. O select vem ANTES
-              do link: e a escolha que define o que o link precisa ser. */}
+          {/* A REDE primeiro (lote 10d): tres botoes exclusivos, com o glifo
+              de cada uma. E a escolha que define quais tipos existem e o que
+              o link precisa ser. */}
+          <div
+            role="radiogroup"
+            // TODO(Ana)
+            aria-label="Rede da publicação"
+            className="flex flex-wrap items-center gap-2"
+          >
+            {REDES_DE_CREATOR.map((opcao) => (
+              <button
+                key={opcao}
+                type="button"
+                role="radio"
+                aria-checked={rede === opcao}
+                data-testid={`creator-publicacoes-rede-${opcao}`}
+                onClick={() => escolherRede(opcao)}
+                className={`${rede === opcao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} gap-2`}
+              >
+                <IconeDaRede rede={opcao} />
+                {rotuloDaRede(opcao)}
+              </button>
+            ))}
+          </div>
+          {/* Tipo em cima no celular, ao lado no desktop, e SO quando a rede
+              tem mais de um: no TikTok e no LinkedIn o tipo ja foi escolhido
+              junto com a rede. O select vem ANTES do link: e a escolha que
+              define o que o link precisa ser. */}
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="sm:w-44">
-              <BntSelect
-                accent="neutral"
-                // TODO(Ana)
-                label="Tipo da publicação"
-                // TODO(Ana)
-                placeholder="Tipo"
-                value={tipo}
-                onValueChange={setTipo}
-                options={OPCOES_DE_TIPO}
-                fullWidth
-              />
-            </div>
+            {ehRedeDeCreator(rede) && TIPOS_POR_REDE[rede].length > 1 ? (
+              <div className="sm:w-44">
+                <BntSelect
+                  accent="neutral"
+                  // TODO(Ana)
+                  label="Tipo da publicação"
+                  // TODO(Ana)
+                  placeholder="Tipo"
+                  value={tipo}
+                  onValueChange={setTipo}
+                  options={opcoesDeTipo(rede)}
+                  fullWidth
+                />
+              </div>
+            ) : null}
             <label className="flex-1">
               <span className="sr-only">
                 {/* TODO(Ana) */}
@@ -338,7 +404,9 @@ export function CreatorPublicacoes() {
               type="button"
               data-testid="creator-publicacoes-registrar"
               onClick={() => void registrar()}
-              disabled={salvando || !ehTipoDePublicacao(tipo)}
+              disabled={
+                salvando || !ehRedeDeCreator(rede) || !ehTipoDePublicacao(tipo)
+              }
               className={BOTAO_PRIMARIO}
             >
               {/* TODO(Ana) */}

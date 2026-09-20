@@ -4,12 +4,16 @@ import {
   somarDiaCivil,
 } from "../../shared/brasiliaDay";
 import {
-  ehTipoDePublicacao,
+  ehRedeDeCreator,
+  type RedeDeCreator,
+} from "../../shared/creatorProfile";
+import {
   LIMITE_DE_REGISTROS_POR_DIA,
   normalizarLinkDePublicacao,
   REDES_DE_PUBLICACAO,
   STATUS_DE_PUBLICACAO,
   statusInicialDaPublicacao,
+  tipoValidoParaRede,
   TIPOS_DE_PUBLICACAO,
   type RedeDePublicacao,
   type StatusDePublicacao,
@@ -79,10 +83,12 @@ export type RegistroRecusado =
         | "invalid_post_url"
         | "short_link_unsupported"
         | "short_link_unresolved"
+        | "invalid_post_network"
         | "invalid_post_type"
         | "post_already_registered"
         | "post_daily_limit";
     }
+  | { ok: false; code: "post_network_mismatch"; rede_detectada: RedeDeCreator }
   | { ok: false; code: "post_type_mismatch"; tipo_detectado: TipoDePublicacao };
 
 export type CodigoDeRegistro = RegistroRecusado["code"];
@@ -234,12 +240,16 @@ export async function listarPublicacoes(
 export async function registrarPublicacao(
   userId: string,
   url: unknown,
+  rede: unknown,
   tipo: unknown,
   agora: Date = new Date(),
 ): Promise<ResultadoDoRegistro> {
-  if (!ehTipoDePublicacao(tipo))
+  // A rede vem antes do tipo (lote 10d): e ela que diz quais tipos existem.
+  if (!ehRedeDeCreator(rede))
+    return { ok: false, code: "invalid_post_network" };
+  if (!tipoValidoParaRede(rede, tipo))
     return { ok: false, code: "invalid_post_type" };
-  let link = normalizarLinkDePublicacao(url, tipo);
+  let link = normalizarLinkDePublicacao(url, rede, tipo);
   // Link curto do TikTok com tipo video (lote 10c): o servidor resolve o
   // redirecionamento e segue com a canonica. Mora AQUI, e nao na rota, para
   // todo chamador ganhar a resolucao sem lembrar dela. Com outro tipo
@@ -248,6 +258,7 @@ export async function registrarPublicacao(
   const precisaResolver =
     !link.ok &&
     link.code === "short_link_unsupported" &&
+    rede === "tiktok" &&
     tipo === "video" &&
     ehLinkCurtoDoTikTok(url);
   // Link que nem forma de publicacao tem sai aqui, sem tocar no banco.

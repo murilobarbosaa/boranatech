@@ -98,6 +98,16 @@ const STORY = {
   created_at: "2026-09-16T12:00:00Z",
 };
 
+const LINKEDIN = {
+  id: "6f1e2d3c-4b5a-4c6d-8e7f-9a0b1c2d3e4f",
+  network: "linkedin",
+  kind: "post",
+  url: "https://www.linkedin.com/feed/update/urn:li:activity:7371234567890123456/",
+  status: "pendente",
+  confirmed_at: null,
+  created_at: "2026-09-19T12:00:00Z",
+};
+
 function chamadasCom(method: string): Chamada[] {
   return estado.chamadas.filter((c) => c.method === method);
 }
@@ -132,6 +142,11 @@ async function escolherTipo(nome: string): Promise<void> {
   const opcao = await screen.findByRole("option", { name: nome });
   fireEvent.keyDown(opcao, { key: "Enter" });
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+}
+
+/** A rede vem antes do tipo (lote 10d): um clique no botao dela. */
+function escolherRede(rede: "instagram" | "tiktok" | "linkedin"): void {
+  fireEvent.click(screen.getByTestId(`creator-publicacoes-rede-${rede}`));
 }
 
 function responderLista(posts: unknown[], no_mes: number, aguardando = 0) {
@@ -241,6 +256,10 @@ describe("CreatorPublicacoes: registro", () => {
       "creator-publicacoes-registrar",
     ) as HTMLButtonElement;
     expect(registrar.disabled).toBe(true);
+    // Sem rede escolhida nao ha nem select de tipo.
+    expect(screen.queryByRole("combobox")).toBeNull();
+    escolherRede("instagram");
+    expect(registrar.disabled).toBe(true);
     await escolherTipo("Reel");
     expect(registrar.disabled).toBe(false);
     fireEvent.change(screen.getByRole("textbox"), {
@@ -252,7 +271,11 @@ describe("CreatorPublicacoes: registro", () => {
     expect(chamadasCom("POST")[0]).toEqual({
       path: "/creator/posts",
       method: "POST",
-      body: { url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc", tipo: "reel" },
+      body: {
+        url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc",
+        rede: "instagram",
+        tipo: "reel",
+      },
     });
     await screen.findByTestId(`creator-publicacao-${POST_ID}`);
     // O reel nasce pendente: nao entra nas confirmadas, entra no aguardando.
@@ -270,6 +293,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
     await escolherTipo("Post");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://www.instagram.com/ana.cria/" },
@@ -285,6 +309,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
     await escolherTipo("Post");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://instagr.am/p/Cx1AbCdEf_-/" },
@@ -304,7 +329,9 @@ describe("CreatorPublicacoes: registro", () => {
       method === "POST"
         ? { data: { post: VIDEO } }
         : { data: { posts: [], total: 0, no_mes: 0 } };
-    await escolherTipo("Vídeo do TikTok");
+    // TikTok so tem video: o tipo vai junto com a rede, sem select.
+    escolherRede("tiktok");
+    expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://vm.tiktok.com/ZMabc1234/" },
     });
@@ -312,6 +339,7 @@ describe("CreatorPublicacoes: registro", () => {
     await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
     expect(chamadasCom("POST")[0].body).toEqual({
       url: "https://vm.tiktok.com/ZMabc1234/",
+      rede: "tiktok",
       tipo: "video",
     });
     await screen.findByTestId(`creator-publicacao-${OUTRO_ID}`);
@@ -320,10 +348,11 @@ describe("CreatorPublicacoes: registro", () => {
     );
   });
 
-  it("link curto do TikTok com outro tipo: continua barrado aqui", async () => {
+  it("link curto do TikTok com outra rede escolhida: continua barrado aqui", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
     await escolherTipo("Reel");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://vm.tiktok.com/ZMabc1234/" },
@@ -339,6 +368,7 @@ describe("CreatorPublicacoes: registro", () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
     await escolherTipo("Reel");
 
     estado.responder = async (_path, method) => {
@@ -456,28 +486,59 @@ describe("CreatorPublicacoes: glifos e estado vazio (lote 10b)", () => {
   });
 });
 
-describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
-  it("as quatro opcoes, na ordem do shared, e a frase pede o tipo", async () => {
+describe("CreatorPublicacoes: rede e tipo escolhidos (lotes 10b e 10d)", () => {
+  it("tres botoes de rede com glifo; o tipo so aparece no Instagram, com as tres opcoes do shared", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    for (const rede of ["instagram", "tiktok", "linkedin"] as const) {
+      const botao = screen.getByTestId(`creator-publicacoes-rede-${rede}`);
+      expect(botao.getAttribute("aria-checked")).toBe("false");
+      expect(within(botao).getByTestId(`icone-da-rede-${rede}`)).toBeTruthy();
+    }
+    escolherRede("instagram");
+    expect(
+      screen
+        .getByTestId("creator-publicacoes-rede-instagram")
+        .getAttribute("aria-checked"),
+    ).toBe("true");
     fireEvent.keyDown(
       screen.getByRole("combobox", { name: "Tipo da publicação" }),
       { key: "ArrowDown" },
     );
     const opcoes = await screen.findAllByRole("option");
-    expect(opcoes.map((o) => o.textContent)).toEqual([
-      "Post",
-      "Reel",
-      "Story",
-      "Vídeo do TikTok",
-    ]);
+    expect(opcoes.map((o) => o.textContent)).toEqual(["Post", "Reel", "Story"]);
+    fireEvent.keyDown(opcoes[0], { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    // LinkedIn so tem post: sem select, e o botao ja pode registrar.
+    escolherRede("linkedin");
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(
+      (screen.getByTestId("creator-publicacoes-registrar") as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
   });
 
-  it("link de outro tipo: a mensagem diz qual tipo o link e, e NENHUMA requisicao", async () => {
+  it("link de outra REDE: a mensagem diz de qual rede o link e, e NENHUMA requisicao", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("linkedin");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: VIDEO.url },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe("Esse link é do TikTok. Troque a rede ou o link.");
+    expect(chamadasCom("POST")).toHaveLength(0);
+  });
+
+  it("link de outro tipo na mesma rede: a mensagem diz qual tipo o link e, e NENHUMA requisicao", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
     await escolherTipo("Post");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: REEL.url },
@@ -487,20 +548,38 @@ describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
     ).toBe("Esse link é de um reel. Troque o tipo ou o link.");
     expect(chamadasCom("POST")).toHaveLength(0);
-
-    // TikTok com tipo do Instagram: o nome do tipo detectado e o do shared.
-    await escolherTipo("Story");
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: VIDEO.url },
-    });
-    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
-    expect(
-      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toBe("Esse link é de um vídeo do tiktok. Troque o tipo ou o link.");
-    expect(chamadasCom("POST")).toHaveLength(0);
   });
 
-  it("story: manda tipo story e entra na lista como as outras", async () => {
+  it("LinkedIn: manda rede linkedin e tipo post, e a linha entra com o glifo do LinkedIn", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    estado.responder = async (_path, method) =>
+      method === "POST"
+        ? { data: { post: LINKEDIN } }
+        : { data: { posts: [], total: 0, no_mes: 0 } };
+    escolherRede("linkedin");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: {
+        value:
+          "https://www.linkedin.com/posts/ana-cria_bora-activity-7371234567890123456-Ab3C?utm_source=share",
+      },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
+    expect(chamadasCom("POST")[0].body).toEqual({
+      url: "https://www.linkedin.com/posts/ana-cria_bora-activity-7371234567890123456-Ab3C?utm_source=share",
+      rede: "linkedin",
+      tipo: "post",
+    });
+    const linha = await screen.findByTestId(
+      `creator-publicacao-${LINKEDIN.id}`,
+    );
+    expect(within(linha).getByTestId("icone-da-rede-linkedin")).toBeTruthy();
+    expect(linha.textContent).toContain("post");
+  });
+
+  it("story: manda rede e tipo, e entra na lista como as outras", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
     await screen.findByTestId("creator-publicacoes-vazio");
@@ -508,6 +587,7 @@ describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
       method === "POST"
         ? { data: { post: STORY } }
         : { data: { posts: [], total: 0, no_mes: 0 } };
+    escolherRede("instagram");
     await escolherTipo("Story");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: STORY.url },
@@ -516,6 +596,7 @@ describe("CreatorPublicacoes: tipo escolhido (lote 10b)", () => {
     await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
     expect(chamadasCom("POST")[0].body).toEqual({
       url: STORY.url,
+      rede: "instagram",
       tipo: "story",
     });
     const linha = await screen.findByTestId(`creator-publicacao-${STORY.id}`);
@@ -574,6 +655,7 @@ describe("CreatorPublicacoes: status (lote 10b)", () => {
       method === "POST"
         ? { data: { post: STORY } }
         : { data: { posts: [], total: 0, no_mes: 0, aguardando: 0 } };
+    escolherRede("instagram");
     await escolherTipo("Story");
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: STORY.url },

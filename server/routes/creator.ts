@@ -10,7 +10,7 @@ import {
 } from "../../shared/creatorCalendar";
 import {
   LIMITE_DE_REGISTROS_POR_DIA,
-  TIPO_DE_PUBLICACAO_META,
+  ROTULO_DO_TIPO,
   type TipoDePublicacao,
 } from "../../shared/creatorPost";
 import {
@@ -161,6 +161,12 @@ const MENSAGEM_DO_PERFIL: Record<CodigoDoPerfil, string> = {
     "Seguidores do Instagram: use um número inteiro de 0 a 100 milhões.",
   invalid_tiktok_followers:
     "Seguidores do TikTok: use um número inteiro de 0 a 100 milhões.",
+  // O perfil do LinkedIn fica fora deste lote; os codigos existem porque o
+  // tipo e por rede, e a rede entrou.
+  invalid_linkedin_handle:
+    "Perfil do LinkedIn inválido. Use de 3 a 100 letras, números ou hífen.",
+  invalid_linkedin_followers:
+    "Seguidores do LinkedIn: use um número inteiro de 0 a 100 milhões.",
 };
 
 // TODO(Ana)
@@ -268,7 +274,9 @@ const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   invalid_post_url: 400,
   short_link_unsupported: 400,
   short_link_unresolved: 400,
+  invalid_post_network: 400,
   invalid_post_type: 400,
+  post_network_mismatch: 400,
   post_type_mismatch: 400,
   post_already_registered: 409,
   post_daily_limit: 429,
@@ -276,11 +284,12 @@ const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
 
 // TODO(Ana)
 const MENSAGEM_DA_PUBLICACAO: Record<
-  Exclude<CodigoDeRegistro, "post_type_mismatch">,
+  Exclude<CodigoDeRegistro, "post_type_mismatch" | "post_network_mismatch">,
   string
 > = {
   invalid_post_url:
-    "Link inválido. Cole o link de um post, reel ou story do Instagram, ou de um vídeo do TikTok.",
+    "Link inválido. Cole o link de um post, reel ou story do Instagram, de um vídeo do TikTok, ou de um post do LinkedIn.",
+  invalid_post_network: "Escolha a rede: Instagram, TikTok ou LinkedIn.",
   short_link_unsupported:
     "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação.",
   short_link_unresolved:
@@ -301,9 +310,15 @@ const MENSAGEM_DA_PUBLICACAO: Record<
  * enviar, entao ele ja sabe o tipo detectado sem precisar le-lo daqui.
  */
 function mensagemDeTipoErrado(tipoDetectado: TipoDePublicacao): string {
-  const rotulo = TIPO_DE_PUBLICACAO_META[tipoDetectado].rotulo.toLowerCase();
+  const rotulo = ROTULO_DO_TIPO[tipoDetectado].toLowerCase();
   // TODO(Ana)
   return `Esse link é de um ${rotulo}. Troque o tipo ou o link.`;
+}
+
+/** Mesmo esquema, para a rede (lote 10d): o nome da rede detectada na mensagem. */
+function mensagemDeRedeErrada(redeDetectada: RedeDeCreator): string {
+  // TODO(Ana)
+  return `Esse link é do ${rotuloDaRede(redeDetectada)}. Troque a rede ou o link.`;
 }
 
 router.get("/posts", requireCreator, async (req, res, next) => {
@@ -329,6 +344,7 @@ router.post("/posts", requireCreator, async (req, res, next) => {
     const registro = await registrarPublicacao(
       req.user!.id,
       corpo.url,
+      corpo.rede,
       corpo.tipo,
     );
     if (!registro.ok) {
@@ -338,7 +354,9 @@ router.post("/posts", requireCreator, async (req, res, next) => {
           registro.code,
           registro.code === "post_type_mismatch"
             ? mensagemDeTipoErrado(registro.tipo_detectado)
-            : MENSAGEM_DA_PUBLICACAO[registro.code],
+            : registro.code === "post_network_mismatch"
+              ? mensagemDeRedeErrada(registro.rede_detectada)
+              : MENSAGEM_DA_PUBLICACAO[registro.code],
         ),
       );
     }

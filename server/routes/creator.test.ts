@@ -838,6 +838,8 @@ const LINK_STORY =
   "https://www.instagram.com/stories/ana.cria/3456789012345678901/";
 const LINK_VIDEO = "https://www.tiktok.com/@ana.cria/video/7311122233344455566";
 const LINK_POST = "https://www.instagram.com/p/Cx1AbCdEf_-/";
+const LINK_LINKEDIN =
+  "https://www.linkedin.com/feed/update/urn:li:activity:7371234567890123456/";
 
 /** Publicacoes que respondem por STATUS ao count do mes: o double nao simula
  * `gte`, entao o responder olha o filtro de status e devolve as linhas certas
@@ -891,6 +893,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "instagram.com/reel/Cx1AbCdEf_-?igshid=abc",
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(201);
@@ -912,10 +915,11 @@ describe("POST /api/creator/posts", () => {
   });
 
   it("cada tipo com o link certo grava o kind escolhido; post, reel e video nascem pendentes", async () => {
-    for (const [tipo, url] of [
-      ["post", LINK_POST],
-      ["reel", LINK_VALIDO],
-      ["video", LINK_VIDEO],
+    for (const [rede, tipo, url] of [
+      ["instagram", "post", LINK_POST],
+      ["instagram", "reel", LINK_VALIDO],
+      ["tiktok", "video", LINK_VIDEO],
+      ["linkedin", "post", LINK_LINKEDIN],
     ] as const) {
       montar({
         creators: concessaoAtiva(),
@@ -925,8 +929,8 @@ describe("POST /api/creator/posts", () => {
             : { rows: [] },
       });
       estado.usuario = USUARIO;
-      const r = await chamar("POST", "/posts", { url, tipo });
-      expect(r.status, tipo).toBe(201);
+      const r = await chamar("POST", "/posts", { url, rede, tipo });
+      expect(r.status, `${rede} ${tipo}`).toBe(201);
       const payload = escritasEm("creator_posts")[0].payload!;
       expect(payload.kind, tipo).toBe(tipo);
       expect(payload.status, tipo).toBe("pendente");
@@ -952,6 +956,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: LINK_STORY,
+      rede: "instagram",
       tipo: "story",
     });
     vi.useRealTimers();
@@ -970,17 +975,19 @@ describe("POST /api/creator/posts", () => {
     });
   });
 
-  it("link de um tipo com outro escolhido: 400 post_type_mismatch, com o tipo detectado na mensagem, e nada gravado", async () => {
+  it("link de um tipo com outro escolhido, na mesma rede: 400 post_type_mismatch, com o tipo detectado na mensagem, e nada gravado", async () => {
     for (const [url, tipo, detectado] of [
       [LINK_VALIDO, "post", "reel"],
       [LINK_POST, "reel", "post"],
       [LINK_STORY, "post", "story"],
-      [LINK_VIDEO, "reel", "vídeo do tiktok"],
-      [LINK_VALIDO, "video", "reel"],
     ] as const) {
       montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
       estado.usuario = USUARIO;
-      const r = await chamar("POST", "/posts", { url, tipo });
+      const r = await chamar("POST", "/posts", {
+        url,
+        rede: "instagram",
+        tipo,
+      });
       expect(r.status, `${tipo} ${url}`).toBe(400);
       expect(r.body.error.code).toBe("post_type_mismatch");
       expect(r.body.error.message).toBe(
@@ -990,11 +997,62 @@ describe("POST /api/creator/posts", () => {
     }
   });
 
+  it("link de OUTRA rede (lote 10d): 400 post_network_mismatch, com a rede detectada na mensagem, e nada gravado", async () => {
+    for (const [url, rede, tipo, detectada] of [
+      [LINK_VIDEO, "instagram", "reel", "TikTok"],
+      [LINK_VALIDO, "tiktok", "video", "Instagram"],
+      [LINK_LINKEDIN, "instagram", "post", "LinkedIn"],
+      [LINK_POST, "linkedin", "post", "Instagram"],
+    ] as const) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", { url, rede, tipo });
+      expect(r.status, `${rede} ${url}`).toBe(400);
+      expect(r.body.error.code).toBe("post_network_mismatch");
+      expect(r.body.error.message).toBe(
+        `Esse link é do ${detectada}. Troque a rede ou o link.`,
+      );
+      expect(escritasEm("creator_posts")).toHaveLength(0);
+    }
+  });
+
+  it("sem rede, ou com rede fora da lista: 400 invalid_post_network, sem tocar no banco", async () => {
+    for (const rede of [undefined, "", "youtube", 3]) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", {
+        url: LINK_VALIDO,
+        rede,
+        tipo: "reel",
+      });
+      expect(r.status, String(rede)).toBe(400);
+      expect(r.body.error.code).toBe("invalid_post_network");
+      expect(double.de("creator_posts")).toHaveLength(0);
+    }
+  });
+
+  it("tipo que a rede nao admite: 400 invalid_post_type, sem tocar no banco", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: LINK_VIDEO,
+      rede: "tiktok",
+      tipo: "reel",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_post_type");
+    expect(double.de("creator_posts")).toHaveLength(0);
+  });
+
   it("sem tipo, ou com tipo que nao existe: 400 invalid_post_type, sem tocar no banco", async () => {
     for (const tipo of [undefined, "", "carrossel", 3]) {
       montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
       estado.usuario = USUARIO;
-      const r = await chamar("POST", "/posts", { url: LINK_VALIDO, tipo });
+      const r = await chamar("POST", "/posts", {
+        url: LINK_VALIDO,
+        rede: "instagram",
+        tipo,
+      });
       expect(r.status, String(tipo)).toBe(400);
       expect(r.body.error.code).toBe("invalid_post_type");
       expect(double.de("creator_posts")).toHaveLength(0);
@@ -1006,6 +1064,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://www.instagram.com/ana.cria/",
+      rede: "instagram",
       tipo: "post",
     });
     expect(r.status).toBe(400);
@@ -1018,6 +1077,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://instagr.am/p/Cx1AbCdEf_-/",
+      rede: "instagram",
       tipo: "post",
     });
     expect(r.status).toBe(400);
@@ -1050,6 +1110,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vm.tiktok.com/ZMabc1234/",
+      rede: "tiktok",
       tipo: "video",
     });
     expect(r.status).toBe(201);
@@ -1072,6 +1133,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vt.tiktok.com/ZSabc12/",
+      rede: "tiktok",
       tipo: "video",
     });
     expect(r.status).toBe(400);
@@ -1091,6 +1153,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vm.tiktok.com/ZMabc1234/",
+      rede: "tiktok",
       tipo: "video",
     });
     expect(r.status).toBe(429);
@@ -1106,6 +1169,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: "https://vm.tiktok.com/ZMabc1234/",
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(400);
@@ -1130,6 +1194,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: LINK_VALIDO,
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(409);
@@ -1154,6 +1219,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: LINK_VALIDO,
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(500);
@@ -1172,6 +1238,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: LINK_VALIDO,
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(429);
@@ -1184,6 +1251,7 @@ describe("POST /api/creator/posts", () => {
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
       url: LINK_VALIDO,
+      rede: "instagram",
       tipo: "reel",
     });
     expect(r.status).toBe(403);

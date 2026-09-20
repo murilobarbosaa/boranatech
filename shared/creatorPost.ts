@@ -1,20 +1,27 @@
-import { REDES_DE_CREATOR, type RedeDeCreator } from "./creatorProfile";
+import {
+  ehRedeDeCreator,
+  REDES_DE_CREATOR,
+  ROTULO_DA_REDE,
+  type RedeDeCreator,
+} from "./creatorProfile";
 
-// REGRAS DO LINK DE PUBLICACAO (lote 09, tipo e status no lote 10b): o creator
-// ESCOLHE o tipo (post, reel, story ou video) e cola a URL, e isto devolve a
-// rede, o tipo, o identificador na rede e a URL CANONICA, ou o motivo da recusa.
+// REGRAS DO LINK DE PUBLICACAO (lote 09; tipo e status no 10b; rede escolhida
+// e LinkedIn no 10d): o creator ESCOLHE a rede, depois o tipo (quando a rede
+// tem mais de um), cola a URL, e isto devolve a rede, o tipo, o identificador
+// na rede e a URL CANONICA, ou o motivo da recusa.
 //
 // Fonte UNICA para o server, que grava, e para o client, que mostra o mesmo
 // erro antes de enviar. Mesmo motivo de shared/creatorProfile.ts: duas copias
 // da regra divergem na primeira mudanca.
 //
-// O TIPO ENTRA NA VALIDACAO (lote 10b): o link precisa ser do tipo escolhido.
-// Link de reel com "post" escolhido e `post_type_mismatch`, e o resultado diz
-// qual tipo o link parece ser (`tipo_detectado`), para a tela poder dizer
-// "esse link e de um reel; troque o tipo ou o link" em vez de "link invalido".
-// A escolha existe porque o status inicial depende do tipo (story nasce
-// confirmado, ver `statusInicialDaPublicacao`), e deixar o tipo ser deduzido
-// do link tornaria a excecao do story algo que a pessoa nunca declarou.
+// A REDE E O TIPO ENTRAM NA VALIDACAO: o link precisa ser da rede escolhida
+// (`post_network_mismatch`, com a rede que o link parece ser) e, dentro dela,
+// do tipo escolhido (`post_type_mismatch`, com o tipo detectado). Duas recusas
+// separadas porque sao dois erros de escolha diferentes, e a tela diz cada um
+// com o nome do que foi detectado. A escolha existe porque o status inicial
+// depende do tipo (story nasce confirmado, ver `statusInicialDaPublicacao`), e
+// deixar o tipo ser deduzido do link tornaria a excecao do story algo que a
+// pessoa nunca declarou.
 //
 // O `external_id` e o que torna a unicidade estavel. A mesma publicacao colada
 // com e sem `www`, com e sem query string, com e sem barra final, com o usuario
@@ -25,7 +32,11 @@ import { REDES_DE_CREATOR, type RedeDeCreator } from "./creatorProfile";
 // o servidor abrir uma URL de fora para seguir o redirecionamento, que e uma
 // requisicao de saida para um endereco que o usuario escolheu. O custo de
 // recusar e a pessoa colar o link completo; o custo de aceitar e um caminho de
-// SSRF por conveniencia.
+// SSRF por conveniencia. Os do TikTok o SERVIDOR resolve (lote 10c,
+// server/lib/tiktokShortLink.ts) com host de lista fechada e HEAD; os do
+// Instagram e do LinkedIn (`lnkd.in`, que responde com uma pagina
+// intermediaria e nao com redirecionamento, e resolver isso seria ler corpo)
+// continuam recusados.
 //
 // NADA AQUI VERIFICA CONTEUDO: se a publicacao fala da Bora na Tech e decisao
 // do admin, que confere a lista de pendentes e confirma ou remove. Isto so
@@ -43,20 +54,26 @@ export const TIPOS_DE_PUBLICACAO = ["post", "reel", "story", "video"] as const;
 export type TipoDePublicacao = (typeof TIPOS_DE_PUBLICACAO)[number];
 
 /**
- * Rotulo de cada tipo e a rede que ele admite. Post, reel e story sao coisas
- * do Instagram; video e a unica forma do TikTok. A rede fica AQUI, e nao
- * deduzida do link, para a tela saber o que oferecer e para o mismatch ter
- * nome: "video" com link do Instagram e tipo errado, nao link invalido.
+ * Os tipos que cada rede admite. Instagram tem tres; TikTok e LinkedIn tem um
+ * so, e nesses a tela escolhe o tipo sozinha. O post do LinkedIn grava
+ * `kind = post` como o do Instagram: a rede e outra coluna, e e ela que os
+ * separa.
  */
-// TODO(Ana)
-export const TIPO_DE_PUBLICACAO_META: Record<
-  TipoDePublicacao,
-  { rotulo: string; rede: RedeDePublicacao }
+export const TIPOS_POR_REDE: Record<
+  RedeDeCreator,
+  readonly TipoDePublicacao[]
 > = {
-  post: { rotulo: "Post", rede: "instagram" },
-  reel: { rotulo: "Reel", rede: "instagram" },
-  story: { rotulo: "Story", rede: "instagram" },
-  video: { rotulo: "Vídeo do TikTok", rede: "tiktok" },
+  instagram: ["post", "reel", "story"],
+  tiktok: ["video"],
+  linkedin: ["post"],
+};
+
+// TODO(Ana)
+export const ROTULO_DO_TIPO: Record<TipoDePublicacao, string> = {
+  post: "Post",
+  reel: "Reel",
+  story: "Story",
+  video: "Vídeo",
 };
 
 export function ehTipoDePublicacao(valor: unknown): valor is TipoDePublicacao {
@@ -65,6 +82,16 @@ export function ehTipoDePublicacao(valor: unknown): valor is TipoDePublicacao {
     (TIPOS_DE_PUBLICACAO as readonly string[]).includes(valor)
   );
 }
+
+/** O tipo existe e a rede o admite. */
+export function tipoValidoParaRede(
+  rede: RedeDeCreator,
+  tipo: unknown,
+): tipo is TipoDePublicacao {
+  return ehTipoDePublicacao(tipo) && TIPOS_POR_REDE[rede].includes(tipo);
+}
+
+export { ehRedeDeCreator, ROTULO_DA_REDE };
 
 export const STATUS_DE_PUBLICACAO = ["pendente", "confirmado"] as const;
 export type StatusDePublicacao = (typeof STATUS_DE_PUBLICACAO)[number];
@@ -87,6 +114,7 @@ export function statusInicialDaPublicacao(
 export type CodigoDeLinkDePublicacao =
   | "invalid_post_url"
   | "short_link_unsupported"
+  | "post_network_mismatch"
   | "post_type_mismatch";
 
 /** O que o servidor grava, derivado do link. */
@@ -99,13 +127,14 @@ export type PublicacaoNormalizada = {
 };
 
 /**
- * Resultado da normalizacao. O `post_type_mismatch` carrega o tipo que o link
- * parece ser: e a unica recusa em que a pessoa colou um link bom e so errou a
- * escolha, e a tela precisa dizer isso com o nome do tipo.
+ * Resultado da normalizacao. Os dois mismatch carregam o que o link parece
+ * ser: sao as recusas em que a pessoa colou um link bom e so errou a escolha,
+ * e a tela precisa dizer isso com o nome da rede ou do tipo.
  */
 export type ResultadoDoLink =
   | { ok: true; valor: PublicacaoNormalizada }
   | { ok: false; code: "invalid_post_url" | "short_link_unsupported" }
+  | { ok: false; code: "post_network_mismatch"; rede_detectada: RedeDeCreator }
   | { ok: false; code: "post_type_mismatch"; tipo_detectado: TipoDePublicacao };
 
 /**
@@ -119,10 +148,13 @@ export const LIMITE_DE_REGISTROS_POR_DIA = 10;
 
 // Hospedeiros de link curto. Recusados com codigo proprio para a tela poder
 // dizer "cole o link completo" em vez de "link invalido", que mandaria a
-// pessoa conferir uma URL que ela copiou certo. Os do TikTok o SERVIDOR
-// resolve (lote 10c, server/lib/tiktokShortLink.ts) quando o tipo escolhido e
-// video; o do Instagram continua recusado.
-const HOSTS_CURTOS = ["vm.tiktok.com", "vt.tiktok.com", "instagr.am"];
+// pessoa conferir uma URL que ela copiou certo.
+const HOSTS_CURTOS = [
+  "vm.tiktok.com",
+  "vt.tiktok.com",
+  "instagr.am",
+  "lnkd.in",
+];
 
 // `tiktok.com/t/<codigo>` e a terceira forma de link curto do app do TikTok,
 // no host principal: e reconhecida pelo CAMINHO, nao pelo host.
@@ -133,7 +165,7 @@ const CAMINHO_CURTO_DO_TIKTOK_RE = /^t\/[A-Za-z0-9]{4,32}$/;
 // assim.
 const CODIGO_DO_INSTAGRAM = "[A-Za-z0-9_-]{5,32}";
 
-// Nome de usuario, nas DUAS redes: o `@` do TikTok, o trecho opcional que o
+// Nome de usuario, nas redes: o `@` do TikTok, o trecho opcional que o
 // Instagram poe antes de `/p/` e `/reel/`, e o dono do story em `/stories/`.
 // Uma constante so, com nome neutro, porque as formas sao a mesma; batizar de
 // "do TikTok" faria quem apertasse a regra de la mudar o Instagram junto, sem
@@ -155,13 +187,31 @@ const STORY_RE = new RegExp(`^stories/(${USUARIO_DA_REDE})/(${ID_NUMERICO})$`);
 
 const TIKTOK_RE = new RegExp(`^@(${USUARIO_DA_REDE})/video/(${ID_NUMERICO})$`);
 
+// LINKEDIN (lote 10d). O LinkedIn escreve o link de um post de duas formas:
+// `linkedin.com/posts/<slug>-activity-<digitos>-<sufixo>` (o botao Copiar
+// link do feed) e `linkedin.com/feed/update/urn:li:activity:<digitos>/`; a
+// segunda tambem aparece com `share` e `ugcPost` no lugar de `activity`. Os
+// tres sao espacos de id DISTINTOS, entao o `external_id` leva o tipo do urn
+// junto com os digitos, e a canonica e a forma `feed/update`, que e a que o
+// LinkedIn resolve para os tres. Artigo (`/pulse/`), perfil (`/in/`) e pagina
+// de empresa nao sao publicacao.
+const ID_DO_LINKEDIN = "[0-9]{10,25}";
+const TIPOS_DE_URN_DO_LINKEDIN = ["activity", "share", "ugcPost"] as const;
+const LINKEDIN_POSTS_RE = new RegExp(
+  `^posts/[^/]+-activity-(${ID_DO_LINKEDIN})-[A-Za-z0-9_-]+$`,
+);
+const LINKEDIN_URN_RE = new RegExp(
+  `^feed/update/urn:li:(${TIPOS_DE_URN_DO_LINKEDIN.join("|")}):(${ID_DO_LINKEDIN})$`,
+);
+
 /** Host e caminho de uma URL colada, sem protocolo, sem query e sem hash. */
 function partesDaUrl(valor: string): { host: string; caminho: string } | null {
   let resto = valor.trim();
   if (resto === "") return null;
   resto = resto.replace(/^https?:\/\//i, "");
-  // Query e hash saem antes de tudo: `?igshid=`, `?is_from_webapp=1` e afins
-  // sao rastreamento da rede, nao identidade da publicacao.
+  // Query e hash saem antes de tudo: `?igshid=`, `?is_from_webapp=1`,
+  // `?utm_source=share` e afins sao rastreamento da rede, nao identidade da
+  // publicacao.
   resto = resto.split("?")[0].split("#")[0];
   const barra = resto.indexOf("/");
   const host = (barra === -1 ? resto : resto.slice(0, barra)).toLowerCase();
@@ -173,9 +223,22 @@ function partesDaUrl(valor: string): { host: string; caminho: string } | null {
   };
 }
 
+function publicacaoDoLinkedin(
+  tipoDoUrn: string,
+  id: string,
+): PublicacaoNormalizada {
+  return {
+    network: "linkedin",
+    kind: "post",
+    external_id: `${tipoDoUrn}:${id}`,
+    url: `https://www.linkedin.com/feed/update/urn:li:${tipoDoUrn}:${id}/`,
+  };
+}
+
 /**
- * O que o link parece ser, sem olhar o tipo escolhido. E a leitura que vira
- * `tipo_detectado` no mismatch; quem grava usa `normalizarLinkDePublicacao`.
+ * O que o link parece ser, sem olhar a rede nem o tipo escolhidos. E a leitura
+ * que vira `rede_detectada` e `tipo_detectado` nos mismatch; quem grava usa
+ * `normalizarLinkDePublicacao`.
  */
 function detectarPublicacao(
   valor: unknown,
@@ -249,27 +312,45 @@ function detectarPublicacao(
     };
   }
 
+  if (host === "linkedin.com") {
+    const doFeed = LINKEDIN_POSTS_RE.exec(caminho);
+    if (doFeed)
+      return { ok: true, valor: publicacaoDoLinkedin("activity", doFeed[1]) };
+    const urn = LINKEDIN_URN_RE.exec(caminho);
+    if (urn) return { ok: true, valor: publicacaoDoLinkedin(urn[1], urn[2]) };
+    return { ok: false, code: "invalid_post_url" };
+  }
+
   return { ok: false, code: "invalid_post_url" };
 }
 
 /**
- * Link de publicacao normalizado para o tipo ESCOLHIDO, ou o codigo do erro.
+ * Link de publicacao normalizado para a REDE e o TIPO escolhidos, ou o codigo
+ * do erro.
  *
  * Aceita com e sem `https://`, com e sem `www.`, com query string e com barra
  * final. Perfil (`instagram.com/ana.cria/`) NAO e publicacao: e `invalid_post_url`,
  * porque registrar um perfil como publicacao encheria o ranking de nada.
  *
- * A ordem das recusas e deliberada: link curto e link invalido vem ANTES do
- * tipo, porque nesses casos nao ha tipo detectavel para comparar, e dizer
- * "tipo errado" sobre um link que nem e publicacao mandaria a pessoa trocar a
- * coisa certa.
+ * A ordem das recusas e deliberada: link curto e link invalido vem ANTES da
+ * rede e do tipo, porque nesses casos nao ha o que comparar; a rede vem antes
+ * do tipo, porque com a rede errada o tipo nem faz sentido ("story" num link
+ * do TikTok e erro de rede, nao de tipo).
  */
 export function normalizarLinkDePublicacao(
   valor: unknown,
+  rede: RedeDeCreator,
   tipo: TipoDePublicacao,
 ): ResultadoDoLink {
   const lido = detectarPublicacao(valor);
   if (!lido.ok) return lido;
+  if (lido.valor.network !== rede) {
+    return {
+      ok: false,
+      code: "post_network_mismatch",
+      rede_detectada: lido.valor.network,
+    };
+  }
   if (lido.valor.kind !== tipo) {
     return {
       ok: false,

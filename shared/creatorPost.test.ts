@@ -16,20 +16,24 @@ import { describe, expect, it } from "vitest";
  * silencio, e o mismatch e afirmado por par (link de X, tipo Y).
  */
 
-import { REDES_DE_CREATOR } from "./creatorProfile";
+import { REDES_DE_CREATOR, type RedeDeCreator } from "./creatorProfile";
 import {
   ehTipoDePublicacao,
   REDES_DE_PUBLICACAO,
+  ROTULO_DO_TIPO,
+  TIPOS_POR_REDE,
+  tipoValidoParaRede,
+  type TipoDePublicacao,
   LIMITE_DE_REGISTROS_POR_DIA,
   normalizarLinkDePublicacao,
   statusInicialDaPublicacao,
-  TIPO_DE_PUBLICACAO_META,
   TIPOS_DE_PUBLICACAO,
 } from "./creatorPost";
 
 const CODIGO_IG = "Cx1AbCdEf_-";
 const ID_TIKTOK = "7311122233344455566";
 const ID_STORY = "3456789012345678901";
+const ID_LINKEDIN = "7371234567890123456";
 
 describe("normalizarLinkDePublicacao: Instagram", () => {
   it("post em todas as formas de colar cai na mesma canonica", () => {
@@ -48,7 +52,7 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
       `https://www.instagram.com/p/${CODIGO_IG}/?igshid=MzRlODBiNWFlZA==`,
       `  https://www.instagram.com/p/${CODIGO_IG}/#comentarios  `,
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "post")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "instagram", "post")).toEqual({
         ok: true,
         valor: esperado,
       });
@@ -65,12 +69,14 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     expect(
       normalizarLinkDePublicacao(
         `https://www.instagram.com/reel/${CODIGO_IG}/`,
+        "instagram",
         "reel",
       ),
     ).toEqual({ ok: true, valor: esperado });
     expect(
       normalizarLinkDePublicacao(
         `https://www.instagram.com/reels/${CODIGO_IG}/`,
+        "instagram",
         "reel",
       ),
     ).toEqual({ ok: true, valor: esperado });
@@ -80,6 +86,7 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     expect(
       normalizarLinkDePublicacao(
         `https://www.instagram.com/ana.cria/p/${CODIGO_IG}/`,
+        "instagram",
         "post",
       ),
     ).toEqual({
@@ -94,6 +101,7 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     expect(
       normalizarLinkDePublicacao(
         `https://www.instagram.com/ana.cria/reel/${CODIGO_IG}/`,
+        "instagram",
         "reel",
       ),
     ).toEqual({
@@ -110,6 +118,7 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
   it("o shortcode mantem maiuscula e minuscula", () => {
     const r = normalizarLinkDePublicacao(
       "https://www.instagram.com/p/AbCdEfGhIjK/",
+      "instagram",
       "post",
     );
     expect(r.ok && r.valor.external_id).toBe("AbCdEfGhIjK");
@@ -130,10 +139,12 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
       `https://instagram.com/stories/ana.cria/${ID_STORY}`,
       `instagram.com/stories/Ana.Cria/${ID_STORY}/?utm_source=ig_story_item_share`,
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "story")).toEqual({
-        ok: true,
-        valor: esperado,
-      });
+      expect(normalizarLinkDePublicacao(entrada, "instagram", "story")).toEqual(
+        {
+          ok: true,
+          valor: esperado,
+        },
+      );
     }
   });
 
@@ -144,10 +155,12 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
       "https://www.instagram.com/stories/ana.cria/12/",
       "https://www.instagram.com/stories/highlights/17900000000000000/",
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "story")).toEqual({
-        ok: false,
-        code: "invalid_post_url",
-      });
+      expect(normalizarLinkDePublicacao(entrada, "instagram", "story")).toEqual(
+        {
+          ok: false,
+          code: "invalid_post_url",
+        },
+      );
     }
   });
 
@@ -159,7 +172,7 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
       "https://www.instagram.com/p/",
       "https://www.instagram.com/explore/tags/tech/",
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "post")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "instagram", "post")).toEqual({
         ok: false,
         code: "invalid_post_url",
       });
@@ -181,7 +194,7 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
       `tiktok.com/@ana.cria/video/${ID_TIKTOK}`,
       `https://www.tiktok.com/@ana.cria/video/${ID_TIKTOK}?is_from_webapp=1&sender_device=pc`,
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "video")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "tiktok", "video")).toEqual({
         ok: true,
         valor: esperado,
       });
@@ -191,6 +204,7 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
   it("o @ do usuario vai para minuscula na canonica", () => {
     const r = normalizarLinkDePublicacao(
       `https://www.tiktok.com/@Ana.Cria/video/${ID_TIKTOK}`,
+      "tiktok",
       "video",
     );
     expect(r.ok && r.valor.url).toBe(
@@ -205,7 +219,7 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
       "https://www.tiktok.com/@ana.cria/video/1",
       "https://www.tiktok.com/video/7311122233344455566",
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "video")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "tiktok", "video")).toEqual({
         ok: false,
         code: "invalid_post_url",
       });
@@ -213,32 +227,55 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
   });
 });
 
-describe("normalizarLinkDePublicacao: tipo escolhido (lote 10b)", () => {
-  const LINK_DE: Record<(typeof TIPOS_DE_PUBLICACAO)[number], string> = {
+describe("normalizarLinkDePublicacao: rede e tipo escolhidos (lotes 10b e 10d)", () => {
+  const REDE_DO_TIPO: Record<TipoDePublicacao, RedeDeCreator> = {
+    post: "instagram",
+    reel: "instagram",
+    story: "instagram",
+    video: "tiktok",
+  };
+  const LINK_DE: Record<TipoDePublicacao, string> = {
     post: `https://www.instagram.com/p/${CODIGO_IG}/`,
     reel: `https://www.instagram.com/reel/${CODIGO_IG}/`,
     story: `https://www.instagram.com/stories/ana.cria/${ID_STORY}/`,
     video: `https://www.tiktok.com/@ana.cria/video/${ID_TIKTOK}`,
   };
+  const LINK_LINKEDIN = `https://www.linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}/`;
 
-  it("cada tipo aceita o proprio link", () => {
+  it("cada tipo aceita o proprio link, na rede que TIPOS_POR_REDE diz", () => {
     for (const tipo of TIPOS_DE_PUBLICACAO) {
-      const r = normalizarLinkDePublicacao(LINK_DE[tipo], tipo);
+      const rede = REDE_DO_TIPO[tipo];
+      expect(TIPOS_POR_REDE[rede]).toContain(tipo);
+      const r = normalizarLinkDePublicacao(LINK_DE[tipo], rede, tipo);
       expect(r.ok && r.valor.kind, tipo).toBe(tipo);
-      expect(r.ok && r.valor.network, tipo).toBe(
-        TIPO_DE_PUBLICACAO_META[tipo].rede,
-      );
+      expect(r.ok && r.valor.network, tipo).toBe(rede);
     }
+    expect(
+      normalizarLinkDePublicacao(LINK_LINKEDIN, "linkedin", "post").ok,
+    ).toBe(true);
   });
 
-  it("link de um tipo com outro escolhido: post_type_mismatch, com o tipo detectado", () => {
-    // Todos os pares (link de X, tipo Y) com X diferente de Y: doze casos, e
-    // nenhum deles e "link invalido", porque o link e bom.
-    for (const doLink of TIPOS_DE_PUBLICACAO) {
-      for (const escolhido of TIPOS_DE_PUBLICACAO) {
+  it("TIPOS_POR_REDE cobre as tres redes e todos os tipos, sem tipo fora da propria rede", () => {
+    expect(Object.keys(TIPOS_POR_REDE).sort()).toEqual(
+      [...REDES_DE_CREATOR].sort(),
+    );
+    expect(TIPOS_POR_REDE.instagram).toEqual(["post", "reel", "story"]);
+    expect(TIPOS_POR_REDE.tiktok).toEqual(["video"]);
+    expect(TIPOS_POR_REDE.linkedin).toEqual(["post"]);
+    expect(tipoValidoParaRede("tiktok", "post")).toBe(false);
+    expect(tipoValidoParaRede("linkedin", "post")).toBe(true);
+    expect(tipoValidoParaRede("instagram", "video")).toBe(false);
+    expect(tipoValidoParaRede("instagram", "carrossel")).toBe(false);
+  });
+
+  it("link de um tipo com outro escolhido NA MESMA rede: post_type_mismatch, com o tipo detectado", () => {
+    // Todos os pares do Instagram (link de X, tipo Y) com X diferente de Y:
+    // seis casos, e nenhum deles e "link invalido", porque o link e bom.
+    for (const doLink of ["post", "reel", "story"] as const) {
+      for (const escolhido of ["post", "reel", "story"] as const) {
         if (doLink === escolhido) continue;
         expect(
-          normalizarLinkDePublicacao(LINK_DE[doLink], escolhido),
+          normalizarLinkDePublicacao(LINK_DE[doLink], "instagram", escolhido),
           `link de ${doLink}, tipo ${escolhido}`,
         ).toEqual({
           ok: false,
@@ -249,13 +286,49 @@ describe("normalizarLinkDePublicacao: tipo escolhido (lote 10b)", () => {
     }
   });
 
-  it("link curto e link invalido vem ANTES do tipo: nao ha tipo para comparar", () => {
+  it("link de OUTRA rede: post_network_mismatch, com a rede detectada, antes de olhar o tipo", () => {
     expect(
-      normalizarLinkDePublicacao("https://vm.tiktok.com/ZMabc1234/", "post"),
+      normalizarLinkDePublicacao(LINK_DE.video, "instagram", "reel"),
+    ).toEqual({
+      ok: false,
+      code: "post_network_mismatch",
+      rede_detectada: "tiktok",
+    });
+    expect(normalizarLinkDePublicacao(LINK_DE.post, "tiktok", "video")).toEqual(
+      {
+        ok: false,
+        code: "post_network_mismatch",
+        rede_detectada: "instagram",
+      },
+    );
+    expect(
+      normalizarLinkDePublicacao(LINK_LINKEDIN, "instagram", "post"),
+    ).toEqual({
+      ok: false,
+      code: "post_network_mismatch",
+      rede_detectada: "linkedin",
+    });
+    expect(
+      normalizarLinkDePublicacao(LINK_DE.story, "linkedin", "post"),
+    ).toEqual({
+      ok: false,
+      code: "post_network_mismatch",
+      rede_detectada: "instagram",
+    });
+  });
+
+  it("link curto e link invalido vem ANTES da rede e do tipo: nao ha o que comparar", () => {
+    expect(
+      normalizarLinkDePublicacao(
+        "https://vm.tiktok.com/ZMabc1234/",
+        "instagram",
+        "post",
+      ),
     ).toEqual({ ok: false, code: "short_link_unsupported" });
     expect(
       normalizarLinkDePublicacao(
         "https://www.instagram.com/ana.cria/",
+        "tiktok",
         "video",
       ),
     ).toEqual({ ok: false, code: "invalid_post_url" });
@@ -270,15 +343,82 @@ describe("normalizarLinkDePublicacao: tipo escolhido (lote 10b)", () => {
     }
   });
 
-  it("a meta tem rotulo e rede para cada tipo, e so o video e do TikTok", () => {
-    expect(Object.keys(TIPO_DE_PUBLICACAO_META).sort()).toEqual(
+  it("ROTULO_DO_TIPO tem rotulo para cada tipo", () => {
+    expect(Object.keys(ROTULO_DO_TIPO).sort()).toEqual(
       [...TIPOS_DE_PUBLICACAO].sort(),
     );
+  });
+});
+
+describe("normalizarLinkDePublicacao: LinkedIn (lote 10d)", () => {
+  it("as formas do botao Copiar link caem na mesma canonica, com o tipo do urn no external_id", () => {
+    const esperado = {
+      network: "linkedin",
+      kind: "post",
+      external_id: `activity:${ID_LINKEDIN}`,
+      url: `https://www.linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}/`,
+    };
+    for (const entrada of [
+      `https://www.linkedin.com/posts/ana-cria_bora-na-tech-activity-${ID_LINKEDIN}-Ab3C?utm_source=share&utm_medium=member_desktop`,
+      `https://www.linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}/`,
+      `linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}`,
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "linkedin", "post"),
+        entrada,
+      ).toEqual({
+        ok: true,
+        valor: esperado,
+      });
+    }
+  });
+
+  it("share e ugcPost sao espacos de id DISTINTOS de activity", () => {
+    const share = normalizarLinkDePublicacao(
+      `https://www.linkedin.com/feed/update/urn:li:share:${ID_LINKEDIN}/`,
+      "linkedin",
+      "post",
+    );
+    expect(share.ok && share.valor.external_id).toBe(`share:${ID_LINKEDIN}`);
+    expect(share.ok && share.valor.url).toBe(
+      `https://www.linkedin.com/feed/update/urn:li:share:${ID_LINKEDIN}/`,
+    );
+    const ugc = normalizarLinkDePublicacao(
+      `https://www.linkedin.com/feed/update/urn:li:ugcPost:${ID_LINKEDIN}/`,
+      "linkedin",
+      "post",
+    );
+    expect(ugc.ok && ugc.valor.external_id).toBe(`ugcPost:${ID_LINKEDIN}`);
+  });
+
+  it("lnkd.in e link curto SEM resolvedor; artigo, perfil, empresa e id curto sao invalidos", () => {
     expect(
-      TIPOS_DE_PUBLICACAO.filter(
-        (t) => TIPO_DE_PUBLICACAO_META[t].rede === "tiktok",
+      normalizarLinkDePublicacao(
+        "https://lnkd.in/dAbC123x",
+        "linkedin",
+        "post",
       ),
-    ).toEqual(["video"]);
+    ).toEqual({ ok: false, code: "short_link_unsupported" });
+    for (const entrada of [
+      "https://www.linkedin.com/pulse/como-entrar-em-ti-ana-cria-abc1/",
+      "https://www.linkedin.com/in/ana-cria/",
+      "https://www.linkedin.com/company/boranatech/",
+      "https://www.linkedin.com/feed/update/urn:li:activity:123/",
+      "https://www.linkedin.com/feed/update/urn:li:comment:7123456789012345678/",
+      "https://www.linkedin.com/posts/ana-cria_activity-abc-xyz",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "linkedin", "post"),
+        entrada,
+      ).toEqual({
+        ok: false,
+        code: "invalid_post_url",
+      });
+    }
+  });
+
+  it("post do LinkedIn nasce pendente, como o do Instagram", () => {
+    expect(statusInicialDaPublicacao("post")).toBe("pendente");
   });
 });
 
@@ -302,7 +442,7 @@ describe("normalizarLinkDePublicacao: recusas", () => {
       "tiktok.com/t/ZTabc123",
       `https://instagr.am/p/${CODIGO_IG}/`,
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "video")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "tiktok", "video")).toEqual({
         ok: false,
         code: "short_link_unsupported",
       });
@@ -321,7 +461,7 @@ describe("normalizarLinkDePublicacao: recusas", () => {
       undefined,
       42,
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "post")).toEqual({
+      expect(normalizarLinkDePublicacao(entrada, "instagram", "post")).toEqual({
         ok: false,
         code: "invalid_post_url",
       });

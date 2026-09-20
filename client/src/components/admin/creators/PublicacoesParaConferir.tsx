@@ -10,10 +10,7 @@ import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { adminFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import { rotuloDaRede } from "@shared/creatorProfile";
-import {
-  TIPO_DE_PUBLICACAO_META,
-  type TipoDePublicacao,
-} from "@shared/creatorPost";
+import { ROTULO_DO_TIPO } from "@shared/creatorPost";
 
 // PUBLICACOES PARA CONFERIR (lote 10b): as pendentes de TODOS os creators,
 // mais antigas primeiro, no topo da aba Creators. Confirmar e o que faz a
@@ -54,14 +51,10 @@ type Estado =
 
 /** Rotulo do tipo pelo shared; tipo desconhecido vira "publicação". */
 function rotuloDoTipo(tipo: string): string {
-  const meta = (
-    TIPO_DE_PUBLICACAO_META as Record<
-      string,
-      (typeof TIPO_DE_PUBLICACAO_META)[TipoDePublicacao] | undefined
-    >
-  )[tipo];
   // TODO(Ana)
-  return meta ? meta.rotulo : "publicação";
+  return (
+    (ROTULO_DO_TIPO as Record<string, string | undefined>)[tipo] ?? "publicação"
+  );
 }
 
 /** Nome do dono; sem nome, o @; sem os dois, um rotulo neutro. */

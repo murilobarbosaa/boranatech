@@ -122,7 +122,11 @@ export async function resolverLinkCurtoDoTikTok(
       return NAO_RESOLVIDO;
     }
 
-    const lido = normalizarLinkDePublicacao(destino.toString(), "video");
+    const lido = normalizarLinkDePublicacao(
+      destino.toString(),
+      "tiktok",
+      "video",
+    );
     if (lido.ok) return lido;
     // Ainda nao e a forma final (ex.: `tiktok.com/t/` mandando para `vm.`, ou
     // um intermediario do proprio TikTok): mais um salto, e so mais um.

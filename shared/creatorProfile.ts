@@ -20,9 +20,10 @@ import { validateEmailForSending } from "./emailValidation";
  * listas iguais, esta e `REDES_DE_PUBLICACAO` em creatorPost.ts, e duas listas
  * da mesma coisa divergem na primeira rede nova. O LinkedIn foi a primeira:
  * creatorPost.ts agora reexporta esta. As CHECKs de `network` nas tabelas
- * creator_posts e creator_calendar_events sao a mesma lista.
+ * creator_posts e creator_calendar_events sao a mesma lista
+ * (20260919100000_creator_linkedin_network.sql).
  */
-export const REDES_DE_CREATOR = ["instagram", "tiktok"] as const;
+export const REDES_DE_CREATOR = ["instagram", "tiktok", "linkedin"] as const;
 export type RedeDeCreator = (typeof REDES_DE_CREATOR)[number];
 
 export function ehRedeDeCreator(valor: unknown): valor is RedeDeCreator {
@@ -36,6 +37,7 @@ export function ehRedeDeCreator(valor: unknown): valor is RedeDeCreator {
 export const ROTULO_DA_REDE: Record<RedeDeCreator, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
+  linkedin: "LinkedIn",
 };
 
 /**
@@ -158,6 +160,10 @@ export type CreatorPerfilDados = {
 const HANDLE_RE: Record<RedeDeCreator, RegExp> = {
   instagram: /^[a-z0-9._]{1,30}$/,
   tiktok: /^[a-z0-9._]{2,24}$/,
+  // O slug publico do LinkedIn (`linkedin.com/in/<slug>`): de 3 a 100, letras,
+  // digitos e hifen. Ninguem grava handle do LinkedIn neste lote (o perfil
+  // fica para depois); a entrada existe porque o Record e por rede.
+  linkedin: /^[a-z0-9-]{3,100}$/,
 };
 
 // Prefixo de URL que a pessoa cola no lugar do @. Com e sem protocolo, com e
@@ -165,11 +171,13 @@ const HANDLE_RE: Record<RedeDeCreator, RegExp> = {
 const PREFIXO_DE_URL: Record<RedeDeCreator, RegExp> = {
   instagram: /^(?:https?:\/\/)?(?:www\.)?instagram\.com\//i,
   tiktok: /^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@/i,
+  linkedin: /^(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\//i,
 };
 
 export type CodigoDeHandle =
   | "invalid_instagram_handle"
-  | "invalid_tiktok_handle";
+  | "invalid_tiktok_handle"
+  | "invalid_linkedin_handle";
 
 /**
  * @ da rede, normalizado: sem espacos, sem prefixo de URL, sem barra final, sem
@@ -195,7 +203,8 @@ export function normalizarHandle(
 
 export type CodigoDeSeguidores =
   | "invalid_instagram_followers"
-  | "invalid_tiktok_followers";
+  | "invalid_tiktok_followers"
+  | "invalid_linkedin_followers";
 
 /**
  * Seguidores declarados: inteiro de 0 a `SEGUIDORES_MAX`, ou `null`. Texto e
