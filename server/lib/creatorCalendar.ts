@@ -8,6 +8,7 @@ import {
   limitesDoMes,
   normalizarMensagemDeCollab,
   normalizarNota,
+  podePedirCollab,
   validarDataDeMarcacao,
   type CodigoDaData,
   type CodigoDaMensagem,
@@ -145,6 +146,7 @@ export type CodigoDoPedido =
   | CodigoDaMensagem
   | "event_not_found"
   | "own_event"
+  | "collab_event_in_past"
   | "collab_already_requested"
   | "collab_daily_limit";
 
@@ -562,6 +564,7 @@ export async function pedirCollab(
   requesterId: string,
   eventId: string,
   mensagem: unknown,
+  hoje: string,
   agora: Date = new Date(),
 ): Promise<
   Resultado<
@@ -577,16 +580,24 @@ export async function pedirCollab(
 
   const ownerId = textoDe(linhaDaMarcacao.user_id, "user_id");
   if (ownerId === requesterId) return { ok: false, code: "own_event" };
+  // Collab so de hoje em diante (lote 10d): com o piso retroativo da
+  // marcacao, a de um dia passado e registro, e pedir collab nela nao faz
+  // sentido. Conferido AQUI, e nao so escondendo o botao no client.
+  if (
+    !podePedirCollab(textoDe(linhaDaMarcacao.event_date, "event_date"), hoje)
+  ) {
+    return { ok: false, code: "collab_event_in_past" };
+  }
 
   const { inicio, fim } = janelaDoDia(agora);
-  const hoje = await supabaseAdmin
+  const pedidosDeHoje = await supabaseAdmin
     .from("creator_collab_requests")
     .select("id", { count: "exact", head: true })
     .eq("requester_id", requesterId)
     .gte("created_at", inicio)
     .lt("created_at", fim);
-  if (hoje.error) throw erroEncadeavel(hoje.error);
-  if ((hoje.count ?? 0) >= LIMITE_DE_PEDIDOS_POR_DIA) {
+  if (pedidosDeHoje.error) throw erroEncadeavel(pedidosDeHoje.error);
+  if ((pedidosDeHoje.count ?? 0) >= LIMITE_DE_PEDIDOS_POR_DIA) {
     return { ok: false, code: "collab_daily_limit" };
   }
 

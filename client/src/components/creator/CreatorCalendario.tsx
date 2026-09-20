@@ -29,6 +29,8 @@ import {
   normalizarMensagemDeCollab,
   normalizarNota,
   NOTA_MAX,
+  podePedirCollab,
+  PRIMEIRO_DIA_MARCAVEL,
   validarDataDeMarcacao,
   type DiaDaGrade,
 } from "@shared/creatorCalendar";
@@ -371,7 +373,7 @@ export function CreatorCalendario() {
         // TODO(Ana)
         data.code === "invalid_date"
           ? "Data inválida."
-          : `Escolha um dia entre hoje e os próximos 90 dias.`,
+          : `Escolha um dia entre ${formatarDiaCivil(PRIMEIRO_DIA_MARCAVEL) ?? PRIMEIRO_DIA_MARCAVEL} e os próximos 90 dias.`,
       );
       return;
     }
@@ -744,6 +746,10 @@ export function CreatorCalendario() {
                 // o chip do status no lugar, e o botao NAO volta nem depois
                 // de recusa: pedir de novo e o 409 do servidor.
                 const meuPedido = marcacao.meu_pedido ?? null;
+                // Dia que ja passou (lote 10d): a marcacao e registro do que
+                // saiu, e nao ha collab a combinar; o servidor recusa com
+                // `collab_event_in_past`, e aqui o botao nem aparece.
+                const passado = !podePedirCollab(marcacao.event_date, hoje);
                 return (
                   <li
                     key={marcacao.id}
@@ -790,7 +796,17 @@ export function CreatorCalendario() {
                         <Trash2 aria-hidden="true" className="h-4 w-4" />
                       </button>
                     ) : null}
+                    {deOutro && passado && meuPedido === null ? (
+                      <span
+                        data-testid={`creator-collab-passado-${marcacao.id}`}
+                        className="ml-auto shrink-0 rounded-full border-2 border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-600"
+                      >
+                        {/* TODO(Ana) */}
+                        Publicado
+                      </span>
+                    ) : null}
                     {deOutro &&
+                    !passado &&
                     meuPedido === null &&
                     pedindo !== marcacao.id ? (
                       <button
@@ -813,6 +829,7 @@ export function CreatorCalendario() {
                       />
                     ) : null}
                     {deOutro &&
+                    !passado &&
                     meuPedido === null &&
                     pedindo === marcacao.id ? (
                       <span className="flex w-full flex-wrap items-center gap-2">
@@ -911,7 +928,7 @@ export function CreatorCalendario() {
               className="border-t-2 border-dashed border-slate-300 pt-3 text-sm font-semibold text-slate-600"
             >
               {/* TODO(Ana) */}
-              Dá para marcar de hoje até os próximos 90 dias.
+              {`Dá para marcar de ${formatarDiaCivil(PRIMEIRO_DIA_MARCAVEL) ?? PRIMEIRO_DIA_MARCAVEL} até os próximos 90 dias.`}
             </p>
           )}
 

@@ -1746,19 +1746,37 @@ describe("POST /api/creator/calendar", () => {
     ]);
   });
 
-  it("dia que ja passou: 400 date_out_of_window, nada gravado", async () => {
+  it("dia antes do piso (12/09/2026): 400 date_out_of_window, nada gravado; ontem, no piso, passa", async () => {
     montar({
       creators: concessaoAtiva(),
       creator_calendar_events: { rows: [] },
     });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/calendar", {
-      event_date: DIA_PASSADO,
+      event_date: "2026-09-12",
       network: "instagram",
     });
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("date_out_of_window");
     expect(escritasEm("creator_calendar_events")).toHaveLength(0);
+
+    // Ontem, e o proprio piso: marcaveis (lote 10d, janela retroativa).
+    for (const dia of [DIA_PASSADO, "2026-09-13"]) {
+      montar({
+        creators: concessaoAtiva(),
+        creator_calendar_events: (c) =>
+          c.op === "upsert"
+            ? { rows: [{ ...MARCACAO, event_date: dia }] }
+            : { rows: [] },
+        profiles: perfis(),
+      });
+      estado.usuario = USUARIO;
+      const ok = await chamar("POST", "/calendar", {
+        event_date: dia,
+        network: "instagram",
+      });
+      expect(ok.status, dia).toBe(201);
+    }
   });
 
   it("dia alem da janela de 90 dias: 400 date_out_of_window", async () => {
@@ -1873,6 +1891,24 @@ describe("DELETE /api/creator/calendar/:id", () => {
 });
 
 describe("POST /api/creator/calendar/:id/collab", () => {
+  it("marcacao de dia passado (lote 10d): 400 collab_event_in_past, nada gravado nem avisado", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: {
+        rows: [{ ...MARCACAO_DE_OUTRO, event_date: DIA_PASSADO }],
+      },
+      creator_collab_requests: { rows: [] },
+      profiles: perfis(),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", `/calendar/${EVENTO_ID}/collab`, {
+      message: "bora?",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("collab_event_in_past");
+    expect(escritasEm("creator_collab_requests")).toHaveLength(0);
+  });
+
   it("pede collab e grava o dono VINDO DA MARCACAO, nao do corpo", async () => {
     montar({
       creators: concessaoAtiva(),

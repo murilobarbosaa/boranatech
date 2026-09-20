@@ -34,6 +34,15 @@ export const MENSAGEM_MAX = 300;
 export const JANELA_DE_DIAS = 90;
 
 /**
+ * PISO da marcacao (lote 10d): o primeiro dia que pode ser marcado, em dia
+ * civil de Brasilia. O calendario entrou no ar em 16/09/2026 e os creators ja
+ * publicavam antes; o piso libera o registro do que ja saiu, para o mes nao
+ * ficar pela metade. E uma constante, e nao "hoje", de proposito: num lote
+ * futuro ela sobe para o dia corrente trocando este valor, e mais nada.
+ */
+export const PRIMEIRO_DIA_MARCAVEL = "2026-09-13";
+
+/**
  * Teto de pedidos de collab por dia, por creator.
  *
  * Mesmo motivo do teto de publicacoes do lote 09: sem ele, pedir collab em
@@ -78,12 +87,13 @@ export function normalizarMensagemDeCollab(
 }
 
 /**
- * Data de uma marcacao: de HOJE ate hoje mais `JANELA_DE_DIAS`, em dia civil de
- * Brasilia (quem chama passa o `hoje` ja resolvido por `diaBrasilia`).
+ * Data de uma marcacao: de `PRIMEIRO_DIA_MARCAVEL` ate hoje mais
+ * `JANELA_DE_DIAS`, em dia civil de Brasilia (quem chama passa o `hoje` ja
+ * resolvido por `diaBrasilia`). Ate o lote 10c o piso era o proprio hoje.
  *
- * Passado e recusado com codigo PROPRIO (`date_out_of_window`), separado do
- * formato invalido: a tela diz "esse dia ja passou", que e outra conversa de
- * "essa data nao existe".
+ * Fora da janela e recusado com codigo PROPRIO (`date_out_of_window`),
+ * separado do formato invalido: a tela diz "esse dia esta fora da janela",
+ * que e outra conversa de "essa data nao existe".
  */
 export function validarDataDeMarcacao(
   valor: unknown,
@@ -97,10 +107,24 @@ export function validarDataDeMarcacao(
   }
   // Comparacao de string funciona em AAAA-MM-DD, e e a unica que nao passa por
   // fuso nenhum.
-  if (valor < hoje) return { ok: false, code: "date_out_of_window" };
+  if (valor < PRIMEIRO_DIA_MARCAVEL) {
+    return { ok: false, code: "date_out_of_window" };
+  }
   const limite = somarDiaCivil(hoje, JANELA_DE_DIAS);
   if (valor > limite) return { ok: false, code: "date_out_of_window" };
   return { ok: true, valor };
+}
+
+/**
+ * Collab so de hoje em diante (lote 10d): a marcacao de um dia que ja passou
+ * e registro do que foi publicado, e nao ha o que combinar nela. A mesma
+ * comparacao de string das datas de marcacao.
+ */
+export function podePedirCollab(eventDate: string, hoje: string): boolean {
+  if (!DIA_RE.test(hoje)) {
+    throw new Error(`podePedirCollab: hoje invalido ("${hoje}")`);
+  }
+  return eventDate >= hoje;
 }
 
 /** Um quadrado da grade: o dia e se ele pertence ao mes desenhado. */

@@ -777,3 +777,46 @@ describe("CreatorCalendario: marcadores de cor", () => {
     );
   });
 });
+
+// JANELA RETROATIVA (lote 10d): dias entre 13/09/2026 e ontem sao marcaveis,
+// e a marcacao de um dia passado nao oferece collab.
+describe("CreatorCalendario: janela retroativa", () => {
+  it("dia passado: a marcacao de outro mostra 'Publicado' no lugar do Pedir collab, e o formulario de marcar aparece", async () => {
+    const ONTEM = somarDiaCivil(HOJE, -1);
+    responderCom([{ ...DE_OUTRO, event_date: ONTEM }]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-calendario");
+    fireEvent.click(screen.getByTestId(`creator-dia-${ONTEM}`));
+    const linha = await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    expect(
+      within(linha).getByTestId(`creator-collab-passado-${DE_OUTRO.id}`)
+        .textContent,
+    ).toBe("Publicado");
+    expect(
+      screen.queryByTestId(`creator-collab-pedir-${DE_OUTRO.id}`),
+    ).toBeNull();
+    // Ontem esta dentro do piso: da para marcar o que ja saiu.
+    expect(screen.getByTestId("creator-marcar-dia")).toBeTruthy();
+    expect(screen.queryByTestId("creator-dia-fora-da-janela")).toBeNull();
+  });
+
+  it("antes do piso: sem formulario, com a frase da janela", async () => {
+    responderCom([]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-calendario");
+    // Navega ate setembro de 2026 e clica no dia 12, que fica fora do piso.
+    // O mes corrente do teste e o real; ir para tras ate 2026-09 mantem o
+    // teste valido enquanto o piso for 13/09/2026.
+    const alvo = "2026-09-12";
+    let protecao = 0;
+    while (!screen.queryByTestId(`creator-dia-${alvo}`) && protecao < 36) {
+      fireEvent.click(screen.getByTestId("creator-calendario-anterior"));
+      protecao += 1;
+    }
+    fireEvent.click(screen.getByTestId(`creator-dia-${alvo}`));
+    expect(
+      screen.getByTestId("creator-dia-fora-da-janela").textContent,
+    ).toContain("13/09/2026");
+    expect(screen.queryByTestId("creator-marcar-dia")).toBeNull();
+  });
+});

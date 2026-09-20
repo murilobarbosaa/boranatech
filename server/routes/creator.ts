@@ -7,6 +7,7 @@ import {
   MENSAGEM_MAX,
   NOTA_MAX,
   parseMesDoCalendario,
+  PRIMEIRO_DIA_MARCAVEL,
 } from "../../shared/creatorCalendar";
 import {
   LIMITE_DE_REGISTROS_POR_DIA,
@@ -431,7 +432,7 @@ const STATUS_DA_MARCACAO: Record<CodigoDeMarcacao, number> = {
 // TODO(Ana)
 const MENSAGEM_DA_MARCACAO: Record<CodigoDeMarcacao, string> = {
   invalid_date: "Data inválida.",
-  date_out_of_window: `Escolha um dia entre hoje e os próximos ${JANELA_DE_DIAS} dias.`,
+  date_out_of_window: `Escolha um dia entre ${formatarDiaCivil(PRIMEIRO_DIA_MARCAVEL) ?? PRIMEIRO_DIA_MARCAVEL} e os próximos ${JANELA_DE_DIAS} dias.`,
   invalid_note: `O assunto pode ter até ${NOTA_MAX} caracteres.`,
   invalid_network: "Escolha ao menos uma rede: Instagram, TikTok ou LinkedIn.",
   event_already_marked: "Você já marcou esse dia nessa rede.",
@@ -441,6 +442,7 @@ const STATUS_DO_PEDIDO: Record<CodigoDoPedido, number> = {
   invalid_message: 400,
   event_not_found: 404,
   own_event: 400,
+  collab_event_in_past: 400,
   collab_already_requested: 409,
   collab_daily_limit: 429,
 };
@@ -450,6 +452,7 @@ const MENSAGEM_DO_PEDIDO: Record<CodigoDoPedido, string> = {
   invalid_message: `O recado pode ter até ${MENSAGEM_MAX} caracteres.`,
   event_not_found: "Essa marcação não existe mais.",
   own_event: "Essa marcação é sua. Peça collab na de outro creator.",
+  collab_event_in_past: "Esse dia já passou: collab só de hoje em diante.",
   collab_already_requested: "Você já pediu collab nessa marcação.",
   // O numero sai da constante: mensagem com o teto escrito a mao diverge da
   // regra na primeira vez que alguem mudar o teto.
@@ -706,7 +709,12 @@ router.post("/calendar/:id/collab", requireCreator, async (req, res, next) => {
   const corpo: Record<string, unknown> =
     typeof req.body === "object" && req.body !== null ? req.body : {};
   try {
-    const pedido = await pedirCollab(req.user!.id, id, corpo.message);
+    const pedido = await pedirCollab(
+      req.user!.id,
+      id,
+      corpo.message,
+      hojeEmBrasilia(),
+    );
     if (!pedido.ok) {
       return next(
         createError(

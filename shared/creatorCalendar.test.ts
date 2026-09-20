@@ -19,6 +19,8 @@ import {
   normalizarNota,
   NOTA_MAX,
   parseMesDoCalendario,
+  podePedirCollab,
+  PRIMEIRO_DIA_MARCAVEL,
   validarDataDeMarcacao,
 } from "./creatorCalendar";
 
@@ -91,8 +93,17 @@ describe("validarDataDeMarcacao", () => {
     expect(JANELA_DE_DIAS).toBe(90);
   });
 
-  it("ontem tem codigo PROPRIO, diferente de data invalida", () => {
+  it("o piso e 13/09/2026 (lote 10d): 13/09 e ontem passam, 12/09 tem codigo PROPRIO, diferente de data invalida", () => {
+    expect(PRIMEIRO_DIA_MARCAVEL).toBe("2026-09-13");
+    expect(validarDataDeMarcacao("2026-09-13", HOJE)).toEqual({
+      ok: true,
+      valor: "2026-09-13",
+    });
     expect(validarDataDeMarcacao("2026-09-15", HOJE)).toEqual({
+      ok: true,
+      valor: "2026-09-15",
+    });
+    expect(validarDataDeMarcacao("2026-09-12", HOJE)).toEqual({
       ok: false,
       code: "date_out_of_window",
     });
@@ -106,6 +117,18 @@ describe("validarDataDeMarcacao", () => {
 
   it("hoje invalido LANCA: e erro de quem chama, nao do usuario", () => {
     expect(() => validarDataDeMarcacao("2026-09-20", "16/09/2026")).toThrow();
+  });
+});
+
+describe("podePedirCollab (lote 10d)", () => {
+  it("so de hoje em diante: ontem nao, hoje e amanha sim", () => {
+    expect(podePedirCollab("2026-09-15", HOJE)).toBe(false);
+    expect(podePedirCollab(HOJE, HOJE)).toBe(true);
+    expect(podePedirCollab("2026-09-17", HOJE)).toBe(true);
+  });
+
+  it("hoje invalido LANCA", () => {
+    expect(() => podePedirCollab("2026-09-20", "16/09/2026")).toThrow();
   });
 });
 
