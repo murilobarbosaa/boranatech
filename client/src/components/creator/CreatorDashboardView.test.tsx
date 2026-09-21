@@ -71,6 +71,7 @@ const ZERO = {
   clicks: 0,
   checkouts: 0,
   sales: 0,
+  signups: 0,
   revenue_cents: 0,
   commission_cents: 0,
 };
@@ -133,6 +134,7 @@ function painelBase(): CreatorDashboard {
           clicks: 5,
           checkouts: 0,
           sales: 1,
+          signups: 0,
           revenue_cents: 2093,
           commission_cents: 628,
         },
@@ -146,6 +148,7 @@ function painelBase(): CreatorDashboard {
         clicks: 7,
         checkouts: 0,
         sales: 1,
+        signups: 0,
         revenue_cents: 2093,
         commission_cents: 628,
       },
@@ -711,13 +714,13 @@ describe("CreatorDashboardView: forma do admin", () => {
     expect(h3.closest("section")?.className).toContain("card-surface");
   });
 
-  it("os quatro blocos do periodo tem a forma do bloco interno do admin", () => {
+  it("os cinco blocos do periodo tem a forma do bloco interno do admin", () => {
     desenhar(painelBase());
     const blocos = Array.from(
       screen.getByTestId("creator-periodo").children,
     ).map((bloco) => bloco.className);
     expect(blocos).toEqual(
-      Array(4).fill("rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"),
+      Array(5).fill("rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"),
     );
   });
 });

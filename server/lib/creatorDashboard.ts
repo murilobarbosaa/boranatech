@@ -239,6 +239,7 @@ function somasZeradas(): CreatorEventosSomas {
     clicks: 0,
     checkouts: 0,
     sales: 0,
+    signups: 0,
     revenue_cents: 0,
     commission_cents: 0,
   };
@@ -256,6 +257,9 @@ function acumular(alvo: CreatorEventosSomas, linha: LinhaDiaria) {
       return;
     case "checkout":
       alvo.checkouts += linha.quantidade;
+      return;
+    case "signup":
+      alvo.signups += linha.quantidade;
       return;
     case "sale":
       alvo.sales += linha.quantidade;

@@ -136,6 +136,8 @@ export type CreatorEventosSomas = {
   clicks: number;
   checkouts: number;
   sales: number;
+  /** Cadastros pelo link (lote 11i). */
+  signups: number;
   revenue_cents: number;
   commission_cents: number;
 };

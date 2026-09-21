@@ -200,6 +200,9 @@ export function RankingDoCreator({
               <span className={CHIP}>{`${linha.contagens.vendas} vendas`}</span>
               <span
                 className={CHIP}
+              >{`${linha.contagens.cadastros ?? 0} cadastros`}</span>
+              <span
+                className={CHIP}
               >{`${linha.contagens.cliques} cliques`}</span>
             </p>
           )}

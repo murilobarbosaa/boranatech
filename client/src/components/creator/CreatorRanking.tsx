@@ -7,6 +7,7 @@ import {
   Send,
   ShoppingBag,
   Trophy,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
@@ -162,12 +163,16 @@ function nomeDeExibicao(p: PosicaoDoRanking): string {
 function fraseDasContagens(p: PosicaoDoRanking): string {
   const partes: string[] = [];
   const { publicacoes, vendas, cliques } = p.contagens;
+  // O backend anterior ao lote 11i nao manda cadastros: zero e "nenhum".
+  const cadastros = p.contagens.cadastros ?? 0;
   if (publicacoes > 0) {
     partes.push(
       `${publicacoes} ${publicacoes === 1 ? "publicação" : "publicações"}`,
     );
   }
   if (vendas > 0) partes.push(`${vendas} ${vendas === 1 ? "venda" : "vendas"}`);
+  if (cadastros > 0)
+    partes.push(`${cadastros} ${cadastros === 1 ? "cadastro" : "cadastros"}`);
   if (cliques > 0)
     partes.push(`${cliques} ${cliques === 1 ? "clique" : "cliques"}`);
   return partes.join(", ");
@@ -400,6 +405,12 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
                 <span className={CHIP}>
                   <ShoppingBag aria-hidden="true" className="h-3 w-3" />
                   {p.contagens.vendas}
+                </span>
+              ) : null}
+              {(p.contagens.cadastros ?? 0) > 0 ? (
+                <span className={CHIP}>
+                  <UserPlus aria-hidden="true" className="h-3 w-3" />
+                  {p.contagens.cadastros}
                 </span>
               ) : null}
               {p.contagens.cliques > 0 ? (

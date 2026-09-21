@@ -478,17 +478,19 @@ function Serie({
   );
   const anterior = comDelta ? eventos.periodo_anterior : null;
 
-  // A LEGENDA DA JANELA em cada caixa (lote 11g). Os quatro numeros sempre
+  // A LEGENDA DA JANELA em cada caixa (lote 11g). Os numeros do rodape sempre
   // foram a soma da janela escolhida (o servidor filtra a serie por ela), mas
   // sem dizer isso ao lado de um cartao "desde o inicio" com outro numero eles
   // pareciam contradizer o cartao. Em "Tudo" a legenda e o marco de cada
   // serie: cliques desde o inicio da medicao, vendas e receita desde a
-  // primeira venda (que pode ser anterior, pelas vendas reconstruidas).
+  // primeira venda (que pode ser anterior, pelas vendas reconstruidas). Os
+  // cadastros (lote 11i) seguem o marco de cliques: nasceram depois dele e
+  // nao tem reconstrucao para tras.
   // TODO(Ana)
   const legendaDaJanela = (chave: keyof CreatorEventosSomas): string => {
     if (janela !== "all") return `nos últimos ${DIAS_DA_JANELA[janela]} dias`;
     const marco =
-      chave === "clicks" || chave === "checkouts"
+      chave === "clicks" || chave === "checkouts" || chave === "signups"
         ? clicksSince
         : (salesSince ?? clicksSince);
     return marco ? `desde ${dataCurta(marco)}` : "desde o início";
@@ -521,6 +523,13 @@ function Serie({
     },
     // TODO(Ana)
     { chave: "sales", rotulo: "Vendas", valor: inteiro(eventos.periodo.sales) },
+    {
+      chave: "signups",
+      // TODO(Ana)
+      rotulo: "Cadastros",
+      // O backend anterior ao lote 11i nao manda o campo: zero, nao NaN.
+      valor: inteiro(eventos.periodo.signups ?? 0),
+    },
     {
       chave: "revenue_cents",
       // TODO(Ana)
@@ -569,7 +578,7 @@ function Serie({
 
       <dl
         data-testid="creator-periodo"
-        className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${
+        className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${
           carregando ? "opacity-50" : ""
         }`}
       >

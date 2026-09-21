@@ -164,6 +164,7 @@ async function lerContagens(
       li_posts: numeroDe(l.li_posts, "li_posts"),
       vendas: numeroDe(l.vendas, "vendas"),
       cliques: numeroDe(l.cliques, "cliques"),
+      cadastros: numeroDe(l.cadastros, "cadastros"),
     });
   }
   return mapa;
@@ -229,6 +230,7 @@ export async function montarRanking(
         publicacoes: c.publicacoes,
         vendas: c.vendas,
         cliques: c.contagem.cliques,
+        cadastros: c.contagem.cadastros,
       },
       eu: false,
     };

@@ -54,7 +54,7 @@ function posicao(
     avatar_url: null,
     calendar_color: "violet",
     pontos,
-    contagens: { publicacoes: 0, vendas: 0, cliques: 0 },
+    contagens: { publicacoes: 0, vendas: 0, cliques: 0, cadastros: 0 },
     eu,
     ...extra,
   };

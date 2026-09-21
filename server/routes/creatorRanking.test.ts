@@ -260,8 +260,15 @@ beforeEach(() => {
       vendas: 1,
       cliques: 30,
     },
-    // Caio: 1 video (15) + 1 post LinkedIn (10) = 25.
-    { user_id: CAIO, ...CONTAGENS_ZERADAS, videos: 1, li_posts: 1 },
+    // Caio: 1 video (15) + 1 post LinkedIn (10) + 2 cadastros pelo link
+    // (40, lote 11i) = 65.
+    {
+      user_id: CAIO,
+      ...CONTAGENS_ZERADAS,
+      videos: 1,
+      li_posts: 1,
+      cadastros: 2,
+    },
     // Quem saiu do programa pontuou, e NAO entra na lista.
     { user_id: SAIU, ...CONTAGENS_ZERADAS, vendas: 5 },
     // O influencer pontuou, e NAO entra na lista (lote 11b).
@@ -336,7 +343,7 @@ describe("montarRanking", () => {
       // Empate 155 x 155 e 1 venda x 1 venda: Bia tem mais publicacoes.
       [1, BIA, 155],
       [2, ANA, 155],
-      [3, CAIO, 25],
+      [3, CAIO, 65],
       // Duda esta ativa e nao pontuou: fim da lista, zero.
       [4, DUDA, 0],
     ]);
@@ -370,7 +377,7 @@ describe("montarRanking", () => {
         border: "classic",
       },
       calendar_color: "cyan",
-      contagens: { publicacoes: 3, vendas: 1, cliques: 30 },
+      contagens: { publicacoes: 3, vendas: 1, cliques: 30, cadastros: 0 },
       eu: false,
     });
     // O primeiro @ cadastrado e o do Instagram.
@@ -384,7 +391,7 @@ describe("montarRanking", () => {
         border: "pro-holo",
       },
       calendar_color: "rose",
-      contagens: { publicacoes: 1, vendas: 1, cliques: 40 },
+      contagens: { publicacoes: 1, vendas: 1, cliques: 40, cadastros: 0 },
     });
     // Sem perfil de creator: o @ da conta, rede nula, cor padrao.
     expect(caio).toMatchObject({
@@ -392,6 +399,8 @@ describe("montarRanking", () => {
       handle: "caio",
       rede_do_handle: null,
       calendar_color: "violet",
+      pontos: 65,
+      contagens: { publicacoes: 2, vendas: 0, cliques: 0, cadastros: 2 },
       avatar: {
         mode: "icon",
         avatar_url: null,
@@ -433,7 +442,7 @@ describe("montarRanking", () => {
           avatar_url: null,
           calendar_color: "violet",
           pontos: 10,
-          contagens: { publicacoes: 1, vendas: 0, cliques: 0 },
+          contagens: { publicacoes: 1, vendas: 0, cliques: 0, cadastros: 0 },
           eu: false,
         },
         {
@@ -445,7 +454,7 @@ describe("montarRanking", () => {
           avatar_url: null,
           calendar_color: "violet",
           pontos: 0,
-          contagens: { publicacoes: 0, vendas: 0, cliques: 0 },
+          contagens: { publicacoes: 0, vendas: 0, cliques: 0, cadastros: 0 },
           eu: false,
         },
       ],

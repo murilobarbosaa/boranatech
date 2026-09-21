@@ -1226,6 +1226,7 @@ describe("GET /creators/ranking (lote 11c)", () => {
       li_posts: 0,
       vendas: 1,
       cliques: 10,
+      cadastros: 2,
     },
     {
       user_id: ELI,
@@ -1236,6 +1237,7 @@ describe("GET /creators/ranking (lote 11c)", () => {
       li_posts: 0,
       vendas: 9,
       cliques: 0,
+      cadastros: 0,
     },
   ];
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -1275,8 +1277,8 @@ describe("GET /creators/ranking (lote 11c)", () => {
         }) => [p.posicao, p.user_id, p.pontos, p.eu],
       ),
     ).toEqual([
-      // 1 reel (15) + 1 venda (100) + 10 cliques (10).
-      [1, UID, 125, false],
+      // 1 reel (15) + 1 venda (100) + 10 cliques (10) + 2 cadastros (40).
+      [1, UID, 165, false],
       [2, BIA, 0, false],
     ]);
     expect(r.body.data.posicoes[0].handle).toBe("ana.cria");

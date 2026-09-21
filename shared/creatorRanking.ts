@@ -41,6 +41,12 @@ export const PONTOS_POR_PUBLICACAO: Record<
 
 export const PONTOS_POR_VENDA = 100;
 export const PONTOS_POR_CLIQUE = 1;
+/**
+ * Cadastro pelo link (lote 11i): a conta nova que se cadastrou com o codigo
+ * guardado no navegador. Entre o clique e a venda: e mais que curiosidade e
+ * menos que dinheiro. Um por conta, para sempre (indice unico no banco).
+ */
+export const PONTOS_POR_CADASTRO = 20;
 export const TETO_DE_CLIQUES_POR_DIA = 30;
 
 /**
@@ -74,6 +80,8 @@ export type ContagensDoRanking = {
   li_posts: number;
   vendas: number;
   cliques: number;
+  /** Cadastros pelo link no mes (lote 11i). */
+  cadastros: number;
 };
 
 export const CONTAGENS_ZERADAS: ContagensDoRanking = {
@@ -84,6 +92,7 @@ export const CONTAGENS_ZERADAS: ContagensDoRanking = {
   li_posts: 0,
   vendas: 0,
   cliques: 0,
+  cadastros: 0,
 };
 
 /** Peso de um par (rede, tipo); zero para um par que a regra nao conhece. */
@@ -109,6 +118,7 @@ export function calcularPontos(c: ContagensDoRanking): number {
     c.videos * pesoDaPublicacao("tiktok", "video") +
     c.li_posts * pesoDaPublicacao("linkedin", "post") +
     c.vendas * PONTOS_POR_VENDA +
+    c.cadastros * PONTOS_POR_CADASTRO +
     c.cliques * PONTOS_POR_CLIQUE
   );
 }
@@ -143,6 +153,12 @@ export function tabelaDePontos(): LinhaDaTabelaDePontos[] {
     acao: "Venda pelo cupom",
     pontos: PONTOS_POR_VENDA,
   });
+  // TODO(Ana)
+  linhas.push({
+    chave: "cadastro",
+    acao: "Cadastro pelo seu link",
+    pontos: PONTOS_POR_CADASTRO,
+  });
   linhas.push({
     chave: "clique",
     // TODO(Ana)
@@ -172,7 +188,13 @@ export type PosicaoDoRanking = {
   avatar?: AvatarDeCreator;
   calendar_color: string;
   pontos: number;
-  contagens: { publicacoes: number; vendas: number; cliques: number };
+  contagens: {
+    publicacoes: number;
+    vendas: number;
+    cliques: number;
+    /** Ausente no backend anterior ao lote 11i. */
+    cadastros?: number;
+  };
   /** Se esta linha e a de quem esta olhando. */
   eu: boolean;
 };
