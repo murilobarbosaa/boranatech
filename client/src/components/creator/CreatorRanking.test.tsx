@@ -240,6 +240,68 @@ describe("CreatorRanking: podio", () => {
     expect(within(lista).getByTestId("creator-ranking-linha-d")).toBeTruthy();
   });
 
+  it("medalha no topo do cartao, metal por lugar, e nenhuma bolinha de cor (lote 11b)", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 30, { calendar_color: "rose" }),
+        posicao(2, "b", 20, { calendar_color: "cyan" }),
+        posicao(3, "c", 10),
+        posicao(4, "d", 5, { calendar_color: "emerald" }),
+      ]),
+    );
+    montar();
+    const podio = await screen.findByTestId("creator-ranking-podio");
+    const metais: Array<[1 | 2 | 3, string, string, string]> = [
+      [1, "Ouro", "bg-amber-100", "bg-amber-400"],
+      [2, "Prata", "bg-slate-200", "bg-slate-300"],
+      [3, "Bronze", "bg-orange-100", "bg-orange-400"],
+    ];
+    for (const [lugar, rotulo, fundo, corDaMedalha] of metais) {
+      const cartao = within(podio).getByTestId(
+        `creator-ranking-podio-${lugar}`,
+      );
+      const classes = cartao.getAttribute("class") ?? "";
+      expect(classes, `fundo do ${lugar}`).toContain(fundo);
+      expect(classes).toContain("relative");
+      expect(classes).toContain("overflow-visible");
+      // A medalha e o PRIMEIRO filho, montada na borda de cima e centralizada.
+      const medalha = cartao.firstElementChild as HTMLElement;
+      expect(medalha.getAttribute("data-testid")).toBe(
+        `creator-ranking-medalha-${lugar}`,
+      );
+      expect(medalha.textContent).toBe(String(lugar));
+      const cm = medalha.getAttribute("class") ?? "";
+      for (const c of [
+        "absolute",
+        "-top-4",
+        "left-1/2",
+        "-translate-x-1/2",
+        corDaMedalha,
+      ]) {
+        expect(cm, c).toContain(c);
+      }
+      expect(
+        within(cartao).getByTestId(`creator-ranking-metal-${lugar}`)
+          .textContent,
+      ).toBe(rotulo);
+    }
+    // A do primeiro e um pouco maior.
+    expect(
+      screen.getByTestId("creator-ranking-medalha-1").getAttribute("class"),
+    ).toContain("h-12");
+    expect(
+      screen.getByTestId("creator-ranking-medalha-2").getAttribute("class"),
+    ).toContain("h-10");
+    // Sem `dark:` e sem hex no podio.
+    expect(podio.innerHTML).not.toContain("dark:");
+    expect(podio.innerHTML).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    // Nenhuma bolinha de cor, nem no podio nem na lista: a foto identifica.
+    expect(podio.querySelector("[data-cor]")).toBeNull();
+    expect(
+      screen.getByTestId("creator-ranking-lista").querySelector("[data-cor]"),
+    ).toBeNull();
+  });
+
   it("um pontuado: os outros dois lugares ficam vazios, com 'ainda ninguém'", async () => {
     responderCom(ranking([posicao(1, "a", 10), posicao(2, "b", 0)]));
     montar();

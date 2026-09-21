@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Medal,
   MousePointerClick,
   Send,
   ShoppingBag,
   Trophy,
+  type LucideIcon,
 } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 
@@ -13,7 +15,6 @@ import { ErrorBlock } from "@/components/admin/StateBlocks";
 import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
-import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import { diaBrasilia } from "@shared/brasiliaDay";
 import {
@@ -36,9 +37,16 @@ import {
 // de erro, merece o ranking de hoje.
 //
 // O PODIO e o unico lugar onde a tela gasta ousadia: o primeiro no centro e
-// mais alto, com o anel do acento, e os outros dois de cada lado. O resto e
-// lista, quieta, na mesma linguagem dos outros cartoes. Os tres do podio NAO
-// repetem na lista; quem esta com zero fica no fim, dizendo isso em palavras.
+// mais alto, e cada cartao tem a identidade do seu metal (lote 11b): ouro em
+// amber, prata em slate, bronze em orange, com a medalha montada na borda de
+// cima e uma marca d'agua discreta no canto. Tudo em classes literais e
+// pasteis que o `.dark` ja remapeia (amber-100, slate-200 e orange-100 viram
+// superficies escuras e o texto preto vira claro pela mesma paleta); a tinta
+// das medalhas de ouro e bronze e o `ink-on-accent`, que nao inverte, porque
+// amber-400 e orange-400 continuam claros no escuro. O resto e lista, quieta,
+// na mesma linguagem dos outros cartoes. Os tres do podio NAO repetem na
+// lista; quem esta com zero fica no fim, dizendo isso em palavras. A foto e o
+// identificador: a bolinha da cor do calendario nao entra aqui.
 //
 // JANELA DE DEPLOY: o backend anterior nao tem a rota (404). Nesse caso a aba
 // volta a mostrar o cartao "em breve" de sempre, que so sai do codigo num lote
@@ -165,10 +173,47 @@ function Handle({ p, className }: { p: PosicaoDoRanking; className: string }) {
   );
 }
 
+/** A identidade de cada lugar do podio (lote 11b): o metal, em classes literais. */
+const METAL: Record<
+  1 | 2 | 3,
+  {
+    rotulo: string;
+    fundo: string;
+    medalha: string;
+    anel: string;
+    Marca: LucideIcon;
+  }
+> = {
+  // TODO(Ana)
+  1: {
+    rotulo: "Ouro",
+    fundo: "bg-amber-100",
+    medalha: "bg-amber-400 text-ink-on-accent",
+    anel: "ring-amber-400",
+    Marca: Trophy,
+  },
+  2: {
+    rotulo: "Prata",
+    fundo: "bg-slate-200",
+    // Prata inverte com a paleta (slate-300 escurece no `.dark`), entao a
+    // tinta e a de sempre, que inverte junto.
+    medalha: "bg-slate-300 text-slate-900",
+    anel: "ring-slate-300",
+    Marca: Medal,
+  },
+  3: {
+    rotulo: "Bronze",
+    fundo: "bg-orange-100",
+    medalha: "bg-orange-400 text-ink-on-accent",
+    anel: "ring-orange-400",
+    Marca: Medal,
+  },
+};
+
 /**
- * Um lugar do podio. `p` nulo e o lugar vazio, que continua desenhado: um
- * podio com dois cartoes parece quebrado, um com "ainda ninguém" parece
- * um convite.
+ * Um lugar do podio. `p` nulo e o lugar vazio, que continua desenhado, com o
+ * mesmo metal: um podio com dois cartoes parece quebrado, um com "ainda
+ * ninguém" parece um convite.
  */
 function LugarDoPodio({
   lugar,
@@ -178,41 +223,53 @@ function LugarDoPodio({
   p: PosicaoDoRanking | null;
 }) {
   const primeiro = lugar === 1;
+  const metal = METAL[lugar];
   const ordem =
     lugar === 1 ? "md:order-2" : lugar === 2 ? "md:order-1" : "md:order-3";
   const altura = primeiro ? "md:-translate-y-4 md:pb-8" : "";
   return (
     <li
       data-testid={`creator-ranking-podio-${lugar}`}
-      className={`${ordem} ${altura} flex flex-col items-center rounded-3xl border-2 border-slate-900 bg-white p-5 text-center shadow-[5px_5px_0_var(--bnt-shadow)] ${
+      className={`${ordem} ${altura} relative flex flex-col items-center overflow-visible rounded-3xl border-2 border-slate-900 ${metal.fundo} px-5 pb-5 pt-8 text-center shadow-[5px_5px_0_var(--bnt-shadow)] ${
         p?.eu ? "ring-4 ring-[var(--bnt-accent-solid)] ring-offset-2" : ""
       }`}
     >
-      <div className="relative">
+      {/* A medalha: primeiro filho, montada na borda de cima, centralizada. */}
+      <span
+        aria-hidden="true"
+        data-testid={`creator-ranking-medalha-${lugar}`}
+        className={`absolute -top-4 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full border-2 border-slate-900 font-display font-black shadow-[2px_2px_0_var(--bnt-shadow)] ${metal.medalha} ${
+          primeiro ? "h-12 w-12 text-xl" : "h-10 w-10 text-lg"
+        }`}
+      >
+        {lugar}
+      </span>
+      <span
+        data-testid={`creator-ranking-metal-${lugar}`}
+        className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[var(--bnt-accent-solid)]"
+      >
+        {metal.rotulo}
+      </span>
+      <metal.Marca
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-3 right-3 h-16 w-16 opacity-10"
+      />
+
+      <div className="relative mt-4">
         {p ? (
           <AvatarDoCreator
             name={p.name ?? p.handle ?? "Creator"}
             avatar={p.avatar}
             avatarUrl={p.avatar_url}
             size={primeiro ? "xl" : "lg"}
-            className={`rounded-full ring-4 ${
-              primeiro
-                ? "ring-[var(--bnt-accent-solid)] ring-offset-4 ring-offset-slate-900"
-                : "ring-slate-900"
-            }`}
+            className={`rounded-full ring-4 ${metal.anel} ring-offset-2 ring-offset-slate-900`}
           />
         ) : (
           <div
             aria-hidden="true"
-            className={`${primeiro ? "h-32 w-32" : "h-28 w-28"} rounded-full border-4 border-dashed border-slate-300 bg-slate-50`}
+            className={`${primeiro ? "h-32 w-32" : "h-28 w-28"} rounded-full border-4 border-dashed border-slate-400 bg-white/60`}
           />
         )}
-        <span
-          aria-hidden="true"
-          className="absolute -bottom-1 -right-1 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-slate-900 font-display text-lg font-black text-[var(--bnt-accent-solid)]"
-        >
-          {lugar}
-        </span>
       </div>
 
       {p ? (
@@ -232,7 +289,7 @@ function LugarDoPodio({
             ) : null}
           </p>
           {p.name && p.handle ? (
-            <p className="text-xs font-bold text-slate-500">{p.name}</p>
+            <p className="text-xs font-bold text-slate-600">{p.name}</p>
           ) : null}
           <p className="mt-3 flex items-baseline gap-1">
             <span
@@ -241,17 +298,17 @@ function LugarDoPodio({
             >
               {p.pontos}
             </span>
-            <span className="text-xs font-black uppercase text-slate-500">
+            <span className="text-xs font-black uppercase text-slate-600">
               pts
             </span>
           </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
+          <p className="mt-1 text-xs font-semibold text-slate-700">
             {/* TODO(Ana) */}
             {fraseDasContagens(p) || "sem pontos ainda"}
           </p>
         </>
       ) : (
-        <p className="mt-4 text-sm font-bold text-slate-500">
+        <p className="mt-4 text-sm font-bold text-slate-600">
           {/* TODO(Ana) */}
           ainda ninguém
         </p>
@@ -274,19 +331,13 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
       <span className="w-9 shrink-0 font-display text-xl font-black text-slate-900">
         {p.posicao}
       </span>
-      <span className="relative shrink-0">
-        <AvatarDoCreator
-          name={p.name ?? p.handle ?? "Creator"}
-          avatar={p.avatar}
-          avatarUrl={p.avatar_url}
-          size="sm"
-          className="rounded-full ring-2 ring-slate-900"
-        />
-        <MarcadorDeCor
-          cor={p.calendar_color}
-          className="absolute -bottom-0.5 -right-0.5"
-        />
-      </span>
+      <AvatarDoCreator
+        name={p.name ?? p.handle ?? "Creator"}
+        avatar={p.avatar}
+        avatarUrl={p.avatar_url}
+        size="sm"
+        className="rounded-full ring-2 ring-slate-900"
+      />
       <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
         <span className="flex min-w-0 items-center gap-2">
           <Handle p={p} className="text-sm font-black text-slate-950" />
