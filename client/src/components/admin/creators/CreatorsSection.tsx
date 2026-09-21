@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
 import UserAvatar from "@/components/UserAvatar";
@@ -8,6 +9,7 @@ import { relativeTime } from "@/components/admin/tasks/relativeTime";
 import { CreatorCalendario } from "@/components/creator/CreatorCalendario";
 import { CreatorDashboardView } from "@/components/creator/CreatorDashboardView";
 import { CreatorMetricTile } from "@/components/creator/CreatorMetricTile";
+import { CreatorRanking } from "@/components/creator/CreatorRanking";
 import { AdminApiError, adminFetch } from "@/lib/adminApi";
 import { rotuloDoKind } from "@/lib/creatorKindLabel";
 import { formatarCentavos } from "@/lib/formatarCentavos";
@@ -637,6 +639,40 @@ function PainelDoCreator({ userId }: { userId: string }) {
   );
 }
 
+/** O bloco do ranking da aba Creators: cartao com o botao de recolher. */
+function RankingDaAba() {
+  const [aberto, setAberto] = useState(true);
+  return (
+    <section
+      data-testid="creators-ranking"
+      className="card-brutal space-y-4 rounded-3xl bg-white p-5"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-display text-lg font-black text-slate-950">
+          {/* TODO(Ana) */}
+          Ranking do mês
+        </h3>
+        <button
+          type="button"
+          data-testid="creators-ranking-recolher"
+          aria-expanded={aberto}
+          onClick={() => setAberto((a) => !a)}
+          className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+        >
+          {aberto ? (
+            <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
+          )}
+          {/* TODO(Ana) */}
+          {aberto ? "Recolher" : "Expandir"}
+        </button>
+      </div>
+      {aberto ? <CreatorRanking modo="admin" /> : null}
+    </section>
+  );
+}
+
 export function CreatorsSection() {
   const search = useSearch();
   const [, setLocation] = useLocation();
@@ -739,6 +775,15 @@ export function CreatorsSection() {
             >
               <CreatorCalendario modo="admin" />
             </section>
+          </BlocoBoundary>
+          {/* O ranking do mes inteiro, so leitura (lote 11d): o mesmo desenho
+              do /creator, pela rota do admin, com um botao de recolher (aberto
+              por padrao; o estado nao persiste, de proposito). */}
+          <BlocoBoundary
+            // TODO(Ana)
+            nome="Ranking do mês"
+          >
+            <RankingDaAba />
           </BlocoBoundary>
           <div className="flex flex-wrap items-center gap-3">
             <Pilulas

@@ -36,6 +36,12 @@ vi.mock("@/lib/adminApi", async (importOriginal) => {
       estado.chamadas.push({ path });
       return estado.responder(path);
     },
+    // O modo admin (lote 11d) busca por aqui; registrado com o prefixo para o
+    // teste distinguir as duas rotas.
+    adminFetch: async (path: string) => {
+      estado.chamadas.push({ path: `/admin${path}` });
+      return estado.responder(`/admin${path}`);
+    },
   };
 });
 
@@ -470,5 +476,74 @@ describe("CreatorRanking: regra, estados e janela de deploy", () => {
     expect(await screen.findByTestId("creator-ranking-em-breve")).toBeTruthy();
     expect(screen.getByText("em breve")).toBeTruthy();
     expect(screen.queryByTestId("creator-ranking-erro")).toBeNull();
+  });
+});
+
+describe("CreatorRanking: modo admin (lote 11d)", () => {
+  function montarAdmin() {
+    const { hook, searchHook, history } = memoryLocation({
+      path: "/admin?section=creators",
+      record: true,
+    });
+    render(
+      <Router hook={hook} searchHook={searchHook}>
+        <CreatorRanking modo="admin" agora={AGORA} />
+      </Router>,
+    );
+    return history;
+  }
+
+  it("busca pela rota do admin e nao desenha nada pessoal, nem o Como pontuar, nem a casca do cartao", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 50, { eu: true }),
+        posicao(2, "b", 40),
+        posicao(3, "c", 30),
+        posicao(4, "d", 5),
+      ]),
+    );
+    montarAdmin();
+    const raiz = await screen.findByTestId("creator-ranking");
+    expect(estado.chamadas.map((c) => c.path)).toEqual([
+      "/admin/creators/ranking?mes=2026-09",
+    ]);
+    expect(raiz.getAttribute("data-modo")).toBe("admin");
+    expect(raiz.getAttribute("class") ?? "").not.toContain("card-brutal");
+    await screen.findByTestId("creator-ranking-podio");
+    // Mesmo com `eu`/`minha_posicao` na resposta (defesa em profundidade),
+    // nada pessoal aparece.
+    expect(screen.queryByTestId("creator-ranking-minha-posicao")).toBeNull();
+    expect(screen.queryByTestId(/creator-ranking-voce/)).toBeNull();
+    expect(screen.queryByTestId("creator-ranking-regra")).toBeNull();
+    // O podio e a lista continuam.
+    expect(screen.getByTestId("creator-ranking-podio-1").textContent).toContain(
+      "@ha",
+    );
+    expect(screen.getByTestId("creator-ranking-linha-d")).toBeTruthy();
+  });
+
+  it("o seletor de mes chama a rota do admin com o mes novo e NAO escreve na URL", async () => {
+    responderCom((path) => ranking([], { mes: path.slice(-7) }));
+    const history = montarAdmin();
+    await screen.findByTestId("creator-ranking-podio");
+    fireEvent.click(screen.getByTestId("creator-ranking-anterior"));
+    await waitFor(() =>
+      expect(estado.chamadas.map((c) => c.path)).toContain(
+        "/admin/creators/ranking?mes=2026-08",
+      ),
+    );
+    expect(screen.getByTestId("creator-ranking-mes").textContent).toBe(
+      "agosto de 2026",
+    );
+    expect(history).toEqual(["/admin?section=creators"]);
+  });
+
+  it("no admin, 404 e erro comum, nao o cartao 'em breve'", async () => {
+    estado.responder = async () => {
+      throw new AdminApiError("Not found", 404, null);
+    };
+    montarAdmin();
+    expect(await screen.findByTestId("creator-ranking-erro")).toBeTruthy();
+    expect(screen.queryByTestId("creator-ranking-em-breve")).toBeNull();
   });
 });

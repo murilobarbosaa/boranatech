@@ -45,6 +45,13 @@ vi.mock("@/components/creator/CreatorCalendario", () => ({
     <div data-testid="calendario-mock" data-modo={modo ?? ""} />
   ),
 }));
+// O ranking inteiro (lote 11d) tambem busca sozinho: dublado, o que se afirma
+// e onde a aba o poe, com que modo, e o botao de recolher.
+vi.mock("@/components/creator/CreatorRanking", () => ({
+  CreatorRanking: ({ modo }: { modo?: string }) => (
+    <div data-testid="ranking-mock" data-modo={modo ?? ""} />
+  ),
+}));
 vi.mock("@/components/creator/CreatorDashboardView", () => ({
   CreatorDashboardView: ({
     visao,
@@ -895,5 +902,34 @@ describe("ranking do mes no painel do creator (lote 11c)", () => {
     expect(screen.getByTestId("creators-ranking-sem-pontos")).toBeTruthy();
     expect(screen.queryByTestId("creators-ranking-podio-2")).toBeNull();
     expect(screen.getByTestId("creators-ranking-podio-1")).toBeTruthy();
+  });
+});
+
+describe("ranking do mes na aba Creators (lote 11d)", () => {
+  it("fica depois do calendario e antes das pilulas, no modo admin, aberto por padrao, e recolhe", async () => {
+    rotear();
+    montar();
+    const bloco = await screen.findByTestId("creators-ranking");
+    const calendario = screen.getByTestId("creators-calendario");
+    expect(
+      calendario.compareDocumentPosition(bloco) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const pilulas = screen.getByLabelText("Status da concessão");
+    expect(
+      bloco.compareDocumentPosition(pilulas) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const ranking = within(bloco).getByTestId("ranking-mock");
+    expect(ranking.getAttribute("data-modo")).toBe("admin");
+
+    const botao = within(bloco).getByTestId("creators-ranking-recolher");
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    expect(botao.textContent).toContain("Recolher");
+    fireEvent.click(botao);
+    expect(within(bloco).queryByTestId("ranking-mock")).toBeNull();
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+    expect(botao.textContent).toContain("Expandir");
+    fireEvent.click(botao);
+    expect(within(bloco).getByTestId("ranking-mock")).toBeTruthy();
   });
 });

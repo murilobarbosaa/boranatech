@@ -16,7 +16,7 @@ import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { EsqueletoDoRanking } from "@/components/creator/Esqueletos";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
-import { AdminApiError, contentFetch } from "@/lib/adminApi";
+import { AdminApiError, adminFetch, contentFetch } from "@/lib/adminApi";
 import { diaBrasilia } from "@shared/brasiliaDay";
 import {
   mesDoDia,
@@ -57,6 +57,12 @@ import {
 // JANELA DE DEPLOY: o backend anterior nao tem a rota (404). Nesse caso a aba
 // volta a mostrar o cartao "em breve" de sempre, que so sai do codigo num lote
 // futuro, quando o 404 for impossivel.
+//
+// `modo="admin"` (lote 11d): o MESMO ranking, so leitura, na aba Creators do
+// admin, como o calendario faz. Busca pela rota do admin (ranking neutro, sem
+// `eu`), guarda o mes em estado local em vez da URL (a URL ali e do admin), e
+// nao desenha nada pessoal: nem "Voce esta em...", nem chip "Voce", nem o
+// cartao "Como pontuar". A casca do cartao e de quem monta.
 
 type Estado =
   | { tipo: "carregando" }
@@ -480,14 +486,19 @@ function RankingEmBreve() {
 }
 
 export function CreatorRanking({
+  modo = "creator",
   agora = () => new Date(),
 }: {
+  modo?: "creator" | "admin";
   agora?: () => Date;
 }) {
+  const admin = modo === "admin";
   const search = useSearch();
   const [, navigate] = useLocation();
   const mesAtual = mesDoDia(diaBrasilia(agora().toISOString()) ?? "");
-  const mes = mesDaUrl(search, mesAtual);
+  // No admin o mes vive em estado local: a URL da aba Creators e do admin.
+  const [mesLocal, setMesLocal] = useState(mesAtual);
+  const mes = admin ? mesLocal : mesDaUrl(search, mesAtual);
 
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [tentativa, setTentativa] = useState(0);
@@ -497,7 +508,10 @@ export function CreatorRanking({
     let cancelado = false;
     setEstado({ tipo: "carregando" });
     setVisiveis(POR_PAGINA);
-    contentFetch(`/creator/ranking?mes=${mes}`)
+    (admin
+      ? adminFetch(`/creators/ranking?mes=${mes}`)
+      : contentFetch(`/creator/ranking?mes=${mes}`)
+    )
       .then((json: unknown) => {
         if (cancelado) return;
         const ranking = rankingDaResposta(json);
@@ -505,16 +519,21 @@ export function CreatorRanking({
       })
       .catch((err: unknown) => {
         if (cancelado) return;
-        const semRota = err instanceof AdminApiError && err.status === 404;
+        // O "em breve" e da janela de deploy do CREATOR; no admin a rota
+        // existe desde o lote 11c, e um 404 e erro como outro qualquer.
+        const semRota =
+          !admin && err instanceof AdminApiError && err.status === 404;
         setEstado(semRota ? { tipo: "em_breve" } : { tipo: "erro" });
       });
     return () => {
       cancelado = true;
     };
-  }, [mes, tentativa]);
+  }, [admin, mes, tentativa]);
 
-  const irPara = (novo: string) =>
-    navigate(`/creator?aba=ranking&mes=${novo}`, { replace: true });
+  const irPara = (novo: string) => {
+    if (admin) setMesLocal(novo);
+    else navigate(`/creator?aba=ranking&mes=${novo}`, { replace: true });
+  };
   const temAnterior = mesVizinho(mes, -1) >= PRIMEIRO_MES_DO_RANKING;
   const temSeguinte = mesVizinho(mes, 1) <= mesAtual;
 
@@ -523,8 +542,10 @@ export function CreatorRanking({
   return (
     <section
       data-testid="creator-ranking"
+      data-modo={modo}
       aria-labelledby="creator-ranking-titulo"
-      className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+      // No admin a casca do cartao e de quem monta (a secao da aba Creators).
+      className={admin ? "" : "card-brutal rounded-3xl bg-white p-6 md:p-8"}
     >
       <CabecalhoDeSecao
         id="creator-ranking-titulo"
@@ -615,6 +636,7 @@ export function CreatorRanking({
         <Corpo
           ranking={estado.ranking}
           visiveis={visiveis}
+          admin={admin}
           onVerMais={() => setVisiveis((n) => n + POR_PAGINA)}
         />
       ) : null}
@@ -625,16 +647,23 @@ export function CreatorRanking({
 function Corpo({
   ranking,
   visiveis,
+  admin,
   onVerMais,
 }: {
   ranking: RankingDoMes;
   visiveis: number;
+  admin: boolean;
   onVerMais: () => void;
 }) {
-  const total = ranking.posicoes.length;
+  // Nada pessoal no admin: a rota do admin ja manda o ranking neutro, e
+  // apagar o `eu` de cada linha aqui e a segunda barreira (nenhum chip "Voce").
+  const posicoes = admin
+    ? ranking.posicoes.map((p) => ({ ...p, eu: false }))
+    : ranking.posicoes;
+  const total = posicoes.length;
   // O podio e so de quem PONTUOU: zero ponto nao sobe no podio, nem quando
   // a lista inteira esta zerada.
-  const pontuados = ranking.posicoes.filter((p) => p.pontos > 0);
+  const pontuados = posicoes.filter((p) => p.pontos > 0);
   const podio: Array<PosicaoDoRanking | null> = [
     pontuados[0] ?? null,
     pontuados[1] ?? null,
@@ -644,9 +673,9 @@ function Corpo({
   podio.forEach((p) => {
     if (p) noPodio.add(p.user_id);
   });
-  const resto = ranking.posicoes.filter((p) => !noPodio.has(p.user_id));
+  const resto = posicoes.filter((p) => !noPodio.has(p.user_id));
   const mostradas = resto.slice(0, visiveis);
-  const minha = ranking.minha_posicao;
+  const minha = admin ? null : ranking.minha_posicao;
 
   return (
     <div className="mt-6 space-y-8">
@@ -700,7 +729,7 @@ function Corpo({
         </div>
       ) : null}
 
-      <ComoPontuar />
+      {admin ? null : <ComoPontuar />}
     </div>
   );
 }
