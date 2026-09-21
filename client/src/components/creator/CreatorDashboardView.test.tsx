@@ -57,7 +57,10 @@ vi.mock("@/components/creator/CreatorPublicacoesAdmin", () => ({
   ),
 }));
 
-import type { CreatorDashboard } from "@shared/creatorDashboard";
+import type {
+  CreatorDashboard,
+  CreatorDashboardJanela,
+} from "@shared/creatorDashboard";
 import {
   CreatorDashboardView,
   deltaPermitido,
@@ -168,11 +171,12 @@ const onJanelaChange = vi.fn();
 function desenhar(
   painel: CreatorDashboard,
   visao: "creator" | "admin" = "creator",
+  janela: CreatorDashboardJanela = "7d",
 ) {
   render(
     <CreatorDashboardView
       painel={painel}
-      janela="7d"
+      janela={janela}
       onJanelaChange={onJanelaChange}
       visao={visao}
     />,
@@ -425,9 +429,9 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
       { dia: "2026-09-20", ...ZERO, clicks: 4 },
     ];
     desenhar(p);
-    expect(screen.getByTestId("creator-grafico").getAttribute("data-forma")).toBe(
-      "barras",
-    );
+    expect(
+      screen.getByTestId("creator-grafico").getAttribute("data-forma"),
+    ).toBe("barras");
   });
 
   it("a partir de 3 dias volta a linha, com eixo de vendas porque houve venda", () => {
@@ -785,7 +789,9 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
     );
     // A serie da fixture vai de 14/09 a 20/09: 14 e 15 sao antes do marco.
     expect(
-      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+      screen
+        .getByTestId("creator-grafico")
+        .getAttribute("data-cliques-ausentes"),
     ).toBe("2");
   });
 
@@ -812,7 +818,9 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
       "Vendas desde 10/07/2026",
     );
     expect(
-      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+      screen
+        .getByTestId("creator-grafico")
+        .getAttribute("data-cliques-ausentes"),
     ).toBe("2");
   });
 
@@ -824,14 +832,78 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
     const eventosAntigos: Record<string, unknown> = { ...p.eventos };
     delete eventosAntigos.clicks_since;
     delete eventosAntigos.sales_since;
-    const antigo = { ...p, eventos: eventosAntigos } as unknown as CreatorDashboard;
+    const antigo = {
+      ...p,
+      eventos: eventosAntigos,
+    } as unknown as CreatorDashboard;
     desenhar(antigo);
     expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
       "Cliques desde 10/09/2026",
     );
     expect(screen.queryByTestId("creator-vendas-desde")).toBeNull();
     expect(
-      screen.getByTestId("creator-grafico").getAttribute("data-cliques-ausentes"),
+      screen
+        .getByTestId("creator-grafico")
+        .getAttribute("data-cliques-ausentes"),
     ).toBe("0");
+  });
+});
+
+describe("CreatorDashboardView: legenda da janela no rodape (lote 11g)", () => {
+  it("em 7, 30 e 90 dias, as quatro caixas dizem a janela; sem a nota do contador", () => {
+    for (const [janela, texto] of [
+      ["7d", "nos últimos 7 dias"],
+      ["30d", "nos últimos 30 dias"],
+      ["90d", "nos últimos 90 dias"],
+    ] as const) {
+      cleanup();
+      const p = painelBase();
+      p.totais.clicks = 361;
+      p.eventos.periodo.clicks = 5;
+      desenhar(p, "creator", janela);
+      for (const chave of ["clicks", "checkouts", "sales", "revenue_cents"]) {
+        expect(
+          screen.getByTestId(`creator-periodo-legenda-${chave}`).textContent,
+          `${janela} ${chave}`,
+        ).toBe(texto);
+      }
+      expect(screen.queryByTestId("creator-periodo-nota-contador")).toBeNull();
+    }
+  });
+
+  it("em Tudo, cliques e checkouts desde o marco de cliques; vendas e receita desde a primeira venda", () => {
+    const p = painelBase();
+    p.eventos.clicks_since = "2026-09-14T03:00:00Z";
+    p.eventos.sales_since = "2026-09-09T12:00:00Z";
+    desenhar(p, "creator", "all");
+    expect(
+      screen.getByTestId("creator-periodo-legenda-clicks").textContent,
+    ).toBe("desde 14/09/2026");
+    expect(
+      screen.getByTestId("creator-periodo-legenda-checkouts").textContent,
+    ).toBe("desde 14/09/2026");
+    expect(
+      screen.getByTestId("creator-periodo-legenda-sales").textContent,
+    ).toBe("desde 09/09/2026");
+    expect(
+      screen.getByTestId("creator-periodo-legenda-revenue_cents").textContent,
+    ).toBe("desde 09/09/2026");
+  });
+
+  it("em Tudo, a nota do contador so quando o contador supera a soma da serie", () => {
+    const p = painelBase();
+    p.totais.clicks = 361;
+    p.eventos.periodo.clicks = 5;
+    desenhar(p, "creator", "all");
+    expect(
+      screen.getByTestId("creator-periodo-nota-contador").textContent,
+    ).toBe("361 desde o início (o contador começa antes da série diária)");
+
+    cleanup();
+    const q = painelBase();
+    q.totais.clicks = 5;
+    q.eventos.periodo.clicks = 5;
+    desenhar(q, "creator", "all");
+    expect(screen.queryByTestId("creator-periodo-nota-contador")).toBeNull();
   });
 });

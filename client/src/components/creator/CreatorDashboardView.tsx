@@ -290,15 +290,23 @@ function Grafico({ dados }: { dados: PontoDoGrafico[] }) {
         data-testid="creator-grafico"
         data-forma={curta ? "barras" : "linha"}
         data-eixo-vendas={!curta && temVendas ? "sim" : "nao"}
-        data-cliques-ausentes={dados.filter((dia) => dia.clicks === null).length}
+        data-cliques-ausentes={
+          dados.filter((dia) => dia.clicks === null).length
+        }
         className={`h-72 ${muitosDias ? "min-w-[40rem] sm:min-w-0" : ""}`}
       >
         <ResponsiveContainer width="100%" height="100%">
           {curta ? (
             <BarChart data={dados} margin={MARGEM_DO_GRAFICO}>
               <defs>
-                <GradienteDaBarra id="creator-barra-cliques" cor="var(--chart-1)" />
-                <GradienteDaBarra id="creator-barra-vendas" cor="var(--chart-3)" />
+                <GradienteDaBarra
+                  id="creator-barra-cliques"
+                  cor="var(--chart-1)"
+                />
+                <GradienteDaBarra
+                  id="creator-barra-vendas"
+                  cor="var(--chart-3)"
+                />
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -431,7 +439,7 @@ function Serie({
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
   agoraMs: number;
 }) {
-  const { eventos } = painel;
+  const { eventos, totais } = painel;
 
   if (eventos.serie.length === 0) {
     return (
@@ -439,7 +447,10 @@ function Serie({
         data-testid="creator-sem-eventos"
         className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 px-4 py-10 text-center text-sm font-bold text-slate-600"
       >
-        <MousePointerClick aria-hidden="true" className="h-7 w-7 text-slate-400" />
+        <MousePointerClick
+          aria-hidden="true"
+          className="h-7 w-7 text-slate-400"
+        />
         {/* TODO(Ana) */}
         Ainda não registramos cliques no seu link.
       </div>
@@ -459,6 +470,30 @@ function Serie({
     agoraMs,
   );
   const anterior = comDelta ? eventos.periodo_anterior : null;
+
+  // A LEGENDA DA JANELA em cada caixa (lote 11g). Os quatro numeros sempre
+  // foram a soma da janela escolhida (o servidor filtra a serie por ela), mas
+  // sem dizer isso ao lado de um cartao "desde o inicio" com outro numero eles
+  // pareciam contradizer o cartao. Em "Tudo" a legenda e o marco de cada
+  // serie: cliques desde o inicio da medicao, vendas e receita desde a
+  // primeira venda (que pode ser anterior, pelas vendas reconstruidas).
+  // TODO(Ana)
+  const legendaDaJanela = (chave: keyof CreatorEventosSomas): string => {
+    if (janela !== "all") return `nos últimos ${DIAS_DA_JANELA[janela]} dias`;
+    const marco =
+      chave === "clicks" || chave === "checkouts"
+        ? clicksSince
+        : (salesSince ?? clicksSince);
+    return marco ? `desde ${dataCurta(marco)}` : "desde o início";
+  };
+  // Em "Tudo", o contador de cliques (desde sempre, inflado ou nao) pode ser
+  // maior que a soma da serie, que so existe desde a medicao diaria. A nota
+  // diz isso em palavras, lida do MESMO total que o cartao de cima usa.
+  const notaDoContador =
+    janela === "all" && totais.clicks > eventos.periodo.clicks
+      ? // TODO(Ana)
+        `${inteiro(totais.clicks)} desde o início (o contador começa antes da série diária)`
+      : null;
 
   const linhasDoPeriodo: Array<{
     chave: keyof CreatorEventosSomas;
@@ -526,6 +561,20 @@ function Serie({
             <dd className="font-display mt-1 text-xl font-black tabular-nums text-slate-950">
               {linha.valor}
             </dd>
+            <p
+              data-testid={`creator-periodo-legenda-${linha.chave}`}
+              className="mt-0.5 text-[11px] font-semibold text-slate-500"
+            >
+              {legendaDaJanela(linha.chave)}
+            </p>
+            {linha.chave === "clicks" && notaDoContador ? (
+              <p
+                data-testid="creator-periodo-nota-contador"
+                className="mt-1 text-[11px] font-semibold text-slate-600"
+              >
+                {notaDoContador}
+              </p>
+            ) : null}
             {anterior ? (
               <DeltaBadge
                 atual={eventos.periodo[linha.chave]}
