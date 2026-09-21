@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync, realpathSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { capabilityOf } from "./languageCapabilities.mts";
@@ -17,6 +18,34 @@ import {
 const runner = capabilityOf("ts").runner!;
 const executar = makeExecutor(runner);
 const LIMITE = 30000;
+
+// Censo de processos vivos que citam um diretorio, lido direto de /proc: sem
+// shell e sem pgrep, que casariam a linha de comando do proprio teste.
+//
+// O filtro e pelo EXECUTAVEL, nunca por /proc/<pid>/comm: o node renomeia a
+// thread principal para "MainThread", e um censo que filtrava comm === "node"
+// devolveu ZERO com quatro processos vivos que o ps mostrava. Instrumento que
+// falha passando e exatamente o defeito que este arquivo existe para pegar.
+function processosCitando(dir: string): string[] {
+  const achados: string[] = [];
+  for (const pid of readdirSync("/proc")) {
+    if (!/^\d+$/.test(pid)) continue;
+    let cmd: string;
+    try {
+      cmd = readFileSync(`/proc/${pid}/cmdline`).toString("utf8");
+    } catch {
+      continue;
+    }
+    if (!cmd.includes(dir)) continue;
+    try {
+      if (!realpathSync(`/proc/${pid}/exe`).endsWith("/node")) continue;
+    } catch {
+      continue;
+    }
+    achados.push(`${pid} ${cmd.replace(/\0/g, " ").trim().slice(0, 120)}`);
+  }
+  return achados;
+}
 
 describe("runner de ts: checagem de tipos antes da execucao", () => {
   it("codigo valido roda e imprime", () => {
@@ -65,6 +94,27 @@ describe("runner de ts: checagem de tipos antes da execucao", () => {
   it("laco infinito estoura o timeout", () => {
     const r = executar("while (true) {}\n");
     expect(r.timeout).toBe(true);
+  }, LIMITE);
+
+  // Lote de higiene. O timeout do executor mata o WRAPPER; em ts o trecho roda
+  // num neto (node -> wrapper -> cli do tsx -> processo do trecho), que era
+  // adotado pelo init e girava a 100% de CPU para sempre. Medido: cada rodada
+  // deste arquivo deixava DOIS processos vivos, e o hook roda a suite duas
+  // vezes por commit.
+  it("o laco infinito nao deixa processo vivo na maquina", async () => {
+    const r = executar("while (true) {}\n");
+    expect(r.timeout).toBe(true);
+    const dir = executar.dir;
+    expect(typeof dir).toBe("string");
+    // Espera curta: o SIGKILL do grupo leva um instante para ser entregue, e
+    // afirmar no ato acusaria o conserto certo.
+    const prazo = Date.now() + 3000;
+    let vivos = processosCitando(dir!);
+    while (vivos.length > 0 && Date.now() < prazo) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      vivos = processosCitando(dir!);
+    }
+    expect(vivos).toEqual([]);
   }, LIMITE);
 
   it("process nao esta declarado, e o ambiente do filho nao tem a chave", () => {

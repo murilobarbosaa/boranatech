@@ -112,7 +112,12 @@ export interface Execucao {
   sinal?: string | null;
 }
 
-export type Executor = (code: string) => Execucao;
+// A assinatura de chamada NAO muda: todo call site continua `executar(code)`.
+// O `dir` opcional existe para o teste poder afirmar sobre processo e arquivo
+// deste executor sem adivinhar /tmp, que casaria o diretorio de outro worktree
+// rodando a suite ao mesmo tempo. Opcional porque os stubs de teste passam uma
+// funcao simples como Executor e continuam validos.
+export type Executor = ((code: string) => Execucao) & { dir?: string };
 
 // Spawn com o ambiente saneado, num lugar so: o executor de trecho unico e o
 // de grupo de arquivos usam este mesmo caminho, para nao existir uma segunda
@@ -125,6 +130,11 @@ function spawnSaneado(
   return spawnSync(runner.command, [...(runner.args ?? []), arquivo], {
     encoding: "utf8",
     timeout: TIMEOUT_MS,
+    // O sinal do timeout fica no padrao (SIGTERM) de proposito, e NAO vira
+    // killSignal: "SIGKILL". Em ts o comando e um wrapper que precisa matar o
+    // grupo do trecho antes de sair: SIGKILL nao e capturavel, o handler dele
+    // nao rodaria e o neto continuaria orfao a 100% de CPU. O sinal que o
+    // executor manda tem que ser capturavel.
     // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
     // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
     // criou usuario.json na raiz do worktree.
@@ -162,11 +172,13 @@ function daExecucao(r: SpawnSyncReturns<string>): Execucao {
 export function makeExecutor(runner: Runner): Executor {
   const dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
   let n = 0;
-  return (code: string): Execucao => {
+  const executar: Executor = (code: string): Execucao => {
     const file = path.join(dir, `q${n++}${runner.ext}`);
     writeFileSync(file, code);
     return daExecucao(spawnSaneado(runner, file, dir));
   };
+  executar.dir = dir;
+  return executar;
 }
 
 export interface ArquivoDoGrupo {

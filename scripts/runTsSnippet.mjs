@@ -19,11 +19,12 @@
 // passaria calado). O `console` entra por uma declaracao ambiente minima
 // escrita aqui, ao lado do trecho.
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const INICIO = Date.now();
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 // Resolve typescript e tsx pelo package.json do REPOSITORIO: o processo roda
 // com cwd no diretorio temporario do executor, sem node_modules.
@@ -101,18 +102,97 @@ if (diagnosticos.length > 0) {
   process.exit(1);
 }
 
+// Lote de higiene: ESTE wrapper e dono da arvore de processos que cria.
+//
+// O defeito: o executor chama spawnSync com timeout, e no estouro o Node manda
+// o sinal so para o FILHO DIRETO, que aqui e este wrapper. O trecho roda num
+// neto (wrapper -> cli do tsx -> processo do trecho), entao o neto era adotado
+// pelo init e girava a 100% de CPU para sempre. Medido: cada rodada de
+// runTsSnippet.test.ts deixava dois processos vivos, e o hook roda a suite
+// duas vezes por commit. Nas outras linguagens o trecho e filho direto e morre
+// junto, por isso so ts deixava orfao.
+//
+// O conserto: `detached: true` poe o trecho num GRUPO de processos proprio, e
+// o wrapper mata o grupo inteiro (process.kill(-pid)) em tres situacoes, sem
+// deixar nenhum caminho de saida com o grupo vivo.
 const tsxCli = req.resolve("tsx/cli");
-const execucao = spawnSync(process.execPath, [tsxCli, arquivo], {
+
+// Abaixo do TIMEOUT_MS do executor (10000) de proposito, e contado do inicio
+// deste processo: o wrapper precisa matar o trecho e sair ANTES de o executor
+// matar o wrapper, senao nao sobra ninguem para limpar o neto, que e o defeito
+// que este arquivo existe para nao ter.
+const PRAZO_MS = 8000;
+
+const filho = spawn(process.execPath, [tsxCli, arquivo], {
   stdio: "inherit",
   // Nada e acrescentado ao ambiente: o filho herda o ambiente ja saneado que o
   // executor montou (PATH, HOME no diretorio temporario, LANG), sem process.env
   // do repositorio.
   env: process.env,
+  // Grupo proprio: sem isto, matar o filho direto deixa o neto vivo.
+  detached: true,
 });
 
-if (execucao.error) {
-  console.error(String(execucao.error));
-  process.exit(1);
+let grupoMorto = false;
+function matarGrupo() {
+  if (grupoMorto || filho.pid === undefined) return;
+  grupoMorto = true;
+  try {
+    process.kill(-filho.pid, "SIGKILL");
+  } catch {
+    // Grupo ja encerrado: nada a fazer.
+  }
 }
-if (execucao.signal) process.exit(1);
-process.exit(execucao.status ?? 1);
+
+let esperaDoSinal = null;
+
+function sair(status) {
+  clearTimeout(prazo);
+  if (esperaDoSinal) clearInterval(esperaDoSinal);
+  matarGrupo();
+  process.exit(status);
+}
+
+// No estouro do prazo o wrapper mata o grupo e NAO sai. Parece contraintuitivo
+// e e o ponto todo: o executor precisa ver o PROPRIO timeout (ETIMEDOUT do
+// spawnSync) para devolver timeout: true, e um trecho de pergunta que estoura
+// e reprovado por esse campo. Como o grupo ja morreu aqui, esperar os poucos
+// segundos que faltam nao deixa nada vivo; o SIGTERM do executor chega logo
+// depois e o handler abaixo encerra o wrapper. Sair aqui quebrava o contrato:
+// medido, os dois controles de laco infinito passaram a falhar porque o
+// spawnSync retornava normalmente aos 8 s, sem ETIMEDOUT.
+let prazoEstourou = false;
+const prazo = setTimeout(
+  () => {
+    prazoEstourou = true;
+    matarGrupo();
+    // Segura o loop de eventos ABERTO ate o sinal do executor chegar. Sem
+    // este handle pendente o Node encerra sozinho assim que o filho morre,
+    // mesmo com a saida explicita bloqueada, e o executor ve o wrapper
+    // terminar antes do proprio timeout. Medido: 8055 ms com timeout false,
+    // contra os 10000 ms que o campo timeout exige.
+    esperaDoSinal = setInterval(() => {}, 1000);
+  },
+  PRAZO_MS - (Date.now() - INICIO),
+);
+
+// So funciona porque a espera agora e assincrona: um wrapper bloqueado em
+// spawnSync nao roda handler de sinal nenhum, que era metade do defeito.
+process.on("SIGTERM", () => sair(1));
+process.on("SIGINT", () => sair(1));
+// Rede de seguranca: nenhum caminho de saida deixa o grupo vivo.
+process.on("exit", matarGrupo);
+
+filho.on("error", (erro) => {
+  console.error(String(erro));
+  sair(1);
+});
+
+filho.on("exit", (status, sinal) => {
+  // Depois do prazo, a morte do filho foi causada por mim: nao encerro o
+  // wrapper por ela, senao o executor nao chega a cronometrar o proprio
+  // timeout e o campo timeout volta a sair false.
+  if (prazoEstourou) return;
+  clearTimeout(prazo);
+  process.exit(sinal ? 1 : (status ?? 1));
+});
