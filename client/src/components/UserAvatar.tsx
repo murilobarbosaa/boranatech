@@ -14,11 +14,7 @@ import {
 // aparece. Token separado porque `sm` e consumido por outras telas, onde ele
 // espelha outras coisas, e mexer nele arrastaria todas elas. Mesma logica do
 // `preview`, que ja e um tamanho nomeado pelo lugar onde e usado.
-// `xs` (lote 11c) e o avatar de 20px DENTRO de um chip (o de collab do
-// calendario dos creators). Tamanho nomeado, e nao `sm` com `h-5 w-5` por
-// cima: as duas classes de altura coexistiam e a que vencia era a do tamanho,
-// entao o avatar saia maior que o chip e encostado embaixo.
-type UserAvatarSize = "xs" | "sm" | "header" | "md" | "lg" | "xl" | "preview";
+type UserAvatarSize = "sm" | "header" | "md" | "lg" | "xl" | "preview";
 
 interface UserAvatarProps {
   name: string;
@@ -58,7 +54,6 @@ export function effectiveOwnAvatar(
 }
 
 const sizeClasses: Record<UserAvatarSize, string> = {
-  xs: "h-5 w-5 text-[9px]",
   sm: "h-9 w-9 text-xs",
   header: "h-10 w-10 text-sm",
   md: "h-14 w-14 text-lg",
@@ -68,7 +63,6 @@ const sizeClasses: Record<UserAvatarSize, string> = {
 };
 
 const iconSizeClasses: Record<UserAvatarSize, string> = {
-  xs: "h-2.5 w-2.5",
   sm: "h-4 w-4",
   header: "h-[18px] w-[18px]",
   md: "h-6 w-6",
@@ -78,7 +72,6 @@ const iconSizeClasses: Record<UserAvatarSize, string> = {
 };
 
 const offsetClasses: Record<UserAvatarSize, string> = {
-  xs: "translate-x-[2px] translate-y-[2px]",
   sm: "translate-x-[3px] translate-y-[3px]",
   header: "translate-x-[3px] translate-y-[3px]",
   md: "translate-x-1 translate-y-1",
@@ -90,7 +83,6 @@ const offsetClasses: Record<UserAvatarSize, string> = {
 // Espessura do anel Pro animado por tamanho. Lugar unico pra ajustar. Em sm cai
 // pra 2px porque 3px pesa demais num avatar pequeno.
 const proRingWidth: Record<UserAvatarSize, string> = {
-  xs: "2px",
   sm: "2px",
   header: "2px",
   md: "3px",
@@ -103,7 +95,6 @@ const proRingWidth: Record<UserAvatarSize, string> = {
 // (sm 3px, md 4px, lg 8px, xl 10px, preview 4px). Usado pra recentrar o conic do
 // anel no mesmo ponto do conic da sombra, virando um gradiente continuo so.
 const proOffsetPx: Record<UserAvatarSize, string> = {
-  xs: "2px",
   sm: "3px",
   header: "3px",
   md: "4px",

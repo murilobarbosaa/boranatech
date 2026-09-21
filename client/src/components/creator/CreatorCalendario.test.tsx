@@ -721,25 +721,26 @@ describe("CreatorCalendario: collab aceita visivel", () => {
       within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
         .textContent,
     ).toBe("OCCollab aceita com Outra Cria");
-    // Centralizado na vertical (lote 11c): chip `items-center gap-1.5`, o
-    // avatar no tamanho `xs` (20px) sem classe de altura por cima, e o texto
-    // `leading-none`.
+    // Tamanho do lote 11b de volta (lote 11d): chip `gap-1`, avatar `sm`
+    // (h-9) sem classe de altura por cima, texto sem `leading-none`; o que
+    // fica do 11c e o `items-center`, que centraliza na vertical.
     const chip = within(linha).getByTestId(
       `creator-collab-fechada-${MINHA.id}`,
     );
     const cc = chip.getAttribute("class") ?? "";
     expect(cc).toContain("inline-flex");
     expect(cc).toContain("items-center");
-    expect(cc).toContain("gap-1.5");
+    expect(cc).toContain("gap-1 ");
+    expect(cc).not.toContain("gap-1.5");
     const avatarNoChip = chip.querySelector("span[aria-hidden]") as HTMLElement;
     const ca = avatarNoChip.getAttribute("class") ?? "";
-    expect(ca).toContain("h-5 w-5");
-    expect(ca).not.toContain("h-9");
+    expect(ca).toContain("h-9 w-9");
+    expect(ca).not.toContain("h-5");
     expect(
       within(linha)
         .getByTestId(`creator-collab-fechada-texto-${MINHA.id}`)
         .getAttribute("class") ?? "",
-    ).toContain("leading-none");
+    ).not.toContain("leading-none");
     // Tinta pelo token (lote 10d): roxo no claro, amarelo no escuro, sem `dark:`.
     const aperto = screen.getByTestId(`creator-dia-collab-${HOJE}`);
     expect(aperto.getAttribute("class") ?? "").toContain(

@@ -266,25 +266,23 @@ function ChipDeCollab({
   return (
     <span
       data-testid={`creator-collab-fechada-${marcacao.id}`}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
     >
       <Handshake aria-hidden="true" className="h-3 w-3" />
-      {/* Os parceiros com o avatar deles (lote 11b), antes do texto. O
-          tamanho e o `xs` do UserAvatar (lote 11c), sem margem propria, e o
-          texto e `leading-none`: e o que centraliza o avatar na vertical. */}
+      {/* Os parceiros com o avatar deles (lote 11b), antes do texto, no
+          tamanho `sm` de sempre (lote 11d: o 11c tinha encolhido para 20px e
+          o pedido era so centralizar). O `items-center` do chip e o que
+          centraliza; o avatar nao leva classe de altura por cima. */}
       {parceiros.map((p) => (
         <AvatarDoCreator
           key={p.user_id}
           name={nomeDoParceiro(p)}
           avatar={p.avatar}
           avatarUrl={p.avatar_url}
-          size="xs"
+          size="sm"
         />
       ))}
-      <span
-        data-testid={`creator-collab-fechada-texto-${marcacao.id}`}
-        className="leading-none"
-      >
+      <span data-testid={`creator-collab-fechada-texto-${marcacao.id}`}>
         {texto}
       </span>
     </span>
