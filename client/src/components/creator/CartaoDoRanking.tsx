@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Trophy } from "lucide-react";
 import { Link } from "wouter";
 
+import { EsqueletoDoCartaoDoRanking } from "@/components/creator/Esqueletos";
 import { contentFetch } from "@/lib/adminApi";
 import type { RankingDoMes } from "@shared/creatorRanking";
 
@@ -14,12 +15,17 @@ import type { RankingDoMes } from "@shared/creatorRanking";
 // conta rodaria quatro vezes por sessao sem motivo. O endpoint ja sai cacheado
 // por mes no servidor.
 //
-// SEM RESPOSTA, SEM CARTAO. Enquanto carrega, com erro, ou no backend anterior
-// (404), o cartao nao aparece: "Voce ainda nao pontuou" e informacao, e
-// mostra-la sobre uma requisicao que falhou seria mentir com cara de zero. O
-// cartao nao e o painel, entao sumir nao esconde nada que a pessoa veio ver.
+// ENQUANTO CARREGA, ESQUELETO (lote 11c); SEM RESPOSTA, SEM CARTAO. Com erro
+// ou no backend anterior (404), o cartao nao aparece: "Voce ainda nao pontuou"
+// e informacao, e mostra-la sobre uma requisicao que falhou seria mentir com
+// cara de zero. E o unico cartao que pode sumir, e so no erro: o esqueleto
+// existe para o caso comum, que e a resposta chegar.
 
 type Resumo = { posicao: number; total: number; pontos: number } | "sem_pontos";
+type Estado =
+  | { tipo: "carregando" }
+  | { tipo: "ok"; resumo: Resumo }
+  | { tipo: "nada" };
 
 function resumoDaResposta(json: unknown): Resumo | null {
   const data = (json as { data?: unknown } | null)?.data;
@@ -37,23 +43,27 @@ function resumoDaResposta(json: unknown): Resumo | null {
 }
 
 export function CartaoDoRanking() {
-  const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
 
   useEffect(() => {
     let cancelado = false;
     contentFetch("/creator/ranking")
       .then((json: unknown) => {
-        if (!cancelado) setResumo(resumoDaResposta(json));
+        if (cancelado) return;
+        const resumo = resumoDaResposta(json);
+        setEstado(resumo ? { tipo: "ok", resumo } : { tipo: "nada" });
       })
       .catch(() => {
-        if (!cancelado) setResumo(null);
+        if (!cancelado) setEstado({ tipo: "nada" });
       });
     return () => {
       cancelado = true;
     };
   }, []);
 
-  if (resumo === null) return null;
+  if (estado.tipo === "carregando") return <EsqueletoDoCartaoDoRanking />;
+  if (estado.tipo === "nada") return null;
+  const resumo = estado.resumo;
 
   return (
     <section

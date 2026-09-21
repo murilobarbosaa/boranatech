@@ -442,7 +442,11 @@ describe("CreatorRanking: regra, estados e janela de deploy", () => {
     let resolver: (v: unknown) => void = () => {};
     estado.responder = () => new Promise((r) => (resolver = r));
     montar();
-    expect(screen.getByTestId("creator-ranking-carregando")).toBeTruthy();
+    const esqueleto = screen.getByTestId("creator-ranking-carregando");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    // Podio de tres e cinco linhas (lote 11c).
+    expect(esqueleto.querySelectorAll("li")).toHaveLength(3);
+    expect(esqueleto.querySelectorAll(".h-14")).toHaveLength(5);
     expect(screen.getByTestId("creator-ranking")).toBeTruthy();
     resolver({ data: null });
     expect(await screen.findByTestId("creator-ranking-erro")).toBeTruthy();

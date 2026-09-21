@@ -11,7 +11,8 @@ import {
 import { toast } from "sonner";
 import type { AvatarDeCreator } from "@shared/creatorAvatar";
 
-import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { ErrorBlock } from "@/components/admin/StateBlocks";
+import { EsqueletoDoCalendario } from "@/components/creator/Esqueletos";
 import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import {
@@ -568,8 +569,9 @@ export function CreatorCalendario({
   }
 
   if (estado.tipo === "carregando") {
-    // TODO(Ana)
-    return <LoadingBlock label="Carregando o calendário..." />;
+    // Primeira carga (lote 11c): a grade do mes atual de mentira, no tamanho
+    // certo. A troca de mes tem o proprio esqueleto, mais abaixo.
+    return <EsqueletoDoCalendario />;
   }
 
   if (estado.tipo === "erro") {

@@ -126,6 +126,24 @@ describe("CartaoDoRanking", () => {
       // Da tempo de um render depois da resposta.
       await new Promise((r) => setTimeout(r, 0));
       expect(screen.queryByTestId("creator-card-ranking")).toBeNull();
+      // Nem o esqueleto: sem resposta, sem cartao.
+      expect(screen.queryByTestId("creator-card-ranking-esqueleto")).toBeNull();
     }
+  });
+
+  it("enquanto carrega, o esqueleto com a forma do cartao (lote 11c)", async () => {
+    let liberar: (v: unknown) => void = () => {};
+    estado.responder = () =>
+      new Promise((r) => {
+        liberar = r;
+      });
+    montar();
+    const esqueleto = screen.getByTestId("creator-card-ranking-esqueleto");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByTestId("creator-card-ranking")).toBeNull();
+    const posicoes = [posicao(1, 50, true)];
+    liberar({ data: { mes: "2026-09", posicoes, minha_posicao: posicoes[0] } });
+    await screen.findByTestId("creator-card-ranking");
+    expect(screen.queryByTestId("creator-card-ranking-esqueleto")).toBeNull();
   });
 });

@@ -1011,3 +1011,30 @@ describe("CreatorCalendario: modo admin", () => {
     ).toHaveLength(0);
   });
 });
+
+describe("CreatorCalendario: esqueleto da primeira carga (lote 11c)", () => {
+  it("nasce com a grade do mes de mentira, no mesmo numero de linhas, e vira o calendario no lugar", async () => {
+    let liberar: (v: unknown) => void = () => {};
+    estado.responder = (path, method) => {
+      if (method !== "GET") return Promise.resolve({});
+      if (path.startsWith("/creator/collabs")) {
+        return Promise.resolve({ data: { recebidos: [], enviados: [] } });
+      }
+      return new Promise((r) => {
+        liberar = r;
+      });
+    };
+    render(<CreatorCalendario />);
+    const esqueleto = screen.getByTestId("creator-calendario-esqueleto");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText(/Carregando o calend/)).toBeNull();
+    expect(screen.queryByTestId("creator-calendario")).toBeNull();
+    const celulas = esqueleto.querySelectorAll(".min-h-14");
+    expect(celulas.length % 7).toBe(0);
+    expect(celulas.length).toBeGreaterThanOrEqual(28);
+
+    liberar({ data: { marcacoes: [] } });
+    await screen.findByTestId("creator-calendario");
+    expect(screen.queryByTestId("creator-calendario-esqueleto")).toBeNull();
+  });
+});

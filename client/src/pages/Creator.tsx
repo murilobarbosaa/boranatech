@@ -5,7 +5,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
-import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { ErrorBlock } from "@/components/admin/StateBlocks";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { CartaoDoRanking } from "@/components/creator/CartaoDoRanking";
 import { CreatorAbas } from "@/components/creator/CreatorAbas";
@@ -15,6 +15,10 @@ import { CreatorPixForm } from "@/components/creator/CreatorPixForm";
 import { CreatorPublicacoes } from "@/components/creator/CreatorPublicacoes";
 import { CreatorRanking } from "@/components/creator/CreatorRanking";
 import { CreatorRedesForm } from "@/components/creator/CreatorRedesForm";
+import {
+  EsqueletoDoPainel,
+  EsqueletoDoPerfil,
+} from "@/components/creator/Esqueletos";
 import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
 import {
   CREATOR_ABA_PADRAO,
@@ -268,8 +272,9 @@ function PainelDeNumeros() {
   }, [janela, tentativa]);
 
   if (estado.tipo === "carregando") {
-    // TODO(Ana)
-    return <LoadingBlock label="Carregando seu painel..." />;
+    // Esqueleto com a forma do painel (lote 11c), e nao a caixa tracejada:
+    // o cartao nasce no tamanho certo e vira conteudo no lugar.
+    return <EsqueletoDoPainel />;
   }
 
   if (estado.tipo === "erro") {
@@ -369,8 +374,8 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
   const { estado, recarregar, definirPerfil, definirPix } = perfil;
 
   if (estado.tipo === "carregando") {
-    // TODO(Ana)
-    return <LoadingBlock label="Carregando seu perfil..." />;
+    // Os dois cartoes ja no lugar (lote 11c), com campos de mentira.
+    return <EsqueletoDoPerfil />;
   }
 
   if (estado.tipo === "erro") {

@@ -13,6 +13,7 @@ import { useLocation, useSearch } from "wouter";
 
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
+import { EsqueletoDoRanking } from "@/components/creator/Esqueletos";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
@@ -481,31 +482,6 @@ function RankingEmBreve() {
   );
 }
 
-function Esqueleto() {
-  return (
-    <div
-      data-testid="creator-ranking-carregando"
-      aria-hidden="true"
-      className="space-y-5"
-    >
-      <div className="h-5 w-48 animate-pulse rounded-full bg-slate-200" />
-      <ul className="grid gap-4 md:grid-cols-3">
-        {[2, 1, 3].map((n) => (
-          <li
-            key={n}
-            className="flex h-56 flex-col items-center rounded-3xl border-2 border-slate-200 p-5"
-          >
-            <div className="h-28 w-28 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-24 animate-pulse rounded-full bg-slate-200" />
-          </li>
-        ))}
-      </ul>
-      <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-      <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-    </div>
-  );
-}
-
 export function CreatorRanking({
   agora = () => new Date(),
 }: {
@@ -617,7 +593,7 @@ export function CreatorRanking({
 
       {estado.tipo === "carregando" ? (
         <div className="mt-6">
-          <Esqueleto />
+          <EsqueletoDoRanking />
         </div>
       ) : null}
 

@@ -680,3 +680,25 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     expect(estado.fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("esqueletos da pagina (lote 11c)", () => {
+  it("aba Numeros carregando: o esqueleto do painel, no lugar da caixa tracejada", () => {
+    estado.fetch = vi.fn(() => new Promise(() => {}));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    const esqueleto = screen.getByTestId("creator-painel-esqueleto");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText(/Carregando seu painel/)).toBeNull();
+    expect(screen.queryByTestId("view")).toBeNull();
+  });
+
+  it("aba Perfil carregando: os dois cartoes de mentira, no lugar da caixa tracejada", () => {
+    estado.perfil = { tipo: "carregando" };
+    montar("/creator?aba=perfil");
+    const esqueleto = screen.getByTestId("creator-perfil-esqueleto");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(esqueleto.querySelectorAll("section")).toHaveLength(2);
+    expect(screen.queryByText(/Carregando seu perfil/)).toBeNull();
+    expect(screen.queryByTestId("creator-card-redes")).toBeNull();
+  });
+});

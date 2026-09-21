@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { ErrorBlock } from "@/components/admin/StateBlocks";
+import { EsqueletoDasPublicacoes } from "@/components/creator/Esqueletos";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import {
   BOTAO_PRIMARIO,
@@ -298,8 +299,8 @@ export function CreatorPublicacoes() {
   }
 
   if (estado.tipo === "carregando") {
-    // TODO(Ana)
-    return <LoadingBlock label="Carregando suas publicações..." />;
+    // Formulario e tres linhas de mentira (lote 11c), na mesma grade.
+    return <EsqueletoDasPublicacoes />;
   }
 
   if (estado.tipo === "erro") {

@@ -678,3 +678,22 @@ describe("CreatorPublicacoes: status (lote 10b)", () => {
     expect(screen.queryByTestId("creator-publicacoes-aguardando")).toBeNull();
   });
 });
+
+describe("CreatorPublicacoes: esqueleto (lote 11c)", () => {
+  it("nasce esqueleto na mesma grade e vira conteudo no lugar, sem caixa tracejada", async () => {
+    let liberar: (v: unknown) => void = () => {};
+    estado.responder = () =>
+      new Promise((r) => {
+        liberar = r;
+      });
+    render(<CreatorPublicacoes />);
+    const esqueleto = screen.getByTestId("creator-publicacoes-esqueleto");
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText(/Carregando suas publica/)).toBeNull();
+    expect(screen.queryByTestId("creator-publicacoes")).toBeNull();
+
+    liberar({ data: { posts: [], total: 0, no_mes: 0, aguardando: 0 } });
+    await screen.findByTestId("creator-publicacoes");
+    expect(screen.queryByTestId("creator-publicacoes-esqueleto")).toBeNull();
+  });
+});
