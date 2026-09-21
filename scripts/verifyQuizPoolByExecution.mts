@@ -30,7 +30,7 @@
 // --tabela-revisao: depois do relatorio, imprime a tabela da revisao humana
 // (tabelaRevisao), uma linha por pergunta de codigo.
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -170,14 +170,41 @@ function daExecucao(r: SpawnSyncReturns<string>): Execucao {
 }
 
 export function makeExecutor(runner: Runner): Executor {
-  const dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
+  // Lote de higiene. O diretorio nasce SOB DEMANDA e morre assim que fica
+  // VAZIO, em vez de viver ate a saida do processo.
+  //
+  // A versao anterior removia o diretorio num process.once("exit"), e isso
+  // nao funciona aqui: o vitest roda com pool `forks` e encerra os workers por
+  // sinal, entao o handler nao chega a rodar. Medido numa suite inteira, na
+  // janela exata: 13 diretorios criados, 11 deles VAZIOS (todo arquivo de
+  // trecho removido) e sobrevivendo mesmo assim.
+  //
+  // Remover quando vazio preserva a reutilizacao entre chamadas, que NAO e
+  // acidente: `isolamento do executor` escreve marcador.txt numa chamada e o
+  // le na seguinte. Um diretorio por chamada quebraria esse teste. Com a regra
+  // do vazio, o diretorio daquele teste continua vivo (tem marcador.txt) e o
+  // de um trecho comum sai na hora.
+  let dir: string | null = null;
   let n = 0;
   const executar: Executor = (code: string): Execucao => {
-    const file = path.join(dir, `q${n++}${runner.ext}`);
+    if (dir === null) dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
+    executar.dir = dir;
+    const atual = dir;
+    const file = path.join(atual, `q${n++}${runner.ext}`);
     writeFileSync(file, code);
-    return daExecucao(spawnSaneado(runner, file, dir));
+    try {
+      return daExecucao(spawnSaneado(runner, file, atual));
+    } finally {
+      rmSync(file, { force: true });
+      // Escrito pelo wrapper de ts a cada execucao, nao pelo autor do trecho:
+      // sem remove-lo, o diretorio nunca fica vazio em ts.
+      rmSync(path.join(atual, "__ambiente.d.ts"), { force: true });
+      if (readdirSync(atual).length === 0) {
+        rmSync(atual, { recursive: true, force: true });
+        if (dir === atual) dir = null;
+      }
+    }
   };
-  executar.dir = dir;
   return executar;
 }
 
@@ -195,19 +222,26 @@ export type ExecutorDeGrupo = (arquivos: ArquivoDoGrupo[]) => Execucao;
 export function makeGroupExecutor(runner: Runner): ExecutorDeGrupo {
   return (arquivos: ArquivoDoGrupo[]): Execucao => {
     const dir = mkdtempSync(path.join(tmpdir(), "verify-grupo-"));
-    // Em js o import relativo entre arquivos .js so resolve como ESM com isto.
-    if (runner.ext === ".mjs" || runner.ext === ".js") {
-      writeFileSync(
-        path.join(dir, "package.json"),
-        JSON.stringify({ type: "module" }),
-      );
+    try {
+      // Em js o import relativo entre arquivos .js so resolve como ESM com isto.
+      if (runner.ext === ".mjs" || runner.ext === ".js") {
+        writeFileSync(
+          path.join(dir, "package.json"),
+          JSON.stringify({ type: "module" }),
+        );
+      }
+      let ultimo = "";
+      for (const arquivo of arquivos) {
+        ultimo = path.join(dir, arquivo.nome);
+        writeFileSync(ultimo, arquivo.corpo);
+      }
+      return daExecucao(spawnSaneado(runner, ultimo, dir));
+    } finally {
+      // O diretorio do grupo nao e reutilizado e ninguem o le depois da
+      // execucao, entao ele sai aqui mesmo, em vez de esperar a saida do
+      // processo como no executor de trecho unico.
+      rmSync(dir, { recursive: true, force: true });
     }
-    let ultimo = "";
-    for (const arquivo of arquivos) {
-      ultimo = path.join(dir, arquivo.nome);
-      writeFileSync(ultimo, arquivo.corpo);
-    }
-    return daExecucao(spawnSaneado(runner, ultimo, dir));
   };
 }
 

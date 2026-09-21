@@ -1,4 +1,5 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { QuizQuestion } from "../shared/roadmapQuiz/types";
@@ -9,6 +10,7 @@ import {
   type Execucao,
   fillGap,
   makeExecutor,
+  makeGroupExecutor,
   normalizeStdout,
   relatorioVerificacao,
   resumoCorreta,
@@ -211,6 +213,40 @@ describe("isolamento do executor", () => {
     const r = executar("nome = input()\nprint(nome)");
     expect(r.status).not.toBe(0);
     expect(r.timeout).toBe(false);
+  });
+});
+
+// Lote de higiene. mkdtempSync cria e ninguem removia: a maquina acumulou
+// 3520 diretorios (55 MB) em /tmp, e cada rodada da suite acrescentava mais.
+describe("limpeza dos diretorios temporarios do executor", () => {
+  const runner = runnerFor("python");
+  if (!runner) throw new Error("runner de python ausente");
+
+  const gruposEmTmp = () =>
+    new Set(
+      readdirSync(tmpdir()).filter((nome) => nome.startsWith("verify-grupo-")),
+    );
+
+  it("o arquivo do trecho some depois de executado", () => {
+    const executar = makeExecutor(runner);
+    const r = executar("print('ok')");
+    expect(normalizeStdout(r.stdout)).toBe("ok");
+    // O diretorio deste executor e reutilizado entre chamadas (q0, q1, ...),
+    // entao quem some aqui e o ARQUIVO; o diretorio so cai na saida do
+    // processo que o criou.
+    expect(existsSync(path.join(executar.dir!, `q0${runner.ext}`))).toBe(false);
+  });
+
+  it("o diretorio do grupo some depois da chamada", () => {
+    // Comparacao por CONJUNTO, e nao pelo caminho: makeGroupExecutor cria um
+    // diretorio por chamada e nao o expoe, e outro worktree pode estar
+    // rodando a suite ao mesmo tempo, criando diretorios que nao sao meus.
+    const antes = gruposEmTmp();
+    const executarGrupo = makeGroupExecutor(runner);
+    const r = executarGrupo([{ nome: `a${runner.ext}`, corpo: "print('ok')" }]);
+    expect(normalizeStdout(r.stdout)).toBe("ok");
+    const novos = [...gruposEmTmp()].filter((nome) => !antes.has(nome));
+    expect(novos).toEqual([]);
   });
 });
 
