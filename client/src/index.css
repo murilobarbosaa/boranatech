@@ -221,6 +221,17 @@
   --avatar-ink-creme: oklch(0.13 0.015 260);
   --avatar-bg-branco: #fff;
   --avatar-ink-branco: oklch(0.13 0.015 260);
+  /* METAIS DO PODIO do ranking dos creators (lote 11c). So no `:root`, sem par
+     no `.dark`, pelo mesmo motivo dos fundos do avatar: ouro, prata e bronze
+     sao a identidade do lugar, nao superficie do tema. Os valores sao os do
+     amber-400, slate-300 e orange-400 do tema claro, copiados como literais
+     (o slate-300 escurece no `.dark`, e a prata virava cinza escuro com o
+     chip ilegivel). A tinta sobre eles e a `--avatar-ink-amarelo`, escura e
+     fixa. Os FUNDOS dos cartoes (amber-100, slate-200, orange-100) continuam
+     pela paleta, porque ali a inversao e desejada. */
+  --metal-ouro: oklch(0.828 0.189 84.429);
+  --metal-prata: oklch(0.869 0.022 252.894);
+  --metal-bronze: oklch(0.75 0.183 55.934);
 }
 
 .dark {

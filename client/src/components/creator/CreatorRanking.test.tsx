@@ -251,12 +251,14 @@ describe("CreatorRanking: podio", () => {
     );
     montar();
     const podio = await screen.findByTestId("creator-ranking-podio");
-    const metais: Array<[1 | 2 | 3, string, string, string]> = [
-      [1, "Ouro", "bg-amber-100", "bg-amber-400"],
-      [2, "Prata", "bg-slate-200", "bg-slate-300"],
-      [3, "Bronze", "bg-orange-100", "bg-orange-400"],
+    // Metal por TOKEN fixo (lote 11c): medalha, chip, anel e marca d'agua na
+    // mesma cor nos dois temas; a tinta sobre o metal e a escura fixa.
+    const metais: Array<[1 | 2 | 3, string, string, string, string]> = [
+      [1, "Ouro", "bg-amber-100", "bg-[var(--metal-ouro)]", "pt-10"],
+      [2, "Prata", "bg-slate-200", "bg-[var(--metal-prata)]", "pt-8"],
+      [3, "Bronze", "bg-orange-100", "bg-[var(--metal-bronze)]", "pt-8"],
     ];
-    for (const [lugar, rotulo, fundo, corDaMedalha] of metais) {
+    for (const [lugar, rotulo, fundo, corDaMedalha, topo] of metais) {
       const cartao = within(podio).getByTestId(
         `creator-ranking-podio-${lugar}`,
       );
@@ -264,6 +266,22 @@ describe("CreatorRanking: podio", () => {
       expect(classes, `fundo do ${lugar}`).toContain(fundo);
       expect(classes).toContain("relative");
       expect(classes).toContain("overflow-visible");
+      // O espaco de cima acompanha o tamanho da medalha.
+      expect(classes, `topo do ${lugar}`).toContain(topo);
+      // Chip: fundo do metal, tinta fixa, borda preta.
+      const chip = within(cartao).getByTestId(`creator-ranking-metal-${lugar}`);
+      const cc = chip.getAttribute("class") ?? "";
+      expect(cc).toContain(corDaMedalha);
+      expect(cc).toContain("text-[var(--avatar-ink-amarelo)]");
+      expect(cc).toContain("border-slate-900");
+      expect(cc).not.toContain("bnt-accent-solid");
+      // Marca d'agua na cor do metal, a 25%.
+      const marca = within(cartao).getByTestId(
+        `creator-ranking-marca-${lugar}`,
+      );
+      const cmk = marca.getAttribute("class") ?? "";
+      expect(cmk).toContain(corDaMedalha.replace("bg-", "text-"));
+      expect(cmk).toContain("opacity-25");
       // A medalha e o PRIMEIRO filho, montada na borda de cima e centralizada.
       const medalha = cartao.firstElementChild as HTMLElement;
       expect(medalha.getAttribute("data-testid")).toBe(
@@ -277,6 +295,7 @@ describe("CreatorRanking: podio", () => {
         "left-1/2",
         "-translate-x-1/2",
         corDaMedalha,
+        "text-[var(--avatar-ink-amarelo)]",
       ]) {
         expect(cm, c).toContain(c);
       }

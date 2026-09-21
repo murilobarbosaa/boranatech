@@ -37,16 +37,18 @@ import {
 // de erro, merece o ranking de hoje.
 //
 // O PODIO e o unico lugar onde a tela gasta ousadia: o primeiro no centro e
-// mais alto, e cada cartao tem a identidade do seu metal (lote 11b): ouro em
-// amber, prata em slate, bronze em orange, com a medalha montada na borda de
-// cima e uma marca d'agua discreta no canto. Tudo em classes literais e
-// pasteis que o `.dark` ja remapeia (amber-100, slate-200 e orange-100 viram
-// superficies escuras e o texto preto vira claro pela mesma paleta); a tinta
-// das medalhas de ouro e bronze e o `ink-on-accent`, que nao inverte, porque
-// amber-400 e orange-400 continuam claros no escuro. O resto e lista, quieta,
-// na mesma linguagem dos outros cartoes. Os tres do podio NAO repetem na
-// lista; quem esta com zero fica no fim, dizendo isso em palavras. A foto e o
-// identificador: a bolinha da cor do calendario nao entra aqui.
+// mais alto, e cada cartao tem a identidade do seu metal (lote 11b): ouro,
+// prata e bronze, com a medalha montada na borda de cima e uma marca d'agua
+// discreta no canto. Desde o lote 11c o METAL e um token fixo do index.css
+// (`--metal-ouro`, `--metal-prata`, `--metal-bronze`, so no `:root`): no
+// escuro o slate-300 escurecia e o chip "PRATA" ficava cinza com texto
+// amarelo, e a marca d'agua na cor do texto sumia. Medalha, anel, chip e
+// marca d'agua usam o metal; a tinta sobre o metal e a `--avatar-ink-amarelo`,
+// escura e fixa. Os FUNDOS dos cartoes (amber-100, slate-200, orange-100)
+// continuam pela paleta, porque ali a inversao do tema e desejada. O resto e
+// lista, quieta, na mesma linguagem dos outros cartoes. Os tres do podio NAO
+// repetem na lista; quem esta com zero fica no fim, dizendo isso em palavras.
+// A foto e o identificador: a bolinha da cor do calendario nao entra aqui.
 //
 // JANELA DE DEPLOY: o backend anterior nao tem a rota (404). Nesse caso a aba
 // volta a mostrar o cartao "em breve" de sempre, que so sai do codigo num lote
@@ -173,14 +175,25 @@ function Handle({ p, className }: { p: PosicaoDoRanking; className: string }) {
   );
 }
 
-/** A identidade de cada lugar do podio (lote 11b): o metal, em classes literais. */
+/** Tinta escura e fixa sobre qualquer metal (a mesma dos avatares claros). */
+const TINTA_SOBRE_METAL = "text-[var(--avatar-ink-amarelo)]";
+
+/**
+ * A identidade de cada lugar do podio: o metal, em classes literais com o
+ * token fixo. `topo` e `chip` acompanham o tamanho da medalha (a do 1º e
+ * `h-12`, as outras `h-10`), para o chip ficar a mesma distancia visual da
+ * medalha nos tres cartoes.
+ */
 const METAL: Record<
   1 | 2 | 3,
   {
     rotulo: string;
     fundo: string;
+    metal: string;
     medalha: string;
     anel: string;
+    marca: string;
+    topo: string;
     Marca: LucideIcon;
   }
 > = {
@@ -188,24 +201,31 @@ const METAL: Record<
   1: {
     rotulo: "Ouro",
     fundo: "bg-amber-100",
-    medalha: "bg-amber-400 text-ink-on-accent",
-    anel: "ring-amber-400",
+    metal: "bg-[var(--metal-ouro)]",
+    medalha: "h-12 w-12 text-xl",
+    anel: "ring-[var(--metal-ouro)]",
+    marca: "text-[var(--metal-ouro)]",
+    topo: "pt-10",
     Marca: Trophy,
   },
   2: {
     rotulo: "Prata",
     fundo: "bg-slate-200",
-    // Prata inverte com a paleta (slate-300 escurece no `.dark`), entao a
-    // tinta e a de sempre, que inverte junto.
-    medalha: "bg-slate-300 text-slate-900",
-    anel: "ring-slate-300",
+    metal: "bg-[var(--metal-prata)]",
+    medalha: "h-10 w-10 text-lg",
+    anel: "ring-[var(--metal-prata)]",
+    marca: "text-[var(--metal-prata)]",
+    topo: "pt-8",
     Marca: Medal,
   },
   3: {
     rotulo: "Bronze",
     fundo: "bg-orange-100",
-    medalha: "bg-orange-400 text-ink-on-accent",
-    anel: "ring-orange-400",
+    metal: "bg-[var(--metal-bronze)]",
+    medalha: "h-10 w-10 text-lg",
+    anel: "ring-[var(--metal-bronze)]",
+    marca: "text-[var(--metal-bronze)]",
+    topo: "pt-8",
     Marca: Medal,
   },
 };
@@ -230,7 +250,7 @@ function LugarDoPodio({
   return (
     <li
       data-testid={`creator-ranking-podio-${lugar}`}
-      className={`${ordem} ${altura} relative flex flex-col items-center overflow-visible rounded-3xl border-2 border-slate-900 ${metal.fundo} px-5 pb-5 pt-8 text-center shadow-[5px_5px_0_var(--bnt-shadow)] ${
+      className={`${ordem} ${altura} relative flex flex-col items-center overflow-visible rounded-3xl border-2 border-slate-900 ${metal.fundo} px-5 pb-5 ${metal.topo} text-center shadow-[5px_5px_0_var(--bnt-shadow)] ${
         p?.eu ? "ring-4 ring-[var(--bnt-accent-solid)] ring-offset-2" : ""
       }`}
     >
@@ -238,21 +258,24 @@ function LugarDoPodio({
       <span
         aria-hidden="true"
         data-testid={`creator-ranking-medalha-${lugar}`}
-        className={`absolute -top-4 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full border-2 border-slate-900 font-display font-black shadow-[2px_2px_0_var(--bnt-shadow)] ${metal.medalha} ${
-          primeiro ? "h-12 w-12 text-xl" : "h-10 w-10 text-lg"
-        }`}
+        className={`absolute -top-4 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full border-2 border-slate-900 font-display font-black shadow-[2px_2px_0_var(--bnt-shadow)] ${metal.metal} ${TINTA_SOBRE_METAL} ${metal.medalha}`}
       >
         {lugar}
       </span>
+      {/* O chip do metal: fundo do metal, tinta escura fixa, borda preta.
+          Nada nele muda com o tema, entao e legivel nos dois. */}
       <span
         data-testid={`creator-ranking-metal-${lugar}`}
-        className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[var(--bnt-accent-solid)]"
+        className={`rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${metal.metal} ${TINTA_SOBRE_METAL}`}
       >
         {metal.rotulo}
       </span>
+      {/* A marca d'agua na cor do metal, e nao na do texto: a do texto
+          clareava no escuro e sumia sobre o fundo escuro do cartao. */}
       <metal.Marca
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 right-3 h-16 w-16 opacity-10"
+        data-testid={`creator-ranking-marca-${lugar}`}
+        className={`pointer-events-none absolute bottom-3 right-3 h-16 w-16 opacity-25 ${metal.marca}`}
       />
 
       <div className="relative mt-4">
