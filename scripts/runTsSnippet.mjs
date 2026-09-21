@@ -133,14 +133,19 @@ const filho = spawn(process.execPath, [tsxCli, arquivo], {
   detached: true,
 });
 
-// filhoVivo e a protecao mais importante daqui, e nao o grupoMorto. Quando o
-// trecho termina sozinho, o PID dele e liberado e o sistema pode REAPROVEITA-LO
-// em outro processo; mandar SIGKILL para -pid depois disso mata o grupo de um
-// processo alheio, possivelmente o do proprio shell que roda a suite. Foi o que
-// aconteceu: mortes abruptas com status 144, sem log e sem OOM, em primeiro e
-// em segundo plano, porque `process.on("exit", matarGrupo)` matava mesmo no
-// caminho em que o filho ja tinha saido limpo. O grupoMorto so evita matar
-// duas vezes, que e outro problema, bem menor.
+// filhoVivo e a protecao mais importante daqui, e nao o grupoMorto, que so
+// evita matar duas vezes.
+//
+// O RISCO que ela fecha: depois que o filho termina, o PID dele e liberado e o
+// sistema pode reaproveita-lo, inclusive como lider do grupo de um job do
+// proprio shell. Um kill(-pid) tardio atingiria esse grupo alheio. Sem o
+// filhoVivo, `process.on("exit", matarGrupo)` mandava sinal tambem no caminho
+// em que o filho ja tinha saido limpo, que e exatamente a janela do reuso.
+//
+// Observacao, nao causa: durante o lote houve mortes abruptas com status 144 e
+// elas cessaram depois desta protecao. A causa nao foi reproduzida, e o numero
+// nao ajuda a sustenta-la (morte por SIGKILL aparece como 137, nao 144), entao
+// isto fica registrado como coincidencia observada e nada mais.
 let grupoMorto = false;
 let filhoVivo = true;
 function matarGrupo() {
