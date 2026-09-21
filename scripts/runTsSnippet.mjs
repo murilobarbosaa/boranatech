@@ -133,9 +133,18 @@ const filho = spawn(process.execPath, [tsxCli, arquivo], {
   detached: true,
 });
 
+// filhoVivo e a protecao mais importante daqui, e nao o grupoMorto. Quando o
+// trecho termina sozinho, o PID dele e liberado e o sistema pode REAPROVEITA-LO
+// em outro processo; mandar SIGKILL para -pid depois disso mata o grupo de um
+// processo alheio, possivelmente o do proprio shell que roda a suite. Foi o que
+// aconteceu: mortes abruptas com status 144, sem log e sem OOM, em primeiro e
+// em segundo plano, porque `process.on("exit", matarGrupo)` matava mesmo no
+// caminho em que o filho ja tinha saido limpo. O grupoMorto so evita matar
+// duas vezes, que e outro problema, bem menor.
 let grupoMorto = false;
+let filhoVivo = true;
 function matarGrupo() {
-  if (grupoMorto || filho.pid === undefined) return;
+  if (!filhoVivo || grupoMorto || filho.pid === undefined) return;
   grupoMorto = true;
   try {
     process.kill(-filho.pid, "SIGKILL");
@@ -189,6 +198,10 @@ filho.on("error", (erro) => {
 });
 
 filho.on("exit", (status, sinal) => {
+  // Marcado ANTES de qualquer outra coisa: a partir daqui o PID do filho pode
+  // ser reaproveitado pelo sistema, e nenhum caminho de saida pode mandar
+  // sinal para ele.
+  filhoVivo = false;
   // Depois do prazo, a morte do filho foi causada por mim: nao encerro o
   // wrapper por ela, senao o executor nao chega a cronometrar o proprio
   // timeout e o campo timeout volta a sair false.
