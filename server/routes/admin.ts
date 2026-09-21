@@ -44,6 +44,11 @@ import {
   getPosthogStats,
   getPosthogUserActivity,
 } from "../lib/posthog";
+import { posthogPagesCache } from "../lib/posthogPages";
+import {
+  InvalidPosthogPagesPeriod,
+  parsePosthogPagesPeriod,
+} from "../lib/posthogPagesPeriod";
 import { isRetryableFiscalStatus } from "../lib/fiscalInvoice";
 import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
@@ -703,6 +708,24 @@ router.get("/posthog-stats", async (req, res, next) => {
     }
   } catch (err) {
     next(err);
+  }
+});
+
+// Somente os cinco sinais consumidos por Páginas. O funil legado continua em
+// /posthog-stats e suas falhas não afetam este contrato.
+router.get("/posthog-pages", async (req, res, next) => {
+  try {
+    const { period, refresh } = parsePosthogPagesPeriod(
+      req.query as Record<string, unknown>,
+    );
+    res.json({ data: await posthogPagesCache.get(period, refresh) });
+  } catch (error) {
+    if (error instanceof InvalidPosthogPagesPeriod) {
+      return next(
+        createError(400, "invalid_posthog_pages_period", error.reason),
+      );
+    }
+    next(error);
   }
 });
 

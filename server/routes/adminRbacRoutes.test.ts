@@ -169,8 +169,9 @@ describe("inventário independente das rotas administrativas", () => {
     // lista de pendentes e GET (67 -> 68) e a confirmacao e POST (65 -> 66).
     // 134 -> 135 com `GET /api/admin/creators/calendar` (lote 10d): GET 68 -> 69.
     // 135 -> 136 com `GET /api/admin/creators/ranking` (lote 11c): GET 69 -> 70.
-    expect(actual).toHaveLength(136);
-    expect(actual.filter(([method]) => method === "GET")).toHaveLength(70);
+    // 136 -> 137 com GET /api/admin/posthog-pages (ADM-D08A): GET 70 -> 71.
+    expect(actual).toHaveLength(137);
+    expect(actual.filter(([method]) => method === "GET")).toHaveLength(71);
     expect(actual.filter(([method]) => method !== "GET")).toHaveLength(66);
     expect(actual.some(([, routePath]) => routePath.includes(":"))).toBe(true);
     expect(actual.some(([, routePath]) => routePath.includes("*"))).toBe(false);

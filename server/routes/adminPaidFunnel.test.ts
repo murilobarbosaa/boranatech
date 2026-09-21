@@ -94,6 +94,12 @@ vi.mock("../lib/posthog", () => ({
   getPosthogFeatureUsage: async () => ({ state: "error", reason: "n/a" }),
 }));
 
+const pagesRead = vi.hoisted(() => ({ get: vi.fn() }));
+vi.mock("../lib/posthogPages", () => ({
+  POSTHOG_PAGES_MAX_INTERVAL_DAYS: 400,
+  posthogPagesCache: { get: pagesRead.get },
+}));
+
 import {
   criarSupabaseDouble,
   type RespostaTabela,
@@ -155,6 +161,61 @@ function sinaisOk(
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe("GET /posthog-pages", () => {
+  const from = "2026-08-01T00:00:00.000Z";
+  const to = "2026-09-16T00:00:00.000Z";
+  const url = `/posthog-pages?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+
+  it("entrega somente o contrato de Páginas e encaminha refresh explícito", async () => {
+    pagesRead.get.mockImplementation(async (period: unknown) => ({
+      state: "ok",
+      hasData: false,
+      stats: { totalPageviews: 0, pages: [] },
+      period,
+      computedAt: "2026-09-15T12:00:00.000Z",
+      availability: {
+        pages: { state: "available" },
+        timeScroll: { state: "available" },
+        exitRate: { state: "available" },
+      },
+      coverage: {
+        pages: "top_10",
+        timeAndScroll: "$pageleave",
+        exitRate: "session_last_page",
+        complete: true,
+      },
+    }));
+    const response = await chamarAdmin("GET", `${url}&refresh=1`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({
+      state: "ok",
+      period: { from, to, timezone: "UTC" },
+    });
+    expect(pagesRead.get).toHaveBeenCalledWith(
+      { from, to, timezone: "UTC" },
+      true,
+    );
+    expect(response.body.data).not.toHaveProperty("uniqueUsers");
+    expect(response.body.data).not.toHaveProperty("email");
+    expect(response.body.data.availability.pages.state).toBe("available");
+  });
+
+  it.each([
+    `/posthog-pages?from=bad&to=${encodeURIComponent(to)}`,
+    `/posthog-pages?from=${encodeURIComponent(from)}`,
+    `/posthog-pages?from=${encodeURIComponent(to)}&to=${encodeURIComponent(from)}`,
+    `${url}&from=${encodeURIComponent(from)}`,
+    `${url}&refresh=1&refresh=1`,
+    `/posthog-pages?from=${encodeURIComponent("2025-01-01T00:00:00.000Z")}&to=${encodeURIComponent(to)}`,
+  ])("retorna HTTP 400 para janela ou parâmetro inválido %#", async (path) => {
+    pagesRead.get.mockClear();
+    const response = await chamarAdmin("GET", path);
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("invalid_posthog_pages_period");
+    expect(pagesRead.get).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET /paid-funnel", () => {
