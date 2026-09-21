@@ -134,7 +134,19 @@ export default function Creator() {
       {/* TODO(Ana) */}
       <SEO title="Painel de Creator" url="/creator" noindex />
       <section className="hero-pattern border-b-2 border-slate-900 py-8 md:py-10">
-        <div className="container">
+        {/* Duas colunas no desktop (lote 11e): a esquerda o de sempre, a
+            direita o mini ranking, que assim fica a vista em TODAS as abas.
+            A coluna da direita so existe para o afiliado (influencer nao tem
+            ranking, lote 11b), e a grade volta a uma coluna. No celular o
+            cartao vem abaixo do subtitulo, largura total. */}
+        <div
+          data-testid="creator-cabecalho"
+          className={`container ${
+            kind === "afiliado"
+              ? "grid gap-6 md:grid-cols-[1fr_minmax(0,28rem)] md:items-start md:gap-8"
+              : ""
+          }`}
+        >
           <div>
             <p className="social-badge mb-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wide">
               <Sparkles className="h-4 w-4" />
@@ -150,6 +162,19 @@ export default function Creator() {
               Seu link, seus números e o que você já gerou para a Bora na Tech.
             </p>
           </div>
+          {kind === "afiliado" ? (
+            <div data-testid="creator-cabecalho-ranking">
+              {/* O cartao busca sozinho, nasce esqueleto na mesma altura e
+                  some em erro (a coluna colapsa; sem salto grande, porque o
+                  esqueleto so existe durante a carga). */}
+              <BlocoBoundary
+                // TODO(Ana)
+                nome="Ranking do mês"
+              >
+                <CartaoDoRanking />
+              </BlocoBoundary>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -170,18 +195,6 @@ export default function Creator() {
               aria-labelledby={idDaAba("numeros")}
               className="space-y-8"
             >
-              {/* O cartao do ranking (lote 11) busca sozinho e some sem
-                  resposta; fica ANTES do painel para a posicao do mes ser a
-                  primeira coisa da aba, e fora do painel para nao esperar por
-                  ele. */}
-              {kind === "afiliado" ? (
-                <BlocoBoundary
-                  // TODO(Ana)
-                  nome="Ranking do mês"
-                >
-                  <CartaoDoRanking />
-                </BlocoBoundary>
-              ) : null}
               <PainelDeNumeros />
             </div>
           ) : null}

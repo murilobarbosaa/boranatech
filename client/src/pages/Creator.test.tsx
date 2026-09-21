@@ -426,17 +426,51 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     expect(screen.queryByTestId("redes-form")).toBeNull();
   });
 
-  it("na aba Numeros o cartao do ranking vem ANTES do painel (lote 11)", async () => {
+  it("o mini ranking vive no CABECALHO, na coluna da direita, antes da faixa de abas (lote 11e)", async () => {
     estado.fetch = vi.fn(async () => ({ data: PAINEL }));
     estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
     montar();
     const view = await screen.findByTestId("view");
-    const cartao = screen.getByTestId("cartao-ranking");
+    const cabecalho = screen.getByTestId("creator-cabecalho");
+    // Duas colunas no desktop, so para o afiliado.
+    expect(cabecalho.getAttribute("class") ?? "").toContain(
+      "md:grid-cols-[1fr_minmax(0,28rem)]",
+    );
+    const coluna = within(cabecalho).getByTestId("creator-cabecalho-ranking");
+    expect(within(coluna).getByTestId("cartao-ranking")).toBeTruthy();
+    // Titulo e subtitulo continuam na coluna da esquerda, antes do cartao.
+    const titulo = within(cabecalho).getByRole("heading", { level: 1 });
     expect(
-      cartao.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING,
+      titulo.compareDocumentPosition(coluna) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Cabecalho antes da faixa de abas, e a faixa antes do painel.
+    const abas = screen.getByTestId("creator-abas");
+    expect(
+      cabecalho.compareDocumentPosition(abas) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      abas.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // E NAO existe mais um cartao proprio dentro da aba Numeros.
+    expect(
+      within(screen.getByRole("tabpanel")).queryByTestId("cartao-ranking"),
+    ).toBeNull();
+    expect(screen.getAllByTestId("cartao-ranking")).toHaveLength(1);
     // A PAGINA continua buscando so o painel: o cartao busca por conta propria.
     expect(estado.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("o mini ranking aparece em qualquer aba: Calendario e Perfil (lote 11e)", async () => {
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    for (const aba of ["calendario", "perfil"]) {
+      cleanup();
+      montar(`/creator?aba=${aba}`);
+      const cabecalho = await screen.findByTestId("creator-cabecalho");
+      expect(within(cabecalho).getByTestId("cartao-ranking"), aba).toBeTruthy();
+      expect(screen.getAllByTestId("cartao-ranking")).toHaveLength(1);
+    }
+    expect(estado.fetch).not.toHaveBeenCalled();
   });
 
   it("na aba Numeros a secao de perfil nao existe", async () => {
@@ -639,6 +673,11 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
     ]);
     expect(screen.queryByTestId("ranking")).toBeNull();
     expect(screen.queryByTestId("cartao-ranking")).toBeNull();
+    // Sem a coluna da direita, o cabecalho volta a uma coluna (lote 11e).
+    expect(screen.queryByTestId("creator-cabecalho-ranking")).toBeNull();
+    expect(
+      screen.getByTestId("creator-cabecalho").getAttribute("class") ?? "",
+    ).not.toContain("md:grid-cols");
     expect(
       screen.getByTestId("creator-aba-numeros").getAttribute("aria-selected"),
     ).toBe("true");
