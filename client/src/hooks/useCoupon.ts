@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { applyAffiliateCode } from "@/hooks/useAffiliate";
 import { apiUrl } from "@/lib/api";
 
 export const COUPON_STORAGE_KEY = "bora-na-tech:coupon";
@@ -15,7 +16,17 @@ export type StoredCoupon = {
   expires: number;
 };
 
-export type CouponStatus = "idle" | "validating" | "valid" | "invalid";
+/**
+ * `affiliate` (lote 11b): o que a pessoa digitou nao era cupom de marketing,
+ * era codigo de creator, e foi aplicado como afiliado. `coupon` continua
+ * `null` nesse estado; o desconto vigente e o do `useAffiliate`.
+ */
+export type CouponStatus =
+  | "idle"
+  | "validating"
+  | "valid"
+  | "invalid"
+  | "affiliate";
 
 export function clearStoredCoupon() {
   if (typeof window === "undefined") return;
@@ -107,6 +118,17 @@ export function useCoupon() {
     if (seq !== requestSeq.current) return false;
 
     if (!next) {
+      // Nao e cupom de marketing: pode ser o codigo de um creator (lote 11b).
+      // O creator diz "usa meu cupom FULANO10" e a pessoa DIGITA no campo, em
+      // vez de clicar num link com ?ref=. Ate aqui isso era "Cupom invalido",
+      // e os 88 codigos estavam certos no banco: o campo e que so conhecia a
+      // tabela de cupons. Mesmo caminho da URL, sem registrar clique.
+      const afiliado = await applyAffiliateCode(code);
+      if (seq !== requestSeq.current) return false;
+      if (afiliado) {
+        setStatus("affiliate");
+        return true;
+      }
       setStatus("invalid");
       return false;
     }

@@ -522,18 +522,61 @@ function coveredPlanLabels(applicablePlans: string[]): string {
 function CouponField({
   coupon,
   status,
+  affiliateCode,
+  affiliateDiscount,
   onApply,
   onRemove,
+  onRemoveAffiliate,
 }: {
   coupon: StoredCoupon | null;
   status: CouponStatus;
+  /** O afiliado vigente (lote 11b): e o que o campo mostra quando o codigo
+   * digitado era de um creator. */
+  affiliateCode: string | null;
+  affiliateDiscount: number;
   onApply: (code: string) => Promise<boolean>;
   onRemove: () => void;
+  onRemoveAffiliate: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [shaking, setShaking] = useState(false);
   const validating = status === "validating";
+
+  // Codigo de creator digitado no campo (lote 11b): o chip diz o que foi
+  // aplicado e quanto vale, com o mesmo Remover do cupom. O banner amarelo de
+  // afiliado aparece junto, pelo `useAffiliate` que o `applyAffiliateCode`
+  // acordou.
+  if (status === "affiliate" && affiliateCode) {
+    return (
+      <div
+        role="status"
+        data-testid="checkout-afiliado-aplicado"
+        className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-50 py-1.5 pl-4 pr-1.5 text-sm font-bold text-emerald-800"
+      >
+        <Check
+          size={16}
+          strokeWidth={3}
+          aria-hidden="true"
+          className="shrink-0"
+        />
+        <span className="truncate">
+          {/* TODO(Ana) */}
+          Código do creator{" "}
+          <span className="font-mono font-black">{affiliateCode}</span>{" "}
+          aplicado: {affiliateDiscount}% de desconto na primeira compra
+        </span>
+        <button
+          type="button"
+          onClick={onRemoveAffiliate}
+          aria-label={`Remover código ${affiliateCode}`}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-emerald-700 transition-colors hover:bg-emerald-200 hover:text-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+        >
+          <X size={14} strokeWidth={3} aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
 
   if (coupon) {
     return (
@@ -1452,8 +1495,16 @@ export default function Checkout() {
                 <CouponField
                   coupon={coupon}
                   status={couponStatus}
+                  affiliateCode={affiliateCode}
+                  affiliateDiscount={discountPercent}
                   onApply={applyCoupon}
                   onRemove={removeCoupon}
+                  onRemoveAffiliate={() => {
+                    // Apaga o afiliado E volta o campo ao inicio: o status
+                    // `affiliate` mora no useCoupon, e so o removeCoupon o zera.
+                    clearAffiliate();
+                    removeCoupon();
+                  }}
                 />
                 <button
                   type="button"
