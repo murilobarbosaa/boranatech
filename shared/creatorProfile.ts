@@ -107,14 +107,18 @@ export type CorDoCalendario = (typeof CORES_DO_CALENDARIO)[number];
 export const COR_PADRAO_DO_CALENDARIO: CorDoCalendario = "violet";
 
 // TODO(Ana)
+// Os nomes sao os que as pessoas usam, nao os da paleta (lote 11c): "Roxo" e
+// nao "Violeta", "Vermelho" e nao "Rosa" para o rose, "Rosa" para o fuchsia.
+// So o rotulo muda; a chave e a classe do marcador continuam as da familia.
+// TODO(Ana)
 export const ROTULO_DA_COR: Record<CorDoCalendario, string> = {
-  violet: "Violeta",
+  violet: "Roxo",
   blue: "Azul",
   cyan: "Ciano",
   emerald: "Verde",
   orange: "Laranja",
-  rose: "Rosa",
-  fuchsia: "Fúcsia",
+  rose: "Vermelho",
+  fuchsia: "Rosa",
 };
 
 export function ehCorDoCalendario(valor: unknown): valor is CorDoCalendario {

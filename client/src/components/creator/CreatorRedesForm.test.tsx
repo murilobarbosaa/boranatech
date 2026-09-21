@@ -292,7 +292,17 @@ describe("CreatorRedesForm: cor no calendario", () => {
     );
     const opcoes = await screen.findAllByRole("option");
     expect(opcoes).toHaveLength(7);
-    expect(opcoes[0].textContent).toBe("Violeta");
+    // Rotulo de gente (lote 11c): o violet e "Roxo".
+    expect(opcoes[0].textContent).toBe("Roxo");
+    expect(opcoes.map((o) => o.textContent)).toEqual([
+      "Roxo",
+      "Azul",
+      "Ciano",
+      "Verde",
+      "Laranja",
+      "Vermelho",
+      "Rosa",
+    ]);
     // O marcador dentro da opcao carrega a classe literal da familia.
     const esmeralda = opcoes.find((o) => o.textContent === "Verde")!;
     expect(

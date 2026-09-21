@@ -16,7 +16,7 @@ import type { AvatarDeCreator } from "@shared/creatorAvatar";
 // desenho e o de antes (foto se ha url, iniciais se nao ha), para a tela nao
 // regredir enquanto o servidor novo nao sobe.
 
-type Tamanho = "sm" | "md" | "lg" | "xl";
+type Tamanho = "xs" | "sm" | "md" | "lg" | "xl";
 
 export function AvatarDoCreator({
   name,
