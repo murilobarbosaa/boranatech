@@ -196,6 +196,12 @@ describe("isolamento do executor", () => {
     const noWorktree = path.join(process.cwd(), "marcador.txt");
     expect(existsSync(noWorktree)).toBe(false);
     rmSync(noWorktree, { force: true });
+    // O marcador.txt e escrito pelo TRECHO, nao pelo executor, entao o
+    // diretorio nunca fica vazio e a regra do vazio nao o alcanca. Sem esta
+    // linha sobra um diretorio por suite, duas suites por commit, em todo
+    // worktree, para sempre: medido, era o unico +1 do fechamento anterior.
+    // Quem cria limpa, e quem cria aqui e o teste.
+    rmSync(executar.dir!, { recursive: true, force: true });
   });
 
   it("o trecho nao enxerga os segredos do processo do gerador", () => {
