@@ -977,7 +977,10 @@ const ASSERCOES: AssercaoComportamental[] = [
         : `esperava [], veio ${JSON.stringify(resultado)?.slice(0, 120)}`,
   },
   {
-    // 20260921100000_creator_ranking_counts.sql (creators, lote 11). Prova que
+    // 20260921100000_creator_ranking_counts.sql (creators, lote 11), refeita
+    // com DROP e CREATE na 20260922100000 (coluna `cadastros`, lote 11i): a
+    // assinatura e a mesma, o contador de funcoes nao muda, e esta assercao
+    // continua provando a versao aplicada. Prova que
     // a funcao e CHAMAVEL pelo service_role com a assinatura que o ranking usa
     // (duas timestamptz e o teto de cliques por dia) e que um intervalo VAZIO
     // devolve lista vazia, nunca a tabela inteira. Um `<` trocado por `<=`
