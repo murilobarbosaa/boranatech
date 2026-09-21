@@ -123,6 +123,18 @@ const tsxCli = req.resolve("tsx/cli");
 // que este arquivo existe para nao ter.
 const PRAZO_MS = 8000;
 
+// Teto da espera pelo sinal do executor, DEPOIS de o prazo estourar e o grupo
+// morrer. Acima do TIMEOUT_MS do executor (10000) com folga de proposito: o
+// executor sempre chega antes, entao este teto NAO e alcancado quando o
+// wrapper roda por dentro dele.
+//
+// Ele existe para o caminho de fora: quem roda
+// `node scripts/runTsSnippet.mjs arquivo.ts` a mao, depurando um trecho que
+// trava, nao manda sinal nenhum, e sem o teto o wrapper ficava parado para
+// sempre. A 0% de CPU, mas e a mesma classe de defeito que este lote existe
+// para acabar: processo da verificacao que sobrevive ao proposito dele.
+const ESPERA_MAX_MS = 15000;
+
 const filho = spawn(process.execPath, [tsxCli, arquivo], {
   stdio: "inherit",
   // Nada e acrescentado ao ambiente: o filho herda o ambiente ja saneado que o
@@ -162,7 +174,7 @@ let esperaDoSinal = null;
 
 function sair(status) {
   clearTimeout(prazo);
-  if (esperaDoSinal) clearInterval(esperaDoSinal);
+  if (esperaDoSinal) clearTimeout(esperaDoSinal);
   matarGrupo();
   process.exit(status);
 }
@@ -180,12 +192,19 @@ const prazo = setTimeout(
   () => {
     prazoEstourou = true;
     matarGrupo();
-    // Segura o loop de eventos ABERTO ate o sinal do executor chegar. Sem
-    // este handle pendente o Node encerra sozinho assim que o filho morre,
-    // mesmo com a saida explicita bloqueada, e o executor ve o wrapper
-    // terminar antes do proprio timeout. Medido: 8055 ms com timeout false,
-    // contra os 10000 ms que o campo timeout exige.
-    esperaDoSinal = setInterval(() => {}, 1000);
+    // Um unico timer faz as DUAS coisas, e por isso nao ha um interval vazio
+    // aqui mais um teto separado:
+    //
+    // 1. segura o loop de eventos ABERTO ate o sinal do executor chegar. Sem
+    //    handle pendente o Node encerra sozinho assim que o filho morre, mesmo
+    //    com a saida explicita bloqueada, e o executor ve o wrapper terminar
+    //    antes do proprio timeout. Medido: 8055 ms com timeout false, contra
+    //    os 10000 ms que o campo timeout exige;
+    // 2. desiste no teto, para o caminho em que o sinal nunca vem (wrapper
+    //    rodado a mao, fora do executor). Medido antes do teto: o controle
+    //    direto ficou preso ate o proprio limite de 25000 ms e saiu por
+    //    ETIMEDOUT do spawnSync do teste, nao por vontade do wrapper.
+    esperaDoSinal = setTimeout(() => sair(1), ESPERA_MAX_MS);
   },
   PRAZO_MS - (Date.now() - INICIO),
 );

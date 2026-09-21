@@ -1,4 +1,14 @@
-import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { capabilityOf } from "./languageCapabilities.mts";
@@ -125,6 +135,55 @@ describe("runner de ts: checagem de tipos antes da execucao", () => {
     expect(r.erro).toMatch(/TS2\d{3}/);
     expect(r.erro).toContain("process");
   }, LIMITE);
+});
+
+// Lote de higiene b. Depois do prazo o wrapper mata o grupo e fica vivo
+// esperando o SIGTERM do executor. DENTRO do executor esse sinal sempre chega,
+// dois segundos depois. FORA dele nao chega nunca: quem rodar
+// `node scripts/runTsSnippet.mjs arquivo.ts` a mao, depurando um trecho que
+// trava, ficava com um wrapper parado para sempre. A 0% de CPU, mas e a mesma
+// classe de defeito deste lote: processo da verificacao que sobrevive ao
+// proposito dele.
+//
+// So da para exercitar esse caminho rodando o wrapper DIRETO, sem o executor,
+// que e o que este bloco faz.
+describe("wrapper rodado direto, sem o executor", () => {
+  // Existe para a suite nao travar enquanto o controle FALHA: sem ele, um
+  // wrapper que nunca sai seguraria o vitest ate o limite do arquivo.
+  //
+  // O valor precisa ficar acima de PRAZO_MS + ESPERA_MAX_MS, que hoje sao
+  // 8000 + 15000 = 23000: o teto do wrapper so COMECA a contar depois de o
+  // prazo estourar. Com 25000 o controle passava por menos de 2 s de folga
+  // (medido: 23059 ms) e falharia sob carga sem nada estar quebrado. Teste
+  // que falha por aperto de relogio e a mesma classe de ruido que este lote
+  // existe para tirar da suite.
+  const TETO_DO_CONTROLE = 40000;
+
+  it("CONTROLE: sem sinal nenhum, o wrapper desiste sozinho", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wrapper-direto-"));
+    try {
+      const arquivo = path.join(dir, `trava${runner.ext}`);
+      writeFileSync(arquivo, "while (true) {}\n");
+      const inicio = Date.now();
+      const r = spawnSync(runner.command, [...(runner.args ?? []), arquivo], {
+        encoding: "utf8",
+        timeout: TETO_DO_CONTROLE,
+        cwd: dir,
+      });
+      const levou = Date.now() - inicio;
+      // Terminou por conta propria, e nao porque ESTE controle o matou.
+      expect({ levou, erro: String(r.error ?? "") }).toEqual({
+        levou: expect.any(Number),
+        erro: "",
+      });
+      expect(levou).toBeLessThan(TETO_DO_CONTROLE);
+      expect(r.status).not.toBe(0);
+      // E nao deixou o grupo do trecho vivo atras de si.
+      expect(processosCitando(dir)).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60000);
 });
 
 describe("erroDoStderr e linhaDoErro leem o diagnostico do compilador", () => {
