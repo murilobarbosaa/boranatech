@@ -83,6 +83,28 @@ describe("AvatarDoCreator", () => {
     });
   });
 
+  it("borda holografica: a MESMA classe de borda que o Header desenharia (lote 11d)", () => {
+    // O Header, para o dono Pro com pro-holo, passa `border: "pro-holo"`.
+    const doHeader = resolveEffectiveBorder("pro-holo", true);
+    render(
+      <AvatarDoCreator
+        name="Lorena"
+        avatar={{
+          mode: "icon",
+          avatar_url: null,
+          icon: "star",
+          bg: "cream",
+          border: "pro-holo",
+        }}
+        size="lg"
+      />,
+    );
+    expect(doHeader).toBe("pro-holo");
+    expect(capturadas.props).toMatchObject({ border: "pro-holo" });
+    // Nenhuma classe por cima do avatar: a borda e a da pessoa.
+    expect(capturadas.props?.className).toBeUndefined();
+  });
+
   it("foto resolvida pelo servidor vira modo foto com a url; id fora do catalogo cai no padrao", () => {
     render(
       <AvatarDoCreator

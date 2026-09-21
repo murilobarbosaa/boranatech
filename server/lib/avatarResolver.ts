@@ -39,14 +39,20 @@ function iconDefault(userId: string, name: string | null): ResolvedAvatar {
   };
 }
 
-// Pro dos DONOS dos avatares em LOTE (nao de quem chama): uma unica query no
+// Pro dos DONOS dos avatares em LOTE (nao de quem chama): duas queries no
 // lugar de 1 RPC is_user_pro por usuario (N+1 da auditoria, secao 5.4).
-// Replica a definicao da RPC is_user_pro (migration 20260517231011): existe
-// subscription de plano nao-free com status active/trialing e periodo vigente
-// (current_period_end nulo ou futuro). MANTER EM SINCRONIA com a RPC se ela
-// mudar. Fail-closed: erro/excecao -> ninguem Pro (mesmo contrato de antes).
+// Replica a definicao da RPC is_user_pro, que desde 20260913120000 e
+// (a) existe subscription de plano nao-free com status active/trialing e
+// periodo vigente (current_period_end nulo ou futuro), OU (b) existe
+// concessao de creator ATIVA (creators.revoked_at nulo). MANTER EM SINCRONIA
+// com a RPC se ela mudar: ate o lote 11d esta copia parava em (a), e todo
+// creator sem assinatura paga era "nao Pro" para terceiros, com a borda Pro
+// rebaixada e a foto escondida no calendario, no ranking e no admin, enquanto
+// o cabecalho (que le o isPro do client) mostrava as duas. Fail-closed:
+// erro/excecao -> ninguem Pro (mesmo contrato de antes), em cada consulta.
 async function fetchProOwners(userIds: string[]): Promise<Set<string>> {
   if (userIds.length === 0) return new Set();
+  const pro = new Set<string>();
   try {
     const nowIso = new Date().toISOString();
     const { data, error } = await supabaseAdmin
@@ -56,13 +62,27 @@ async function fetchProOwners(userIds: string[]): Promise<Set<string>> {
       .in("status", ["active", "trialing"])
       .neq("plans.code", "free")
       .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`);
-    if (error || !data) return new Set();
-    return new Set(
-      (data as Array<{ user_id: string }>).map((row) => row.user_id),
-    );
+    if (!error && data) {
+      for (const row of data as Array<{ user_id: string }>)
+        pro.add(row.user_id);
+    }
   } catch {
-    return new Set();
+    // fail-closed nesta consulta; a de creators ainda roda.
   }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("creators")
+      .select("user_id")
+      .in("user_id", userIds)
+      .is("revoked_at", null);
+    if (!error && data) {
+      for (const row of data as Array<{ user_id: string }>)
+        pro.add(row.user_id);
+    }
+  } catch {
+    // idem.
+  }
+  return pro;
 }
 
 // Resolve o avatar EFETIVO de uma lista de usuarios. Depende somente do dono:

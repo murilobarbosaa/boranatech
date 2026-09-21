@@ -43,13 +43,16 @@ import {
 // discreta no canto. Desde o lote 11c o METAL e um token fixo do index.css
 // (`--metal-ouro`, `--metal-prata`, `--metal-bronze`, so no `:root`): no
 // escuro o slate-300 escurecia e o chip "PRATA" ficava cinza com texto
-// amarelo, e a marca d'agua na cor do texto sumia. Medalha, anel, chip e
+// amarelo, e a marca d'agua na cor do texto sumia. Medalha, chip e
 // marca d'agua usam o metal; a tinta sobre o metal e a `--avatar-ink-amarelo`,
 // escura e fixa. Os FUNDOS dos cartoes (amber-100, slate-200, orange-100)
 // continuam pela paleta, porque ali a inversao do tema e desejada. O resto e
 // lista, quieta, na mesma linguagem dos outros cartoes. Os tres do podio NAO
 // repetem na lista; quem esta com zero fica no fim, dizendo isso em palavras.
 // A foto e o identificador: a bolinha da cor do calendario nao entra aqui.
+// O avatar leva a BORDA que a pessoa escolheu no perfil (lote 11d), e nada por
+// cima: o anel de metal em volta do avatar e o `ring` da lista sairam, porque
+// escondiam a borda; medalha, chip, fundo e marca d'agua ficam.
 //
 // JANELA DE DEPLOY: o backend anterior nao tem a rota (404). Nesse caso a aba
 // volta a mostrar o cartao "em breve" de sempre, que so sai do codigo num lote
@@ -192,7 +195,6 @@ const METAL: Record<
     fundo: string;
     metal: string;
     medalha: string;
-    anel: string;
     marca: string;
     topo: string;
     Marca: LucideIcon;
@@ -204,7 +206,6 @@ const METAL: Record<
     fundo: "bg-amber-100",
     metal: "bg-[var(--metal-ouro)]",
     medalha: "h-12 w-12 text-xl",
-    anel: "ring-[var(--metal-ouro)]",
     marca: "text-[var(--metal-ouro)]",
     topo: "pt-10",
     Marca: Trophy,
@@ -214,7 +215,6 @@ const METAL: Record<
     fundo: "bg-slate-200",
     metal: "bg-[var(--metal-prata)]",
     medalha: "h-10 w-10 text-lg",
-    anel: "ring-[var(--metal-prata)]",
     marca: "text-[var(--metal-prata)]",
     topo: "pt-8",
     Marca: Medal,
@@ -224,7 +224,6 @@ const METAL: Record<
     fundo: "bg-orange-100",
     metal: "bg-[var(--metal-bronze)]",
     medalha: "h-10 w-10 text-lg",
-    anel: "ring-[var(--metal-bronze)]",
     marca: "text-[var(--metal-bronze)]",
     topo: "pt-8",
     Marca: Medal,
@@ -286,7 +285,6 @@ function LugarDoPodio({
             avatar={p.avatar}
             avatarUrl={p.avatar_url}
             size={primeiro ? "xl" : "lg"}
-            className={`rounded-full ring-4 ${metal.anel} ring-offset-2 ring-offset-slate-900`}
           />
         ) : (
           <div
@@ -360,7 +358,6 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
         avatar={p.avatar}
         avatarUrl={p.avatar_url}
         size="sm"
-        className="rounded-full ring-2 ring-slate-900"
       />
       <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
         <span className="flex min-w-0 items-center gap-2">

@@ -304,6 +304,12 @@ describe("CreatorRanking: podio", () => {
           .textContent,
       ).toBe(rotulo);
     }
+    // Sem anel de metal em volta do avatar (lote 11d): a borda e a da pessoa.
+    expect(podio.innerHTML).not.toContain("ring-[var(--metal-");
+    expect(podio.innerHTML).not.toContain("ring-offset-slate-900");
+    expect(screen.getByTestId("creator-ranking-lista").innerHTML).not.toContain(
+      "ring-2 ring-slate-900",
+    );
     // A do primeiro e um pouco maior.
     expect(
       screen.getByTestId("creator-ranking-medalha-1").getAttribute("class"),
