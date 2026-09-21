@@ -169,6 +169,7 @@ function rotear(
     pendentes?: unknown;
     acao?: unknown;
     calendario?: unknown;
+    ranking?: unknown;
   } = {},
 ) {
   fetchMock.mockImplementation((path: string, options?: RequestInit) => {
@@ -181,6 +182,19 @@ function rotear(
     // O calendario so leitura (lote 10d): vazio por padrao.
     if (path.startsWith("/creators/calendar?")) {
       return responder(over.calendario ?? { data: { marcacoes: [] } });
+    }
+    // O ranking do mes (lote 11c): vazio por padrao.
+    if (path.startsWith("/creators/ranking?")) {
+      return responder(
+        over.ranking ?? {
+          data: {
+            mes: "2026-09",
+            fechado: false,
+            fecha_em: null,
+            posicoes: [],
+          },
+        },
+      );
     }
     if (options?.method === "POST" || options?.method === "DELETE") {
       return responder(over.acao ?? { data: {} });
@@ -770,5 +784,116 @@ describe("calendario dos creators no admin (lote 10d)", () => {
     expect(
       bloco.compareDocumentPosition(quadro) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+describe("ranking do mes no painel do creator (lote 11c)", () => {
+  function posicao(
+    posicao: number,
+    user_id: string,
+    pontos: number,
+    contagens = { publicacoes: 1, vendas: 0, cliques: 0 },
+  ) {
+    return {
+      posicao,
+      user_id,
+      name: `Nome ${posicao}`,
+      handle: `h${posicao}`,
+      rede_do_handle: null,
+      avatar_url: null,
+      calendar_color: "violet",
+      pontos,
+      contagens,
+      eu: false,
+    };
+  }
+  const OUTRO = "99999999-9999-9999-9999-999999999999";
+  function painelAfiliado() {
+    return {
+      data: {
+        ...PAINEL.data,
+        creator: { ...PAINEL.data.creator, kind: "afiliado" },
+      },
+    };
+  }
+
+  it("influencer: o bloco diz 'Fora do ranking (influencer)' e nao busca o ranking", async () => {
+    rotear();
+    montar(`/admin?section=creators&creator=${UUID_A}`);
+    await screen.findByTestId("view-mock");
+    expect(
+      (await screen.findByTestId("creators-ranking-fora")).textContent,
+    ).toBe("Fora do ranking (influencer)");
+    expect(chamadas().some((p) => p.startsWith("/creators/ranking?"))).toBe(
+      false,
+    );
+  });
+
+  it("afiliado no ranking: posicao, pontos, contagens e o podio compacto, com a linha dele marcada", async () => {
+    rotear({
+      painel: painelAfiliado(),
+      ranking: {
+        data: {
+          mes: "2026-09",
+          fechado: false,
+          fecha_em: null,
+          posicoes: [
+            posicao(1, OUTRO, 155, { publicacoes: 3, vendas: 1, cliques: 30 }),
+            posicao(2, UUID_A, 40, { publicacoes: 2, vendas: 0, cliques: 10 }),
+            posicao(3, "77777777-7777-7777-7777-777777777777", 5),
+          ],
+        },
+      },
+    });
+    montar(`/admin?section=creators&creator=${UUID_A}`);
+    await screen.findByTestId("view-mock");
+    const bloco = await screen.findByTestId("creators-ranking-posicao");
+    expect(chamadas().some((p) => p.startsWith("/creators/ranking?mes="))).toBe(
+      true,
+    );
+    expect(bloco.textContent).toContain("2º");
+    expect(bloco.textContent).toContain("de 3 em setembro");
+    expect(bloco.textContent).toContain("40 pontos");
+    expect(bloco.textContent).toContain("2 publicações");
+    expect(bloco.textContent).toContain("10 cliques");
+    const podio = screen.getByTestId("creators-ranking-podio");
+    expect(
+      within(podio)
+        .getAllByRole("listitem")
+        .map((li) => li.getAttribute("data-testid")),
+    ).toEqual([
+      "creators-ranking-podio-1",
+      "creators-ranking-podio-2",
+      "creators-ranking-podio-3",
+    ]);
+    expect(
+      screen.getByTestId("creators-ranking-podio-2").getAttribute("class") ??
+        "",
+    ).toContain("border-[var(--bnt-accent-solid)]");
+    expect(
+      screen.getByTestId("creators-ranking-podio-1").textContent,
+    ).toContain("@h1");
+  });
+
+  it("afiliado sem pontos: a posicao no fim e 'Sem pontos ainda', sem o podio dele", async () => {
+    rotear({
+      painel: painelAfiliado(),
+      ranking: {
+        data: {
+          mes: "2026-09",
+          fechado: false,
+          fecha_em: null,
+          posicoes: [posicao(1, OUTRO, 20), posicao(2, UUID_A, 0)],
+        },
+      },
+    });
+    montar(`/admin?section=creators&creator=${UUID_A}`);
+    await screen.findByTestId("view-mock");
+    const bloco = await screen.findByTestId("creators-ranking-posicao");
+    expect(bloco.textContent).toContain("2º");
+    expect(bloco.textContent).toContain("0 pontos");
+    expect(screen.getByTestId("creators-ranking-sem-pontos")).toBeTruthy();
+    expect(screen.queryByTestId("creators-ranking-podio-2")).toBeNull();
+    expect(screen.getByTestId("creators-ranking-podio-1")).toBeTruthy();
   });
 });

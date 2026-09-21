@@ -1188,3 +1188,125 @@ describe("GET /creators/calendar", () => {
     expect(r.body.error.code).toBe("db_error");
   });
 });
+
+describe("GET /creators/ranking (lote 11c)", () => {
+  const BIA = "44444444-4444-4444-4444-444444444444";
+  const ELI = "66666666-6666-6666-6666-666666666666";
+  const CREATORS = [
+    {
+      id: "c-ana",
+      user_id: UID,
+      kind: "afiliado",
+      granted_at: "2026-08-01T12:00:00+00:00",
+      revoked_at: null,
+    },
+    {
+      id: "c-bia",
+      user_id: BIA,
+      kind: "afiliado",
+      granted_at: "2026-08-02T12:00:00+00:00",
+      revoked_at: null,
+    },
+    // Influencer: fora do ranking, mesmo pontuando.
+    {
+      id: "c-eli",
+      user_id: ELI,
+      kind: "influencer",
+      granted_at: "2026-07-16T12:00:00+00:00",
+      revoked_at: null,
+    },
+  ];
+  const CONTAGENS = [
+    {
+      user_id: UID,
+      ig_posts: 0,
+      reels: 1,
+      stories: 0,
+      videos: 0,
+      li_posts: 0,
+      vendas: 1,
+      cliques: 10,
+    },
+    {
+      user_id: ELI,
+      ig_posts: 0,
+      reels: 0,
+      stories: 0,
+      videos: 0,
+      li_posts: 0,
+      vendas: 9,
+      cliques: 0,
+    },
+  ];
+  const mesAtual = new Date().toISOString().slice(0, 7);
+
+  it("devolve o ranking NEUTRO do mes (sem eu, sem minha_posicao), so de afiliados", async () => {
+    montar(
+      {
+        creators: respostaQueFiltra(CREATORS),
+        profiles: respostaQueFiltra([
+          { user_id: UID, name: "Ana", handle: "ana", avatar_url: null },
+          { user_id: BIA, name: "Bia", handle: "bia", avatar_url: null },
+        ]),
+        creator_profiles: respostaQueFiltra([
+          {
+            user_id: UID,
+            instagram_handle: "ana.cria",
+            calendar_color: "cyan",
+          },
+        ]),
+      },
+      async (nome) => {
+        expect(nome).toBe("creator_ranking_counts");
+        return { data: CONTAGENS, error: null };
+      },
+    );
+    const r = await chamarAdmin("GET", `/creators/ranking?mes=${mesAtual}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.mes).toBe(mesAtual);
+    expect(r.body.data.minha_posicao).toBeNull();
+    expect(
+      r.body.data.posicoes.map(
+        (p: {
+          posicao: number;
+          user_id: string;
+          pontos: number;
+          eu: boolean;
+        }) => [p.posicao, p.user_id, p.pontos, p.eu],
+      ),
+    ).toEqual([
+      // 1 reel (15) + 1 venda (100) + 10 cliques (10).
+      [1, UID, 125, false],
+      [2, BIA, 0, false],
+    ]);
+    expect(r.body.data.posicoes[0].handle).toBe("ana.cria");
+    expect(r.body.data.posicoes[0].calendar_color).toBe("cyan");
+    // A leitura de creators filtra o kind, como na rota do creator.
+    expect(estado.double.de("creators")[0].filtros).toEqual(
+      expect.arrayContaining([
+        { tipo: "eq", coluna: "kind", valor: "afiliado" },
+      ]),
+    );
+  });
+
+  it("mes invalido: 400 month_out_of_range, sem tocar no banco", async () => {
+    montar({});
+    for (const mes of ["2026-13", "2026-06", "abc"]) {
+      const r = await chamarAdmin("GET", `/creators/ranking?mes=${mes}`);
+      expect(r.status, mes).toBe(400);
+      expect(r.body.error.code).toBe("month_out_of_range");
+    }
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("erro na funcao SQL: 500 db_error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    montar({ creators: respostaQueFiltra(CREATORS) }, async () => ({
+      data: null,
+      error: { message: "boom" },
+    }));
+    const r = await chamarAdmin("GET", `/creators/ranking?mes=${mesAtual}`);
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("db_error");
+  });
+});

@@ -293,6 +293,9 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
       ["GET", "/api/admin/creators/posts"],
       // Calendario dos creators, so leitura (lote 10d).
       ["GET", "/api/admin/creators/calendar"],
+      // Ranking do mes dos creators, so leitura (lote 11c): o mesmo dado que
+      // o painel do creator mostra, na mesma capacidade.
+      ["GET", "/api/admin/creators/ranking"],
       ["GET", "/api/admin/affiliates-stats"],
     ],
     SENSITIVE_READ,

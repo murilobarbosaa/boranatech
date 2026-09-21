@@ -186,7 +186,9 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // 73 -> 74 em 2026-09-20 (creators, lote 10d), com
 // `GET /admin/creators/calendar`. Valor MEDIDO por `rotasDeclaradas().length`.
 // So leitura, mas atras das duas guardas como todo o resto do admin.
-const EXPECTED_ROUTE_COUNT = 74;
+// 74 -> 75 em 2026-09-21 (creators, lote 11c), com
+// `GET /admin/creators/ranking`. Valor MEDIDO por `rotasDeclaradas().length`.
+const EXPECTED_ROUTE_COUNT = 75;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -262,6 +264,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /creators/:userId/posts",
       "GET /creators/calendar",
       "GET /creators/posts",
+      "GET /creators/ranking",
       "GET /creators/resumo",
       "POST /creators/:userId/posts/:postId/confirmar",
       "POST /creators/:userId/reveal-pix",
@@ -271,6 +274,13 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
   it("/creators/calendar é declarada ANTES de /creators/:userId", () => {
     const caminhos = rotasDeclaradas().map((r) => r.caminho);
     expect(caminhos.indexOf("/creators/calendar")).toBeLessThan(
+      caminhos.indexOf("/creators/:userId"),
+    );
+  });
+
+  it("/creators/ranking é declarada ANTES de /creators/:userId", () => {
+    const caminhos = rotasDeclaradas().map((r) => r.caminho);
+    expect(caminhos.indexOf("/creators/ranking")).toBeLessThan(
       caminhos.indexOf("/creators/:userId"),
     );
   });

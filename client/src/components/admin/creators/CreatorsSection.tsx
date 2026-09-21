@@ -28,6 +28,7 @@ import {
 
 import { CHAVES_DA_URL_DE_CREATORS as CHAVE } from "./creatorsUrlKeys";
 import { PublicacoesParaConferir } from "./PublicacoesParaConferir";
+import { RankingDoCreator } from "./RankingDoCreator";
 
 // ABA CREATORS DO ADMIN: resumo, quadro paginado e o painel de um creator.
 //
@@ -616,13 +617,23 @@ function PainelDoCreator({ userId }: { userId: string }) {
     );
   }
   return (
-    <CreatorDashboardView
-      painel={estado.painel}
-      janela={janela}
-      onJanelaChange={setJanela}
-      visao="admin"
-      userId={userId}
-    />
+    <div className="space-y-6">
+      <CreatorDashboardView
+        painel={estado.painel}
+        janela={janela}
+        onJanelaChange={setJanela}
+        visao="admin"
+        userId={userId}
+      />
+      {/* O ranking do mes deste creator (lote 11c), abaixo do painel: busca
+          sozinho, e um ranking quebrado nao derruba o painel. */}
+      <BlocoBoundary
+        // TODO(Ana)
+        nome="Ranking do mês"
+      >
+        <RankingDoCreator userId={userId} kind={estado.painel.creator.kind} />
+      </BlocoBoundary>
+    </div>
   );
 }
 

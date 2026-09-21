@@ -63,7 +63,8 @@ describe("manifesto administrativo fechado", () => {
     // creators.posts.moderate, ao lado do DELETE.
     // 134 -> 135 com o calendario dos creators no admin (lote 10d), em
     // creators.read.
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(135);
+    // 135 -> 136 com o ranking do mes no admin (lote 11c), em creators.read.
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(136);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

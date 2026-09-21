@@ -14,7 +14,7 @@ import {
   getMrrSnapshot,
   getSubscriberList,
 } from "../lib/billingMetrics";
-import { getOrCompute } from "../lib/cache";
+import { cacheKey, getOrCompute } from "../lib/cache";
 import { montarVidaNoSite } from "../lib/userSiteLife";
 import { env } from "../lib/env";
 import {
@@ -61,7 +61,12 @@ import {
   resolverDonosDasPublicacoes,
 } from "../lib/creatorPosts";
 import { lerContato, listarMesDoCalendario } from "../lib/creatorCalendar";
+import { montarRanking, resolverMesDoRanking } from "../lib/creatorRanking";
 import { parseMesDoCalendario } from "../../shared/creatorCalendar";
+import {
+  CACHE_DO_RANKING_SEGUNDOS,
+  PRIMEIRO_MES_DO_RANKING,
+} from "../../shared/creatorRanking";
 import { createTargetedNotification } from "../lib/targetedNotifications";
 import {
   montarPainelDoCreator,
@@ -4376,6 +4381,38 @@ router.get("/creators/calendar", async (req, res, next) => {
     next(
       // TODO(Ana)
       dbError("creators calendar", err, "Erro ao carregar o calendário."),
+    );
+  }
+});
+
+// Ranking do mes, so leitura (lote 11c): o MESMO ranking neutro que a rota do
+// creator monta, na MESMA chave de cache por mes (`creator/ranking`), sem
+// `eu` nem `minha_posicao`: o admin acha a linha do creator pelo `user_id`.
+// Declarada ANTES de `/creators/:userId`: "ranking" casaria como userId.
+router.get("/creators/ranking", async (req, res, next) => {
+  const hoje = diaBrasilia(new Date().toISOString()) ?? "";
+  const mes = resolverMesDoRanking(req.query.mes, hoje);
+  if (!mes.ok) {
+    return next(
+      createError(
+        400,
+        "month_out_of_range",
+        // TODO(Ana)
+        `Mês inválido. Use AAAA-MM, de ${PRIMEIRO_MES_DO_RANKING} até o mês atual.`,
+      ),
+    );
+  }
+  try {
+    const ranking = await getOrCompute(
+      cacheKey("creator/ranking", { mes: mes.valor.chave }),
+      CACHE_DO_RANKING_SEGUNDOS,
+      () => montarRanking(mes.valor.ano, mes.valor.mes, hoje),
+    );
+    res.json({ data: ranking });
+  } catch (err) {
+    next(
+      // TODO(Ana)
+      dbError("creators ranking", err, "Erro ao carregar o ranking."),
     );
   }
 });
