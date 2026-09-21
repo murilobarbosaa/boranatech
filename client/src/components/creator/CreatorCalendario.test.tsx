@@ -472,6 +472,60 @@ describe("CreatorCalendario: collab", () => {
 });
 
 describe("CreatorCalendario: navegacao de mes", () => {
+  it("trocar de mes mantem o cabecalho e poe esqueleto no lugar das celulas (lote 11b)", async () => {
+    responderCom([]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-calendario");
+    const mesAntes = screen.getByTestId("creator-calendario-mes").textContent;
+    const celulasAntes = screen.getAllByTestId(
+      /^creator-dia-\d{4}-\d{2}-\d{2}$/,
+    );
+    expect(celulasAntes.length).toBeGreaterThanOrEqual(28);
+
+    // Segura a resposta do mes seguinte para olhar o meio do caminho.
+    let liberar: (v: unknown) => void = () => {};
+    estado.responder = (path, method) => {
+      if (method !== "GET") return Promise.resolve({});
+      if (path.startsWith("/creator/collabs")) {
+        return Promise.resolve({ data: { recebidos: [], enviados: [] } });
+      }
+      return new Promise((r) => {
+        liberar = r;
+      });
+    };
+    fireEvent.click(screen.getByTestId("creator-calendario-proximo"));
+
+    // O container continua montado e ocupado; o cabecalho ja mostra o mes novo.
+    const container = screen.getByTestId("creator-calendario");
+    expect(container.getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByTestId("creator-calendario-mes").textContent).not.toBe(
+      mesAntes,
+    );
+    expect(screen.getByTestId("creator-calendario-anterior")).toBeTruthy();
+    // As celulas viraram esqueleto, do mesmo tamanho e no mesmo numero de
+    // linhas (semanas inteiras); nenhuma celula do mes velho ficou.
+    const esqueleto = screen.getAllByTestId(/^creator-calendario-esqueleto-/);
+    expect(esqueleto.length % 7).toBe(0);
+    expect(esqueleto.length).toBeGreaterThanOrEqual(28);
+    expect(esqueleto[0].getAttribute("class") ?? "").toContain("min-h-14");
+    expect(esqueleto[0].getAttribute("class") ?? "").toContain("animate-pulse");
+    expect(
+      screen.queryAllByTestId(/^creator-dia-\d{4}-\d{2}-\d{2}$/),
+    ).toHaveLength(0);
+    expect(screen.queryByTestId("creator-dia-painel")).toBeNull();
+
+    liberar({ data: { marcacoes: [] } });
+    await waitFor(() =>
+      expect(container.getAttribute("aria-busy")).toBe("false"),
+    );
+    expect(
+      screen.queryAllByTestId(/^creator-calendario-esqueleto-/),
+    ).toHaveLength(0);
+    expect(
+      screen.getAllByTestId(/^creator-dia-\d{4}-\d{2}-\d{2}$/).length,
+    ).toBeGreaterThanOrEqual(28);
+  });
+
   it("o mes seguinte busca de novo, com a chave do mes novo", async () => {
     responderCom([]);
     render(<CreatorCalendario />);

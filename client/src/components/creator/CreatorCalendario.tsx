@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -321,6 +321,13 @@ export function CreatorCalendario({
   // na tela. A carga inicial e o "tentar de novo" nao sao silenciosos.
   const [busca, setBusca] = useState({ n: 0, silencioso: false });
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
+  // TROCA DE MES SEM DESMONTAR (lote 11b). Depois da primeira carga, mudar de
+  // mes nao volta ao LoadingBlock: o cabecalho (mes e setas) fica, e as
+  // celulas viram um esqueleto do MESMO tamanho e com o mesmo numero de
+  // linhas, para a tela nao pular. `jaCarregou` e o que distingue a primeira
+  // carga (esqueleto nao ajuda: nao ha grade anterior a preservar) da troca.
+  const [trocandoMes, setTrocandoMes] = useState(false);
+  const jaCarregou = useRef(false);
   const [dia, setDia] = useState<string | null>(hoje || null);
 
   // Redes do dia a marcar (lote 10d): quantas quiser, ao menos uma. Comeca
@@ -345,7 +352,10 @@ export function CreatorCalendario({
 
   useEffect(() => {
     let cancelado = false;
-    if (!busca.silencioso) setEstado({ tipo: "carregando" });
+    if (!busca.silencioso) {
+      if (jaCarregou.current) setTrocandoMes(true);
+      else setEstado({ tipo: "carregando" });
+    }
     Promise.all(
       admin
         ? [
@@ -361,6 +371,8 @@ export function CreatorCalendario({
         if (cancelado) return;
         const marcacoes = listaDaResposta(doMes, "marcacoes");
         const recebidos = listaDaResposta(collabs, "recebidos");
+        if (marcacoes && recebidos) jaCarregou.current = true;
+        setTrocandoMes(false);
         setEstado(
           marcacoes && recebidos
             ? {
@@ -374,7 +386,9 @@ export function CreatorCalendario({
         );
       })
       .catch(() => {
-        if (!cancelado) setEstado({ tipo: "erro" });
+        if (cancelado) return;
+        setTrocandoMes(false);
+        setEstado({ tipo: "erro" });
       });
     return () => {
       cancelado = true;
@@ -585,7 +599,11 @@ export function CreatorCalendario({
     !admin && (dia ? validarDataDeMarcacao(dia, hoje).ok : false);
 
   return (
-    <div data-testid="creator-calendario" className="space-y-5">
+    <div
+      data-testid="creator-calendario"
+      aria-busy={trocandoMes}
+      className="space-y-5"
+    >
       <CabecalhoDeSecao
         id="creator-calendario-titulo"
         icone={<CalendarDays aria-hidden="true" className="h-4 w-4" />}
@@ -689,77 +707,95 @@ export function CreatorCalendario({
             {rotulo}
           </p>
         ))}
-        {grade.flat().map((quadrado: DiaDaGrade) => {
-          const marcacoesDoDia = porDia.get(quadrado.dia) ?? [];
-          const quantas = marcacoesDoDia.length;
-          const marcadores = marcadoresDoDia(marcacoesDoDia, meuId);
-          // Collab fechada no dia (lote 10c): o aperto de mao entra na celula,
-          // para a collab aparecer NO calendario e nao so no painel do dia.
-          const temCollab = marcacoesDoDia.some(
-            (m) => (m.collabs?.length ?? 0) > 0,
-          );
-          const selecionado = quadrado.dia === dia;
-          return (
-            <button
-              key={quadrado.dia}
-              type="button"
-              data-testid={`creator-dia-${quadrado.dia}`}
-              onClick={() => {
-                setDia(quadrado.dia);
-                setErro(null);
-                setPedindo(null);
-              }}
-              aria-pressed={selecionado}
-              className={[
-                "flex min-h-14 flex-col items-center justify-center rounded-xl border-2 p-1 text-sm font-black",
-                selecionado
-                  ? "border-slate-900 bg-violet-200 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
-                  : "border-slate-300 bg-white text-slate-900",
-                // Dia de fora do mes fica APAGADO, e nao ausente: buraco na
-                // grade desalinha a coluna do dia da semana.
-                quadrado.doMes ? "" : "opacity-40",
-              ].join(" ")}
-            >
-              <span>{Number(quadrado.dia.slice(8, 10))}</span>
-              {/* Os marcadores por creator (lote 10c) no lugar do chip com a
+        {trocandoMes
+          ? // O esqueleto ocupa exatamente as celulas do mes novo: mesma grade,
+            // mesma altura minima, mesmo raio. Nada do mes velho e desenhado.
+            grade
+              .flat()
+              .map((quadrado: DiaDaGrade) => (
+                <div
+                  key={quadrado.dia}
+                  aria-hidden="true"
+                  data-testid={`creator-calendario-esqueleto-${quadrado.dia}`}
+                  className="min-h-14 animate-pulse rounded-xl border-2 border-slate-200 bg-slate-100"
+                />
+              ))
+          : null}
+        {trocandoMes
+          ? null
+          : grade.flat().map((quadrado: DiaDaGrade) => {
+              const marcacoesDoDia = porDia.get(quadrado.dia) ?? [];
+              const quantas = marcacoesDoDia.length;
+              const marcadores = marcadoresDoDia(marcacoesDoDia, meuId);
+              // Collab fechada no dia (lote 10c): o aperto de mao entra na celula,
+              // para a collab aparecer NO calendario e nao so no painel do dia.
+              const temCollab = marcacoesDoDia.some(
+                (m) => (m.collabs?.length ?? 0) > 0,
+              );
+              const selecionado = quadrado.dia === dia;
+              return (
+                <button
+                  key={quadrado.dia}
+                  type="button"
+                  data-testid={`creator-dia-${quadrado.dia}`}
+                  onClick={() => {
+                    setDia(quadrado.dia);
+                    setErro(null);
+                    setPedindo(null);
+                  }}
+                  aria-pressed={selecionado}
+                  className={[
+                    "flex min-h-14 flex-col items-center justify-center rounded-xl border-2 p-1 text-sm font-black",
+                    selecionado
+                      ? "border-slate-900 bg-violet-200 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                      : "border-slate-300 bg-white text-slate-900",
+                    // Dia de fora do mes fica APAGADO, e nao ausente: buraco na
+                    // grade desalinha a coluna do dia da semana.
+                    quadrado.doMes ? "" : "opacity-40",
+                  ].join(" ")}
+                >
+                  <span>{Number(quadrado.dia.slice(8, 10))}</span>
+                  {/* Os marcadores por creator (lote 10c) no lugar do chip com a
                   contagem: quem marcou o dia passa a ser legivel de relance,
                   pela cor, e o meu dia pelo anel. Ate quatro, depois "+N". */}
-              {quantas > 0 ? (
-                <span
-                  data-testid={`creator-dia-marcadores-${quadrado.dia}`}
-                  className="mt-1 flex items-center gap-1"
-                >
-                  {marcadores.slice(0, MARCADORES_POR_DIA).map((marcador) => (
-                    <MarcadorDeCor
-                      key={marcador.chave}
-                      cor={marcador.cor}
-                      nome={marcador.nome}
-                      meu={marcador.meu}
-                      testId={`creator-marcador-${marcador.chave}`}
-                    />
-                  ))}
-                  {marcadores.length > MARCADORES_POR_DIA ? (
+                  {quantas > 0 ? (
                     <span
-                      data-testid={`creator-dia-mais-${quadrado.dia}`}
-                      className="text-[10px] font-black text-slate-600"
+                      data-testid={`creator-dia-marcadores-${quadrado.dia}`}
+                      className="mt-1 flex items-center gap-1"
                     >
-                      {`+${marcadores.length - MARCADORES_POR_DIA}`}
+                      {marcadores
+                        .slice(0, MARCADORES_POR_DIA)
+                        .map((marcador) => (
+                          <MarcadorDeCor
+                            key={marcador.chave}
+                            cor={marcador.cor}
+                            nome={marcador.nome}
+                            meu={marcador.meu}
+                            testId={`creator-marcador-${marcador.chave}`}
+                          />
+                        ))}
+                      {marcadores.length > MARCADORES_POR_DIA ? (
+                        <span
+                          data-testid={`creator-dia-mais-${quadrado.dia}`}
+                          className="text-[10px] font-black text-slate-600"
+                        >
+                          {`+${marcadores.length - MARCADORES_POR_DIA}`}
+                        </span>
+                      ) : null}
+                      {temCollab ? (
+                        <Handshake
+                          aria-hidden="true"
+                          data-testid={`creator-dia-collab-${quadrado.dia}`}
+                          // Token, e nao `dark:`: roxo no claro e amarelo no
+                          // escuro (ver --bnt-collab-ink no index.css).
+                          className="h-3 w-3 text-[var(--bnt-collab-ink)]"
+                        />
+                      ) : null}
                     </span>
                   ) : null}
-                  {temCollab ? (
-                    <Handshake
-                      aria-hidden="true"
-                      data-testid={`creator-dia-collab-${quadrado.dia}`}
-                      // Token, e nao `dark:`: roxo no claro e amarelo no
-                      // escuro (ver --bnt-collab-ink no index.css).
-                      className="h-3 w-3 text-[var(--bnt-collab-ink)]"
-                    />
-                  ) : null}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
+                </button>
+              );
+            })}
       </div>
 
       {dia ? (
