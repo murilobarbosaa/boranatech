@@ -102,6 +102,83 @@ function registrarClique(code: string): Promise<unknown> {
   );
 }
 
+// UMA CAPTURA POR PAGINA, UM CLIQUE POR SESSAO (lote 11g). Ate aqui a captura
+// de `?ref=`/`?cupom=` vivia no efeito de CADA instancia do hook, e o hook vive
+// em tres lugares (AffiliateTracker, Checkout, Cadastro): o mesmo clique era
+// registrado ate tres vezes, e cada recarga registrava de novo. E por isso que
+// o contador `affiliates.clicks` anterior a este lote pode estar INFLADO; a
+// serie diaria (`creator_events`, desde 14/09/2026) e a fonte confiavel dali
+// em diante, e o historico nao e reescrito. Agora a captura e uma funcao do
+// modulo com a promessa MEMORIZADA por codigo (as tres instancias esperam a
+// mesma), e o clique tem uma trava por codigo em `sessionStorage`: recarregar
+// a mesma URL na mesma sessao valida e grava de novo, mas nao conta; codigo
+// diferente conta. O digitado no checkout (`applyAffiliateCode`) continua sem
+// clique.
+
+const CHAVE_DE_CLIQUE = "bnt:affiliate-click:";
+
+function jaRegistrouNaSessao(code: string): boolean {
+  try {
+    return window.sessionStorage.getItem(CHAVE_DE_CLIQUE + code) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function marcarRegistrado(code: string) {
+  try {
+    window.sessionStorage.setItem(CHAVE_DE_CLIQUE + code, "1");
+  } catch {
+    // sessionStorage indisponivel: o clique e registrado nesta carga, e so.
+  }
+}
+
+/** O codigo de `?ref=` ou `?cupom=` da URL atual, normalizado, ou null. */
+function codigoDaUrl(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const rawCode = params.get("ref") || params.get("cupom");
+  const code = rawCode?.trim().toUpperCase();
+  return code && AFFILIATE_CODE_PATTERN.test(code) ? code : null;
+}
+
+let capturaEmVoo: {
+  code: string;
+  promessa: Promise<StoredAffiliate | null>;
+} | null = null;
+
+/**
+ * Captura o codigo da URL uma vez por pagina: valida, grava, e registra o
+ * clique se esta sessao ainda nao o registrou para este codigo. Chamadas
+ * seguintes com o mesmo codigo recebem a MESMA promessa. Sem codigo na URL,
+ * devolve o que esta no storage.
+ */
+function capturarDaUrl(): Promise<StoredAffiliate | null> {
+  const code = codigoDaUrl();
+  if (!code) return Promise.resolve(readStoredAffiliate());
+  if (capturaEmVoo && capturaEmVoo.code === code) return capturaEmVoo.promessa;
+  const promessa = fetchAffiliate(code)
+    .then((next) => {
+      if (!next) return readStoredAffiliate();
+      storeAffiliate(next);
+      if (!jaRegistrouNaSessao(next.code)) {
+        marcarRegistrado(next.code);
+        void registrarClique(next.code).catch(() => {
+          // Clique perdido por rede nao e motivo para registrar duas vezes na
+          // proxima carga: a trava fica.
+        });
+      }
+      return next;
+    })
+    .catch(() => readStoredAffiliate());
+  capturaEmVoo = { code, promessa };
+  return promessa;
+}
+
+/** So para testes: esquece a captura memorizada, como uma carga nova faria. */
+export function resetarCapturaDeAfiliado() {
+  capturaEmVoo = null;
+}
+
 /**
  * Aplica um codigo de afiliado DIGITADO (lote 11b): o mesmo caminho da URL
  * (valida, grava com TTL de 7 dias, acorda todas as instancias do hook),
@@ -141,29 +218,11 @@ export function useAffiliate() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const rawCode = params.get("ref") || params.get("cupom");
-    const code = rawCode?.trim().toUpperCase();
-
-    if (!code) {
-      setAffiliate(readStoredAffiliate());
-      return;
-    }
-
     let cancelled = false;
-
-    // Pela URL houve clique em link: valida, grava, e registra o clique.
-    fetchAffiliate(code)
-      .then((next) => {
-        if (cancelled || !next) return;
-        storeAffiliate(next);
-        setAffiliate(next);
-        return registrarClique(next.code);
-      })
-      .catch(() => {
-        setAffiliate(readStoredAffiliate());
-      });
-
+    // A captura e do modulo (uma por pagina); a instancia so espera por ela.
+    void capturarDaUrl().then((next) => {
+      if (!cancelled) setAffiliate(next);
+    });
     return () => {
       cancelled = true;
     };
