@@ -138,12 +138,14 @@ export default function Creator() {
             direita o mini ranking, que assim fica a vista em TODAS as abas.
             A coluna da direita so existe para o afiliado (influencer nao tem
             ranking, lote 11b), e a grade volta a uma coluna. No celular o
-            cartao vem abaixo do subtitulo, largura total. */}
+            cartao vem abaixo do subtitulo, largura total. `items-center`
+            (lote 11f): o cartao e mais alto que o texto, e alinhado ao topo
+            o titulo ficava colado em cima com um vazio embaixo. */}
         <div
           data-testid="creator-cabecalho"
           className={`container ${
             kind === "afiliado"
-              ? "grid gap-6 md:grid-cols-[1fr_minmax(0,28rem)] md:items-start md:gap-8"
+              ? "grid gap-6 md:grid-cols-[1fr_minmax(0,28rem)] md:items-center md:gap-8"
               : ""
           }`}
         >

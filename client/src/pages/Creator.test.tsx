@@ -432,10 +432,12 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     montar();
     const view = await screen.findByTestId("view");
     const cabecalho = screen.getByTestId("creator-cabecalho");
-    // Duas colunas no desktop, so para o afiliado.
-    expect(cabecalho.getAttribute("class") ?? "").toContain(
-      "md:grid-cols-[1fr_minmax(0,28rem)]",
-    );
+    // Duas colunas no desktop, so para o afiliado, com o texto centralizado
+    // na vertical contra o cartao, que e mais alto (lote 11f).
+    const classes = cabecalho.getAttribute("class") ?? "";
+    expect(classes).toContain("md:grid-cols-[1fr_minmax(0,28rem)]");
+    expect(classes).toContain("md:items-center");
+    expect(classes).not.toContain("md:items-start");
     const coluna = within(cabecalho).getByTestId("creator-cabecalho-ranking");
     expect(within(coluna).getByTestId("cartao-ranking")).toBeTruthy();
     // Titulo e subtitulo continuam na coluna da esquerda, antes do cartao.
