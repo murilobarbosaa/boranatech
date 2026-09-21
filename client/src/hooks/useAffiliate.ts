@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import { apiUrl } from "@/lib/api";
 
 export const AFFILIATE_STORAGE_KEY = "bora-na-tech:affiliate";
@@ -177,6 +178,72 @@ function capturarDaUrl(): Promise<StoredAffiliate | null> {
 /** So para testes: esquece a captura memorizada, como uma carga nova faria. */
 export function resetarCapturaDeAfiliado() {
   capturaEmVoo = null;
+  reporteEmVoo = null;
+}
+
+// CADASTRO PELO LINK (lote 11i). No primeiro acesso AUTENTICADO de uma conta,
+// se ha um codigo de afiliado guardado no navegador, o client avisa o servidor
+// (`POST /api/affiliates/signup`) e ele decide se aquilo e um cadastro que
+// conta: conta nova, codigo ativo, nao o proprio dono, um por conta. O client
+// so evita chamar toda hora: a flag por codigo em localStorage e gravada em
+// qualquer resposta que decidiu (2xx, 403, 409), e NAO e gravada em erro de
+// rede ou 5xx, para tentar de novo no proximo acesso. Vale para cadastro por
+// e-mail com confirmacao (a sessao so existe depois de confirmar) e Google.
+const CHAVE_DE_CADASTRO = "bnt:affiliate-signup-reported:";
+
+function cadastroJaReportado(code: string): boolean {
+  try {
+    return window.localStorage.getItem(CHAVE_DE_CADASTRO + code) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function marcarCadastroReportado(code: string) {
+  try {
+    window.localStorage.setItem(CHAVE_DE_CADASTRO + code, "1");
+  } catch {
+    // localStorage indisponivel: o servidor segura a duplicata pelo indice.
+  }
+}
+
+let reporteEmVoo: { code: string; promessa: Promise<void> } | null = null;
+
+/**
+ * Reporta o cadastro da conta logada ao codigo guardado, uma vez por codigo
+ * e por navegador. Chamadas concorrentes (varias instancias) esperam a mesma
+ * promessa. Sem codigo guardado, ou com a flag, nao faz nada.
+ */
+export function reportarCadastro(): Promise<void> {
+  const guardado = readStoredAffiliate();
+  if (!guardado || cadastroJaReportado(guardado.code)) return Promise.resolve();
+  if (reporteEmVoo && reporteEmVoo.code === guardado.code) {
+    return reporteEmVoo.promessa;
+  }
+  const code = guardado.code;
+  const promessa = contentFetch("/affiliates/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  })
+    .then(() => {
+      marcarCadastroReportado(code);
+    })
+    .catch((err: unknown) => {
+      // 403 (dono do codigo), 409 (conta antiga) e 404 (codigo invalido) sao
+      // decisoes: nao insistir. Rede e 5xx nao gravam a flag.
+      if (
+        err instanceof AdminApiError &&
+        (err.status === 403 || err.status === 404 || err.status === 409)
+      ) {
+        marcarCadastroReportado(code);
+      }
+    })
+    .finally(() => {
+      if (reporteEmVoo && reporteEmVoo.code === code) reporteEmVoo = null;
+    });
+  reporteEmVoo = { code, promessa };
+  return promessa;
 }
 
 /**

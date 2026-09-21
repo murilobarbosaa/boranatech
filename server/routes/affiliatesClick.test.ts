@@ -16,7 +16,12 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const estado = vi.hoisted(() => ({
-  env: { creatorEventsSalt: "sal-de-teste" },
+  // `supabaseUrl` porque affiliates.ts importa o middleware de auth desde o
+  // lote 11i (rota /signup), e ele monta o JWKS com a URL no load do modulo.
+  env: {
+    creatorEventsSalt: "sal-de-teste",
+    supabaseUrl: "https://exemplo.supabase.co",
+  },
   chavesRedis: new Set<string>(),
   redisFalha: false,
   ativos: {} as Record<string, { id: string } | undefined>,

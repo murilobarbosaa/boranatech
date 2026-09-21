@@ -19,7 +19,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
  * resolve o que o chamador pode nao ter em maos (o id do afiliado a partir do
  * codigo, o uuid do plano a partir do codigo do plano) e grava.
  */
-export type CreatorEventType = "click" | "checkout" | "sale";
+export type CreatorEventType = "click" | "checkout" | "sale" | "signup";
 
 export type CreatorEventInput = {
   eventType: CreatorEventType;

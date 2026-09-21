@@ -14,12 +14,12 @@ import SuperInterstitial from "./components/notifications/SuperInterstitial";
 import OnboardingHost from "./components/onboarding/OnboardingHost";
 import { OnboardingCoordinatorProvider } from "./lib/onboarding/coordinator";
 import RequireAuth from "./components/auth/RequireAuth";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { useAffiliate } from "./hooks/useAffiliate";
+import { reportarCadastro, useAffiliate } from "./hooks/useAffiliate";
 import { liberarMarcaDeSessaoEstatica } from "./lib/persistedSession";
 import Home from "./pages/home/HomeLanding";
 
@@ -380,6 +380,12 @@ function Router() {
 
 function AffiliateTracker() {
   useAffiliate();
+  // Cadastro pelo link (lote 11i): com sessao, avisa o servidor uma vez.
+  const { session } = useAuth();
+  const logado = session !== null;
+  useEffect(() => {
+    if (logado) void reportarCadastro();
+  }, [logado]);
   return null;
 }
 

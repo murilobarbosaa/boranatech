@@ -44,6 +44,14 @@ export const PONTOS_POR_CLIQUE = 1;
 export const TETO_DE_CLIQUES_POR_DIA = 30;
 
 /**
+ * Quantas horas depois de criada uma conta ainda conta como "cadastro pelo
+ * link" (lote 11i). Existe para o link nao "adotar" contas antigas que so
+ * passaram por ele depois: a atribuicao e do primeiro acesso autenticado da
+ * conta nova, e uma conta de meses nao e um cadastro.
+ */
+export const JANELA_DE_CADASTRO_HORAS = 48;
+
+/**
  * Primeiro mes com ranking: o mes do primeiro `creators.granted_at` em
  * producao (2026-07-16, conferido em 2026-09-20). Mes anterior a este nao tem
  * o que mostrar, e a rota recusa com o mesmo 400 do mes futuro.
