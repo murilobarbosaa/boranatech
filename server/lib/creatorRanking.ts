@@ -76,7 +76,12 @@ export function resolverMesDoRanking(
 
 type CreatorAtivo = { user_id: string; granted_at: string };
 
-/** Todos os creators ATIVOS (os dois kinds), com prova de total. */
+/**
+ * Os creators ATIVOS do ranking: so os `afiliado` (lote 11b). Os `influencer`
+ * sao as contas de julho, sem atividade nenhuma nas ferramentas; a coorte que
+ * usa o calendario, registra publicacao e vende e a dos afiliados, e um
+ * ranking com 24 zeros no fim so empurra quem pontuou para longe da vista.
+ */
 async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
   const linhas = await coletarTudoProvandoTotal<Linha>(
     (from, to) =>
@@ -84,6 +89,7 @@ async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
         .from("creators")
         .select("user_id, granted_at", { count: "exact" })
         .is("revoked_at", null)
+        .eq("kind", "afiliado")
         .order("granted_at", { ascending: true })
         .order("id", { ascending: true })
         .range(from, to),

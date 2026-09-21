@@ -160,6 +160,20 @@ router.get("/me", requireCreator, async (req, res, next) => {
 // chamada, porque um cache com o viewer marcado serviria a posicao de uma
 // pessoa para todas as outras.
 router.get("/ranking", requireCreator, async (req, res, next) => {
+  // So afiliado tem ranking (lote 11b): o influencer recebe um 403 com codigo
+  // proprio, e nao a lista sem ele dentro, para o client saber que a aba nao
+  // existe para essa pessoa. O cache continua por mes: a lista e a mesma para
+  // todo afiliado.
+  if (req.creator?.kind !== "afiliado") {
+    return next(
+      createError(
+        403,
+        "ranking_not_available",
+        // TODO(Ana)
+        "O ranking do mês é dos afiliados.",
+      ),
+    );
+  }
   const hoje = hojeEmBrasilia();
   const mes = resolverMesDoRanking(req.query.mes, hoje);
   if (!mes.ok) {

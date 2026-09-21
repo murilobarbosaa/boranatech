@@ -20,6 +20,7 @@ import {
   CREATOR_ABA_PADRAO,
   idDaAba,
   idDoPainel,
+  abasDoKind,
   normalizarAba,
   type CreatorAba,
 } from "@/components/creator/creatorAbas";
@@ -27,6 +28,7 @@ import {
   useCreatorPerfil,
   type PerfilDoCreator,
 } from "@/components/creator/useCreatorPerfil";
+import { useCreator } from "@/hooks/useCreator";
 import { AdminApiError, contentFetch } from "@/lib/adminApi";
 import {
   CREATOR_DASHBOARD_JANELA_PADRAO,
@@ -95,8 +97,18 @@ export default function Creator() {
   const [, navigate] = useLocation();
   const perfil = useCreatorPerfil();
 
+  // O kind vem do status de creator da sessao (lote 11b), o mesmo que o Header
+  // ja leu: decide quais abas existem para esta pessoa. Nao escreve na URL:
+  // um `?aba=ranking` de afiliado continua valendo quando o status chega.
+  const creator = useCreator();
+  const kind = creator.status === "ready" ? creator.kind : null;
+  const abas = abasDoKind(kind);
   const pedida = new URLSearchParams(search).get("aba");
-  const aba: CreatorAba = normalizarAba(pedida) ?? CREATOR_ABA_PADRAO;
+  const normalizada = normalizarAba(pedida);
+  const aba: CreatorAba =
+    normalizada && abas.includes(normalizada)
+      ? normalizada
+      : CREATOR_ABA_PADRAO;
   const escolherAba = (nova: CreatorAba) =>
     navigate(
       nova === CREATOR_ABA_PADRAO ? "/creator" : `/creator?aba=${nova}`,
@@ -141,6 +153,7 @@ export default function Creator() {
         <div className="container space-y-8">
           <CreatorAbas
             aba={aba}
+            abas={abas}
             onAba={escolherAba}
             temRedes={temRedes}
             temPix={temPix}
@@ -157,12 +170,14 @@ export default function Creator() {
                   resposta; fica ANTES do painel para a posicao do mes ser a
                   primeira coisa da aba, e fora do painel para nao esperar por
                   ele. */}
-              <BlocoBoundary
-                // TODO(Ana)
-                nome="Ranking do mês"
-              >
-                <CartaoDoRanking />
-              </BlocoBoundary>
+              {kind === "afiliado" ? (
+                <BlocoBoundary
+                  // TODO(Ana)
+                  nome="Ranking do mês"
+                >
+                  <CartaoDoRanking />
+                </BlocoBoundary>
+              ) : null}
               <PainelDeNumeros />
             </div>
           ) : null}

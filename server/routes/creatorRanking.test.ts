@@ -111,6 +111,7 @@ const BIA = "22222222-2222-2222-2222-222222222222";
 const CAIO = "33333333-3333-3333-3333-333333333333";
 const DUDA = "44444444-4444-4444-4444-444444444444";
 const SAIU = "55555555-5555-5555-5555-555555555555";
+const ELI = "66666666-6666-6666-6666-666666666666";
 
 const USUARIO = { id: BIA, email: "bia@exemplo.com", role: "authenticated" };
 
@@ -126,7 +127,7 @@ const CREATORS = [
   {
     id: "c-ana",
     user_id: ANA,
-    kind: "influencer",
+    kind: "afiliado",
     granted_at: "2026-07-16T20:21:27.962215+00:00",
     revoked_at: null,
   },
@@ -147,7 +148,7 @@ const CREATORS = [
   {
     id: "c-duda",
     user_id: DUDA,
-    kind: "influencer",
+    kind: "afiliado",
     granted_at: "2026-09-01T12:00:00+00:00",
     revoked_at: null,
   },
@@ -157,6 +158,14 @@ const CREATORS = [
     kind: "afiliado",
     granted_at: "2026-07-20T12:00:00+00:00",
     revoked_at: "2026-09-10T12:00:00+00:00",
+  },
+  // Influencer ativo (lote 11b): fora do ranking, mesmo pontuando.
+  {
+    id: "c-eli",
+    user_id: ELI,
+    kind: "influencer",
+    granted_at: "2026-07-16T17:54:24+00:00",
+    revoked_at: null,
   },
 ];
 
@@ -255,6 +264,8 @@ beforeEach(() => {
     { user_id: CAIO, ...CONTAGENS_ZERADAS, videos: 1, li_posts: 1 },
     // Quem saiu do programa pontuou, e NAO entra na lista.
     { user_id: SAIU, ...CONTAGENS_ZERADAS, vendas: 5 },
+    // O influencer pontuou, e NAO entra na lista (lote 11b).
+    { user_id: ELI, ...CONTAGENS_ZERADAS, vendas: 9 },
   ];
 });
 
@@ -331,6 +342,14 @@ describe("montarRanking", () => {
     ]);
     // Quem foi revogado nao aparece, mesmo tendo linha na contagem.
     expect(ranking.posicoes.some((p) => p.user_id === SAIU)).toBe(false);
+    // Nem o influencer (lote 11b): a leitura de creators filtra o kind.
+    expect(ranking.posicoes.some((p) => p.user_id === ELI)).toBe(false);
+    expect(double.de("creators")[0].filtros).toEqual(
+      expect.arrayContaining([
+        { tipo: "is", coluna: "revoked_at", valor: null },
+        { tipo: "eq", coluna: "kind", valor: "afiliado" },
+      ]),
+    );
   });
 
   it("expoe de cada pessoa o mesmo que o calendario: nome, @, avatar e cor", async () => {
@@ -456,6 +475,19 @@ describe("GET /api/creator/ranking", () => {
     const res = await chamar("GET", "/ranking");
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("not_creator");
+  });
+
+  it("403 ranking_not_available para o influencer, sem montar nada (lote 11b)", async () => {
+    estado.usuario = {
+      id: ELI,
+      email: "eli@exemplo.com",
+      role: "authenticated",
+    };
+    montar();
+    const res = await chamar("GET", "/ranking");
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("ranking_not_available");
+    expect(double.rpcCalls).toHaveLength(0);
   });
 
   it("200: o mes atual, com o viewer marcado e a linha dele em minha_posicao", async () => {

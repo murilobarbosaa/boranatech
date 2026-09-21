@@ -24,6 +24,28 @@ export type CreatorAba = (typeof CREATOR_ABAS)[number];
 /** Aba de quem chega em /creator sem parametro. Nao escreve nada na URL. */
 export const CREATOR_ABA_PADRAO: CreatorAba = "numeros";
 
+export type KindDeCreator = "influencer" | "afiliado";
+
+/**
+ * Quais abas cada kind ve (lote 11b), numa constante so. O ranking e dos
+ * afiliados: a coorte que usa as ferramentas. O influencer nao ve a aba nem o
+ * cartao "Ranking do mes", e `?aba=ranking` na URL dele cai em Numeros. A
+ * ordem e a de CREATOR_ABAS, sempre.
+ */
+export const ABAS_POR_KIND: Record<KindDeCreator, readonly CreatorAba[]> = {
+  afiliado: ["numeros", "calendario", "ranking", "perfil"],
+  influencer: ["numeros", "calendario", "perfil"],
+};
+
+/**
+ * As abas de quem esta olhando. Sem kind (status ainda carregando, erro, ou
+ * quem nao e creator) e o conjunto MENOR: uma aba que aparece e some e pior
+ * do que uma que so aparece quando se sabe que existe.
+ */
+export function abasDoKind(kind: KindDeCreator | null): readonly CreatorAba[] {
+  return kind ? ABAS_POR_KIND[kind] : ABAS_POR_KIND.influencer;
+}
+
 export function isCreatorAba(valor: unknown): valor is CreatorAba {
   return (
     typeof valor === "string" &&

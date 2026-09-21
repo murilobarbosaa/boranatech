@@ -86,11 +86,14 @@ export function pendenciasDoPerfil(
 
 export function CreatorAbas({
   aba,
+  abas = CREATOR_ABAS,
   onAba,
   temRedes,
   temPix,
 }: {
   aba: CreatorAba;
+  /** As abas desta pessoa (lote 11b, `abasDoKind`); a ordem e a de CREATOR_ABAS. */
+  abas?: readonly CreatorAba[];
   onAba: (aba: CreatorAba) => void;
   /** Ha pelo menos um @ cadastrado. `null` enquanto o perfil nao respondeu. */
   temRedes: boolean | null;
@@ -110,7 +113,7 @@ export function CreatorAbas({
         aria-label="Seções do painel"
         className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
       >
-        {CREATOR_ABAS.map((id) => (
+        {abas.map((id) => (
           <button
             key={id}
             type="button"

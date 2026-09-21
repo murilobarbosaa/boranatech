@@ -12,7 +12,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  */
 
 import { CreatorAbas } from "./CreatorAbas";
-import { idDaAba, idDoPainel, type CreatorAba } from "./creatorAbas";
+import {
+  ABAS_POR_KIND,
+  idDaAba,
+  idDoPainel,
+  type CreatorAba,
+} from "./creatorAbas";
 
 function desenhar(
   aba: CreatorAba,
@@ -62,6 +67,21 @@ describe("CreatorAbas: as quatro abas", () => {
       idDaAba("ranking"),
       idDaAba("perfil"),
     ]);
+  });
+
+  it("com a lista do influencer (lote 11b), o Ranking nao e desenhado", () => {
+    render(
+      <CreatorAbas
+        aba="numeros"
+        abas={ABAS_POR_KIND.influencer}
+        onAba={vi.fn()}
+        temRedes={true}
+        temPix={true}
+      />,
+    );
+    expect(
+      screen.getAllByRole("tab").map((b) => b.getAttribute("data-testid")),
+    ).toEqual([idDaAba("numeros"), idDaAba("calendario"), idDaAba("perfil")]);
   });
 
   it("clicar numa aba avisa qual foi, sem decidir nada sozinha", () => {

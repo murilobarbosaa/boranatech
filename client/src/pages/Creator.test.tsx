@@ -50,6 +50,12 @@ const estado = vi.hoisted(() => ({
     | { tipo: "ok"; perfil: unknown },
   recarregar: vi.fn(),
   redesForm: { montagens: 0 },
+  // O status de creator da sessao (lote 11b): decide as abas. Afiliado por
+  // padrao, que e o conjunto completo; os testes do influencer trocam aqui.
+  creator: { status: "ready", kind: "afiliado" } as
+    | { status: "loading" }
+    | { status: "ready"; kind: "influencer" | "afiliado" | null }
+    | { status: "error" },
 }));
 
 // Sonda: se a pagina voltar a importar o fundo decorado, ele aparece na tela
@@ -85,6 +91,9 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
       </div>
     );
   },
+}));
+vi.mock("@/hooks/useCreator", () => ({
+  useCreator: () => estado.creator,
 }));
 vi.mock("@/components/creator/useCreatorPerfil", () => ({
   useCreatorPerfil: () => ({
@@ -190,6 +199,7 @@ beforeEach(() => {
   estado.perfil = { tipo: "carregando" };
   estado.recarregar = vi.fn();
   estado.redesForm = { montagens: 0 };
+  estado.creator = { status: "ready", kind: "afiliado" };
 });
 
 afterEach(() => {
@@ -596,6 +606,54 @@ describe("pagina /creator: as abas na URL (lote 08b)", () => {
         .getAttribute("aria-selected"),
     ).toBe("true");
     expect(screen.queryByTestId("view")).toBeNull();
+  });
+
+  it("afiliado: quatro abas e o cartao do ranking na aba Numeros (lote 11b)", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    await screen.findByTestId("view");
+    expect(
+      screen.getAllByRole("tab").map((b) => b.getAttribute("data-testid")),
+    ).toEqual([
+      "creator-aba-numeros",
+      "creator-aba-calendario",
+      "creator-aba-ranking",
+      "creator-aba-perfil",
+    ]);
+    expect(screen.getByTestId("cartao-ranking")).toBeTruthy();
+  });
+
+  it("influencer: sem a aba Ranking, sem o cartao, e ?aba=ranking cai em Numeros (lote 11b)", async () => {
+    estado.creator = { status: "ready", kind: "influencer" };
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    const history = montar("/creator?aba=ranking");
+    await screen.findByTestId("view");
+    expect(
+      screen.getAllByRole("tab").map((b) => b.getAttribute("data-testid")),
+    ).toEqual([
+      "creator-aba-numeros",
+      "creator-aba-calendario",
+      "creator-aba-perfil",
+    ]);
+    expect(screen.queryByTestId("ranking")).toBeNull();
+    expect(screen.queryByTestId("cartao-ranking")).toBeNull();
+    expect(
+      screen.getByTestId("creator-aba-numeros").getAttribute("aria-selected"),
+    ).toBe("true");
+    // A URL NAO e reescrita: a pagina so escolhe o painel.
+    expect(history[history.length - 1]).toBe("/creator?aba=ranking");
+  });
+
+  it("status ainda carregando: o conjunto menor, sem Ranking, ate saber (lote 11b)", async () => {
+    estado.creator = { status: "loading" };
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    await screen.findByTestId("view");
+    expect(screen.queryByTestId("creator-aba-ranking")).toBeNull();
+    expect(screen.queryByTestId("cartao-ranking")).toBeNull();
   });
 
   it("?aba=ranking monta o ranking (lote 11), sem buscar o painel", async () => {
