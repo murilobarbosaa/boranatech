@@ -96,7 +96,8 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
     label: "Roxa",
     borderClassName: "border-[var(--color-violet-700)]",
     offsetClassName: "bg-[var(--color-violet-700)]",
-    accentClassName: "border-[var(--color-violet-700)] text-[var(--color-violet-700)]",
+    accentClassName:
+      "border-[var(--color-violet-700)] text-[var(--color-violet-700)]",
     swatchClassName: "bg-[var(--color-violet-700)]",
   },
   {
@@ -182,7 +183,8 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
     effect: "godzilla",
     borderClassName: "border-[var(--color-violet-600)]",
     offsetClassName: "bg-slate-950",
-    accentClassName: "border-[var(--color-violet-600)] text-[var(--color-violet-600)]",
+    accentClassName:
+      "border-[var(--color-violet-600)] text-[var(--color-violet-600)]",
     swatchClassName: "bg-[var(--color-violet-600)]",
   },
   {
@@ -244,51 +246,57 @@ export const avatarIconOptions: AvatarIconOption[] = [
   },
 ];
 
+// FUNDO E TINTA POR TOKEN (lote 11c): `--avatar-bg-<nome>` e
+// `--avatar-ink-<nome>` vivem so no `:root` do index.css, sem par no `.dark`,
+// porque o fundo do avatar e escolha da pessoa e nao superficie do tema. Antes
+// as classes usavam `bg-slate-900`, `--brand-cream` e `--bnt-ink`, que o tema
+// escuro redefine, e o "Creme" escolhido virava um circulo quase preto.
 export const avatarBgOptions: AvatarBgOption[] = [
   {
     id: "slate",
     label: "Azul escuro",
-    className: "bg-slate-900 text-white",
+    className:
+      "bg-[var(--avatar-bg-azul-escuro)] text-[var(--avatar-ink-azul-escuro)]",
   },
   {
     id: "yellow",
     label: "Amarelo",
-    className: "bg-[var(--brand-yellow)] text-[var(--bnt-ink)]",
+    className: "bg-[var(--avatar-bg-amarelo)] text-[var(--avatar-ink-amarelo)]",
   },
   {
     id: "purple",
     label: "Roxo",
-    className: "bg-[var(--color-violet-700)] text-white",
+    className: "bg-[var(--avatar-bg-roxo)] text-[var(--avatar-ink-roxo)]",
   },
   {
     id: "pink",
     label: "Rosa",
-    className: "bg-[#F9A8D4] text-[#831843]",
+    className: "bg-[var(--avatar-bg-rosa)] text-[var(--avatar-ink-rosa)]",
   },
   {
     id: "green",
     label: "Verde",
-    className: "bg-[#86EFAC] text-[#14532D]",
+    className: "bg-[var(--avatar-bg-verde)] text-[var(--avatar-ink-verde)]",
   },
   {
     id: "blue",
     label: "Azul",
-    className: "bg-[#2563EB] text-white",
+    className: "bg-[var(--avatar-bg-azul)] text-[var(--avatar-ink-azul)]",
   },
   {
     id: "orange",
     label: "Laranja",
-    className: "bg-[#FB923C] text-[#431407]",
+    className: "bg-[var(--avatar-bg-laranja)] text-[var(--avatar-ink-laranja)]",
   },
   {
     id: "cream",
     label: "Creme",
-    className: "bg-[var(--brand-cream)] text-[var(--bnt-ink)]",
+    className: "bg-[var(--avatar-bg-creme)] text-[var(--avatar-ink-creme)]",
   },
   {
     id: "white",
     label: "Branco",
-    className: "bg-white text-[var(--bnt-ink)]",
+    className: "bg-[var(--avatar-bg-branco)] text-[var(--avatar-ink-branco)]",
   },
 ];
 

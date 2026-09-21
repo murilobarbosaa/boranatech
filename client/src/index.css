@@ -195,6 +195,32 @@
      deve acompanhar. Roxo de tinta e o violet-700, a familia mais usada como
      tinta nesta base. */
   --bnt-collab-ink: var(--color-violet-700);
+  /* FUNDOS E TINTAS DO AVATAR (lote 11c). Definidos SO aqui, e NAO sob `.dark`,
+     de proposito: o fundo do avatar e uma ESCOLHA da pessoa, nao uma
+     superficie do tema. Quem escolheu "Creme" quer creme nos dois temas; ate
+     este lote as classes usavam pasteis e tokens que o `.dark` redefine, e o
+     creme virava um circulo quase preto com o icone invisivel. Os valores sao
+     os do tema claro, copiados como LITERAIS (e nao `var(--color-...)`), para
+     nenhuma redefinicao de paleta alcanca-los. A tinta acompanha o fundo:
+     escura nos fundos claros, clara nos escuros, e tambem fixa. */
+  --avatar-bg-azul-escuro: oklch(0.208 0.042 265.755);
+  --avatar-ink-azul-escuro: #fff;
+  --avatar-bg-amarelo: #ffb800;
+  --avatar-ink-amarelo: oklch(0.13 0.015 260);
+  --avatar-bg-roxo: oklch(0.491 0.27 292.581);
+  --avatar-ink-roxo: #fff;
+  --avatar-bg-rosa: #f9a8d4;
+  --avatar-ink-rosa: #831843;
+  --avatar-bg-verde: #86efac;
+  --avatar-ink-verde: #14532d;
+  --avatar-bg-azul: #2563eb;
+  --avatar-ink-azul: #fff;
+  --avatar-bg-laranja: #fb923c;
+  --avatar-ink-laranja: #431407;
+  --avatar-bg-creme: #faf8f4;
+  --avatar-ink-creme: oklch(0.13 0.015 260);
+  --avatar-bg-branco: #fff;
+  --avatar-ink-branco: oklch(0.13 0.015 260);
 }
 
 .dark {
