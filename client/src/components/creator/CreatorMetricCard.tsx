@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 // Card de numero do painel de creator, na FORMA do MetricCardView do admin
-// (client/src/pages/Admin.tsx): card-brutal branco, quadrado de icone colorido,
+// (client/src/pages/Admin.tsx): card-surface branco (sem afundar ao clicar,
+// lote 11g), quadrado de icone colorido,
 // rotulo, valor e detalhe. Copia da forma, e nao extracao: o MetricCardView vive
 // privado dentro do Admin.tsx, e a unificacao dos tiles e divida registrada.
 //
@@ -33,7 +34,7 @@ export function CreatorMetricCard({
   return (
     <article
       data-testid={testId}
-      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5"
+      className="card-surface flex h-full flex-col rounded-3xl bg-white p-5"
     >
       <span
         aria-hidden="true"

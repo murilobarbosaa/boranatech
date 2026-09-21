@@ -495,16 +495,16 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
     expect(lista?.className).not.toContain("grid-cols-2");
   });
 
-  it("identidade embutida: cartao card-brutal, sem faixa e sem etiqueta", () => {
+  it("identidade embutida: cartao card-surface, sem faixa e sem etiqueta", () => {
     desenhar(painelBase());
     expect(screen.queryByTestId("creator-faixa")).toBeNull();
     expect(screen.queryByTestId("creator-etiqueta")).toBeNull();
     const identidade = screen.getByTestId("creator-identidade");
-    expect(identidade.className).toContain("card-brutal");
+    expect(identidade.className).toContain("card-surface");
     expect(identidade.textContent).toContain("Ana Creator");
   });
 
-  it("os seis numeros sao cards card-brutal brancos", () => {
+  it("os seis numeros sao cards card-surface brancos", () => {
     desenhar(painelBase());
     for (const id of [
       "cliques",
@@ -515,7 +515,7 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
       "paga",
     ]) {
       const classes = screen.getByTestId(`creator-tile-${id}`).className;
-      expect(classes, id).toContain("card-brutal");
+      expect(classes, id).toContain("card-surface");
       expect(classes, id).toContain("bg-white");
     }
   });
@@ -526,7 +526,7 @@ describe("CreatorDashboardView: forma do grafico e blocos polidos", () => {
       screen.getByTestId("creator-identidade"),
     );
     expect(screen.getByTestId("creator-tile-cliques").className).toContain(
-      "card-brutal",
+      "card-surface",
     );
     expect(screen.getByTestId("creator-codigo-ANA30")).toBeTruthy();
   });
@@ -645,7 +645,7 @@ describe("CreatorDashboardView: forma do admin", () => {
     expect(screen.getByTestId("creator-revogado")).toBeTruthy();
   });
 
-  it("os seis cards: card-brutal branco, com o quadrado de icone na cor da tabela", () => {
+  it("os seis cards: card-surface branco, com o quadrado de icone na cor da tabela", () => {
     desenhar(painelBase());
     const esperado: Array<[string, string]> = [
       ["cliques", VIOLETA],
@@ -657,7 +657,7 @@ describe("CreatorDashboardView: forma do admin", () => {
     ];
     for (const [id, cor] of esperado) {
       const card = screen.getByTestId(`creator-tile-${id}`);
-      expect(card.className, id).toContain("card-brutal");
+      expect(card.className, id).toContain("card-surface");
       expect(card.className, id).toContain("bg-white");
       const quadrado = card.firstElementChild;
       expect(quadrado?.getAttribute("aria-hidden"), id).toBe("true");
@@ -708,7 +708,7 @@ describe("CreatorDashboardView: forma do admin", () => {
     const eyebrow = h3.previousElementSibling;
     expect(eyebrow?.textContent).toBe("série diária");
     expect(eyebrow?.className).toContain("text-violet-700");
-    expect(h3.closest("section")?.className).toContain("card-brutal");
+    expect(h3.closest("section")?.className).toContain("card-surface");
   });
 
   it("os quatro blocos do periodo tem a forma do bloco interno do admin", () => {

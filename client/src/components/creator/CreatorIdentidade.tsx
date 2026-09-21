@@ -224,7 +224,7 @@ export function CreatorIdentidade({
   return (
     <section
       data-testid="creator-identidade"
-      className="card-brutal rounded-3xl bg-white p-5"
+      className="card-surface rounded-3xl bg-white p-5"
     >
       <div className="flex items-center gap-4">
         <AvatarDoCreator

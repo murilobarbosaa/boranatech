@@ -123,7 +123,7 @@ export function CartaoDoRanking() {
     <section
       data-testid="creator-card-ranking"
       aria-labelledby="creator-card-ranking-titulo"
-      className="card-brutal space-y-3 rounded-3xl bg-white p-5"
+      className="card-surface space-y-3 rounded-3xl bg-white p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2

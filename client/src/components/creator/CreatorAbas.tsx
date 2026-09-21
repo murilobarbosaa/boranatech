@@ -105,7 +105,7 @@ export function CreatorAbas({
   return (
     <div
       data-testid="creator-abas"
-      className="card-brutal flex flex-col gap-3 rounded-3xl bg-white p-2 sm:p-3 lg:flex-row lg:items-center lg:justify-between"
+      className="card-surface flex flex-col gap-3 rounded-3xl bg-white p-2 sm:p-3 lg:flex-row lg:items-center lg:justify-between"
     >
       <div
         role="tablist"

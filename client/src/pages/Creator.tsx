@@ -221,7 +221,7 @@ export default function Creator() {
                 <section
                   data-testid="creator-card-publicacoes"
                   aria-labelledby="creator-publicacoes-titulo"
-                  className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+                  className="card-surface rounded-3xl bg-white p-6 md:p-8"
                 >
                   <CreatorPublicacoes />
                 </section>
@@ -315,7 +315,7 @@ function PainelDeNumeros() {
     return (
       <section
         data-testid="creator-nao-creator"
-        className="card-brutal rounded-3xl bg-white p-6 text-center"
+        className="card-surface rounded-3xl bg-white p-6 text-center"
       >
         <p className="font-display text-lg font-black text-slate-950">
           {/* TODO(Ana) */}
@@ -360,7 +360,7 @@ function Comunidade() {
       <section
         data-testid="creator-comunidade"
         aria-labelledby="creator-calendario-titulo"
-        className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+        className="card-surface rounded-3xl bg-white p-6 md:p-8"
       >
         <CreatorCalendario />
       </section>
@@ -429,7 +429,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-redes"
           aria-labelledby="creator-redes-titulo"
-          className="card-brutal h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-redes-titulo"
@@ -459,7 +459,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-pagamento"
           aria-labelledby="creator-pagamento-titulo"
-          className="card-brutal h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-pagamento-titulo"

@@ -469,7 +469,7 @@ function RankingEmBreve() {
     <section
       data-testid="creator-ranking-em-breve"
       aria-labelledby="creator-ranking-titulo"
-      className="card-brutal rounded-3xl bg-white p-6 md:p-8"
+      className="card-surface rounded-3xl bg-white p-6 md:p-8"
     >
       <CabecalhoDeSecao
         id="creator-ranking-titulo"
@@ -545,7 +545,7 @@ export function CreatorRanking({
       data-modo={modo}
       aria-labelledby="creator-ranking-titulo"
       // No admin a casca do cartao e de quem monta (a secao da aba Creators).
-      className={admin ? "" : "card-brutal rounded-3xl bg-white p-6 md:p-8"}
+      className={admin ? "" : "card-surface rounded-3xl bg-white p-6 md:p-8"}
     >
       <CabecalhoDeSecao
         id="creator-ranking-titulo"

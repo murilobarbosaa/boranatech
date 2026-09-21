@@ -1482,6 +1482,15 @@
     transform: translate(1px, 1px) scale(0.99);
     box-shadow: 2px 2px 0 var(--bnt-shadow);
   }
+  /* Superficie ESTATICA (lote 11g): a mesma borda e sombra do card-brutal,
+     sem a transicao de transform e sem :hover/:active. E para cartao que nao
+     e botao nem link (painel, metricas, grafico, calendario, podio, perfil):
+     um cartao que "afunda" ao clicar promete uma acao que nao existe. Botoes
+     e links continuam com card-brutal e bnt-pressable. */
+  .card-surface {
+    border: 2px solid var(--bnt-ink);
+    box-shadow: 4px 4px 0 var(--bnt-shadow);
+  }
 
   /* Scrollbar fina no tom slate do sistema, para paineis/modais com scroll.
      Aplicar na classe EXPLICITAMENTE (nao global) pra nao vazar pra outros

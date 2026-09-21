@@ -820,7 +820,7 @@ export function CreatorDashboardView({
           >
             <section
               aria-labelledby="creator-serie-titulo"
-              className="card-brutal rounded-3xl bg-white p-5 sm:p-6"
+              className="card-surface rounded-3xl bg-white p-5 sm:p-6"
             >
               <p className="text-xs font-black uppercase tracking-wide text-violet-700">
                 {/* TODO(Ana) */}

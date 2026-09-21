@@ -743,3 +743,38 @@ describe("esqueletos da pagina (lote 11c)", () => {
     expect(screen.queryByTestId("creator-card-redes")).toBeNull();
   });
 });
+
+describe("superficies estaticas (lote 11g)", () => {
+  it("os cartoes que nao sao botao nem link usam card-surface, sem card-brutal nem bnt-pressable", async () => {
+    estado.fetch = vi.fn(async () => ({ data: PAINEL }));
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    for (const aba of ["numeros", "calendario", "perfil"]) {
+      cleanup();
+      montar(aba === "numeros" ? "/creator" : `/creator?aba=${aba}`);
+      await screen.findByTestId("creator-abas");
+      const superficies = Array.from(
+        document.querySelectorAll(".card-surface"),
+      );
+      expect(superficies.length, aba).toBeGreaterThan(0);
+      for (const el of superficies) {
+        const classes = el.getAttribute("class") ?? "";
+        expect(classes, aba).not.toContain("card-brutal");
+        expect(classes, aba).not.toContain("bnt-pressable");
+        expect(classes, aba).not.toMatch(/(active|hover):-?translate/);
+        expect(["A", "BUTTON"], aba).not.toContain(el.tagName);
+      }
+    }
+    // Os nomeados: faixa de abas, cartoes do perfil e das publicacoes.
+    expect(
+      screen.getByTestId("creator-card-redes").getAttribute("class") ?? "",
+    ).toContain("card-surface");
+    expect(
+      screen.getByTestId("creator-card-pagamento").getAttribute("class") ?? "",
+    ).toContain("card-surface");
+    expect(
+      screen.getByTestId("creator-abas").getAttribute("class") ?? "",
+    ).toContain("card-surface");
+    // Nenhum card-brutal sobrou na pagina do creator.
+    expect(document.querySelectorAll(".card-brutal")).toHaveLength(0);
+  });
+});

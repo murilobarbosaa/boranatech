@@ -39,7 +39,7 @@ export function EsqueletoDoPainel() {
       aria-busy="true"
       className="space-y-6 md:space-y-8"
     >
-      <section className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8">
+      <section className="card-surface space-y-5 rounded-3xl bg-white p-6 md:p-8">
         <Cabecalho />
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -55,7 +55,7 @@ export function EsqueletoDoPainel() {
         </div>
         <Skeleton className={`h-64 w-full rounded-2xl ${OSSO}`} />
       </section>
-      <section className="card-brutal space-y-5 rounded-3xl bg-white p-6 md:p-8">
+      <section className="card-surface space-y-5 rounded-3xl bg-white p-6 md:p-8">
         <Cabecalho />
         <Skeleton className={`h-24 w-full rounded-2xl ${OSSO}`} />
       </section>
@@ -74,7 +74,7 @@ export function EsqueletoDoPerfil() {
       {[0, 1].map((cartao) => (
         <section
           key={cartao}
-          className="card-brutal h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
         >
           <Cabecalho />
           <div className="space-y-4">
@@ -165,7 +165,7 @@ export function EsqueletoDoCartaoDoRanking() {
     <section
       data-testid="creator-card-ranking-esqueleto"
       aria-busy="true"
-      className="card-brutal space-y-3 rounded-3xl bg-white p-5"
+      className="card-surface space-y-3 rounded-3xl bg-white p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <Skeleton className={`h-9 w-44 ${OSSO}`} />

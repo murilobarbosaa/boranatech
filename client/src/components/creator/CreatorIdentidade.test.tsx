@@ -76,7 +76,8 @@ describe("CreatorIdentidade", () => {
       />,
     );
     const cartao = screen.getByTestId("creator-identidade");
-    expect(cartao.className).toContain("card-brutal");
+    expect(cartao.className).toContain("card-surface");
+    expect(cartao.className).not.toContain("card-brutal");
     expect(screen.getByRole("heading", { name: "Ana Creator" })).toBeTruthy();
     expect(screen.getByText("@anacreator")).toBeTruthy();
     expect(screen.getByTestId("creator-kind").textContent).toBe("Afiliado");
