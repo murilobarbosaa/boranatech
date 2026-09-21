@@ -159,22 +159,21 @@ export function EsqueletoDoCalendario({
   );
 }
 
-/** Aba Numeros: o cartao pequeno "Ranking do mes". */
+/** Aba Numeros: o mini ranking (lote 11d), titulo, botao e tres linhas. */
 export function EsqueletoDoCartaoDoRanking() {
   return (
     <section
       data-testid="creator-card-ranking-esqueleto"
       aria-busy="true"
-      className="card-brutal flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white p-5"
+      className="card-brutal space-y-3 rounded-3xl bg-white p-5"
     >
-      <div className="flex items-center gap-4">
-        <Skeleton className={`h-12 w-12 rounded-full ${OSSO}`} />
-        <div className="space-y-2">
-          <Skeleton className={`h-3 w-28 ${OSSO}`} />
-          <Skeleton className={`h-8 w-40 ${OSSO}`} />
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <Skeleton className={`h-9 w-44 ${OSSO}`} />
+        <Skeleton className={`h-8 w-40 rounded-full ${OSSO}`} />
       </div>
-      <Skeleton className={`h-8 w-28 rounded-full ${OSSO}`} />
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} className={`h-12 w-full rounded-2xl ${OSSO}`} />
+      ))}
     </section>
   );
 }

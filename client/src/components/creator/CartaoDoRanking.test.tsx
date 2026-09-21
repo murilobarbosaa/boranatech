@@ -1,14 +1,22 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 
 /**
- * CartaoDoRanking: o cartao pequeno da aba Numeros (lote 11).
+ * CartaoDoRanking: o mini ranking da aba Numeros (lote 11d).
  *
- * Tres respostas, tres telas: com posicao (posicao, total e pontos), sem
- * pontos (a frase e o link), e sem resposta (nada, nem esqueleto), que e o
- * caso do erro e do backend anterior.
+ * Quatro respostas, quatro telas: o viewer no top 3 (a linha dele com o chip,
+ * sem linha extra), fora do top 3 (as tres linhas e a dele abaixo), sem pontos
+ * (as tres linhas e a frase), e sem resposta (nada, nem esqueleto), que e o
+ * caso do erro e do backend anterior. O influencer nem monta o cartao: isso e
+ * da pagina (Creator.test.tsx).
  */
 
 const estado = vi.hoisted(() => ({
@@ -31,7 +39,12 @@ import { AdminApiError } from "@/lib/adminApi";
 import type { PosicaoDoRanking } from "@shared/creatorRanking";
 import { CartaoDoRanking } from "./CartaoDoRanking";
 
-function posicao(n: number, pontos: number, eu = false): PosicaoDoRanking {
+function posicao(
+  n: number,
+  pontos: number,
+  eu = false,
+  extra: Partial<PosicaoDoRanking> = {},
+): PosicaoDoRanking {
   return {
     posicao: n,
     user_id: `u${n}`,
@@ -43,7 +56,20 @@ function posicao(n: number, pontos: number, eu = false): PosicaoDoRanking {
     pontos,
     contagens: { publicacoes: 0, vendas: 0, cliques: 0 },
     eu,
+    ...extra,
   };
+}
+
+function responderCom(posicoes: PosicaoDoRanking[]) {
+  estado.responder = async () => ({
+    data: {
+      mes: "2026-09",
+      fechado: false,
+      fecha_em: null,
+      posicoes,
+      minha_posicao: posicoes.find((p) => p.eu) ?? null,
+    },
+  });
 }
 
 function montar() {
@@ -55,6 +81,12 @@ function montar() {
   );
 }
 
+function idsDoTopo() {
+  return within(screen.getByTestId("creator-card-ranking-topo"))
+    .getAllByRole("listitem")
+    .map((li) => li.getAttribute("data-testid"));
+}
+
 beforeEach(() => {
   estado.chamadas = [];
 });
@@ -64,48 +96,96 @@ afterEach(() => {
 });
 
 describe("CartaoDoRanking", () => {
-  it("busca o mes atual (sem ?mes) e mostra posicao, total e pontos, com o link", async () => {
-    const posicoes = [posicao(1, 50), posicao(2, 40, true), posicao(3, 0)];
-    estado.responder = async () => ({
-      data: { mes: "2026-09", posicoes, minha_posicao: posicoes[1] },
-    });
+  it("viewer no top 3: as tres linhas, a dele com o chip Voce, sem linha extra, e o link", async () => {
+    responderCom([
+      posicao(1, 50),
+      posicao(2, 40, true, {
+        avatar: {
+          mode: "icon",
+          avatar_url: null,
+          icon: "crown",
+          bg: "purple",
+          border: "pro-holo",
+        },
+      }),
+      posicao(3, 30),
+      posicao(4, 5),
+    ]);
     montar();
-    const cartao = await screen.findByTestId("creator-card-ranking");
+    await screen.findByTestId("creator-card-ranking");
     expect(estado.chamadas).toEqual(["/creator/ranking"]);
-    expect(screen.getByTestId("creator-card-ranking-posicao").textContent).toBe(
-      "2º",
+    expect(idsDoTopo()).toEqual([
+      "creator-card-ranking-linha-u1",
+      "creator-card-ranking-linha-u2",
+      "creator-card-ranking-linha-u3",
+    ]);
+    const minha = screen.getByTestId("creator-card-ranking-linha-u2");
+    expect(
+      within(minha).getByTestId("creator-card-ranking-voce-u2"),
+    ).toBeTruthy();
+    expect(minha.textContent).toContain("40");
+    expect(minha.getAttribute("class") ?? "").toContain(
+      "border-[var(--bnt-accent-solid)]",
     );
-    expect(cartao.textContent).toContain("de 3");
-    expect(screen.getByTestId("creator-card-ranking-pontos").textContent).toBe(
-      "40 pontos",
-    );
+    expect(screen.queryByTestId("creator-card-ranking-minha")).toBeNull();
+    expect(screen.queryByTestId("creator-card-ranking-vazio")).toBeNull();
     expect(
       screen.getByTestId("creator-card-ranking-link").getAttribute("href"),
     ).toBe("/creator?aba=ranking");
+    expect(
+      screen.getByTestId("creator-card-ranking-link").textContent,
+    ).toContain("Ver ranking completo");
   });
 
-  it("sem pontos: a frase e o mesmo link", async () => {
-    const posicoes = [posicao(1, 50), posicao(2, 0, true)];
-    estado.responder = async () => ({
-      data: { mes: "2026-09", posicoes, minha_posicao: posicoes[1] },
-    });
+  it("viewer fora do top 3: as tres linhas e a dele abaixo, com o chip", async () => {
+    responderCom([
+      posicao(1, 50),
+      posicao(2, 40),
+      posicao(3, 30),
+      posicao(4, 20),
+      posicao(5, 7, true),
+    ]);
     montar();
+    await screen.findByTestId("creator-card-ranking");
+    expect(idsDoTopo()).toEqual([
+      "creator-card-ranking-linha-u1",
+      "creator-card-ranking-linha-u2",
+      "creator-card-ranking-linha-u3",
+    ]);
+    const minha = screen.getByTestId("creator-card-ranking-minha");
     expect(
-      (await screen.findByTestId("creator-card-ranking-vazio")).textContent,
-    ).toBe("Você ainda não pontuou este mês");
-    expect(screen.queryByTestId("creator-card-ranking-posicao")).toBeNull();
-    expect(screen.getByTestId("creator-card-ranking-link")).toBeTruthy();
+      within(minha).getByTestId("creator-card-ranking-linha-u5"),
+    ).toBeTruthy();
+    expect(
+      within(minha).getByTestId("creator-card-ranking-voce-u5"),
+    ).toBeTruthy();
+    expect(minha.textContent).toContain("5");
+    expect(minha.textContent).toContain("7");
+    expect(screen.queryByTestId("creator-card-ranking-vazio")).toBeNull();
   });
 
-  it("um ponto no singular", async () => {
-    const posicoes = [posicao(1, 1, true)];
-    estado.responder = async () => ({
-      data: { mes: "2026-09", posicoes, minha_posicao: posicoes[0] },
-    });
+  it("sem pontos: as tres linhas do podio e a frase, sem a linha do viewer", async () => {
+    responderCom([posicao(1, 50), posicao(2, 20), posicao(3, 0, true)]);
     montar();
-    expect(
-      (await screen.findByTestId("creator-card-ranking-pontos")).textContent,
-    ).toBe("1 ponto");
+    await screen.findByTestId("creator-card-ranking");
+    // Zero ponto nao sobe no podio: so duas linhas pontuaram.
+    expect(idsDoTopo()).toEqual([
+      "creator-card-ranking-linha-u1",
+      "creator-card-ranking-linha-u2",
+    ]);
+    expect(screen.getByTestId("creator-card-ranking-vazio").textContent).toBe(
+      "Você ainda não pontuou este mês",
+    );
+    expect(screen.queryByTestId("creator-card-ranking-minha")).toBeNull();
+    expect(screen.queryByTestId(/creator-card-ranking-voce/)).toBeNull();
+  });
+
+  it("ninguem pontuou: a linha 'Ninguém pontuou' e a frase", async () => {
+    responderCom([posicao(1, 0, true), posicao(2, 0)]);
+    montar();
+    await screen.findByTestId("creator-card-ranking");
+    expect(screen.getByTestId("creator-card-ranking-ninguem")).toBeTruthy();
+    expect(screen.getByTestId("creator-card-ranking-vazio")).toBeTruthy();
   });
 
   it("erro, 404 do backend anterior ou resposta fora do formato: nenhum cartao", async () => {
@@ -123,15 +203,13 @@ describe("CartaoDoRanking", () => {
       estado.responder = responder;
       montar();
       await waitFor(() => expect(estado.chamadas).toHaveLength(1));
-      // Da tempo de um render depois da resposta.
       await new Promise((r) => setTimeout(r, 0));
       expect(screen.queryByTestId("creator-card-ranking")).toBeNull();
-      // Nem o esqueleto: sem resposta, sem cartao.
       expect(screen.queryByTestId("creator-card-ranking-esqueleto")).toBeNull();
     }
   });
 
-  it("enquanto carrega, o esqueleto com a forma do cartao (lote 11c)", async () => {
+  it("enquanto carrega, o esqueleto de tres linhas", async () => {
     let liberar: (v: unknown) => void = () => {};
     estado.responder = () =>
       new Promise((r) => {
@@ -140,9 +218,15 @@ describe("CartaoDoRanking", () => {
     montar();
     const esqueleto = screen.getByTestId("creator-card-ranking-esqueleto");
     expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(esqueleto.querySelectorAll(".h-12")).toHaveLength(3);
     expect(screen.queryByTestId("creator-card-ranking")).toBeNull();
-    const posicoes = [posicao(1, 50, true)];
-    liberar({ data: { mes: "2026-09", posicoes, minha_posicao: posicoes[0] } });
+    liberar({
+      data: {
+        mes: "2026-09",
+        posicoes: [posicao(1, 50, true)],
+        minha_posicao: posicao(1, 50, true),
+      },
+    });
     await screen.findByTestId("creator-card-ranking");
     expect(screen.queryByTestId("creator-card-ranking-esqueleto")).toBeNull();
   });
