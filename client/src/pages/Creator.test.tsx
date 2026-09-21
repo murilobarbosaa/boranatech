@@ -7,6 +7,7 @@ import {
   render,
   screen,
   within,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Router } from "wouter";
@@ -29,6 +30,7 @@ type PropsDoView = {
   painel: unknown;
   janela: string;
   onJanelaChange: (janela: "7d" | "30d" | "90d" | "all") => void;
+  serieCarregando?: boolean;
   visao: string;
   identidade?: string;
 };
@@ -84,9 +86,20 @@ vi.mock("@/components/creator/CreatorDashboardView", () => ({
       identidade: props.identidade,
     };
     return (
-      <div data-testid="view">
+      <div
+        data-testid="view"
+        data-serie-carregando={props.serieCarregando ? "sim" : "nao"}
+        data-janela={props.janela}
+        data-periodo-cliques={
+          (props.painel as { eventos: { periodo: { clicks: number } } }).eventos
+            .periodo.clicks
+        }
+      >
         <button type="button" onClick={() => props.onJanelaChange("90d")}>
           trocar para 90 dias
+        </button>
+        <button type="button" onClick={() => props.onJanelaChange("30d")}>
+          trocar para 30 dias
         </button>
       </div>
     );
@@ -776,5 +789,95 @@ describe("superficies estaticas (lote 11g)", () => {
     ).toContain("card-surface");
     // Nenhum card-brutal sobrou na pagina do creator.
     expect(document.querySelectorAll(".card-brutal")).toHaveLength(0);
+  });
+});
+
+describe("troca de janela sem recarregar o painel (lote 11h)", () => {
+  function painelComCliques(janela: string, clicks: number) {
+    return {
+      ...PAINEL,
+      janela,
+      eventos: {
+        ...PAINEL.eventos,
+        periodo: { ...PAINEL.eventos.periodo, clicks },
+      },
+    };
+  }
+
+  it("mantem o painel na tela, ocupa so a serie, e troca so os eventos quando a resposta chega", async () => {
+    let liberar: (v: unknown) => void = () => {};
+    estado.fetch = vi.fn((path: string) => {
+      if (path.endsWith("janela=90d")) {
+        return new Promise((r) => {
+          liberar = r;
+        });
+      }
+      return Promise.resolve({ data: painelComCliques("30d", 30) });
+    });
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    const view = await screen.findByTestId("view");
+    expect(view.getAttribute("data-periodo-cliques")).toBe("30");
+
+    fireEvent.click(screen.getByText("trocar para 90 dias"));
+    // Nada de esqueleto do painel: a view continua montada, com os numeros
+    // de antes, e so a serie esta ocupada; a janela pedida ja vai marcada.
+    expect(screen.queryByTestId("creator-painel-esqueleto")).toBeNull();
+    expect(
+      screen.getByTestId("view").getAttribute("data-serie-carregando"),
+    ).toBe("sim");
+    expect(screen.getByTestId("view").getAttribute("data-janela")).toBe("90d");
+    expect(
+      screen.getByTestId("view").getAttribute("data-periodo-cliques"),
+    ).toBe("30");
+
+    liberar({ data: painelComCliques("90d", 90) });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("view").getAttribute("data-serie-carregando"),
+      ).toBe("nao"),
+    );
+    expect(
+      screen.getByTestId("view").getAttribute("data-periodo-cliques"),
+    ).toBe("90");
+    // O resto do payload e o de antes: so `eventos` e `janela` mudaram.
+    expect(estado.props?.painel).toMatchObject({
+      janela: "90d",
+      totais: PAINEL.totais,
+      codigos: PAINEL.codigos,
+      perfil: PAINEL.perfil,
+    });
+    expect(estado.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("voltar para uma janela ja vista mostra os numeros dela na hora, e a busca so revalida", async () => {
+    estado.fetch = vi.fn((path: string) =>
+      Promise.resolve({
+        data: painelComCliques(
+          path.endsWith("janela=90d") ? "90d" : "30d",
+          path.endsWith("janela=90d") ? 90 : 30,
+        ),
+      }),
+    );
+    estado.perfil = { tipo: "ok", perfil: PERFIL_COM_CHAVE };
+    montar();
+    await screen.findByTestId("view");
+    fireEvent.click(screen.getByText("trocar para 90 dias"));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("view").getAttribute("data-periodo-cliques"),
+      ).toBe("90"),
+    );
+
+    // Segunda troca, para os 30 dias ja vistos: sem esperar a resposta.
+    estado.fetch = vi.fn(() => new Promise(() => {}));
+    fireEvent.click(screen.getByText("trocar para 30 dias"));
+    expect(
+      screen.getByTestId("view").getAttribute("data-periodo-cliques"),
+    ).toBe("30");
+    expect(
+      screen.getByTestId("view").getAttribute("data-serie-carregando"),
+    ).toBe("nao");
+    expect(estado.fetch).toHaveBeenCalledWith("/creator/me?janela=30d");
   });
 });

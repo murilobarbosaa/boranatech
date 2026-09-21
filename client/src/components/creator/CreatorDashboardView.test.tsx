@@ -907,3 +907,54 @@ describe("CreatorDashboardView: legenda da janela no rodape (lote 11g)", () => {
     expect(screen.queryByTestId("creator-periodo-nota-contador")).toBeNull();
   });
 });
+
+describe("CreatorDashboardView: serie carregando (lote 11h)", () => {
+  it("so a secao da serie fica ocupada: esqueleto no lugar do grafico, rodape a meia opacidade, botoes desabilitados; cards e cupom continuam", () => {
+    render(
+      <CreatorDashboardView
+        painel={painelBase()}
+        janela="90d"
+        onJanelaChange={onJanelaChange}
+        serieCarregando
+        visao="creator"
+      />,
+    );
+    const secao = screen.getByTestId("creator-serie-secao");
+    expect(secao.getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByTestId("creator-serie-esqueleto")).toBeTruthy();
+    expect(screen.queryByTestId("creator-grafico")).toBeNull();
+    expect(
+      screen.getByTestId("creator-periodo").getAttribute("class") ?? "",
+    ).toContain("opacity-50");
+    const grupo = screen.getByRole("group", { name: "Período da série" });
+    const botoes = within(grupo).getAllByRole("button") as HTMLButtonElement[];
+    expect(botoes.every((b) => b.disabled)).toBe(true);
+    // A escolhida ja aparece marcada.
+    expect(
+      botoes
+        .find((b) => b.textContent === "90 dias")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    // O resto do painel continua na tela.
+    expect(screen.getByTestId("creator-tile-cliques")).toBeTruthy();
+    expect(screen.getByTestId("creator-painel")).toBeTruthy();
+  });
+
+  it("sem serieCarregando, nada disso: grafico, rodape cheio e botoes ativos", () => {
+    desenhar(painelBase());
+    expect(
+      screen.getByTestId("creator-serie-secao").getAttribute("aria-busy"),
+    ).toBe("false");
+    expect(screen.queryByTestId("creator-serie-esqueleto")).toBeNull();
+    expect(screen.getByTestId("creator-grafico")).toBeTruthy();
+    expect(
+      screen.getByTestId("creator-periodo").getAttribute("class") ?? "",
+    ).not.toContain("opacity-50");
+    const grupo = screen.getByRole("group", { name: "Período da série" });
+    expect(
+      (within(grupo).getAllByRole("button") as HTMLButtonElement[]).some(
+        (b) => b.disabled,
+      ),
+    ).toBe(false);
+  });
+});

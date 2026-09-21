@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AtSign, KeyRound, Receipt, Sparkles } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 
@@ -261,20 +261,62 @@ function PainelDeNumeros() {
   );
   const [tentativa, setTentativa] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
+  // TROCA DE JANELA SEM DESMONTAR (lote 11h). So `eventos` (serie e periodo)
+  // depende da janela; totais, cupons e identidade sao iguais em todas. Entao
+  // a troca mantem o painel na tela e refaz a busca por tras: enquanto a
+  // resposta nao chega, so a secao da serie fica ocupada (`serieCarregando`),
+  // e quando chega o client troca SO `eventos` e a `janela` do payload. As
+  // janelas ja vistas ficam num cache do componente e trocam na hora, com a
+  // busca silenciosa atualizando atras (o mesmo "revalida em silencio" do
+  // calendario). A primeira carga e o erro continuam como eram.
+  const cache = useRef(new Map<CreatorDashboardJanela, CreatorDashboard>());
+  const [serieCarregando, setSerieCarregando] = useState(false);
+  const painelNaTela = useRef<CreatorDashboard | null>(null);
+  painelNaTela.current = estado.tipo === "ok" ? estado.painel : null;
 
   useEffect(() => {
     let cancelado = false;
-    // Zera ao trocar de janela: o painel anterior sob o rotulo novo diria
-    // "7 dias" mostrando trinta.
-    setEstado({ tipo: "carregando" });
+    const primeiraCarga = painelNaTela.current === null;
+    const emCache = cache.current.get(janela);
+    if (primeiraCarga) {
+      setEstado({ tipo: "carregando" });
+    } else if (emCache) {
+      // Janela ja vista: os numeros dela na hora; a busca abaixo so revalida.
+      setEstado({ tipo: "ok", painel: emCache });
+      setSerieCarregando(false);
+    } else {
+      setSerieCarregando(true);
+    }
     contentFetch(`/creator/me?janela=${janela}`)
       .then((json: unknown) => {
         if (cancelado) return;
         const painel = painelDaResposta(json);
-        setEstado(painel ? { tipo: "ok", painel } : { tipo: "erro" });
+        if (!painel) {
+          if (primeiraCarga) setEstado({ tipo: "erro" });
+          setSerieCarregando(false);
+          return;
+        }
+        cache.current.set(janela, painel);
+        setEstado((atual) =>
+          atual.tipo === "ok"
+            ? {
+                tipo: "ok",
+                painel: {
+                  ...atual.painel,
+                  janela: painel.janela,
+                  eventos: painel.eventos,
+                },
+              }
+            : { tipo: "ok", painel },
+        );
+        setSerieCarregando(false);
       })
       .catch((err: unknown) => {
         if (cancelado) return;
+        setSerieCarregando(false);
+        // Numa troca de janela o painel anterior continua na tela: um erro
+        // aqui nao apaga o que a pessoa ja estava vendo.
+        if (!primeiraCarga) return;
         const naoCreator =
           err instanceof AdminApiError &&
           err.status === 403 &&
@@ -337,6 +379,7 @@ function PainelDeNumeros() {
       painel={estado.painel}
       janela={janela}
       onJanelaChange={setJanela}
+      serieCarregando={serieCarregando}
       visao="creator"
       identidade="nenhuma"
     />

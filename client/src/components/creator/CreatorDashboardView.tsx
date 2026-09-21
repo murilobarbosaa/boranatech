@@ -178,9 +178,13 @@ export function deltaPermitido(
 function SeletorDeJanela({
   janela,
   onChange,
+  desabilitado = false,
 }: {
   janela: CreatorDashboardJanela;
   onChange: (janela: CreatorDashboardJanela) => void;
+  /** Enquanto a serie da janela escolhida nao chega (lote 11h): a escolhida
+   * ja aparece marcada, e nenhuma outra aceita clique. */
+  desabilitado?: boolean;
 }) {
   return (
     <div
@@ -196,8 +200,9 @@ function SeletorDeJanela({
             key={opcao.valor}
             type="button"
             aria-pressed={ativa}
+            disabled={desabilitado}
             onClick={() => onChange(opcao.valor)}
-            className={`rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:py-1.5 ${
+            className={`rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-wait sm:py-1.5 ${
               ativa
                 ? "bg-slate-950 text-white"
                 : "bg-white text-slate-700 hover:bg-slate-100"
@@ -432,11 +437,13 @@ function Serie({
   painel,
   janela,
   onJanelaChange,
+  carregando,
   agoraMs,
 }: {
   painel: CreatorDashboard;
   janela: CreatorDashboardJanela;
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
+  carregando: boolean;
   agoraMs: number;
 }) {
   const { eventos, totais } = painel;
@@ -525,7 +532,11 @@ function Serie({
   return (
     <div data-testid="creator-serie" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SeletorDeJanela janela={janela} onChange={onJanelaChange} />
+        <SeletorDeJanela
+          janela={janela}
+          onChange={onJanelaChange}
+          desabilitado={carregando}
+        />
         <div className="flex flex-wrap items-center gap-2">
           {clicksSince ? (
             <span data-testid="creator-cliques-desde" className={SELO_NEUTRO}>
@@ -544,11 +555,23 @@ function Serie({
         </div>
       </div>
 
-      <Grafico dados={serieParaGrafico(eventos.serie, clicksSince)} />
+      {carregando ? (
+        // O esqueleto do grafico no lugar da curva (lote 11h), na mesma altura
+        // do grafico real (h-72), para a secao nao mudar de tamanho.
+        <div
+          data-testid="creator-serie-esqueleto"
+          aria-hidden="true"
+          className="h-72 w-full animate-pulse rounded-2xl bg-slate-200"
+        />
+      ) : (
+        <Grafico dados={serieParaGrafico(eventos.serie, clicksSince)} />
+      )}
 
       <dl
         data-testid="creator-periodo"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${
+          carregando ? "opacity-50" : ""
+        }`}
       >
         {linhasDoPeriodo.map((linha) => (
           <div
@@ -614,6 +637,7 @@ export function CreatorDashboardView({
   painel,
   janela,
   onJanelaChange,
+  serieCarregando = false,
   visao,
   identidade = "embutida",
   userId,
@@ -621,6 +645,9 @@ export function CreatorDashboardView({
   painel: CreatorDashboard;
   janela: CreatorDashboardJanela;
   onJanelaChange: (janela: CreatorDashboardJanela) => void;
+  /** A serie da janela nova ainda nao chegou (lote 11h): so a secao da serie
+   * fica ocupada, o resto do painel continua como estava. */
+  serieCarregando?: boolean;
   visao: Visao;
   identidade?: "embutida" | "nenhuma";
   /**
@@ -819,7 +846,9 @@ export function CreatorDashboardView({
             nome="Cliques e vendas por dia"
           >
             <section
+              data-testid="creator-serie-secao"
               aria-labelledby="creator-serie-titulo"
+              aria-busy={serieCarregando}
               className="card-surface rounded-3xl bg-white p-5 sm:p-6"
             >
               <p className="text-xs font-black uppercase tracking-wide text-violet-700">
@@ -838,6 +867,7 @@ export function CreatorDashboardView({
                   painel={painel}
                   janela={janela}
                   onJanelaChange={onJanelaChange}
+                  carregando={serieCarregando}
                   agoraMs={agoraMs}
                 />
               </div>
