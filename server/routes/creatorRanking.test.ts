@@ -45,6 +45,44 @@ vi.mock("../lib/supabaseAdmin", () => ({
 vi.mock("@sentry/node", () => ({
   captureException: (...a: unknown[]) => estado.sentry(...a),
 }));
+// O avatar (lote 11b) vem do resolvedor do site, dublado: Ana com foto, Bia
+// com iniciais configuradas, o resto no padrao.
+vi.mock("../lib/avatarResolver", () => ({
+  resolveAvatars: async (ids: string[]) =>
+    ids.map((userId) => {
+      if (userId === "11111111-1111-1111-1111-111111111111") {
+        return {
+          userId,
+          name: "Ana",
+          mode: "photo",
+          avatarUrl: "https://a/ana.png",
+          icon: null,
+          bg: null,
+          border: "pro-holo",
+        };
+      }
+      if (userId === "22222222-2222-2222-2222-222222222222") {
+        return {
+          userId,
+          name: "Bia",
+          mode: "icon",
+          avatarUrl: null,
+          icon: "rocket",
+          bg: "green",
+          border: "classic",
+        };
+      }
+      return {
+        userId,
+        name: "",
+        mode: "icon",
+        avatarUrl: null,
+        icon: null,
+        bg: null,
+        border: null,
+      };
+    }),
+}));
 
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
@@ -304,6 +342,14 @@ describe("montarRanking", () => {
       handle: "bia.tk",
       rede_do_handle: "tiktok",
       avatar_url: null,
+      // O avatar como o site o desenha (lote 11b).
+      avatar: {
+        mode: "icon",
+        avatar_url: null,
+        icon: "rocket",
+        bg: "green",
+        border: "classic",
+      },
       calendar_color: "cyan",
       contagens: { publicacoes: 3, vendas: 1, cliques: 30 },
       eu: false,
@@ -313,6 +359,11 @@ describe("montarRanking", () => {
       handle: "ana.cria",
       rede_do_handle: "instagram",
       avatar_url: "https://a/ana.png",
+      avatar: {
+        mode: "photo",
+        avatar_url: "https://a/ana.png",
+        border: "pro-holo",
+      },
       calendar_color: "rose",
       contagens: { publicacoes: 1, vendas: 1, cliques: 40 },
     });
@@ -322,6 +373,13 @@ describe("montarRanking", () => {
       handle: "caio",
       rede_do_handle: null,
       calendar_color: "violet",
+      avatar: {
+        mode: "icon",
+        avatar_url: null,
+        icon: null,
+        bg: null,
+        border: null,
+      },
     });
     expect(duda).toMatchObject({ name: "Duda", handle: null, pontos: 0 });
     // Uma consulta por tabela, e nao uma por pessoa.

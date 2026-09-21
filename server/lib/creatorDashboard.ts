@@ -1,3 +1,5 @@
+import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
+import { lerAvatares } from "./creatorAvatar";
 import {
   diaBrasilia,
   inicioDoDiaBrasilia,
@@ -89,12 +91,11 @@ export type JanelaDoPainel = {
   anteriorFimIso: string | null;
 };
 
-const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> =
-  {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  };
+const DIAS_DA_JANELA: Record<Exclude<CreatorDashboardJanela, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 
 /**
  * `?janela=` da query. Ausente: o padrao (30d). Qualquer outra coisa que nao
@@ -364,7 +365,10 @@ function lerCodigo(linha: Linha, admin: boolean): CreatorDashboardCodigo {
     code,
     status: textoDe(linha.status, "status"),
     discount_percent: numeroDe(linha.discount_percent, "discount_percent"),
-    commission_percent: numeroDe(linha.commission_percent, "commission_percent"),
+    commission_percent: numeroDe(
+      linha.commission_percent,
+      "commission_percent",
+    ),
     link: linkDoCodigo(code),
     clicks: numeroDe(linha.clicks, "clicks"),
     sales: numeroDe(linha.sales, "sales"),
@@ -466,13 +470,16 @@ export async function montarPainelDoCreator(
 
   // 2 e 3. Perfil e codigos, independentes entre si. Codigos paginados com
   // prova de total, pelo mesmo motivo da serie.
-  const [linhaPerfil, linhasCodigo] = await Promise.all([
+  const [linhaPerfil, linhasCodigo, avatares] = await Promise.all([
     lerPerfil(userId, admin),
     coletarTudoProvandoTotal<Linha>(
       (from, to) => paginaDeCodigos(userId, admin, from, to),
       { op: "creator dashboard affiliates" },
     ),
+    // O avatar pela regra do site (lote 11b), em paralelo com o resto.
+    lerAvatares([userId]),
   ]);
+  const avatar = avatares.get(userId) ?? AVATAR_PADRAO;
 
   const codigos = linhasCodigo.map((linha) => lerCodigo(linha, admin));
   const ids = codigos.map((c) => c.id);
@@ -579,7 +586,9 @@ export async function montarPainelDoCreator(
     perfil: {
       name: textoOuNull(linhaPerfil?.name, "name"),
       handle: textoOuNull(linhaPerfil?.handle, "handle"),
-      avatar_url: textoOuNull(linhaPerfil?.avatar_url, "avatar_url"),
+      // Alias com a MESMA regra do `avatar`: url so quando a foto pode aparecer.
+      avatar_url: avatar.avatar_url,
+      avatar,
     },
     janela,
     totais: {

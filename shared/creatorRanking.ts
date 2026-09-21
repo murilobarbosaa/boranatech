@@ -17,6 +17,7 @@
 // So publicacao CONFIRMADA vale. Story nasce confirmado (nao tem link
 // conferivel), entao conta no ato; o resto so depois que o admin confere.
 
+import type { AvatarDeCreator } from "./creatorAvatar";
 import type { TipoDePublicacao } from "./creatorPost";
 import { TIPOS_POR_REDE } from "./creatorPost";
 import type { RedeDeCreator } from "./creatorProfile";
@@ -156,7 +157,11 @@ export type PosicaoDoRanking = {
   /** A rede do @ mostrado (a primeira cadastrada no perfil de creator), ou
    * null quando o @ e o da conta e nao de uma rede. */
   rede_do_handle: RedeDeCreator | null;
+  /** Alias de `avatar.avatar_url` (lote 11b), para o client anterior. */
   avatar_url: string | null;
+  /** O avatar como o site o desenha (lote 11b). Opcional pela janela de
+   * deploy: o backend anterior nao manda. */
+  avatar?: AvatarDeCreator;
   calendar_color: string;
   pontos: number;
   contagens: { publicacoes: number; vendas: number; cliques: number };

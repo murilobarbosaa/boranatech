@@ -6,6 +6,7 @@
 // isso o kind e reescrito aqui como uniao literal; o `CreatorKind` de
 // server/lib/creatorKind.ts e atribuivel a ele.
 
+import type { AvatarDeCreator } from "./creatorAvatar";
 import type { CreatorPerfilDados } from "./creatorProfile";
 
 export const CREATOR_DASHBOARD_JANELAS = ["7d", "30d", "90d", "all"] as const;
@@ -171,7 +172,11 @@ export type CreatorDashboard = {
   perfil: {
     name: string | null;
     handle: string | null;
+    /** Alias de `avatar.avatar_url` desde o lote 11b (client anterior). */
     avatar_url: string | null;
+    /** O avatar como o site o desenha (lote 11b). Opcional no tipo pela
+     * janela de deploy: o backend anterior nao manda. */
+    avatar?: AvatarDeCreator;
     /** So na visao admin. Ausente na visao creator. */
     email?: string | null;
   };

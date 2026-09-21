@@ -25,6 +25,9 @@ import {
   ehCorDoCalendario,
   type CorDoCalendario,
 } from "../../shared/creatorProfile";
+import type { AvatarDeCreator } from "../../shared/creatorAvatar";
+import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
+import { lerAvatares } from "./creatorAvatar";
 import type { Linha } from "./creatorDashboard";
 import { textoDe } from "./creatorDashboard";
 import { erroEncadeavel } from "./supabaseError";
@@ -66,8 +69,13 @@ export type AutorDaMarcacao = {
   user_id: string;
   name: string | null;
   handle: string | null;
-  /** Lote 10c: o parceiro de collab aparece no dia com avatar. */
+  /** Lote 10c: o parceiro de collab aparece no dia com avatar. Desde o lote
+   * 11b e ALIAS de `avatar.avatar_url` para o client anterior; sai num lote
+   * futuro. */
   avatar_url: string | null;
+  /** O avatar como o site o desenha (lote 11b): modo, icone, fundo e borda,
+   * resolvidos pela regra do cabecalho. */
+  avatar: AvatarDeCreator;
 };
 
 export type MarcacaoDoCalendario = {
@@ -93,6 +101,7 @@ export type ParceiroDeCollab = {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  avatar: AvatarDeCreator;
   /** Cor do parceiro no calendario: o marcador dele tambem entra no dia. */
   calendar_color: CorDoCalendario;
 };
@@ -226,20 +235,27 @@ export async function lerAutores(
   }
   if (unicos.length === 0) return mapa;
 
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select("user_id, name, handle, avatar_url")
-    .in("user_id", unicos);
-  if (error) throw erroEncadeavel(error);
+  // Nome e @ daqui; o avatar pela regra do site (lote 11b), em paralelo.
+  const [perfis, avatares] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("user_id, name, handle, avatar_url")
+      .in("user_id", unicos),
+    lerAvatares(unicos),
+  ]);
+  if (perfis.error) throw erroEncadeavel(perfis.error);
 
-  const linhas: Linha[] = data ?? [];
+  const linhas: Linha[] = perfis.data ?? [];
   for (const linha of linhas) {
     const userId = textoDe(linha.user_id, "user_id");
+    const avatar = avatares.get(userId) ?? AVATAR_PADRAO;
     mapa.set(userId, {
       user_id: userId,
       name: textoOuNulo(linha.name),
       handle: textoOuNulo(linha.handle),
-      avatar_url: textoOuNulo(linha.avatar_url),
+      // O alias segue a MESMA regra: url so quando a foto pode aparecer.
+      avatar_url: avatar.avatar_url,
+      avatar,
     });
   }
   return mapa;
@@ -419,6 +435,7 @@ export async function listarMesDoCalendario(
           user_id: id,
           name: autor?.name ?? null,
           avatar_url: autor?.avatar_url ?? null,
+          avatar: autor?.avatar ?? AVATAR_PADRAO,
           calendar_color: cores.get(id) ?? COR_PADRAO_DO_CALENDARIO,
         };
       },

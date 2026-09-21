@@ -42,6 +42,20 @@ const estado = vi.hoisted(() => ({
   },
 }));
 
+// O avatar (lote 11b) vem do resolvedor do site, dublado aqui: o que se afirma
+// e que o painel o repassa e que o alias segue a regra dele.
+vi.mock("./avatarResolver", () => ({
+  resolveAvatars: async (ids: string[]) =>
+    ids.map((userId) => ({
+      userId,
+      name: "Ana Creator",
+      mode: "photo",
+      avatarUrl: "https://a/ana.png",
+      icon: "initials",
+      bg: "purple",
+      border: "gold",
+    })),
+}));
 vi.mock("./supabaseAdmin", () => ({
   get supabaseAdmin() {
     return estado.client;
@@ -88,7 +102,8 @@ function rpcFalso(nome: string, args: Record<string, unknown>, opts?: unknown) {
 // leitores abaixo agrupam por janela.
 function argsDistintos(): Array<Record<string, unknown>> {
   const vistos = new Map<string, Record<string, unknown>>();
-  for (const c of estado.rpc.chamadas) vistos.set(JSON.stringify(c.args), c.args);
+  for (const c of estado.rpc.chamadas)
+    vistos.set(JSON.stringify(c.args), c.args);
   // Array.from e nao spread: o target do tsconfig nao habilita iterar Map.
   return Array.from(vistos.values());
 }
@@ -632,7 +647,17 @@ describe("montarPainelDoCreator: visao creator e visao admin", () => {
       "name",
       "handle",
       "avatar_url",
+      "avatar",
     ]);
+    expect(painel.perfil.avatar).toEqual({
+      mode: "photo",
+      avatar_url: "https://a/ana.png",
+      icon: "initials",
+      bg: "purple",
+      border: "gold",
+    });
+    // O alias segue o avatar resolvido, e nao a coluna crua (que e nula aqui).
+    expect(painel.perfil.avatar_url).toBe("https://a/ana.png");
     expect(Object.keys(painel.creator)).toEqual([
       "kind",
       "granted_at",
@@ -813,7 +838,11 @@ describe("montarPainelDoCreator: vendas reconstruidas antes do marco de cliques"
       revenue_cents: 2242,
       commission_cents: 224,
     });
-    expect(eventos.serie[67]).toEqual({ dia: "2026-09-15", ...ZERO, clicks: 3 });
+    expect(eventos.serie[67]).toEqual({
+      dia: "2026-09-15",
+      ...ZERO,
+      clicks: 3,
+    });
     expect(eventos.periodo).toEqual({
       clicks: 3,
       checkouts: 0,

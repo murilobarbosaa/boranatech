@@ -1,3 +1,4 @@
+import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
 import {
   Router,
   type NextFunction,
@@ -4418,6 +4419,7 @@ router.get("/creators/posts", async (req, res, next) => {
           creator: donos.get(r.user_id) ?? {
             name: null,
             avatar_url: null,
+            avatar: AVATAR_PADRAO,
             instagram_handle: null,
           },
         })),

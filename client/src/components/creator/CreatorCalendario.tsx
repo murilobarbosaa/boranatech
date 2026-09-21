@@ -9,8 +9,10 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { AvatarDeCreator } from "@shared/creatorAvatar";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import {
   BOTAO_PRIMARIO,
@@ -59,7 +61,14 @@ import {
 // `var(--bnt-ink)` e `var(--bnt-shadow)`. Escrever `dark:` aqui aplicaria a
 // inversao duas vezes.
 
-type Autor = { user_id: string; name: string | null; handle: string | null };
+type Autor = {
+  user_id: string;
+  name: string | null;
+  handle: string | null;
+  /** Ausentes no backend anterior ao lote 11b. */
+  avatar_url?: string | null;
+  avatar?: AvatarDeCreator;
+};
 
 type StatusDoPedido = "pendente" | "aceita" | "recusada";
 
@@ -91,6 +100,8 @@ type Parceiro = {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  /** Ausente no backend anterior ao lote 11b. */
+  avatar?: AvatarDeCreator;
   calendar_color?: string;
 };
 
@@ -257,7 +268,20 @@ function ChipDeCollab({
       className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
     >
       <Handshake aria-hidden="true" className="h-3 w-3" />
-      {texto}
+      {/* Os parceiros com o avatar deles (lote 11b), antes do texto. */}
+      {parceiros.map((p) => (
+        <AvatarDoCreator
+          key={p.user_id}
+          name={nomeDoParceiro(p)}
+          avatar={p.avatar}
+          avatarUrl={p.avatar_url}
+          size="sm"
+          className="h-5 w-5"
+        />
+      ))}
+      <span data-testid={`creator-collab-fechada-texto-${marcacao.id}`}>
+        {texto}
+      </span>
     </span>
   );
 }
@@ -792,6 +816,14 @@ export function CreatorCalendario({
                       cor={marcacao.calendar_color}
                       meu={minha}
                       testId={`creator-marcacao-cor-${marcacao.id}`}
+                    />
+                    {/* O avatar de quem marcou (lote 11b), como o site o
+                        desenha; o proprio tambem, para a linha ser igual. */}
+                    <AvatarDoCreator
+                      name={nomeDoAutor(marcacao.autor)}
+                      avatar={marcacao.autor?.avatar}
+                      avatarUrl={marcacao.autor?.avatar_url}
+                      size="sm"
                     />
                     <span className="text-sm font-bold text-slate-900">
                       {minha

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import type { AvatarDeCreator } from "@shared/creatorAvatar";
 
-import UserAvatar from "@/components/UserAvatar";
+import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { BOTAO_SECUNDARIO } from "@/components/creator/creatorFormEstilos";
 import { BOTAO_CONFIRMAR } from "@/components/creator/CreatorPublicacoesAdmin";
@@ -29,6 +30,8 @@ const PAGE_SIZE = 50;
 type Dono = {
   name: string | null;
   avatar_url: string | null;
+  /** Ausente no backend anterior ao lote 11b. */
+  avatar?: AvatarDeCreator;
   instagram_handle: string | null;
 };
 
@@ -250,10 +253,10 @@ export function PublicacoesParaConferir() {
                 className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <UserAvatar
+                  <AvatarDoCreator
                     name={nome}
+                    avatar={linha.creator.avatar}
                     avatarUrl={linha.creator.avatar_url}
-                    mode={linha.creator.avatar_url ? "photo" : "icon"}
                     size="sm"
                   />
                   <span

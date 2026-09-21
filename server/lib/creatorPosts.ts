@@ -1,3 +1,6 @@
+import type { AvatarDeCreator } from "../../shared/creatorAvatar";
+import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
+import { lerAvatares } from "./creatorAvatar";
 import {
   diaBrasilia,
   inicioDoDiaBrasilia,
@@ -438,7 +441,9 @@ export async function listarPendentes(
 
 export type DonoDaPublicacao = {
   name: string | null;
+  /** Alias de `avatar.avatar_url` desde o lote 11b (client anterior). */
   avatar_url: string | null;
+  avatar: AvatarDeCreator;
   instagram_handle: string | null;
 };
 
@@ -455,12 +460,17 @@ export async function resolverDonosDasPublicacoes(
   const unicos: string[] = [];
   for (const id of userIds) {
     if (mapa.has(id)) continue;
-    mapa.set(id, { name: null, avatar_url: null, instagram_handle: null });
+    mapa.set(id, {
+      name: null,
+      avatar_url: null,
+      avatar: AVATAR_PADRAO,
+      instagram_handle: null,
+    });
     unicos.push(id);
   }
   if (unicos.length === 0) return mapa;
 
-  const [perfis, deCreator] = await Promise.all([
+  const [perfis, deCreator, avatares] = await Promise.all([
     supabaseAdmin
       .from("profiles")
       .select("user_id, name, avatar_url")
@@ -469,16 +479,21 @@ export async function resolverDonosDasPublicacoes(
       .from("creator_profiles")
       .select("user_id, instagram_handle")
       .in("user_id", unicos),
+    // O avatar pela regra do site (lote 11b).
+    lerAvatares(unicos),
   ]);
   if (perfis.error) throw erroEncadeavel(perfis.error);
   if (deCreator.error) throw erroEncadeavel(deCreator.error);
 
   const linhasPerfil: Linha[] = perfis.data ?? [];
   for (const linha of linhasPerfil) {
-    const dono = mapa.get(textoDe(linha.user_id, "user_id"));
+    const id = textoDe(linha.user_id, "user_id");
+    const dono = mapa.get(id);
     if (!dono) continue;
     dono.name = instanteOuNulo(linha.name, "name");
-    dono.avatar_url = instanteOuNulo(linha.avatar_url, "avatar_url");
+    dono.avatar = avatares.get(id) ?? AVATAR_PADRAO;
+    // Alias com a MESMA regra do `avatar`: url so quando a foto pode aparecer.
+    dono.avatar_url = dono.avatar.avatar_url;
   }
   const linhasCreator: Linha[] = deCreator.data ?? [];
   for (const linha of linhasCreator) {

@@ -864,15 +864,26 @@ describe("GET /creators/posts", () => {
       OUTRO_POST_ID,
       POST_ID,
     ]);
+    // O avatar pela regra do site (lote 11b): sem assinatura dublada o
+    // resolvedor cai no icone, e o alias `avatar_url` segue o `avatar`.
+    const avatarIcone = {
+      mode: "icon",
+      avatar_url: null,
+      icon: null,
+      bg: null,
+      border: null,
+    };
     expect(r.body.data.rows[1].creator).toEqual({
       name: "Ana Cria",
-      avatar_url: "https://a/ana.png",
+      avatar_url: null,
+      avatar: avatarIcone,
       instagram_handle: "ana.cria",
     });
     // Sem perfil de creator: os campos existem, nulos; a linha nao some.
     expect(r.body.data.rows[0].creator).toEqual({
       name: null,
       avatar_url: null,
+      avatar: avatarIcone,
       instagram_handle: null,
     });
 
@@ -883,8 +894,10 @@ describe("GET /creators/posts", () => {
     expect(leitura.ordemDetalhe).toEqual([
       { coluna: "created_at", ascending: true },
     ]);
-    // Uma consulta por tabela para a pagina inteira, nunca uma por linha.
-    expect(estado.double.de("profiles")).toHaveLength(1);
+    // Uma consulta por tabela para a pagina inteira, nunca uma por linha
+    // (duas em `profiles` desde o lote 11b: nome, e a do resolvedor de avatar
+    // do site, as duas para a pagina inteira).
+    expect(estado.double.de("profiles")).toHaveLength(2);
     expect(estado.double.de("profiles")[0].filtros).toEqual([
       // Na ordem da pagina (mais antiga primeiro), sem repetir dono.
       { tipo: "in", coluna: "user_id", valor: [OUTRO_UID, UID] },

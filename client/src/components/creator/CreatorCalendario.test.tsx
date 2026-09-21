@@ -639,16 +639,34 @@ describe("CreatorCalendario: acao alinhada e estado do pedido (lote 10c)", () =>
 // COLLAB VISIVEL NO CALENDARIO (lote 10c): a aceita aparece na celula do dia
 // e na marcacao, dita de tres jeitos conforme quem olha.
 describe("CreatorCalendario: collab aceita visivel", () => {
-  const PARCEIRO = { user_id: OUTRO_ID, name: "Outra Cria", avatar_url: null };
+  const PARCEIRO = {
+    user_id: OUTRO_ID,
+    name: "Outra Cria",
+    avatar_url: null,
+    // O avatar resolvido pelo servidor (lote 11b): iniciais em fundo roxo.
+    avatar: {
+      mode: "icon" as const,
+      avatar_url: null,
+      icon: "initials",
+      bg: "purple",
+      border: "gold",
+    },
+  };
 
   it("dono: 'Collab aceita com X', o aperto de mao na celula do dia, e o Desmarcar continua", async () => {
     responderCom([{ ...MINHA, collabs: [PARCEIRO], minha_collab: false }]);
     render(<CreatorCalendario />);
     const linha = await screen.findByTestId(`creator-marcacao-${MINHA.id}`);
     expect(
-      within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
+      within(linha).getByTestId(`creator-collab-fechada-texto-${MINHA.id}`)
         .textContent,
     ).toBe("Collab aceita com Outra Cria");
+    // O parceiro entra no chip com o avatar dele (lote 11b): as iniciais de
+    // "Outra Cria" ANTES do texto, e nao a foto (mode icon).
+    expect(
+      within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
+        .textContent,
+    ).toBe("OCCollab aceita com Outra Cria");
     // Tinta pelo token (lote 10d): roxo no claro, amarelo no escuro, sem `dark:`.
     const aperto = screen.getByTestId(`creator-dia-collab-${HOJE}`);
     expect(aperto.getAttribute("class") ?? "").toContain(
@@ -672,7 +690,7 @@ describe("CreatorCalendario: collab aceita visivel", () => {
     render(<CreatorCalendario />);
     const linha = await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
     expect(
-      within(linha).getByTestId(`creator-collab-fechada-${DE_OUTRO.id}`)
+      within(linha).getByTestId(`creator-collab-fechada-texto-${DE_OUTRO.id}`)
         .textContent,
     ).toBe("Sua collab com Outra Cria");
     expect(
@@ -700,7 +718,7 @@ describe("CreatorCalendario: collab aceita visivel", () => {
     render(<CreatorCalendario />);
     const linha = await screen.findByTestId(`creator-marcacao-${TERCEIRO.id}`);
     expect(
-      within(linha).getByTestId(`creator-collab-fechada-${TERCEIRO.id}`)
+      within(linha).getByTestId(`creator-collab-fechada-texto-${TERCEIRO.id}`)
         .textContent,
     ).toBe("Collab com Outra Cria");
     expect(
@@ -894,7 +912,7 @@ describe("CreatorCalendario: modo admin", () => {
     const linha = screen.getByTestId(`creator-marcacao-${MINHA.id}`);
     expect(linha.textContent).toContain("Cria");
     expect(
-      within(linha).getByTestId(`creator-collab-fechada-${MINHA.id}`)
+      within(linha).getByTestId(`creator-collab-fechada-texto-${MINHA.id}`)
         .textContent,
     ).toBe("Collab com Outra Cria");
     // Nenhuma acao: nem marcar, nem desmarcar, nem pedir, nem responder. Nem

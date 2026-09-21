@@ -10,7 +10,7 @@ import {
 import { useLocation, useSearch } from "wouter";
 
 import { ErrorBlock } from "@/components/admin/StateBlocks";
-import UserAvatar from "@/components/UserAvatar";
+import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { CabecalhoDeSecao } from "@/components/creator/CabecalhoDeSecao";
 import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { MarcadorDeCor } from "@/components/creator/MarcadorDeCor";
@@ -190,10 +190,10 @@ function LugarDoPodio({
     >
       <div className="relative">
         {p ? (
-          <UserAvatar
+          <AvatarDoCreator
             name={p.name ?? p.handle ?? "Creator"}
+            avatar={p.avatar}
             avatarUrl={p.avatar_url}
-            mode={p.avatar_url ? "photo" : "icon"}
             size={primeiro ? "xl" : "lg"}
             className={`rounded-full ring-4 ${
               primeiro
@@ -275,10 +275,10 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
         {p.posicao}
       </span>
       <span className="relative shrink-0">
-        <UserAvatar
+        <AvatarDoCreator
           name={p.name ?? p.handle ?? "Creator"}
+          avatar={p.avatar}
           avatarUrl={p.avatar_url}
-          mode={p.avatar_url ? "photo" : "icon"}
           size="sm"
           className="rounded-full ring-2 ring-slate-900"
         />

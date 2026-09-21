@@ -76,6 +76,15 @@ import { requireCreator } from "../middleware/requireCreator";
 const UID = "22222222-2222-2222-2222-222222222222";
 const USUARIO = { id: UID, email: "cria@exemplo.com", role: "authenticated" };
 
+/** O avatar que o resolvedor devolve sem assinatura dublada: icone padrao. */
+const AVATAR_ICONE = {
+  mode: "icon",
+  avatar_url: null,
+  icon: null,
+  bg: null,
+  border: null,
+};
+
 let double: ReturnType<typeof criarSupabaseDouble>;
 
 function montar(
@@ -379,6 +388,9 @@ describe("GET /api/creator/me", () => {
       name: "Cria",
       handle: "cria",
       avatar_url: null,
+      // O avatar resolvido pela regra do site (lote 11b). Sem assinatura
+      // dublada, o resolvedor cai no icone padrao.
+      avatar: AVATAR_ICONE,
     });
     expect(r.body.data.janela).toBe("7d");
   });
@@ -1414,6 +1426,7 @@ describe("GET /api/creator/calendar", () => {
       name: "Cria",
       handle: "cria",
       avatar_url: null,
+      avatar: AVATAR_ICONE,
     });
     // Sem pedido, `meu_pedido` e null EXPLICITO, nao ausente: ausente e o
     // backend anterior ao lote 10c, e o client trata os dois diferente.
@@ -1497,7 +1510,11 @@ describe("GET /api/creator/calendar", () => {
       {
         user_id: UID,
         name: "Cria",
-        avatar_url: "https://a/cria.png",
+        // A url do perfil existe, mas a foto so aparece com a regra do site
+        // (Pro e moderacao limpa, lote 11b); sem assinatura dublada, o alias
+        // segue o `avatar` e sai nulo.
+        avatar_url: null,
+        avatar: AVATAR_ICONE,
         // A cor do parceiro entra no dia, na cor dele.
         calendar_color: "cyan",
       },
@@ -1505,9 +1522,11 @@ describe("GET /api/creator/calendar", () => {
     expect(terceiro.body.data.marcacoes[0].minha_collab).toBe(false);
     expect(terceiro.body.data.marcacoes[1].collabs).toEqual([]);
     // Uma leitura de pedidos e uma de perfis para o mes inteiro: o parceiro
-    // entra no MESMO lote dos donos.
+    // entra no MESMO lote dos donos. Desde o lote 11b sao DUAS leituras de
+    // `profiles` (nome e @ aqui, e a do resolvedor de avatar do site), as duas
+    // para o lote inteiro, nunca uma por pessoa.
     expect(double.de("creator_collab_requests")).toHaveLength(1);
-    expect(double.de("profiles")).toHaveLength(1);
+    expect(double.de("profiles")).toHaveLength(2);
     expect(double.de("profiles")[0].filtros[0].valor).toEqual([
       OUTRO_UID,
       TERCEIRO_UID,

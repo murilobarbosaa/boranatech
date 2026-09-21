@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
-import UserAvatar from "@/components/UserAvatar";
+import { AvatarDoCreator } from "@/components/creator/AvatarDoCreator";
 import { rotuloDoTipoDePix } from "@/components/creator/CreatorPixForm";
 import { adminFetch } from "@/lib/adminApi";
 import { rotuloDoKind } from "@/lib/creatorKindLabel";
@@ -227,10 +227,10 @@ export function CreatorIdentidade({
       className="card-brutal rounded-3xl bg-white p-5"
     >
       <div className="flex items-center gap-4">
-        <UserAvatar
+        <AvatarDoCreator
           name={nome}
+          avatar={perfil.avatar}
           avatarUrl={perfil.avatar_url}
-          mode={perfil.avatar_url ? "photo" : "icon"}
           size="lg"
         />
         <div className="min-w-0">

@@ -19,6 +19,7 @@ import {
   limitesDoMes,
   parseMesDoCalendario,
 } from "../../shared/creatorCalendar";
+import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
 import type { RedeDeCreator } from "../../shared/creatorProfile";
 import type { Resultado } from "../../shared/creatorProfile";
 import { COR_PADRAO_DO_CALENDARIO } from "../../shared/creatorProfile";
@@ -215,6 +216,7 @@ export async function montarRanking(
       handle: perfil?.handle ?? autor?.handle ?? null,
       rede_do_handle: perfil?.handle ? perfil.rede_do_handle : null,
       avatar_url: autor?.avatar_url ?? null,
+      avatar: autor?.avatar ?? AVATAR_PADRAO,
       calendar_color: perfil?.calendar_color ?? COR_PADRAO_DO_CALENDARIO,
       pontos: c.pontos,
       contagens: {
