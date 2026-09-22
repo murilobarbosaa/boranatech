@@ -78,7 +78,8 @@ export type ResultadoDoPainel =
  * nos dois periodos, e nenhum fica de fora.
  */
 export type JanelaDoPainel = {
-  /** Primeiro dia civil da janela; null em "all" (comeca em events_since). */
+  /** Primeiro dia civil da janela; null em "all" (comeca no primeiro evento
+   * de qualquer tipo, que e o inicio da serie). */
   primeiroDiaCivil: string | null;
   /** Hoje, em Brasilia. */
   ultimoDiaCivil: string;
@@ -537,13 +538,13 @@ export async function montarPainelDoCreator(
     janela === "all" ? null : somasZeradas();
 
   // Sem nenhum evento, as duas somas sao zero de verdade (os codigos existem e
-  // nada foi registrado) e a serie fica vazia: fora de events_since nao se
-  // inventa dia.
+  // nada foi registrado) e a serie fica vazia: antes do primeiro evento nao
+  // se inventa dia.
   if (eventsSince !== null) {
     const diaInicial = diaBrasilia(eventsSince);
     if (!diaInicial) {
       throw new Error(
-        `[creatorDashboard] events_since invalido: "${eventsSince}"`,
+        `[creatorDashboard] primeiro evento invalido: "${eventsSince}"`,
       );
     }
     const primeiroDaSerie =
@@ -603,8 +604,6 @@ export async function montarPainelDoCreator(
     eventos: {
       clicks_since: clicksSince,
       sales_since: salesSince,
-      // Alias de clicks_since por um lote (ver shared/creatorDashboard.ts).
-      events_since: clicksSince,
       serie,
       periodo,
       periodo_anterior: periodoAnterior,

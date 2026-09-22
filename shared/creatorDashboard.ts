@@ -215,12 +215,6 @@ export type CreatorDashboard = {
      */
     sales_since: string | null;
     /**
-     * @deprecated Alias de `clicks_since`, mantido por um lote para o bundle em
-     * cache que ainda le este nome (expand/contract). Remover a partir de
-     * 2026-09-22.
-     */
-    events_since: string | null;
-    /**
      * Um item por dia civil de Brasilia, do inicio da janela (ou do primeiro
      * evento de qualquer tipo, o que vier depois) ate hoje, com zeros nos dias
      * sem evento. Vazia quando nao ha evento nenhum. Os dias anteriores a
