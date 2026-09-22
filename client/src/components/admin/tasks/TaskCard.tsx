@@ -1,12 +1,8 @@
-import { memo, useRef } from "react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { memo } from "react";
 import {
   ArchiveRestore,
   CalendarDays,
   CheckSquare,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   MessageSquare,
 } from "lucide-react";
@@ -20,22 +16,16 @@ import {
   typeMetaOf,
 } from "./taskBoardStyles";
 import { shortIdOf } from "./taskDeepLink";
-import type { TaskAssignee, TaskCard as TaskCardData, TaskLabel } from "./types";
+import { taskMoveDestinations } from "./taskMoveDestinations";
+import type {
+  TaskAssignee,
+  TaskCard as TaskCardData,
+  TaskLabel,
+} from "./types";
 
 // Card do board. Tudo aqui e OPCIONAL menos o ID curto e o titulo: campo vazio
 // simplesmente nao renderiza, em vez de deixar slot vazio ocupando altura. Um
 // card so com titulo tem que parecer inteiro, nao quebrado.
-
-/**
- * Distancia, em pixels, acima da qual um ponteiro que desceu e subiu no card
- * conta como ARRASTO e nao como clique.
- *
- * Tem que ser >= a `activationConstraint.distance` do PointerSensor: o dnd-kit
- * ainda emite o `click` no fim de um arrasto, e sem esta checagem todo drag
- * terminaria abrindo a tarefa. Manter os dois numeros iguais e proposital, e
- * mexer em um sem mexer no outro reabre exatamente esse bug.
- */
-export const DRAG_ACTIVATION_DISTANCE = 5;
 
 type TaskCardProps = {
   task: TaskCardData;
@@ -46,18 +36,11 @@ type TaskCardProps = {
   // vem de useMemo no TasksDashboard e so mudam quando o snapshot muda.
   labelsById: Map<string, TaskLabel>;
   assigneesById: Map<string, TaskAssignee>;
-  canMoveLeft: boolean;
-  canMoveRight: boolean;
+  columns: { id: string; name: string; is_pinned: boolean }[];
   isSelected: boolean;
   isPending: boolean;
-  /**
-   * Reordenar DENTRO da coluna e ambíguo com filtro ligado ou agrupamento
-   * diferente de etapa. Quando falso, o card ainda arrasta entre containers, mas
-   * o drop na mesma coluna vira no-op. Ver o comentario em handleDragEnd.
-   */
-  canReorder: boolean;
   onOpen: (taskId: string) => void;
-  onQuickMove: (taskId: string, direction: -1 | 1) => void;
+  onMove: (taskId: string, columnId: string) => void;
   onUnarchive: (taskId: string) => void;
 };
 
@@ -85,7 +68,7 @@ function initialsOf(assignee: TaskAssignee) {
     .join("");
 }
 
-/** Conteudo do card, reusado pelo DragOverlay (que nao e sortable). */
+/** Conteúdo legível e selecionável do card. */
 export function TaskCardBody({
   task,
   boardKey,
@@ -134,7 +117,10 @@ export function TaskCardBody({
               key={label.id}
               className="rounded-full border border-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-900 [overflow-wrap:anywhere]"
               style={{
-                backgroundColor: safeHexColor(label.color, LABEL_COLOR_FALLBACK),
+                backgroundColor: safeHexColor(
+                  label.color,
+                  LABEL_COLOR_FALLBACK,
+                ),
               }}
             >
               {label.name}
@@ -144,7 +130,9 @@ export function TaskCardBody({
       ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className={`${badgeClass} ${priority.badge}`}>{priority.label}</span>
+        <span className={`${badgeClass} ${priority.badge}`}>
+          {priority.label}
+        </span>
         <span className={`${badgeClass} ${type.badge}`}>{type.label}</span>
         {/* Selos do feed. DISCRETOS e SO QUANDO VALEM: um selo permanente em 22
             cards vira textura de fundo e para de ser sinal. */}
@@ -250,156 +238,40 @@ function TaskCardBase({
   boardKey,
   labelsById,
   assigneesById,
-  canMoveLeft,
-  canMoveRight,
+  columns,
   isSelected,
   isPending,
-  canReorder,
   onOpen,
-  onQuickMove,
+  onMove,
   onUnarchive,
 }: TaskCardProps) {
   const archived = Boolean(task.archived_at);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    // Tarefa otimista ainda sem id real nao pode ser arrastada: o move iria para
-    // um id que o servidor nao conhece.
-    disabled: task.id.startsWith("temp-"),
-    data: { type: "task", columnId: task.column_id },
-    // O padrao do dnd-kit e "sortable", em ingles, e vira aria-roledescription.
-    attributes: { roleDescription: "tarefa arrastável" },
-  });
-
-  // Coordenadas do pointerdown, para separar clique de arrasto no pointerup.
-  const pointerStart = useRef<{ x: number; y: number } | null>(null);
-
-  function isDragGesture(clientX: number, clientY: number) {
-    const start = pointerStart.current;
-    if (!start) return false;
-    return (
-      Math.abs(clientX - start.x) > DRAG_ACTIVATION_DISTANCE ||
-      Math.abs(clientY - start.y) > DRAG_ACTIVATION_DISTANCE
-    );
-  }
+  const destinations = taskMoveDestinations(columns, task.column_id);
 
   return (
     <article
-      ref={setNodeRef}
-      // `attributes` do dnd-kit ja traz role, tabIndex e aria-roledescription;
-      // declarar role/tabIndex aqui seria sobrescrito por ele. O aria-label vem
-      // DEPOIS do spread justamente para nao ser engolido.
-      {...attributes}
-      {...listeners}
+      data-task-id={task.id}
       aria-label={`${shortIdOf(boardKey, task.number)}: ${task.title}`}
-      onPointerDown={(event) => {
-        pointerStart.current = { x: event.clientX, y: event.clientY };
-        listeners?.onPointerDown?.(event);
-      }}
-      onClick={(event) => {
-        // O dnd-kit emite `click` tambem no fim de um arrasto. Abrir a tarefa
-        // aqui faria todo drag terminar com o modal na cara.
-        if (isDragGesture(event.clientX, event.clientY)) return;
-        onOpen(task.id);
-      }}
-      onKeyDown={(event) => {
-        // Espaco e Enter sao do KeyboardSensor durante o arrasto por teclado; so
-        // abrimos a tarefa com Enter e quando nao ha arrasto em curso.
-        if (event.key === "Enter" && !isDragging) {
-          event.preventDefault();
-          onOpen(task.id);
-        }
-      }}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      // `min-w-0` derruba o `min-width:auto` que todo item de flex tem por
-      // padrao, que e o que impedia o card de encolher abaixo do min-content do
-      // texto. `max-w-full` e `overflow-hidden` sao a contencao de ultimo
-      // recurso, para conteudo futuro que escape do `overflow-wrap`.
-      //
-      // `shrink-0` e a CONTRAPARTE VERTICAL, e nao e opcional junto com o
-      // `overflow-hidden` acima: o tamanho minimo automatico de item de flex so
-      // vale enquanto o overflow e `visible`, entao o `overflow-hidden` zera o
-      // `min-height:auto` que impedia o card de encolher abaixo do proprio
-      // conteudo. Sem `shrink-0`, a lista (que e `flex-col` com `max-h`)
-      // espremia os cards ate a coluna caber, proporcionalmente a lotacao, e o
-      // proprio `overflow-hidden` cortava o titulo. Coluna cheia rola pela
-      // LISTA (`overflow-y-auto`), nunca encolhendo o card.
-      className={`group relative min-w-0 max-w-full shrink-0 touch-none overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+      className={`group relative min-w-0 max-w-full shrink-0 overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_var(--bnt-shadow)] ${
         archived
           ? "border-dashed border-slate-400 bg-slate-100"
           : "border-slate-900 bg-white"
-      } ${canReorder ? "cursor-grab" : "cursor-pointer"} ${
-        isSelected ? "ring-4 ring-violet-300" : ""
-      } ${isPending ? "opacity-60" : ""} ${
-        // O card original vira o PLACEHOLDER do destino enquanto o DragOverlay
-        // carrega a copia levantada.
-        isDragging ? "opacity-30" : ""
-      }`}
+      } ${isSelected ? "ring-4 ring-violet-300" : ""} ${isPending ? "opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-[11px] font-bold text-slate-500">
           {shortIdOf(boardKey, task.number)}
         </span>
-        {/* Setas sempre no DOM: em touch nao existe hover, entao o avanco rapido
-            seria inalcancavel se dependesse dele. No ponteiro fino elas ficam
-            discretas e ganham opacidade no hover/foco do card.
-            NAO desabilitam durante `isPending`: avancar duas etapas e dois
-            cliques seguidos, e travar o segundo ate a rede responder faz o board
-            parecer quebrado. Quem cuida da corrida e o contador de sequencia por
-            tarefa no TasksDashboard; `isPending` aqui e so o sinal visual. */}
-        <div className="flex shrink-0 gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-          {archived ? (
-            <button
-              type="button"
-              aria-label="Desarquivar tarefa"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                onUnarchive(task.id);
-              }}
-              className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)]"
-            >
-              <ArchiveRestore className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
+        {archived ? (
           <button
             type="button"
-            aria-label="Mover para a etapa anterior"
-            disabled={!canMoveLeft}
-            // stopPropagation no pointerdown: sem isso o gesto comecaria a
-            // arrastar o card a partir do botao.
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuickMove(task.id, -1);
-            }}
-            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
+            aria-label="Desarquivar tarefa"
+            onClick={() => onUnarchive(task.id)}
+            className="min-h-10 rounded-xl border-2 border-slate-900 bg-white px-2 text-slate-900 focus-visible:ring-2 focus-visible:ring-violet-400"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ArchiveRestore className="h-4 w-4" />
           </button>
-          <button
-            type="button"
-            aria-label="Mover para a próxima etapa"
-            disabled={!canMoveRight}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuickMove(task.id, 1);
-            }}
-            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        ) : null}
       </div>
 
       <TaskCardBody
@@ -408,6 +280,41 @@ function TaskCardBase({
         labelsById={labelsById}
         assigneesById={assigneesById}
       />
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2">
+        <button
+          type="button"
+          onClick={() => onOpen(task.id)}
+          className="min-h-10 rounded-xl border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 focus-visible:ring-2 focus-visible:ring-violet-400"
+        >
+          Abrir tarefa
+        </button>
+        {destinations.length > 0 ? (
+          <label className="flex min-w-0 items-center gap-2 text-xs font-black text-slate-900">
+            Mover para
+            <select
+              aria-label={`Mover ${shortIdOf(boardKey, task.number)} para`}
+              value=""
+              disabled={isPending || task.id.startsWith("temp-")}
+              onChange={(event) => {
+                if (event.target.value) onMove(task.id, event.target.value);
+              }}
+              className="min-h-10 max-w-[10rem] rounded-xl border-2 border-slate-900 bg-white px-2 text-xs focus-visible:ring-2 focus-visible:ring-violet-400"
+            >
+              <option value="">Escolha a etapa</option>
+              {destinations.map((column) => (
+                <option key={column.id} value={column.id}>
+                  {column.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {isPending ? (
+          <span role="status" className="text-xs font-semibold">
+            Movendo…
+          </span>
+        ) : null}
+      </div>
     </article>
   );
 }

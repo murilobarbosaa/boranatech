@@ -5,15 +5,7 @@ import type { TaskChecklistItem } from "./types";
 
 // Checklist da tarefa, com barra de progresso.
 //
-// Reordenacao por SETAS e nao por dnd-kit, decidido assim por tres motivos:
-//   1. o dnd-kit vive dentro do DndContext do board; um segundo contexto dentro
-//      de um Dialog do Radix disputa foco e captura de ponteiro com o focus trap;
-//   2. a configuracao de toque (delay 220 / tolerance 6) ainda NAO foi validada
-//      em tela real, e apoiar mais um recurso nela antes disso seria empilhar
-//      aposta sobre aposta;
-//   3. seta e acessivel por construcao, sem sensor de teclado nem anuncio.
-// Se um dia o checklist crescer a ponto de arrastar valer a pena, a troca e
-// local a este arquivo.
+// Reordenação por setas: ação explícita, acessível e sem captura de gesto.
 //
 // A rota de reordenacao exige o CONJUNTO COMPLETO de ids (mesma pegadinha das
 // colunas), entao quem chama sempre manda a lista inteira: ver onReorder.

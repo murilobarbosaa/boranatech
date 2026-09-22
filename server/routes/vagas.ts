@@ -4,11 +4,7 @@ import { z } from "zod";
 import { cacheKey, getOrCompute } from "../lib/cache";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import {
-  checkProStatus,
-  requireAdmin,
-  requireAuth,
-} from "../middleware/auth";
+import { checkProStatus, requireAdmin, requireAuth } from "../middleware/auth";
 import { observeAdminCapability } from "../middleware/adminRbacObserve";
 import { createError } from "../middleware/error";
 
@@ -97,7 +93,10 @@ function toItem(row: JobRow) {
 // condicoes na sintaxe do or; %/_ sao wildcards do ilike. Trocamos por espaco
 // em vez de rejeitar pra busca "react, node" ainda funcionar.
 function sanitizeQuery(q: string): string {
-  return q.replace(/[,()%_\\]/g, " ").replace(/\s+/g, " ").trim();
+  return q
+    .replace(/[,()%_\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // GET /api/vagas: lista paginada com filtros.
@@ -112,8 +111,17 @@ router.get("/", async (req, res, next) => {
   if (!parsed.success) {
     return next(createError(400, "invalid_request", "Filtros inválidos."));
   }
-  const { q, region, country, seniority, contract, modality, source, page, limit } =
-    parsed.data;
+  const {
+    q,
+    region,
+    country,
+    seniority,
+    contract,
+    modality,
+    source,
+    page,
+    limit,
+  } = parsed.data;
 
   try {
     const payload = await getOrCompute(
@@ -212,7 +220,9 @@ router.get("/destaques", async (req, res, next) => {
           .select(LIST_COLUMNS)
           .eq("is_published", true)
           .eq("featured", true)
-          .or(`featured_until.is.null,featured_until.gt.${new Date().toISOString()}`)
+          .or(
+            `featured_until.is.null,featured_until.gt.${new Date().toISOString()}`,
+          )
           .order("published_at", { ascending: false })
           .limit(8);
         if (error) {
@@ -325,8 +335,8 @@ router.get("/:id", async (req, res, next) => {
 // --- Admin: vagas destaque manuais (source='manual') ---
 
 const salaryFields = {
-  salary_min: z.number().nonnegative().optional(),
-  salary_max: z.number().nonnegative().optional(),
+  salary_min: z.number().positive().optional(),
+  salary_max: z.number().positive().optional(),
   salary_currency: z.string().trim().toUpperCase().length(3).optional(),
 };
 
@@ -341,7 +351,7 @@ function salaryHasCurrency(data: {
   return !hasValue || data.salary_currency !== undefined;
 }
 
-const AdminCreateSchema = z
+export const AdminCreateSchema = z
   .object({
     title: z.string().trim().min(3).max(160),
     company: z.string().trim().min(1).max(120),
@@ -366,44 +376,47 @@ const AdminCreateSchema = z
   })
   .refine(salaryHasCurrency, {
     message: "salary_currency é obrigatória quando há valor de salário.",
-  });
-
-const AdminPatchSchema = z
-  .object({
-    title: z.string().trim().min(3).max(160).optional(),
-    company: z.string().trim().min(1).max(120).optional(),
-    location: z.string().trim().min(1).max(120).optional(),
-    country: z.string().trim().toLowerCase().length(2).optional(),
-    url: z
-      .string()
-      .trim()
-      .url()
-      .refine((u) => u.startsWith("https://"), "URL deve ser https.")
-      .optional(),
-    seniority: z.enum(SENIORITIES).nullable().optional(),
-    contract: z.enum(CONTRACTS).nullable().optional(),
-    modality: z.enum(MODALITIES).nullable().optional(),
-    description: z.string().trim().max(4000).nullable().optional(),
-    salary_min: z.number().nonnegative().nullable().optional(),
-    salary_max: z.number().nonnegative().nullable().optional(),
-    salary_currency: z.string().trim().toUpperCase().length(3).nullable().optional(),
-    featured: z.boolean().optional(),
-    featured_until: z
-      .string()
-      .refine((v) => !Number.isNaN(Date.parse(v)), "Data inválida.")
-      .nullable()
-      .optional(),
-    published: z.boolean().optional(),
   })
   .refine(
     (data) =>
-      salaryHasCurrency({
-        salary_min: data.salary_min ?? undefined,
-        salary_max: data.salary_max ?? undefined,
-        salary_currency: data.salary_currency ?? undefined,
-      }),
-    { message: "salary_currency é obrigatória quando há valor de salário." },
+      data.salary_min === undefined ||
+      data.salary_max === undefined ||
+      data.salary_min <= data.salary_max,
+    { message: "salary_min não pode superar salary_max." },
   );
+
+export const AdminPatchSchema = z.object({
+  title: z.string().trim().min(3).max(160).optional(),
+  company: z.string().trim().min(1).max(120).optional(),
+  location: z.string().trim().min(1).max(120).optional(),
+  country: z.string().trim().toLowerCase().length(2).optional(),
+  url: z
+    .string()
+    .trim()
+    .url()
+    .refine((u) => u.startsWith("https://"), "URL deve ser https.")
+    .optional(),
+  seniority: z.enum(SENIORITIES).nullable().optional(),
+  contract: z.enum(CONTRACTS).nullable().optional(),
+  modality: z.enum(MODALITIES).nullable().optional(),
+  description: z.string().trim().max(4000).nullable().optional(),
+  salary_min: z.number().positive().nullable().optional(),
+  salary_max: z.number().positive().nullable().optional(),
+  salary_currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .length(3)
+    .nullable()
+    .optional(),
+  featured: z.boolean().optional(),
+  featured_until: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Data inválida.")
+    .nullable()
+    .optional(),
+  published: z.boolean().optional(),
+});
 
 type AdminCreate = z.infer<typeof AdminCreateSchema>;
 
@@ -425,7 +438,10 @@ function adminRowFromPayload(data: AdminCreate, userId: string) {
     salary_max: data.salary_max ?? null,
     salary_currency: data.salary_currency ?? null,
     // Salario manual informado pelo admin nunca e estimativa.
-    salary_is_predicted: data.salary_min !== undefined || data.salary_max !== undefined ? false : null,
+    salary_is_predicted:
+      data.salary_min !== undefined || data.salary_max !== undefined
+        ? false
+        : null,
     featured: data.featured,
     featured_until: data.featured_until ?? null,
     is_published: data.published,
@@ -507,7 +523,7 @@ router.patch("/admin/:id", ...adminRouteGuards, async (req, res, next) => {
   try {
     const { data: existing, error: findError } = await supabaseAdmin
       .from("external_jobs")
-      .select("id, source")
+      .select("id, source, salary_min, salary_max, salary_currency")
       .eq("id", id.data)
       .maybeSingle();
     if (findError) {
@@ -540,6 +556,45 @@ router.patch("/admin/:id", ...adminRouteGuards, async (req, res, next) => {
     }
 
     const d = parsed.data;
+    const salaryTouched =
+      d.salary_min !== undefined ||
+      d.salary_max !== undefined ||
+      d.salary_currency !== undefined;
+    const effectiveMin =
+      d.salary_min === undefined ? existing.salary_min : d.salary_min;
+    const effectiveMax =
+      d.salary_max === undefined ? existing.salary_max : d.salary_max;
+    const effectiveCurrency =
+      d.salary_currency === undefined
+        ? existing.salary_currency
+        : d.salary_currency;
+    if (
+      salaryTouched &&
+      (effectiveMin !== null || effectiveMax !== null) &&
+      !effectiveCurrency
+    ) {
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "salary_currency é obrigatória quando há valor de salário.",
+        ),
+      );
+    }
+    if (
+      salaryTouched &&
+      effectiveMin !== null &&
+      effectiveMax !== null &&
+      effectiveMin > effectiveMax
+    ) {
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "salary_min não pode superar salary_max.",
+        ),
+      );
+    }
     const patch: Record<string, unknown> = {};
     if (d.title !== undefined) patch.title = d.title;
     if (d.company !== undefined) patch.company = d.company;
@@ -557,9 +612,13 @@ router.patch("/admin/:id", ...adminRouteGuards, async (req, res, next) => {
     if (d.salary_max !== undefined) patch.salary_max = d.salary_max;
     if (d.salary_currency !== undefined)
       patch.salary_currency = d.salary_currency;
+    if (salaryTouched && effectiveMin === null && effectiveMax === null)
+      patch.salary_currency = null;
+    if (salaryTouched)
+      patch.salary_is_predicted =
+        effectiveMin !== null || effectiveMax !== null ? false : null;
     if (d.featured !== undefined) patch.featured = d.featured;
-    if (d.featured_until !== undefined)
-      patch.featured_until = d.featured_until;
+    if (d.featured_until !== undefined) patch.featured_until = d.featured_until;
     if (d.published !== undefined) patch.is_published = d.published;
     if (Object.keys(patch).length === 0) {
       return next(createError(400, "invalid_request", "Nada para atualizar."));

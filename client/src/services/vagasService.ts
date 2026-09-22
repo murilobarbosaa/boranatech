@@ -106,9 +106,7 @@ export async function fetchVagas(
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
 
-  const data = await vagasFetch(
-    `/api/vagas${qs.toString() ? `?${qs}` : ""}`,
-  );
+  const data = await vagasFetch(`/api/vagas${qs.toString() ? `?${qs}` : ""}`);
   return data as VagasListResponse;
 }
 
@@ -146,9 +144,9 @@ export interface VagaAdminCreatePayload {
   contract?: VagaContract;
   modality?: VagaModality;
   description?: string;
-  salary_min?: number;
-  salary_max?: number;
-  salary_currency?: string;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string | null;
   featured?: boolean;
   featured_until?: string;
   published?: boolean;

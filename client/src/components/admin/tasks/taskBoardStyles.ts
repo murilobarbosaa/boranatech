@@ -29,11 +29,11 @@ export const emptyBlockClass =
  *
  * Mora aqui, e nao em BoardColumn.tsx, porque o Admin.tsx importa o esqueleto
  * de forma estatica para o fallback do Suspense: puxar a constante do
- * BoardColumn levaria o TaskCard e o dnd-kit inteiros para o chunk do Admin,
+ * BoardColumn levaria o TaskCard inteiro para o chunk do Admin,
  * desfazendo o lazy do modulo de tarefas.
  *
- * FUNDO fica de fora porque na coluna real ele e ESTADO (alvo de drop, acima do
- * WIP); o repouso e `bg-slate-50`, e e esse que o esqueleto usa.
+ * FUNDO fica de fora porque na coluna real ele varia com o estado de WIP; o
+ * repouso e `bg-slate-50`, e e esse que o esqueleto usa.
  */
 export const columnShellClass =
   "flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_var(--bnt-shadow)] transition-colors sm:w-[19rem]";
@@ -88,7 +88,10 @@ const TYPE_META: Record<TaskType, BadgeMeta> = {
   feature: { label: "Feature", badge: "bg-violet-100 text-violet-800" },
   bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
   melhoria: { label: "Melhoria", badge: "bg-sky-100 text-sky-800" },
-  debito_tecnico: { label: "Débito técnico", badge: "bg-amber-100 text-amber-900" },
+  debito_tecnico: {
+    label: "Débito técnico",
+    badge: "bg-amber-100 text-amber-900",
+  },
   tarefa: { label: "Tarefa", badge: "bg-slate-100 text-slate-700" },
 };
 
@@ -134,7 +137,10 @@ export const TYPE_OPTIONS = (Object.keys(TYPE_META) as TaskType[]).map(
  * Cor de coluna e de etiqueta vem do banco como hex livre. Valor fora do formato
  * NAO pode virar `style={{ background: lixo }}`, entao o fallback e explicito.
  */
-export function safeHexColor(value: string | null | undefined, fallback: string) {
+export function safeHexColor(
+  value: string | null | undefined,
+  fallback: string,
+) {
   return value && /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
 }
 

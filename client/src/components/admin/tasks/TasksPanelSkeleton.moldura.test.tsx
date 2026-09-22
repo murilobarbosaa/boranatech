@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { DndContext } from "@dnd-kit/core";
 
 import { BoardColumn } from "./BoardColumn";
 import { BoardColumnsSkeleton } from "./TasksPanelSkeleton";
@@ -39,32 +38,29 @@ const GRUPO: TaskGroup = {
 
 function renderColunaReal() {
   return render(
-    <DndContext>
-      <BoardColumn
-        group={GRUPO}
-        column={null}
-        boardKey="DEV"
-        labelsById={new Map()}
-        assigneesById={new Map()}
-        canMoveLeft={false}
-        canMoveRight={false}
-        selectedTaskId={null}
-        pendingTaskIds={new Set()}
-        isDropTarget={false}
-        canReorder
-        filtersActive={false}
-        onOpenTask={vi.fn()}
-        onQuickMove={vi.fn()}
-        onUnarchive={vi.fn()}
-        onCreateTask={vi.fn()}
-        onRenameColumn={vi.fn()}
-        onRecolorColumn={vi.fn()}
-        onRequestWipLimit={vi.fn()}
-        onMoveColumn={vi.fn()}
-        onRequestDeleteColumn={vi.fn()}
-        onClearFilters={vi.fn()}
-      />
-    </DndContext>,
+    <BoardColumn
+      group={GRUPO}
+      column={null}
+      boardKey="DEV"
+      labelsById={new Map()}
+      assigneesById={new Map()}
+      canMoveLeft={false}
+      canMoveRight={false}
+      selectedTaskId={null}
+      pendingTaskIds={new Set()}
+      columns={[]}
+      filtersActive={false}
+      onOpenTask={vi.fn()}
+      onMoveTask={vi.fn()}
+      onUnarchive={vi.fn()}
+      onCreateTask={vi.fn()}
+      onRenameColumn={vi.fn()}
+      onRecolorColumn={vi.fn()}
+      onRequestWipLimit={vi.fn()}
+      onMoveColumn={vi.fn()}
+      onRequestDeleteColumn={vi.fn()}
+      onClearFilters={vi.fn()}
+    />,
   );
 }
 

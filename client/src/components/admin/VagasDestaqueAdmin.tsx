@@ -12,6 +12,7 @@ import {
   type VagaSeniority,
 } from "@/services/vagasService";
 import { cn } from "@/lib/utils";
+import { salaryLine } from "@/components/vagas/VagasJobCard";
 import { BntSelect } from "@/components/shared/BntSelect";
 
 // Secao "Vagas em destaque" do painel admin (front VAGAS, fase 4): CRUD das
@@ -64,6 +65,7 @@ type FormState = {
   contract: "" | VagaContract;
   modality: "" | VagaModality;
   description: string;
+  salaryMode: "informed" | "not_informed";
   salaryMin: string;
   salaryMax: string;
   salaryCurrency: string;
@@ -82,6 +84,7 @@ const EMPTY_FORM: FormState = {
   contract: "",
   modality: "",
   description: "",
+  salaryMode: "not_informed",
   salaryMin: "",
   salaryMax: "",
   salaryCurrency: "",
@@ -128,6 +131,10 @@ function formFromItem(item: AdminVagaItem): FormState {
         ? item.modality
         : "",
     description: item.description ?? "",
+    salaryMode:
+      item.salaryMin !== null || item.salaryMax !== null
+        ? "informed"
+        : "not_informed",
     salaryMin: item.salaryMin !== null ? String(item.salaryMin) : "",
     salaryMax: item.salaryMax !== null ? String(item.salaryMax) : "",
     salaryCurrency: item.salaryCurrency ?? "",
@@ -137,7 +144,10 @@ function formFromItem(item: AdminVagaItem): FormState {
   };
 }
 
-function payloadFromForm(form: FormState): VagaAdminCreatePayload {
+export function payloadFromForm(
+  form: FormState,
+  editing: boolean,
+): VagaAdminCreatePayload {
   return {
     title: form.title.trim(),
     company: form.company.trim(),
@@ -148,9 +158,24 @@ function payloadFromForm(form: FormState): VagaAdminCreatePayload {
     contract: form.contract || undefined,
     modality: form.modality || undefined,
     description: form.description.trim() || undefined,
-    salary_min: form.salaryMin ? Number(form.salaryMin) : undefined,
-    salary_max: form.salaryMax ? Number(form.salaryMax) : undefined,
-    salary_currency: form.salaryCurrency || undefined,
+    salary_min:
+      form.salaryMode === "informed" && form.salaryMin !== ""
+        ? Number(form.salaryMin)
+        : editing
+          ? null
+          : undefined,
+    salary_max:
+      form.salaryMode === "informed" && form.salaryMax !== ""
+        ? Number(form.salaryMax)
+        : editing
+          ? null
+          : undefined,
+    salary_currency:
+      form.salaryMode === "informed"
+        ? form.salaryCurrency || (editing ? null : undefined)
+        : editing
+          ? null
+          : undefined,
     featured: form.featured,
     featured_until: form.featuredUntil || undefined,
     published: form.published,
@@ -234,7 +259,31 @@ export default function VagasDestaqueAdmin() {
       toast.error("A URL da vaga precisa começar com https://");
       return;
     }
-    if ((form.salaryMin || form.salaryMax) && !form.salaryCurrency) {
+    if (form.salaryMode === "informed") {
+      const amounts = [form.salaryMin, form.salaryMax].filter(
+        (value) => value !== "",
+      );
+      if (
+        amounts.length === 0 ||
+        amounts.some(
+          (value) => !Number.isFinite(Number(value)) || Number(value) <= 0,
+        )
+      ) {
+        toast.error(
+          "Informe um salário maior que zero ou selecione Não informado.",
+        );
+        return;
+      }
+      if (
+        form.salaryMin &&
+        form.salaryMax &&
+        Number(form.salaryMin) > Number(form.salaryMax)
+      ) {
+        toast.error("O salário mínimo não pode superar o máximo.");
+        return;
+      }
+    }
+    if (form.salaryMode === "informed" && !form.salaryCurrency) {
       // TODO(Ana): validar a mensagem de moeda obrigatoria.
       toast.error("Informe a moeda quando houver valor de salário.");
       return;
@@ -242,7 +291,7 @@ export default function VagasDestaqueAdmin() {
 
     setSaving(true);
     try {
-      const payload = payloadFromForm(form);
+      const payload = payloadFromForm(form, Boolean(editing));
       if (editing) {
         await updateVagaAdmin(editing.id, payload);
         // TODO(Ana): validar as mensagens de sucesso.
@@ -265,9 +314,7 @@ export default function VagasDestaqueAdmin() {
     try {
       await updateVagaAdmin(item.id, { published: !item.published });
       // TODO(Ana): validar as mensagens de publicar/despublicar.
-      toast.success(
-        item.published ? "Vaga despublicada." : "Vaga publicada.",
-      );
+      toast.success(item.published ? "Vaga despublicada." : "Vaga publicada.");
       await loadItems();
     } catch (error) {
       toast.error(mutationErrorMessage(error));
@@ -284,14 +331,13 @@ export default function VagasDestaqueAdmin() {
           Vagas em destaque
         </h2>
         <p className="mt-1 text-sm font-medium text-slate-600">
-          Vagas manuais (source manual) exibidas na seção Destaques da página
-          de vagas.
+          Vagas manuais (source manual) exibidas na seção Destaques da página de
+          vagas.
         </p>
         <p className="mt-2 inline-flex items-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
           <Clock3 className="h-4 w-4" aria-hidden />
           {/* TODO(Ana): validar a copy da nota de cache. */}
-          Alterações podem levar até 2 minutos para aparecer na página de
-          vagas.
+          Alterações podem levar até 2 minutos para aparecer na página de vagas.
         </p>
       </div>
 
@@ -425,47 +471,78 @@ export default function VagasDestaqueAdmin() {
               className={inputClass}
             />
           </label>
-          <label className={labelClass}>
-            Salário mínimo
-            <input
-              type="number"
-              min={0}
-              value={form.salaryMin}
-              onChange={(e) => set("salaryMin", e.target.value)}
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            Salário máximo
-            <input
-              type="number"
-              min={0}
-              value={form.salaryMax}
-              onChange={(e) => set("salaryMax", e.target.value)}
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            Moeda do salário
-            <BntSelect
-              accent="gold"
-              label="Moeda do salário"
-              className="mt-2"
-              value={
-                form.salaryCurrency === "" ? NAO_INFORMAR : form.salaryCurrency
-              }
-              onValueChange={(v) =>
-                set("salaryCurrency", v === NAO_INFORMAR ? "" : v)
-              }
-              options={[
-                { value: NAO_INFORMAR, label: "Sem salário informado" },
-                ...CURRENCY_OPTIONS.map((currency) => ({
-                  value: currency,
-                  label: currency,
-                })),
-              ]}
-            />
-          </label>
+          <fieldset className="md:col-span-2">
+            <legend className={labelClass}>Salário da vaga</legend>
+            <div className="mt-2 flex flex-wrap gap-4">
+              <label className="flex min-h-10 items-center gap-2 text-sm font-bold">
+                <input
+                  type="radio"
+                  name="salary-mode"
+                  checked={form.salaryMode === "not_informed"}
+                  onChange={() => set("salaryMode", "not_informed")}
+                />{" "}
+                Não informado
+              </label>
+              <label className="flex min-h-10 items-center gap-2 text-sm font-bold">
+                <input
+                  type="radio"
+                  name="salary-mode"
+                  checked={form.salaryMode === "informed"}
+                  onChange={() => set("salaryMode", "informed")}
+                />{" "}
+                Informar salário
+              </label>
+            </div>
+          </fieldset>
+          {form.salaryMode === "informed" ? (
+            <>
+              <label className={labelClass}>
+                Salário mínimo
+                <input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  value={form.salaryMin}
+                  onChange={(e) => set("salaryMin", e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Salário máximo
+                <input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  value={form.salaryMax}
+                  onChange={(e) => set("salaryMax", e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Moeda do salário
+                <BntSelect
+                  accent="gold"
+                  label="Moeda do salário"
+                  className="mt-2"
+                  value={
+                    form.salaryCurrency === ""
+                      ? NAO_INFORMAR
+                      : form.salaryCurrency
+                  }
+                  onValueChange={(v) =>
+                    set("salaryCurrency", v === NAO_INFORMAR ? "" : v)
+                  }
+                  options={[
+                    { value: NAO_INFORMAR, label: "Sem salário informado" },
+                    ...CURRENCY_OPTIONS.map((currency) => ({
+                      value: currency,
+                      label: currency,
+                    })),
+                  ]}
+                />
+              </label>
+            </>
+          ) : null}
           <label className={labelClass}>
             Destacar até (opcional)
             <input
@@ -562,17 +639,22 @@ export default function VagasDestaqueAdmin() {
         ) : items.length === 0 ? (
           <p className="text-sm font-medium text-slate-600">
             {/* TODO(Ana): validar a copy do vazio da tabela. */}
-            Nenhuma vaga manual cadastrada ainda. Crie a primeira no form
-            acima.
+            Nenhuma vaga manual cadastrada ainda. Crie a primeira no form acima.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            role="region"
+            aria-label="Vagas manuais, tabela com rolagem horizontal"
+            tabIndex={0}
+            className="max-w-full overflow-x-auto focus-visible:ring-2 focus-visible:ring-violet-400"
+          >
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-200 text-xs font-black uppercase tracking-wide text-slate-500">
                   <th className="py-2 pr-3">Título</th>
                   <th className="py-2 pr-3">Empresa</th>
                   <th className="py-2 pr-3">País</th>
+                  <th className="py-2 pr-3">Salário</th>
                   <th className="py-2 pr-3">Destaque</th>
                   <th className="py-2 pr-3">Destaque até</th>
                   <th className="py-2 pr-3">Status</th>
@@ -594,6 +676,9 @@ export default function VagasDestaqueAdmin() {
                     </td>
                     <td className="py-3 pr-3 uppercase text-slate-700">
                       {item.country ?? "-"}
+                    </td>
+                    <td className="py-3 pr-3 text-slate-700">
+                      {salaryLine(item)}
                     </td>
                     <td className="py-3 pr-3">
                       {item.featured ? (
