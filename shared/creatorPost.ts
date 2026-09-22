@@ -2,6 +2,7 @@ import {
   ehRedeDeCreator,
   REDES_DE_CREATOR,
   ROTULO_DA_REDE,
+  rotuloDaRede,
   type RedeDeCreator,
 } from "./creatorProfile";
 
@@ -111,9 +112,21 @@ export function statusInicialDaPublicacao(
   return tipo === "story" ? "confirmado" : "pendente";
 }
 
-export type CodigoDeLinkDePublicacao =
+/**
+ * Recusas que NAO carregam nada alem do codigo (lote 11k): cada uma tem a sua
+ * frase em `MENSAGEM_DO_LINK`. `profile_link`, `share_link_unsupported` e
+ * `tiktok_photo_unsupported` existem porque "Link inválido" mandava a pessoa
+ * conferir um link que ela copiou certo, e a frase precisa dizer o que colar.
+ */
+export type CodigoSimplesDoLink =
   | "invalid_post_url"
   | "short_link_unsupported"
+  | "share_link_unsupported"
+  | "tiktok_photo_unsupported"
+  | "profile_link";
+
+export type CodigoDeLinkDePublicacao =
+  | CodigoSimplesDoLink
   | "post_network_mismatch"
   | "post_type_mismatch";
 
@@ -133,9 +146,52 @@ export type PublicacaoNormalizada = {
  */
 export type ResultadoDoLink =
   | { ok: true; valor: PublicacaoNormalizada }
-  | { ok: false; code: "invalid_post_url" | "short_link_unsupported" }
+  | { ok: false; code: CodigoSimplesDoLink }
   | { ok: false; code: "post_network_mismatch"; rede_detectada: RedeDeCreator }
   | { ok: false; code: "post_type_mismatch"; tipo_detectado: TipoDePublicacao };
+
+export type LinkRecusado = Exclude<ResultadoDoLink, { ok: true }>;
+
+// MENSAGENS DA RECUSA, numa fonte so (lote 11k). O servidor as devolve no
+// `message` e o client as mostra antes de enviar; ate aqui cada lado tinha a
+// sua copia, e a primeira frase nova ja teria de ser escrita duas vezes. As
+// duas que levam o nome detectado sao funcoes pelo mesmo motivo.
+// TODO(Ana)
+export const MENSAGEM_DO_LINK: Record<CodigoSimplesDoLink, string> = {
+  invalid_post_url:
+    "Link inválido. Cole o link de um post, reel ou story do Instagram, de um vídeo do TikTok, ou de um post do LinkedIn.",
+  short_link_unsupported:
+    "Esse é um link curto. Abra a publicação no navegador e cole o link da barra de endereço.",
+  share_link_unsupported:
+    "Esse é um link de compartilhamento. Abra a publicação no navegador e copie o link da barra de endereço.",
+  tiktok_photo_unsupported:
+    "Por enquanto só vídeos do TikTok contam. Carrossel de fotos fica para depois.",
+  profile_link: "Esse é o link do perfil. Cole o link de uma publicação.",
+};
+
+/** Mensagem da rede que nao casa com o link, com o nome da rede detectada. */
+export function mensagemDeRedeErrada(redeDetectada: RedeDeCreator): string {
+  // TODO(Ana)
+  return `Esse link é do ${rotuloDaRede(redeDetectada)}. Troque a rede ou o link.`;
+}
+
+/** Mensagem do tipo que nao casa com o link, com o nome do tipo detectado. */
+export function mensagemDeTipoErrado(tipoDetectado: TipoDePublicacao): string {
+  const rotulo = ROTULO_DO_TIPO[tipoDetectado].toLowerCase();
+  // TODO(Ana)
+  return `Esse link é de um ${rotulo}. Troque o tipo ou o link.`;
+}
+
+/** A frase de qualquer recusa do link, para a tela e para a rota. */
+export function mensagemDoLinkRecusado(recusa: LinkRecusado): string {
+  if (recusa.code === "post_network_mismatch") {
+    return mensagemDeRedeErrada(recusa.rede_detectada);
+  }
+  if (recusa.code === "post_type_mismatch") {
+    return mensagemDeTipoErrado(recusa.tipo_detectado);
+  }
+  return MENSAGEM_DO_LINK[recusa.code];
+}
 
 /**
  * Teto de registros por dia, por creator.
@@ -180,6 +236,24 @@ const ID_NUMERICO = "[0-9]{5,32}";
 const INSTAGRAM_RE = new RegExp(
   `^(?:${USUARIO_DA_REDE}/)?(p|reel|reels)/(${CODIGO_DO_INSTAGRAM})$`,
 );
+
+// PERFIL (lote 11k): `instagram.com/<usuario>/`, `tiktok.com/@usuario` e
+// `linkedin.com/in/<slug>` sao o que a pessoa copia da propria pagina, e a
+// recusa diz isso em vez de "link invalido". Um segmento so, e no Instagram
+// nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `stories`,
+// `share`, `explore`, `accounts`), que nunca sao perfil.
+const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DA_REDE}$`);
+const CAMINHOS_RESERVADOS_DO_INSTAGRAM = [
+  "p",
+  "reel",
+  "reels",
+  "stories",
+  "share",
+  "explore",
+  "accounts",
+];
+const PERFIL_DO_TIKTOK_RE = new RegExp(`^@${USUARIO_DA_REDE}$`);
+const PERFIL_DO_LINKEDIN_RE = /^in\/[^/]+$/;
 
 // Story: `instagram.com/stories/<usuario>/<digitos>/`. O usuario e obrigatorio
 // (e assim que o Instagram escreve o link), e o id do story sao os digitos.
@@ -244,7 +318,7 @@ function detectarPublicacao(
   valor: unknown,
 ):
   | { ok: true; valor: PublicacaoNormalizada }
-  | { ok: false; code: "invalid_post_url" | "short_link_unsupported" } {
+  | { ok: false; code: CodigoSimplesDoLink } {
   if (typeof valor !== "string") return { ok: false, code: "invalid_post_url" };
 
   const partes = partesDaUrl(valor);
@@ -277,7 +351,16 @@ function detectarPublicacao(
       };
     }
     const m = INSTAGRAM_RE.exec(caminho);
-    if (!m) return { ok: false, code: "invalid_post_url" };
+    if (!m) {
+      return {
+        ok: false,
+        code:
+          PERFIL_DO_INSTAGRAM_RE.test(caminho) &&
+          !CAMINHOS_RESERVADOS_DO_INSTAGRAM.includes(caminho.toLowerCase())
+            ? "profile_link"
+            : "invalid_post_url",
+      };
+    }
     const kind: TipoDePublicacao = m[1] === "p" ? "post" : "reel";
     const codigo = m[2];
     // `reels` e `reel` sao a mesma coisa para o Instagram; a canonica usa uma so.
@@ -298,7 +381,14 @@ function detectarPublicacao(
       return { ok: false, code: "short_link_unsupported" };
     }
     const m = TIKTOK_RE.exec(caminho);
-    if (!m) return { ok: false, code: "invalid_post_url" };
+    if (!m) {
+      return {
+        ok: false,
+        code: PERFIL_DO_TIKTOK_RE.test(caminho)
+          ? "profile_link"
+          : "invalid_post_url",
+      };
+    }
     const usuario = m[1].toLowerCase();
     const id = m[2];
     return {
@@ -318,7 +408,12 @@ function detectarPublicacao(
       return { ok: true, valor: publicacaoDoLinkedin("activity", doFeed[1]) };
     const urn = LINKEDIN_URN_RE.exec(caminho);
     if (urn) return { ok: true, valor: publicacaoDoLinkedin(urn[1], urn[2]) };
-    return { ok: false, code: "invalid_post_url" };
+    return {
+      ok: false,
+      code: PERFIL_DO_LINKEDIN_RE.test(caminho)
+        ? "profile_link"
+        : "invalid_post_url",
+    };
   }
 
   return { ok: false, code: "invalid_post_url" };
@@ -329,8 +424,9 @@ function detectarPublicacao(
  * do erro.
  *
  * Aceita com e sem `https://`, com e sem `www.`, com query string e com barra
- * final. Perfil (`instagram.com/ana.cria/`) NAO e publicacao: e `invalid_post_url`,
- * porque registrar um perfil como publicacao encheria o ranking de nada.
+ * final. Perfil (`instagram.com/ana.cria/`) NAO e publicacao: e `profile_link`
+ * (lote 11k; antes era o `invalid_post_url` generico), porque registrar um
+ * perfil como publicacao encheria o ranking de nada.
  *
  * A ordem das recusas e deliberada: link curto e link invalido vem ANTES da
  * rede e do tipo, porque nesses casos nao ha o que comparar; a rede vem antes

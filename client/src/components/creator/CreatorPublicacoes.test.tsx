@@ -61,6 +61,11 @@ vi.mock("sonner", () => ({
 }));
 
 import { AdminApiError } from "@/lib/adminApi";
+import {
+  MENSAGEM_DO_LINK,
+  mensagemDeRedeErrada,
+  mensagemDeTipoErrado,
+} from "@shared/creatorPost";
 import { CreatorPublicacoes } from "./CreatorPublicacoes";
 
 const POST_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
@@ -296,12 +301,29 @@ describe("CreatorPublicacoes: registro", () => {
     escolherRede("instagram");
     await escolherTipo("Post");
     fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "https://www.instagram.com/explore/tags/tech/" },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    // A frase e a do shared, a mesma que o servidor devolveria.
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe(MENSAGEM_DO_LINK.invalid_post_url);
+    expect(chamadasCom("POST")).toHaveLength(0);
+  });
+
+  it("link de perfil (lote 11k): a frase do perfil, e NENHUMA requisicao", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("instagram");
+    await escolherTipo("Post");
+    fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "https://www.instagram.com/ana.cria/" },
     });
     fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
     expect(
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toContain("Link inválido");
+    ).toBe(MENSAGEM_DO_LINK.profile_link);
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
@@ -317,7 +339,7 @@ describe("CreatorPublicacoes: registro", () => {
     fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
     expect(
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toContain("Link curto");
+    ).toBe(MENSAGEM_DO_LINK.short_link_unsupported);
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
@@ -360,7 +382,7 @@ describe("CreatorPublicacoes: registro", () => {
     fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
     expect(
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toContain("Link curto");
+    ).toBe(MENSAGEM_DO_LINK.short_link_unsupported);
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
@@ -537,7 +559,7 @@ describe("CreatorPublicacoes: rede e tipo escolhidos (lotes 10b e 10d)", () => {
     fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
     expect(
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toBe("Esse link é do TikTok. Troque a rede ou o link.");
+    ).toBe(mensagemDeRedeErrada("tiktok"));
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
@@ -553,7 +575,7 @@ describe("CreatorPublicacoes: rede e tipo escolhidos (lotes 10b e 10d)", () => {
     fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
     expect(
       screen.getByTestId("creator-publicacoes-erro-campo").textContent,
-    ).toBe("Esse link é de um reel. Troque o tipo ou o link.");
+    ).toBe(mensagemDeTipoErrado("reel"));
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 

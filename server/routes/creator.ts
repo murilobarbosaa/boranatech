@@ -11,13 +11,13 @@ import {
 } from "../../shared/creatorCalendar";
 import {
   LIMITE_DE_REGISTROS_POR_DIA,
-  ROTULO_DO_TIPO,
-  type TipoDePublicacao,
+  MENSAGEM_DO_LINK,
+  mensagemDeRedeErrada,
+  mensagemDeTipoErrado,
 } from "../../shared/creatorPost";
 import {
   rotuloDaRede,
   type CodigoDeChavePix,
-  type RedeDeCreator,
 } from "../../shared/creatorProfile";
 import {
   CACHE_DO_RANKING_SEGUNDOS,
@@ -339,6 +339,9 @@ const UUID_RE =
 const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   invalid_post_url: 400,
   short_link_unsupported: 400,
+  share_link_unsupported: 400,
+  tiktok_photo_unsupported: 400,
+  profile_link: 400,
   short_link_unresolved: 400,
   invalid_post_network: 400,
   invalid_post_type: 400,
@@ -348,18 +351,17 @@ const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   post_daily_limit: 429,
 };
 
+// As frases do LINK vem do shared (lote 11k), que e o que o client tambem
+// mostra; aqui ficam so as recusas que nascem no servidor.
 // TODO(Ana)
 const MENSAGEM_DA_PUBLICACAO: Record<
   Exclude<CodigoDeRegistro, "post_type_mismatch" | "post_network_mismatch">,
   string
 > = {
-  invalid_post_url:
-    "Link inválido. Cole o link de um post, reel ou story do Instagram, de um vídeo do TikTok, ou de um post do LinkedIn.",
+  ...MENSAGEM_DO_LINK,
   invalid_post_network: "Escolha a rede: Instagram, TikTok ou LinkedIn.",
-  short_link_unsupported:
-    "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação.",
   short_link_unresolved:
-    "Não conseguimos abrir esse link curto do TikTok. Abra o vídeo e cole o endereço completo.",
+    "Não conseguimos abrir esse link curto. Abra a publicação no navegador e cole o link da barra de endereço.",
   invalid_post_type:
     "Escolha o tipo da publicação: post, reel, story ou vídeo do TikTok.",
   post_already_registered: "Você já registrou esta publicação.",
@@ -368,24 +370,11 @@ const MENSAGEM_DA_PUBLICACAO: Record<
   post_daily_limit: `Você já registrou ${LIMITE_DE_REGISTROS_POR_DIA} publicações hoje. Tente de novo amanhã.`,
 };
 
-/**
- * Mensagem do tipo que nao casa com o link. O tipo detectado vai NA mensagem,
- * pelo nome: o handler central de erro (server/middleware/error.ts) so emite
- * `code` e `message`, e abrir um campo a mais nele e no AdminApiError do client
- * e mudanca fora deste lote. O client roda a mesma regra do shared antes de
- * enviar, entao ele ja sabe o tipo detectado sem precisar le-lo daqui.
- */
-function mensagemDeTipoErrado(tipoDetectado: TipoDePublicacao): string {
-  const rotulo = ROTULO_DO_TIPO[tipoDetectado].toLowerCase();
-  // TODO(Ana)
-  return `Esse link é de um ${rotulo}. Troque o tipo ou o link.`;
-}
-
-/** Mesmo esquema, para a rede (lote 10d): o nome da rede detectada na mensagem. */
-function mensagemDeRedeErrada(redeDetectada: RedeDeCreator): string {
-  // TODO(Ana)
-  return `Esse link é do ${rotuloDaRede(redeDetectada)}. Troque a rede ou o link.`;
-}
+// O tipo e a rede detectados vao NA mensagem, pelo nome (`mensagemDeTipoErrado`
+// e `mensagemDeRedeErrada`, do shared): o handler central de erro
+// (server/middleware/error.ts) so emite `code` e `message`, e abrir um campo a
+// mais nele e no AdminApiError do client e mudanca fora deste lote. O client
+// roda a mesma regra do shared antes de enviar, entao ele ja sabe o detectado.
 
 router.get("/posts", requireCreator, async (req, res, next) => {
   try {

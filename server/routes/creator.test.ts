@@ -1,6 +1,12 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  MENSAGEM_DO_LINK,
+  mensagemDeRedeErrada,
+  mensagemDeTipoErrado,
+} from "../../shared/creatorPost";
+import { rotuloDaRede } from "../../shared/creatorProfile";
 
 /**
  * GUARDA E ROTAS DO PROPRIO CREATOR: requireCreator, GET /api/creator/status e
@@ -1002,28 +1008,27 @@ describe("POST /api/creator/posts", () => {
       });
       expect(r.status, `${tipo} ${url}`).toBe(400);
       expect(r.body.error.code).toBe("post_type_mismatch");
-      expect(r.body.error.message).toBe(
-        `Esse link é de um ${detectado}. Troque o tipo ou o link.`,
-      );
+      // A frase e a do shared, com o tipo detectado: e o que a tela mostra.
+      expect(r.body.error.message).toBe(mensagemDeTipoErrado(detectado));
+      expect(r.body.error.message).toContain(detectado);
       expect(escritasEm("creator_posts")).toHaveLength(0);
     }
   });
 
   it("link de OUTRA rede (lote 10d): 400 post_network_mismatch, com a rede detectada na mensagem, e nada gravado", async () => {
     for (const [url, rede, tipo, detectada] of [
-      [LINK_VIDEO, "instagram", "reel", "TikTok"],
-      [LINK_VALIDO, "tiktok", "video", "Instagram"],
-      [LINK_LINKEDIN, "instagram", "post", "LinkedIn"],
-      [LINK_POST, "linkedin", "post", "Instagram"],
+      [LINK_VIDEO, "instagram", "reel", "tiktok"],
+      [LINK_VALIDO, "tiktok", "video", "instagram"],
+      [LINK_LINKEDIN, "instagram", "post", "linkedin"],
+      [LINK_POST, "linkedin", "post", "instagram"],
     ] as const) {
       montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
       estado.usuario = USUARIO;
       const r = await chamar("POST", "/posts", { url, rede, tipo });
       expect(r.status, `${rede} ${url}`).toBe(400);
       expect(r.body.error.code).toBe("post_network_mismatch");
-      expect(r.body.error.message).toBe(
-        `Esse link é do ${detectada}. Troque a rede ou o link.`,
-      );
+      expect(r.body.error.message).toBe(mensagemDeRedeErrada(detectada));
+      expect(r.body.error.message).toContain(rotuloDaRede(detectada));
       expect(escritasEm("creator_posts")).toHaveLength(0);
     }
   });
@@ -1071,17 +1076,34 @@ describe("POST /api/creator/posts", () => {
     }
   });
 
-  it("link invalido: 400 invalid_post_url e NADA e gravado", async () => {
+  it("link invalido: 400 invalid_post_url com a frase do shared, e NADA e gravado", async () => {
     montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
     estado.usuario = USUARIO;
     const r = await chamar("POST", "/posts", {
-      url: "https://www.instagram.com/ana.cria/",
+      url: "https://www.instagram.com/explore/tags/tech/",
       rede: "instagram",
       tipo: "post",
     });
     expect(r.status).toBe(400);
     expect(r.body.error.code).toBe("invalid_post_url");
+    expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.invalid_post_url);
     expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("link de perfil (lote 11k): 400 profile_link com a frase do shared, nas tres redes", async () => {
+    for (const [url, rede, tipo] of [
+      ["https://www.instagram.com/ana.cria/", "instagram", "post"],
+      ["https://www.tiktok.com/@ana.cria", "tiktok", "video"],
+      ["https://www.linkedin.com/in/ana-cria/", "linkedin", "post"],
+    ] as const) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", { url, rede, tipo });
+      expect(r.status, url).toBe(400);
+      expect(r.body.error.code).toBe("profile_link");
+      expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.profile_link);
+      expect(escritasEm("creator_posts")).toHaveLength(0);
+    }
   });
 
   it("link curto do Instagram tem codigo proprio, e o servidor NAO abre a URL", async () => {

@@ -22,6 +22,7 @@ import { contentFetch } from "@/lib/adminApi";
 import { diaBrasilia, formatarDiaCivil } from "@shared/brasiliaDay";
 import {
   ehTipoDePublicacao,
+  mensagemDoLinkRecusado,
   normalizarLinkDePublicacao,
   ROTULO_DO_TIPO as ROTULO_DO_TIPO_NO_SELECT,
   TIPOS_POR_REDE,
@@ -195,27 +196,8 @@ export function CreatorPublicacoes() {
         link.trim(),
       );
     if (!conferido.ok && !curtoDoTikTok) {
-      if (conferido.code === "post_network_mismatch") {
-        // TODO(Ana)
-        setErro(
-          `Esse link é do ${rotuloDaRede(conferido.rede_detectada)}. Troque a rede ou o link.`,
-        );
-        return;
-      }
-      if (conferido.code === "post_type_mismatch") {
-        const detectado =
-          ROTULO_DO_TIPO_NO_SELECT[conferido.tipo_detectado].toLowerCase();
-        // TODO(Ana)
-        setErro(`Esse link é de um ${detectado}. Troque o tipo ou o link.`);
-        return;
-      }
-      setErro(
-        conferido.code === "short_link_unsupported"
-          ? // TODO(Ana)
-            "Link curto não dá para registrar. Abra o link e cole o endereço completo da publicação."
-          : // TODO(Ana)
-            "Link inválido. Cole o link de um post, reel ou story do Instagram, de um vídeo do TikTok, ou de um post do LinkedIn.",
-      );
+      // A frase e a MESMA que o servidor devolveria (lote 11k): uma fonte so.
+      setErro(mensagemDoLinkRecusado(conferido));
       return;
     }
     setErro(null);

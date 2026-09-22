@@ -25,9 +25,14 @@ import {
   tipoValidoParaRede,
   type TipoDePublicacao,
   LIMITE_DE_REGISTROS_POR_DIA,
+  MENSAGEM_DO_LINK,
+  mensagemDeRedeErrada,
+  mensagemDeTipoErrado,
+  mensagemDoLinkRecusado,
   normalizarLinkDePublicacao,
   statusInicialDaPublicacao,
   TIPOS_DE_PUBLICACAO,
+  type CodigoSimplesDoLink,
 } from "./creatorPost";
 
 const CODIGO_IG = "Cx1AbCdEf_-";
@@ -164,18 +169,32 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     }
   });
 
-  it("perfil nao e publicacao, e codigo curto demais tambem nao", () => {
+  it("perfil e profile_link (lote 11k); raiz, codigo curto demais e caminhos reservados sao invalidos", () => {
     for (const entrada of [
       "https://www.instagram.com/ana.cria/",
+      "instagram.com/Ana.Cria",
+      "https://www.instagram.com/ana.cria/?igsh=abc",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "post"),
+        entrada,
+      ).toEqual({ ok: false, code: "profile_link" });
+    }
+    for (const entrada of [
       "https://www.instagram.com/",
       "https://www.instagram.com/p/abc/",
       "https://www.instagram.com/p/",
       "https://www.instagram.com/explore/tags/tech/",
+      // Um segmento so, mas reservado pela rede: nunca e perfil.
+      "https://www.instagram.com/explore/",
+      "https://www.instagram.com/reels/",
+      "https://www.instagram.com/stories/",
+      "https://www.instagram.com/accounts/",
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "instagram", "post")).toEqual({
-        ok: false,
-        code: "invalid_post_url",
-      });
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "post"),
+        entrada,
+      ).toEqual({ ok: false, code: "invalid_post_url" });
     }
   });
 });
@@ -212,17 +231,25 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
     );
   });
 
-  it("perfil e id truncado nao sao publicacao", () => {
+  it("perfil e profile_link (lote 11k); id truncado e video sem @ sao invalidos", () => {
     for (const entrada of [
       "https://www.tiktok.com/@ana.cria",
       "https://www.tiktok.com/@ana.cria/",
+      "tiktok.com/@ana.cria?lang=pt",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "tiktok", "video"),
+        entrada,
+      ).toEqual({ ok: false, code: "profile_link" });
+    }
+    for (const entrada of [
       "https://www.tiktok.com/@ana.cria/video/1",
       "https://www.tiktok.com/video/7311122233344455566",
     ]) {
-      expect(normalizarLinkDePublicacao(entrada, "tiktok", "video")).toEqual({
-        ok: false,
-        code: "invalid_post_url",
-      });
+      expect(
+        normalizarLinkDePublicacao(entrada, "tiktok", "video"),
+        entrada,
+      ).toEqual({ ok: false, code: "invalid_post_url" });
     }
   });
 });
@@ -325,9 +352,18 @@ describe("normalizarLinkDePublicacao: rede e tipo escolhidos (lotes 10b e 10d)",
         "post",
       ),
     ).toEqual({ ok: false, code: "short_link_unsupported" });
+    // Perfil do Instagram com TikTok escolhido: a recusa e a do perfil, e nao
+    // a da rede, porque um perfil nao e publicacao de rede nenhuma.
     expect(
       normalizarLinkDePublicacao(
         "https://www.instagram.com/ana.cria/",
+        "tiktok",
+        "video",
+      ),
+    ).toEqual({ ok: false, code: "profile_link" });
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.instagram.com/explore/",
         "tiktok",
         "video",
       ),
@@ -391,7 +427,7 @@ describe("normalizarLinkDePublicacao: LinkedIn (lote 10d)", () => {
     expect(ugc.ok && ugc.valor.external_id).toBe(`ugcPost:${ID_LINKEDIN}`);
   });
 
-  it("lnkd.in e link curto SEM resolvedor; artigo, perfil, empresa e id curto sao invalidos", () => {
+  it("lnkd.in e link curto SEM resolvedor; perfil e profile_link; artigo, empresa e id curto sao invalidos", () => {
     expect(
       normalizarLinkDePublicacao(
         "https://lnkd.in/dAbC123x",
@@ -399,9 +435,15 @@ describe("normalizarLinkDePublicacao: LinkedIn (lote 10d)", () => {
         "post",
       ),
     ).toEqual({ ok: false, code: "short_link_unsupported" });
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.linkedin.com/in/ana-cria/",
+        "linkedin",
+        "post",
+      ),
+    ).toEqual({ ok: false, code: "profile_link" });
     for (const entrada of [
       "https://www.linkedin.com/pulse/como-entrar-em-ti-ana-cria-abc1/",
-      "https://www.linkedin.com/in/ana-cria/",
       "https://www.linkedin.com/company/boranatech/",
       "https://www.linkedin.com/feed/update/urn:li:activity:123/",
       "https://www.linkedin.com/feed/update/urn:li:comment:7123456789012345678/",
@@ -466,6 +508,48 @@ describe("normalizarLinkDePublicacao: recusas", () => {
         code: "invalid_post_url",
       });
     }
+  });
+});
+
+describe("mensagens da recusa (lote 11k): uma fonte para a rota e para a tela", () => {
+  it("todo codigo simples tem frase, e nenhuma e a generica de outro", () => {
+    const codigos: CodigoSimplesDoLink[] = [
+      "invalid_post_url",
+      "short_link_unsupported",
+      "share_link_unsupported",
+      "tiktok_photo_unsupported",
+      "profile_link",
+    ];
+    expect(Object.keys(MENSAGEM_DO_LINK).sort()).toEqual([...codigos].sort());
+    const frases = codigos.map((c) => MENSAGEM_DO_LINK[c]);
+    expect(new Set(frases).size).toBe(frases.length);
+    for (const frase of frases) expect(frase.trim().length).toBeGreaterThan(0);
+  });
+
+  it("mensagemDoLinkRecusado despacha para a frase certa, com o nome detectado nos mismatch", () => {
+    expect(mensagemDoLinkRecusado({ ok: false, code: "profile_link" })).toBe(
+      MENSAGEM_DO_LINK.profile_link,
+    );
+    expect(
+      mensagemDoLinkRecusado({
+        ok: false,
+        code: "post_network_mismatch",
+        rede_detectada: "tiktok",
+      }),
+    ).toBe(mensagemDeRedeErrada("tiktok"));
+    expect(mensagemDeRedeErrada("tiktok")).toBe(
+      "Esse link é do TikTok. Troque a rede ou o link.",
+    );
+    expect(
+      mensagemDoLinkRecusado({
+        ok: false,
+        code: "post_type_mismatch",
+        tipo_detectado: "reel",
+      }),
+    ).toBe(mensagemDeTipoErrado("reel"));
+    expect(mensagemDeTipoErrado("reel")).toBe(
+      "Esse link é de um reel. Troque o tipo ou o link.",
+    );
   });
 });
 

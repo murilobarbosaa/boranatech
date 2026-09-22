@@ -18,6 +18,7 @@ import {
   statusInicialDaPublicacao,
   tipoValidoParaRede,
   TIPOS_DE_PUBLICACAO,
+  type CodigoSimplesDoLink,
   type RedeDePublicacao,
   type StatusDePublicacao,
   type TipoDePublicacao,
@@ -83,8 +84,7 @@ export type RegistroRecusado =
   | {
       ok: false;
       code:
-        | "invalid_post_url"
-        | "short_link_unsupported"
+        | CodigoSimplesDoLink
         | "short_link_unresolved"
         | "invalid_post_network"
         | "invalid_post_type"
