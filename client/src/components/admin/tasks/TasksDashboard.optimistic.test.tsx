@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 
 import type { TaskBoardSnapshot } from "./types";
 
@@ -302,9 +309,10 @@ describe("TasksDashboard: update otimista", () => {
     await screen.findByLabelText("DEV-1: tarefa 1");
     expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Backlog");
 
-    const forward = screen.getAllByLabelText("Mover para a próxima etapa")[0];
     await act(async () => {
-      forward.click();
+      fireEvent.change(screen.getByLabelText("Mover DEV-1 para"), {
+        target: { value: "col-b" },
+      });
     });
 
     // A rede ainda nao respondeu e o card JA esta na coluna nova.
@@ -322,100 +330,76 @@ describe("TasksDashboard: update otimista", () => {
     render(<TasksDashboard />);
     await screen.findByLabelText("DEV-1: tarefa 1");
 
-    const forward = screen.getAllByLabelText("Mover para a próxima etapa")[0];
     await act(async () => {
-      forward.click();
+      fireEvent.change(screen.getByLabelText("Mover DEV-1 para"), {
+        target: { value: "col-b" },
+      });
     });
 
     await waitFor(() =>
       expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Backlog"),
     );
     expect(toastSpy.error).toHaveBeenCalledWith("500 no servidor");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByLabelText("Mover DEV-1 para"),
+      ),
+    );
   });
 
-  // O caso que motivou o contador de sequencia por tarefa.
-  it("dois moves rapidos: o erro do PRIMEIRO nao desfaz o segundo", async () => {
-    const pending: Array<{
-      reject: (reason: unknown) => void;
-      resolve: (value: unknown) => void;
-    }> = [];
-    svc.moveTask.mockImplementation(
-      () =>
-        new Promise((resolve, reject) => {
-          pending.push({ resolve, reject });
-        }),
-    );
-
+  it("devolve foco ao seletor da lista após falha", async () => {
+    svc.moveTask.mockRejectedValue(new Error("Falha sintética"));
     render(<TasksDashboard />);
     await screen.findByLabelText("DEV-1: tarefa 1");
+    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
+    const select = screen.getByLabelText("Mover DEV-1 para");
+    fireEvent.change(select, { target: { value: "col-b" } });
+    await waitFor(() => expect(svc.moveTask).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByLabelText("Mover DEV-1 para"),
+      ),
+    );
+  });
 
-    // Backlog -> A Fazer
+  it("duplo acionamento não duplica a gravação enquanto a primeira está pendente", async () => {
+    let resolveMove: ((value: unknown) => void) | null = null;
+    svc.moveTask.mockImplementation(
+      () => new Promise((resolve) => (resolveMove = resolve)),
+    );
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+    const select = screen.getByLabelText("Mover DEV-1 para");
     await act(async () => {
-      screen.getAllByLabelText("Mover para a próxima etapa")[0].click();
+      fireEvent.change(select, { target: { value: "col-b" } });
+      fireEvent.change(select, { target: { value: "col-b" } });
     });
+    expect(svc.moveTask).toHaveBeenCalledTimes(1);
     expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa A Fazer");
-
-    // A Fazer -> Em Progresso, antes de a primeira resposta chegar
     await act(async () => {
-      screen.getAllByLabelText("Mover para a próxima etapa")[0].click();
+      resolveMove?.({ ...task("task-1", 1, "col-b"), position: 2000 });
     });
-    expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Em Progresso");
-    expect(pending).toHaveLength(2);
-
-    // A PRIMEIRA requisicao falha, com a segunda ainda no ar.
-    await act(async () => {
-      pending[0].reject(new Error("primeira falhou"));
-    });
-
-    // O card NAO pode ter voltado para Backlog: o estado da tela e o do segundo
-    // movimento, que ainda esta valendo.
-    expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Em Progresso");
-    expect(toastSpy.error).not.toHaveBeenCalled();
-
-    // O segundo movimento foi o que o servidor aplicou de fato.
-    serverMoved("col-c");
-    await act(async () => {
-      pending[1].resolve({ ...task("task-1", 1, "col-c"), position: 1000 });
-    });
-    await waitFor(() =>
-      expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Em Progresso"),
-    );
   });
 
-  // Irmao do teste acima, no caminho de SUCESSO: a resposta atrasada do primeiro
-  // move carrega a coluna intermediaria e puxaria o card de volta se fosse
-  // aplicada sem a guarda de sequencia.
-  it("dois moves rapidos: a resposta ATRASADA do primeiro nao puxa o card de volta", async () => {
-    const pending: Array<(value: unknown) => void> = [];
+  it("não atualiza a tela nem anuncia movimento depois de desmontar durante a gravação", async () => {
+    let resolveMove: ((value: unknown) => void) | null = null;
     svc.moveTask.mockImplementation(
-      () => new Promise((resolve) => pending.push(resolve)),
+      () => new Promise((resolve) => (resolveMove = resolve)),
     );
-
-    render(<TasksDashboard />);
+    const mounted = render(<TasksDashboard />);
     await screen.findByLabelText("DEV-1: tarefa 1");
-
-    await act(async () => {
-      screen.getAllByLabelText("Mover para a próxima etapa")[0].click();
+    fireEvent.change(screen.getByLabelText("Mover DEV-1 para"), {
+      target: { value: "col-b" },
     });
+    expect(svc.moveTask).toHaveBeenCalledTimes(1);
+    const readsBeforeUnmount = svc.getBoardSnapshot.mock.calls.length;
+    mounted.unmount();
     await act(async () => {
-      screen.getAllByLabelText("Mover para a próxima etapa")[0].click();
+      resolveMove?.({ ...task("task-1", 1, "col-b"), position: 2000 });
     });
-    expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Em Progresso");
-
-    // Segundo responde primeiro, primeiro responde depois (fora de ordem). O
-    // servidor esta em col-c: os dois moves foram aplicados la, e a resposta
-    // atrasada do primeiro carrega col-b so porque foi montada antes.
-    serverMoved("col-c");
-    await act(async () => {
-      pending[1]({ ...task("task-1", 1, "col-c"), position: 1000 });
-    });
-    await act(async () => {
-      pending[0]({ ...task("task-1", 1, "col-b"), position: 1000 });
-    });
-
-    await waitFor(() =>
-      expect(columnOfCard("DEV-1: tarefa 1")).toBe("Etapa Em Progresso"),
-    );
+    expect(svc.getBoardSnapshot).toHaveBeenCalledTimes(readsBeforeUnmount);
+    expect(toastSpy.success).not.toHaveBeenCalled();
+    expect(toastSpy.error).not.toHaveBeenCalled();
   });
 });
 
@@ -499,7 +483,7 @@ describe("TasksDashboard: deep link", () => {
     const card = await screen.findByLabelText("DEV-1: tarefa 1");
 
     await act(async () => {
-      card.click();
+      card.querySelector<HTMLButtonElement>("button")!.click();
     });
 
     expect(locationSpy.set).toHaveBeenCalledWith(

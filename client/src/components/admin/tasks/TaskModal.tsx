@@ -57,6 +57,7 @@ import { TaskActivityList } from "./TaskActivityList";
 import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
 import { TaskProperties } from "./TaskProperties";
+import { isTaskMoveDestination } from "./taskMoveDestinations";
 import { rowActionClass, secondaryButtonClass } from "./taskBoardStyles";
 import { LAYER_DIALOG, LAYER_IN_DIALOG } from "./taskLayers";
 import { shortIdOf } from "./taskDeepLink";
@@ -85,9 +86,8 @@ import type {
 //  2. nenhum caminho de saida perde texto digitado. Esc, clique fora, trocar de
 //     tarefa com as setas e fechar pelo X passam TODOS pelo mesmo `requestClose`,
 //     que aguarda o flush do autosave. F5 cai no aviso do beforeunload.
-//  3. mudar de etapa aqui usa a MESMA moveTask do drag e das setas do card
-//     (prop `onMoveTask`), com o mesmo contador de sequencia. Nao ha terceiro
-//     caminho de movimentacao no modulo.
+//  3. mudar de etapa aqui usa a MESMA moveTask da acao explicita do card
+//     (prop `onMoveTask`). Nao ha outro caminho de movimentacao no modulo.
 
 type TaskModalProps = {
   taskId: string;
@@ -100,7 +100,7 @@ type TaskModalProps = {
   onClose: () => void;
   onOpenTask: (taskId: string) => void;
   /** Caminho unico de movimentacao, vindo do TasksDashboard. */
-  onMoveTask: (taskId: string, columnId: string) => void;
+  onMoveTask: (taskId: string, columnId: string) => Promise<boolean>;
   /** Aplica a mudanca no card do board sem refetch do snapshot inteiro. */
   onPatchCard: (taskId: string, patch: Partial<TaskCard>) => void;
   /** Recarrega o board (usado apos duplicar, arquivar e excluir). */
@@ -432,7 +432,9 @@ export function TaskModal({
       updated_at: new Date().toISOString(),
     };
     setData((current) =>
-      current ? { ...current, comments: [...current.comments, optimistic] } : current,
+      current
+        ? { ...current, comments: [...current.comments, optimistic] }
+        : current,
     );
     bumpCommentCount(1);
 
@@ -509,7 +511,9 @@ export function TaskModal({
           );
         }
         toast.error(
-          error instanceof Error ? error.message : "Erro ao editar o comentário.",
+          error instanceof Error
+            ? error.message
+            : "Erro ao editar o comentário.",
         );
       }
     })();
@@ -530,10 +534,14 @@ export function TaskModal({
       try {
         await deleteComment(commentId);
       } catch (error) {
-        setData((current) => (current ? { ...current, comments: previous } : current));
+        setData((current) =>
+          current ? { ...current, comments: previous } : current,
+        );
         bumpCommentCount(1);
         toast.error(
-          error instanceof Error ? error.message : "Erro ao excluir o comentário.",
+          error instanceof Error
+            ? error.message
+            : "Erro ao excluir o comentário.",
         );
       }
     })();
@@ -562,7 +570,9 @@ export function TaskModal({
         );
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Erro ao carregar o histórico.",
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar o histórico.",
         );
       } finally {
         setLoadingMoreActivity(false);
@@ -653,11 +663,19 @@ export function TaskModal({
                 celular elas nao cabem junto com o X sem encolher a fonte, e
                 encolher fonte para caber e trocar um problema por outro. */}
             <div className="hidden shrink-0 flex-wrap items-center gap-1.5 md:flex">
-              <button type="button" onClick={copyLink} className={rowActionClass}>
+              <button
+                type="button"
+                onClick={copyLink}
+                className={rowActionClass}
+              >
                 <LinkIcon className="mr-1 inline h-3 w-3" />
                 Link
               </button>
-              <button type="button" onClick={duplicate} className={rowActionClass}>
+              <button
+                type="button"
+                onClick={duplicate}
+                className={rowActionClass}
+              >
                 <Copy className="mr-1 inline h-3 w-3" />
                 Duplicar
               </button>
@@ -696,13 +714,22 @@ export function TaskModal({
                 align="end"
                 className={`${LAYER_IN_DIALOG} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]`}
               >
-                <DropdownMenuItem onSelect={copyLink} className="text-xs font-black">
+                <DropdownMenuItem
+                  onSelect={copyLink}
+                  className="text-xs font-black"
+                >
                   <LinkIcon className="mr-2 h-3.5 w-3.5" /> Copiar link
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={duplicate} className="text-xs font-black">
+                <DropdownMenuItem
+                  onSelect={duplicate}
+                  className="text-xs font-black"
+                >
                   <Copy className="mr-2 h-3.5 w-3.5" /> Duplicar
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={archive} className="text-xs font-black">
+                <DropdownMenuItem
+                  onSelect={archive}
+                  className="text-xs font-black"
+                >
                   <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -719,8 +746,8 @@ export function TaskModal({
             {task ? task.title : "Carregando tarefa"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Detalhes da tarefa. Use Escape para fechar e as setas para cima e para
-            baixo para navegar entre as tarefas da etapa.
+            Detalhes da tarefa. Use Escape para fechar e as setas para cima e
+            para baixo para navegar entre as tarefas da etapa.
           </DialogDescription>
 
           {/* No DESKTOP quem rola e cada coluna, nao a linha.
@@ -822,7 +849,9 @@ export function TaskModal({
                         }`}
                       >
                         Comentários
-                        {data.comments.length > 0 ? ` (${data.comments.length})` : ""}
+                        {data.comments.length > 0
+                          ? ` (${data.comments.length})`
+                          : ""}
                       </button>
                       <button
                         type="button"
@@ -872,20 +901,29 @@ export function TaskModal({
               ) : (
                 <TaskProperties
                   task={task}
-                  columns={columns}
+                  columns={columns.filter(
+                    (column) =>
+                      column.id === task.column_id ||
+                      isTaskMoveDestination(column, task.column_id),
+                  )}
                   admins={admins}
                   labels={labels}
                   selectedLabelIds={data.labelIds}
                   estimateDraft={estimateDraft}
                   onChangeColumn={(columnId) => {
                     if (columnId === task.column_id) return;
-                    // Mesmo caminho do drag e das setas do card.
-                    onMoveTask(task.id, columnId);
-                    setData((current) =>
-                      current
-                        ? { ...current, task: { ...current.task, column_id: columnId } }
-                        : current,
-                    );
+                    // Mesmo caminho da acao explicita do card.
+                    void onMoveTask(task.id, columnId).then((moved) => {
+                      if (!moved || !mounted.current) return;
+                      setData((current) =>
+                        current?.task.id === task.id
+                          ? {
+                              ...current,
+                              task: { ...current.task, column_id: columnId },
+                            }
+                          : current,
+                      );
+                    });
                   }}
                   onChangeAssignee={(assigneeId) =>
                     void withErrorToast(
@@ -915,7 +953,10 @@ export function TaskModal({
                   onCommitEstimate={() => {
                     const trimmed = estimateDraft.trim();
                     const parsed = trimmed === "" ? null : Number(trimmed);
-                    if (parsed !== null && (!Number.isFinite(parsed) || parsed <= 0)) {
+                    if (
+                      parsed !== null &&
+                      (!Number.isFinite(parsed) || parsed <= 0)
+                    ) {
                       setEstimateDraft(
                         task.estimate === null ? "" : String(task.estimate),
                       );
@@ -938,7 +979,10 @@ export function TaskModal({
       </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}>
+        <AlertDialogContent
+          overlayClassName={LAYER_DIALOG}
+          className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}
+        >
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir tarefa
           </AlertDialogTitle>

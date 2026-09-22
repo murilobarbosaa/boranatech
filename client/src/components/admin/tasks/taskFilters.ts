@@ -1,4 +1,10 @@
-import type { TaskAssignee, TaskCard, TaskColumn, TaskPriority, TaskType } from "./types";
+import type {
+  TaskAssignee,
+  TaskCard,
+  TaskColumn,
+  TaskPriority,
+  TaskType,
+} from "./types";
 import { priorityMetaOf } from "./taskBoardStyles";
 
 // Filtro, busca e agrupamento do board. Tudo puro e testavel sem DOM.
@@ -103,12 +109,17 @@ export function matchesFilters(
   // pessoa espera de um filtro de etiqueta; E logico exigiria uma segunda opcao
   // na interface para pouco ganho.
   if (filters.labelIds.length > 0) {
-    if (!task.label_ids.some((id) => filters.labelIds.includes(id))) return false;
+    if (!task.label_ids.some((id) => filters.labelIds.includes(id)))
+      return false;
   }
-  if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
+  if (
+    filters.priorities.length > 0 &&
+    !filters.priorities.includes(task.priority)
+  ) {
     return false;
   }
-  if (filters.types.length > 0 && !filters.types.includes(task.type)) return false;
+  if (filters.types.length > 0 && !filters.types.includes(task.type))
+    return false;
 
   // "manual" e o COMPLEMENTO de "human", nao a lista dos outros valores: um
   // `source` novo que este bundle nao conhece cai em "automático", que e a
@@ -160,7 +171,7 @@ export function hasActiveFilters(filters: TaskFilters): boolean {
 export type GroupBy = "column" | "assignee" | "priority";
 
 export type TaskGroup = {
-  /** Id do container para o dnd-kit. Coluna: o uuid. Demais: `group:<valor>`. */
+  /** Id do grupo visual. Coluna: o uuid. Demais: `group:<valor>`. */
   id: string;
   /** Valor cru do agrupamento (uuid da coluna, uuid do usuario, prioridade). */
   value: string | null;
@@ -192,7 +203,8 @@ export function buildGroups(
 ): TaskGroup[] {
   const sortByPosition = (list: TaskCard[]) =>
     [...list].sort(
-      (a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at),
+      (a, b) =>
+        a.position - b.position || a.created_at.localeCompare(b.created_at),
     );
 
   if (groupBy === "column") {
@@ -201,8 +213,11 @@ export function buildGroups(
       value: column.id,
       label: column.name,
       color: column.color,
-      tasks: sortByPosition(visibleTasks.filter((t) => t.column_id === column.id)),
-      totalBeforeFilter: allTasks.filter((t) => t.column_id === column.id).length,
+      tasks: sortByPosition(
+        visibleTasks.filter((t) => t.column_id === column.id),
+      ),
+      totalBeforeFilter: allTasks.filter((t) => t.column_id === column.id)
+        .length,
     }));
   }
 
@@ -212,21 +227,26 @@ export function buildGroups(
       value: priority,
       label: priorityMetaOf(priority).label,
       color: null,
-      tasks: sortByPosition(visibleTasks.filter((t) => t.priority === priority)),
+      tasks: sortByPosition(
+        visibleTasks.filter((t) => t.priority === priority),
+      ),
       totalBeforeFilter: allTasks.filter((t) => t.priority === priority).length,
     }));
   }
 
   // Responsavel: os admins na ordem em que vieram, e "Sem responsavel" por
   // ultimo. Nao omite grupo vazio: um responsavel sem tarefa nenhuma e
-  // informacao, e o grupo tambem e alvo de arrasto.
+  // informacao para a pessoa que usa o quadro.
   const groups: TaskGroup[] = admins.map((admin) => ({
     id: `${GROUP_PREFIX}${admin.user_id}`,
     value: admin.user_id,
     label: admin.name ?? admin.email ?? admin.user_id,
     color: null,
-    tasks: sortByPosition(visibleTasks.filter((t) => t.assignee_id === admin.user_id)),
-    totalBeforeFilter: allTasks.filter((t) => t.assignee_id === admin.user_id).length,
+    tasks: sortByPosition(
+      visibleTasks.filter((t) => t.assignee_id === admin.user_id),
+    ),
+    totalBeforeFilter: allTasks.filter((t) => t.assignee_id === admin.user_id)
+      .length,
   }));
   groups.push({
     id: `${GROUP_PREFIX}none`,

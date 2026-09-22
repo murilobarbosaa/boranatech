@@ -160,6 +160,7 @@ const AUDIT = {
  * efeito colateral que ninguem viu.
  */
 const COPY_ESTATICA = new Set<string>([
+  "Abrir usuário",
   "Usuário",
   "Acesso",
   "Assinatura",
@@ -334,7 +335,7 @@ afterEach(cleanup);
 async function abrirAbaInteira() {
   render(<UsersDashboard />);
   const linha = await screen.findByText("SENTINELA_NOME");
-  fireEvent.click(linha);
+  fireEvent.click(screen.getByRole("button", { name: "Abrir usuário" }));
   await screen.findByText("SENTINELA_NOME_COMPLETO");
   fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
   await screen.findByText("Histórico administrativo");

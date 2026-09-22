@@ -61,10 +61,8 @@ import { limparChavesDeSecao } from "@/components/admin/tasks/taskViewState";
 import { TasksErrorBoundary } from "@/components/admin/tasks/TasksErrorBoundary";
 import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton";
 
-// Carregado sob demanda: o modulo de Tarefas traz o dnd-kit e o remark-gfm, e um
-// import estatico coloca os dois no chunk do Admin, que TODA aba do painel baixa.
-// Medido: o chunk saiu de 700,98 kB para 860,43 kB (gzip 170,18 -> 216,50).
-// Ninguem fora deste modulo importa dnd-kit, entao a fronteira e limpa.
+// Tarefas permanece carregada sob demanda: o módulo tem dependências próprias,
+// e um import estático as colocaria no chunk inicial de todas as abas do Admin.
 import { readViewState } from "@/components/admin/tasks/taskViewState";
 
 const TasksDashboard = lazyWithRetry(
@@ -4562,18 +4560,23 @@ function EmailCampaignsAdminSection() {
                   return (
                     <tr
                       key={campaign.id}
-                      onClick={() => openCampaign(campaign.id)}
-                      className={`cursor-pointer border-b border-slate-200 last:border-0 hover:bg-slate-50 ${
+                      className={`border-b border-slate-200 last:border-0 hover:bg-slate-50 ${
                         selectedId === campaign.id ? "bg-amber-50" : ""
                       }`}
                     >
                       <td className="max-w-[16rem] px-4 py-3">
+                        <span
+                          className="block truncate font-semibold text-slate-900"
+                          title={campaign.subject}
+                        >
+                          {campaign.subject}
+                        </span>
                         <button
                           type="button"
                           onClick={() => openCampaign(campaign.id)}
-                          className="block w-full truncate text-left font-semibold text-slate-900 underline-offset-2 hover:underline"
+                          className="mt-1 min-h-10 rounded-lg border border-slate-900 bg-white px-2 text-xs font-black text-slate-900 focus-visible:ring-2 focus-visible:ring-violet-400"
                         >
-                          {campaign.subject}
+                          Abrir campanha
                         </button>
                       </td>
                       <td className="px-4 py-3">
@@ -7872,7 +7875,7 @@ export default function Admin() {
               icon={<UserRound className="h-4 w-4" />}
               title="Usuários"
               // TODO(Ana): revisar copy do subtitulo da aba Usuarios.
-              subtitle="Clique em um usuário para ver cadastro, área de interesse, assinatura, onboarding, status, funcionalidades usadas e histórico de navegação."
+              subtitle="Use Abrir usuário para ver cadastro, área de interesse, assinatura, onboarding, status, funcionalidades usadas e histórico de navegação."
             >
               {/* Nivel de ABA, como o de Tarefas: o UsersDashboard e um bloco
                   so (uma lista com filtros), entao nao ha sub-blocos para
@@ -8311,7 +8314,10 @@ export default function Admin() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="afiliados" className="mt-4">
+              <TabsContent
+                value="afiliados"
+                className="mt-4 focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
                 <article
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
@@ -8856,7 +8862,10 @@ export default function Admin() {
                 </article>
               </TabsContent>
 
-              <TabsContent value="cupons" className="mt-4">
+              <TabsContent
+                value="cupons"
+                className="mt-4 focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
                 <article
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"

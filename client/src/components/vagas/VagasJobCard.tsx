@@ -65,21 +65,31 @@ export function publishedAgo(publishedAt: string | null): string | null {
   );
 }
 
-// Faixa salarial na MOEDA ORIGINAL (nunca converter), separador "a". Sem
-// valor, retorna null e a linha não existe (null nunca vira zero).
-export function salaryLine(job: VagaItem): string | null {
-  if (job.salaryMin === null && job.salaryMax === null) return null;
-  if (!job.salaryCurrency) return null;
+// Faixa salarial na MOEDA ORIGINAL (nunca converter), separador "a".
+// Ausência e zero legado aparecem sem inventar um salário de R$ 0.
+export function salaryLine(job: VagaItem): string {
+  if (
+    (job.salaryMin === null || job.salaryMin <= 0) &&
+    (job.salaryMax === null || job.salaryMax <= 0)
+  )
+    return "Não informado";
+  if (!job.salaryCurrency) return "Não informado";
   const fmt = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: job.salaryCurrency,
     maximumFractionDigits: 0,
   });
-  const min = job.salaryMin !== null ? fmt.format(job.salaryMin) : null;
-  const max = job.salaryMax !== null ? fmt.format(job.salaryMax) : null;
+  const min =
+    job.salaryMin !== null && job.salaryMin > 0
+      ? fmt.format(job.salaryMin)
+      : null;
+  const max =
+    job.salaryMax !== null && job.salaryMax > 0
+      ? fmt.format(job.salaryMax)
+      : null;
   const range =
     min && max && min !== max ? `${min} a ${max}` : (min ?? max ?? "");
-  if (!range) return null;
+  if (!range) return "Não informado";
   return job.salaryIsPredicted ? `${range} (estimativa)` : range;
 }
 

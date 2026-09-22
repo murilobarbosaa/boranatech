@@ -157,11 +157,9 @@ export function UserListRow({
   });
 
   return (
-    <button
-      type="button"
-      onClick={() => row.user_id && onOpen(row.user_id)}
-      disabled={!row.user_id}
-      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 md:py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-secondary`}
+    <div
+      data-testid="user-row"
+      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left md:py-2`}
     >
       <span className="flex w-full min-w-0 items-center gap-3 md:w-auto">
         <span
@@ -177,6 +175,14 @@ export function UserListRow({
           <span className="block truncate text-sm font-semibold text-slate-500">
             {row.email || "sem e-mail"}
           </span>
+          <button
+            type="button"
+            disabled={!row.user_id}
+            onClick={() => row.user_id && onOpen(row.user_id)}
+            className="mt-1 min-h-10 rounded-lg border border-slate-900 bg-white px-2 text-xs font-black text-slate-900 focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-50"
+          >
+            Abrir usuário
+          </button>
         </span>
       </span>
 
@@ -262,6 +268,6 @@ export function UserListRow({
           <Vazio />
         )}
       </span>
-    </button>
+    </div>
   );
 }

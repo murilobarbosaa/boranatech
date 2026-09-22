@@ -357,7 +357,9 @@ describe("UsersDashboard: colunas e selos", () => {
     // acesso.
     const TEMPLATE =
       "md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.9fr)]";
-    const linha = screen.getByText("Ana Moura").closest("button");
+    const linha = screen
+      .getByText("Ana Moura")
+      .closest("[data-testid=user-row]");
     const cabecalho = screen.getByTestId("users-header");
 
     expect((linha as HTMLElement).className).toContain(TEMPLATE);
@@ -502,7 +504,9 @@ describe("UsersDashboard: colunas e selos", () => {
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
 
-    const linha = screen.getByText("Ana Moura").closest("button");
+    const linha = screen
+      .getByText("Ana Moura")
+      .closest("[data-testid=user-row]");
     expect(linha).toBeTruthy();
     const classes = (linha as HTMLElement).className.split(/\s+/);
     expect(classes).toContain("py-3");
@@ -589,7 +593,7 @@ describe("UsersDashboard: colunas e selos", () => {
     expect(await screen.findByText("14/03/2026")).toBeTruthy();
   });
 
-  it("cada linha continua sendo um botao que abre o modal", async () => {
+  it("cada linha oferece botão explícito que abre o modal", async () => {
     rotearFetch({
       "/users?": listPayload([
         { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
@@ -598,7 +602,8 @@ describe("UsersDashboard: colunas e selos", () => {
     });
 
     render(<UsersDashboard />);
-    fireEvent.click(await screen.findByText("Ana Moura"));
+    await screen.findByText("Ana Moura");
+    fireEvent.click(screen.getByRole("button", { name: "Abrir usuário" }));
 
     expect(await screen.findByRole("dialog")).toBeTruthy();
   });
@@ -650,7 +655,8 @@ describe("UsersDashboard: modal de detalhe", () => {
     });
 
     render(<UsersDashboard />);
-    fireEvent.click(await screen.findByText("Ana Moura"));
+    await screen.findByText("Ana Moura");
+    fireEvent.click(screen.getByRole("button", { name: "Abrir usuário" }));
     return await screen.findByRole("dialog");
   }
 

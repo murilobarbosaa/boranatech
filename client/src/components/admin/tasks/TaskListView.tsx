@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ArchiveRestore, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArchiveRestore, CalendarDays } from "lucide-react";
 
 import {
   LABEL_COLOR_FALLBACK,
@@ -10,6 +10,7 @@ import {
   typeMetaOf,
 } from "./taskBoardStyles";
 import { shortIdOf } from "./taskDeepLink";
+import { taskMoveDestinations } from "./taskMoveDestinations";
 import type { TaskGroup } from "./taskFilters";
 import type { TaskAssignee, TaskLabel } from "./types";
 
@@ -17,21 +18,19 @@ import type { TaskAssignee, TaskLabel } from "./types";
 // MESMO modal e reaproveita as MESMAS funcoes de acao. Nao ha estado proprio
 // aqui: e outra apresentacao dos mesmos grupos que o board recebe.
 //
-// Nao ha arrasto na lista, de propósito: a lista serve para varrer volume, e
-// arrastar linha de tabela e pior do que os botoes de avanco em qualquer
-// dispositivo.
+// A lista oferece a mesma ação explícita de movimentação do quadro.
 
 type TaskListViewProps = {
   groups: TaskGroup[];
   boardKey: string;
   labelsById: Map<string, TaskLabel>;
   assigneesById: Map<string, TaskAssignee>;
-  columnCount: number;
-  columnIndexOf: (columnId: string) => number;
+  columns: { id: string; name: string; is_pinned: boolean }[];
+  pendingTaskIds: ReadonlySet<string>;
   selectedTaskId: string | null;
   filtersActive: boolean;
   onOpenTask: (taskId: string) => void;
-  onQuickMove: (taskId: string, direction: -1 | 1) => void;
+  onMoveTask: (taskId: string, columnId: string) => void;
   onUnarchive: (taskId: string) => void;
   onClearFilters: () => void;
 };
@@ -41,12 +40,12 @@ function TaskListViewBase({
   boardKey,
   labelsById,
   assigneesById,
-  columnCount,
-  columnIndexOf,
+  columns,
+  pendingTaskIds,
   selectedTaskId,
   filtersActive,
   onOpenTask,
-  onQuickMove,
+  onMoveTask,
   onUnarchive,
   onClearFilters,
 }: TaskListViewProps) {
@@ -101,26 +100,26 @@ function TaskListViewBase({
                 const assignee = task.assignee_id
                   ? assigneesById.get(task.assignee_id)
                   : null;
-                const index = columnIndexOf(task.column_id);
                 const archived = Boolean(task.archived_at);
+                const destinations = taskMoveDestinations(
+                  columns,
+                  task.column_id,
+                );
 
                 return (
                   <li
                     key={task.id}
-                    className={`group flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 ${
+                    data-task-id={task.id}
+                    className={`group flex flex-wrap items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50 ${
                       selectedTaskId === task.id ? "bg-violet-50" : ""
                     } ${archived ? "opacity-60" : ""}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => onOpenTask(task.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-                    >
+                    <div className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
                       <span className="shrink-0 font-mono text-[11px] font-bold text-slate-500">
                         {shortIdOf(boardKey, task.number)}
                       </span>
                       <span
-                        className={`min-w-0 flex-1 truncate text-sm font-black text-slate-950 ${
+                        className={`min-w-0 flex-1 text-sm font-black text-slate-950 [overflow-wrap:anywhere] sm:truncate ${
                           archived ? "line-through" : ""
                         }`}
                       >
@@ -143,16 +142,21 @@ function TaskListViewBase({
                           </span>
                         ) : null;
                       })}
-                      <span className={`hidden shrink-0 sm:inline ${badgeClass} ${priority.badge}`}>
+                      <span
+                        className={`hidden shrink-0 sm:inline ${badgeClass} ${priority.badge}`}
+                      >
                         {priority.label}
                       </span>
-                      <span className={`hidden shrink-0 lg:inline ${badgeClass} ${type.badge}`}>
+                      <span
+                        className={`hidden shrink-0 lg:inline ${badgeClass} ${type.badge}`}
+                      >
                         {type.label}
                       </span>
                       {task.due_date ? (
                         <span className="hidden shrink-0 items-center gap-1 text-[11px] font-bold text-slate-500 sm:inline-flex">
                           <CalendarDays className="h-3 w-3" />
-                          {task.due_date.slice(8, 10)}/{task.due_date.slice(5, 7)}
+                          {task.due_date.slice(8, 10)}/
+                          {task.due_date.slice(5, 7)}
                         </span>
                       ) : null}
                       {task.estimate !== null ? (
@@ -165,9 +169,9 @@ function TaskListViewBase({
                           {assignee.name ?? assignee.email}
                         </span>
                       ) : null}
-                    </button>
+                    </div>
 
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 items-center gap-1">
                       {archived ? (
                         <button
                           type="button"
@@ -177,28 +181,36 @@ function TaskListViewBase({
                         >
                           <ArchiveRestore className="h-3 w-3" />
                         </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            aria-label="Mover para a etapa anterior"
-                            disabled={index <= 0}
-                            onClick={() => onQuickMove(task.id, -1)}
-                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => onOpenTask(task.id)}
+                        className="min-h-10 rounded-lg border border-slate-900 bg-white px-2 text-xs font-black focus-visible:ring-2 focus-visible:ring-violet-400"
+                      >
+                        Abrir
+                      </button>
+                      {destinations.length > 0 ? (
+                        <label className="text-xs font-black">
+                          Mover para
+                          <select
+                            value=""
+                            disabled={pendingTaskIds.has(task.id)}
+                            aria-label={`Mover ${shortIdOf(boardKey, task.number)} para`}
+                            onChange={(event) => {
+                              if (event.target.value)
+                                onMoveTask(task.id, event.target.value);
+                            }}
+                            className="ml-1 min-h-10 max-w-[9rem] rounded-lg border border-slate-900 bg-white px-2 focus-visible:ring-2 focus-visible:ring-violet-400"
                           >
-                            <ChevronLeft className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Mover para a próxima etapa"
-                            disabled={index < 0 || index >= columnCount - 1}
-                            onClick={() => onQuickMove(task.id, 1)}
-                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
-                          >
-                            <ChevronRight className="h-3 w-3" />
-                          </button>
-                        </>
-                      )}
+                            <option value="">Etapa</option>
+                            {destinations.map((column) => (
+                              <option key={column.id} value={column.id}>
+                                {column.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                     </div>
                   </li>
                 );

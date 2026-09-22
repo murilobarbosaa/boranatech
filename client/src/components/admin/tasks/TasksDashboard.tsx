@@ -2,26 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  closestCorners,
-  useSensor,
-  useSensors,
-  type Announcements,
-  type DragEndEvent,
-  type DragStartEvent,
-  type ScreenReaderInstructions,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 import {
   AlertDialog,
@@ -51,12 +31,6 @@ import { BoardToolbar } from "./BoardToolbar";
 import { TaskListView } from "./TaskListView";
 import { PromptDialog } from "./PromptDialog";
 import { LAYER_DIALOG, LAYER_IN_DIALOG } from "./taskLayers";
-import { resolveBoardDrop } from "./resolveBoardDrop";
-import {
-  resolveColumnOrder,
-  resolveDropTarget,
-  type BoardOrder,
-} from "./resolveDropTarget";
 import {
   EMPTY_FILTERS,
   buildGroups,
@@ -71,12 +45,9 @@ import {
   writeViewState,
   type TaskViewState,
 } from "./taskViewState";
-import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
-import {
-  BoardColumnsSkeleton,
-  TasksPanelSkeleton,
-} from "./TasksPanelSkeleton";
+import { isTaskMoveDestination } from "./taskMoveDestinations";
+import { BoardColumnsSkeleton, TasksPanelSkeleton } from "./TasksPanelSkeleton";
 import {
   boardRowClass,
   boardScrollClass,
@@ -84,8 +55,17 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "./taskBoardStyles";
-import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
-import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
+import {
+  parseShortId,
+  readTaskParam,
+  shortIdOf,
+  withTaskParam,
+} from "./taskDeepLink";
+import type {
+  TaskBoardSnapshot,
+  TaskCard as TaskCardData,
+  TaskColumn,
+} from "./types";
 import { useBoardSnapshot } from "./useBoardSnapshot";
 
 // Aba Tarefas: board Kanban interno. Este componente e o DONO do estado e de
@@ -98,10 +78,8 @@ import { useBoardSnapshot } from "./useBoardSnapshot";
 //
 //   1. o rollback e POR TAREFA, nao do board inteiro. Restaurar o snapshot
 //      completo desfaria movimentos posteriores que ja gravaram;
-//   2. cada tarefa tem um contador de movimento. Se um segundo move partiu, o
-//      erro do primeiro NAO reverte nada: o estado da tela ja e o do segundo, e
-//      ressuscitar o anterior mostraria o card numa coluna onde ele nao esta
-//      mais nem no servidor nem na intencao de quem clicou.
+//   2. cada tarefa fica bloqueada enquanto a gravação está pendente. Um duplo
+//      toque não pode criar duas transições para a mesma tarefa.
 
 const TEMP_ID_PREFIX = "temp-";
 
@@ -148,12 +126,14 @@ export function TasksDashboard() {
     () => new Set(),
   );
   const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null);
-  const [deleteBlockedMessage, setDeleteBlockedMessage] = useState<string | null>(
-    null,
-  );
+  const [deleteBlockedMessage, setDeleteBlockedMessage] = useState<
+    string | null
+  >(null);
   const [deleteMoveTo, setDeleteMoveTo] = useState<string>("");
   const [newColumnOpen, setNewColumnOpen] = useState(false);
-  const [wipDialogColumnId, setWipDialogColumnId] = useState<string | null>(null);
+  const [wipDialogColumnId, setWipDialogColumnId] = useState<string | null>(
+    null,
+  );
   const [boardManagerOpen, setBoardManagerOpen] = useState(false);
 
   // Refs para handlers ESTAVEIS: sem isto, todo useCallback dependeria de
@@ -164,6 +144,14 @@ export function TasksDashboard() {
   const searchRef = useRef(search);
   searchRef.current = search;
   const moveSeqRef = useRef(new Map<string, number>());
+  const pendingMoveRef = useRef(new Set<string>());
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   // Contador SEPARADO do de movimentacao: ver patchTaskProperty.
   const patchSeqRef = useRef(new Map<string, number>());
   const tempCounter = useRef(0);
@@ -193,30 +181,7 @@ export function TasksDashboard() {
     });
   }, []);
 
-  // Estado do arrasto em curso. `draggingRef` existe alem do state porque o
-  // guardedRefresh e chamado de dentro de callbacks assincronos, onde ler o
-  // state daria o valor congelado do render em que a promessa comecou.
-  const [activeDrag, setActiveDrag] = useState<
-    { id: string; type: "task" | "column" } | null
-  >(null);
-  const [overColumnId, setOverColumnId] = useState<string | null>(null);
-  const draggingRef = useRef(false);
-  const missedRefreshRef = useRef(false);
-
-  /**
-   * Refresh que NAO reordena o board debaixo do dedo.
-   *
-   * Uma resposta de move que chega durante um arrasto reescreveria as posicoes
-   * de todos os cards, e o card que esta sendo arrastado saltaria de lugar no
-   * meio do gesto. Aqui o refresh fica pendente e roda quando o arrasto termina.
-   */
-  const guardedRefresh = useCallback(async () => {
-    if (draggingRef.current) {
-      missedRefreshRef.current = true;
-      return;
-    }
-    await refresh();
-  }, [refresh]);
+  const guardedRefresh = refresh;
 
   // -------------------------------------------------------------------------
   // Deep link
@@ -230,7 +195,9 @@ export function TasksDashboard() {
     if (!selectedShortId || !snapshot) return null;
     const parsed = parseShortId(selectedShortId);
     if (!parsed || parsed.boardKey !== snapshot.board.key) return null;
-    return snapshot.tasks.find((task) => task.number === parsed.number)?.id ?? null;
+    return (
+      snapshot.tasks.find((task) => task.number === parsed.number)?.id ?? null
+    );
   }, [selectedShortId, snapshot]);
 
   const openTask = useCallback(
@@ -275,7 +242,9 @@ export function TasksDashboard() {
   /** Aplica um patch no card do board sem refetch do snapshot inteiro. */
   const patchCard = useCallback(
     (id: string, patch: Partial<TaskCardData>) => {
-      applyLocal((snap) => withTask(snap, id, (item) => ({ ...item, ...patch })));
+      applyLocal((snap) =>
+        withTask(snap, id, (item) => ({ ...item, ...patch })),
+      );
     },
     [applyLocal],
   );
@@ -290,13 +259,15 @@ export function TasksDashboard() {
     [applyLocal],
   );
 
-
   // -------------------------------------------------------------------------
   // Derivados
   // -------------------------------------------------------------------------
 
   const columns = useMemo(
-    () => (snapshot ? [...snapshot.columns].sort((a, b) => a.position - b.position) : []),
+    () =>
+      snapshot
+        ? [...snapshot.columns].sort((a, b) => a.position - b.position)
+        : [],
     [snapshot],
   );
 
@@ -308,18 +279,7 @@ export function TasksDashboard() {
 
   const filtersActive = hasActiveFilters(filters);
 
-
-  // Etapas alimentadas pelo feed. Memo porque entra no contexto de drop, que e
-
-  // recalculado a cada movimento do ponteiro durante o arraste.
-
-  const pinnedColumnIds = useMemo(
-
-    () => (snapshot?.columns ?? []).filter((c) => c.is_pinned).map((c) => c.id),
-
-    [snapshot],
-
-  );
+  // Etapas alimentadas pelo feed, usadas no quadro e na lista de destinos.
 
   const visibleTasks = useMemo(
     () =>
@@ -354,7 +314,8 @@ export function TasksDashboard() {
     // downlevelIteration, entao iterar Map.values() diretamente nao compila.
     grouped.forEach((bucket: TaskCardData[]) => {
       bucket.sort(
-        (a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at),
+        (a, b) =>
+          a.position - b.position || a.created_at.localeCompare(b.created_at),
       );
     });
     return grouped;
@@ -365,80 +326,20 @@ export function TasksDashboard() {
     [snapshot?.labels],
   );
   const assigneesById = useMemo(
-    () => new Map((snapshot?.admins ?? []).map((admin) => [admin.user_id, admin])),
+    () =>
+      new Map((snapshot?.admins ?? []).map((admin) => [admin.user_id, admin])),
     [snapshot?.admins],
   );
-
-  /**
-   * Ordem visual COMPLETA (sem filtro) no formato do resolveDropTarget.
-   *
-   * De propósito nao e a lista visivel: com filtro ligado, calcular vizinhos
-   * sobre o que esta na tela produz um ponto medio arbitrario em relacao aos
-   * cards OCULTOS entre eles. Visualmente correto, ordenacao real indefinida, e
-   * ninguem percebe ate limpar o filtro. Por isso a reordenacao dentro da coluna
-   * fica DESABILITADA com filtro ativo (ver canReorder e handleDragEnd), e esta
-   * ordem segue completa para o caso sem filtro.
-   */
-  const boardOrder = useMemo<BoardOrder>(
-    () => ({
-      columns: columns.map((column) => ({
-        id: column.id,
-        taskIds: (tasksByColumn.get(column.id) ?? []).map((task) => task.id),
-      })),
-    }),
-    [columns, tasksByColumn],
-  );
-  // Ref espelhando a ordem: os handlers de drag precisam do valor ATUAL sem
-  // entrar na lista de dependencias deles, que e o que os mantem estaveis.
-  const boardOrderRef = useRef<BoardOrder>(boardOrder);
-  boardOrderRef.current = boardOrder;
-  // Mesmo motivo: os handlers de drag precisam do valor atual sem virar
-  // dependencia e perder a identidade estavel.
-  const groupsRef = useRef(groups);
-  groupsRef.current = groups;
-  const groupByRef = useRef(groupBy);
-  groupByRef.current = groupBy;
-  const filtersActiveRef = useRef(filtersActive);
-  const pinnedColumnIdsRef = useRef<readonly string[]>(pinnedColumnIds);
-  filtersActiveRef.current = filtersActive;
-  pinnedColumnIdsRef.current = pinnedColumnIds;
-
-  /** Ids dos containers para o SortableContext horizontal. Referencia estavel. */
-  const columnIds = useMemo(() => groups.map((group) => group.id), [groups]);
-
-  /**
-   * Reordenar DENTRO de um container so tem significado quando a lista mostrada
-   * e a ordenacao real: agrupada por etapa E sem filtro. Fora disso, `position`
-   * nao descreve o que esta na tela, e um ponto medio calculado entre dois
-   * vizinhos visiveis cai em lugar arbitrario em relacao ao que esta escondido.
-   */
-  const canReorder = groupBy === "column" && !filtersActive;
 
   const columnById = useMemo(
     () => new Map(columns.map((column) => [column.id, column])),
     [columns],
   );
-  const columnIndexOf = useCallback(
-    (columnId: string) => columns.findIndex((column) => column.id === columnId),
-    [columns],
-  );
-
-  const activeDragTask = useMemo(
-    () =>
-      activeDrag?.type === "task"
-        ? (snapshot?.tasks.find((task) => task.id === activeDrag.id) ?? null)
-        : null,
-    [activeDrag, snapshot],
-  );
-
   // -------------------------------------------------------------------------
   // Mover tarefa: CAMINHO UNICO
   // -------------------------------------------------------------------------
-  // Setas de avanco rapido e drag and drop entram os dois aqui. Nao existe rota
-  // paralela para o arrasto de proposito: dois caminhos com a mesma
-  // responsabilidade divergem no primeiro conserto que so um dos dois recebe.
-  // As setas passam (null, null), que significa "fim da coluna de destino"; o
-  // arrasto passa os vizinhos que resolveDropTarget apurou.
+  // O seletor no card, a lista e o modal usam a mesma mutação.
+  // (null, null) significa fim da coluna de destino.
 
   /**
    * Posicao provisoria so para a tela, entre os vizinhos. O numero definitivo
@@ -455,6 +356,27 @@ export function TasksDashboard() {
     return (before + after) / 2;
   }
 
+  const focusTaskAction = useCallback((taskId: string) => {
+    if (typeof requestAnimationFrame !== "function") return;
+    requestAnimationFrame(() => {
+      // A movimentação tira o card da coluna antiga e pode recriar seu DOM.
+      // Esperar o commit seguinte evita focar o seletor que logo será removido.
+      requestAnimationFrame(() => {
+        if (!mountedRef.current || document.querySelector('[role="dialog"]'))
+          return;
+        const card = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-task-id]"),
+        ).find((item) => item.dataset.taskId === taskId);
+        // A ação que iniciou a mudança é o seletor. `querySelector("select,
+        // button")` escolheria o primeiro elemento no DOM, que é "Abrir".
+        (
+          card?.querySelector<HTMLElement>("select") ??
+          card?.querySelector<HTMLElement>("button")
+        )?.focus();
+      });
+    });
+  }, []);
+
   const moveTaskTo = useCallback(
     async (
       taskId: string,
@@ -463,9 +385,21 @@ export function TasksDashboard() {
       afterTaskId: string | null,
     ) => {
       const current = snapshotRef.current;
-      if (!current) return;
+      if (!current) return false;
       const task = current.tasks.find((item) => item.id === taskId);
-      if (!task || task.id.startsWith(TEMP_ID_PREFIX)) return;
+      if (
+        !task ||
+        task.id.startsWith(TEMP_ID_PREFIX) ||
+        task.column_id === columnId ||
+        !current.columns.some(
+          (column) =>
+            column.id === columnId &&
+            isTaskMoveDestination(column, task.column_id),
+        ) ||
+        pendingMoveRef.current.has(taskId)
+      )
+        return false;
+      pendingMoveRef.current.add(taskId);
 
       const previousColumnId = task.column_id;
       const previousPosition = task.position;
@@ -485,7 +419,10 @@ export function TasksDashboard() {
                 .filter((item) => item.column_id === columnId)
                 .map((item) => item.position),
             ) + 1000
-          : optimisticPosition(positionOf(beforeTaskId), positionOf(afterTaskId));
+          : optimisticPosition(
+              positionOf(beforeTaskId),
+              positionOf(afterTaskId),
+            );
 
       applyLocal((snap) =>
         withTask(snap, taskId, (item) => ({
@@ -495,6 +432,7 @@ export function TasksDashboard() {
         })),
       );
       markPending(taskId, true);
+      focusTaskAction(taskId);
 
       try {
         const moved = await apiMoveTask(taskId, {
@@ -502,17 +440,32 @@ export function TasksDashboard() {
           before_task_id: beforeTaskId,
           after_task_id: afterTaskId,
         });
+        if (!mountedRef.current) return false;
         // A guarda de sequencia vale no SUCESSO tambem, nao so no erro: se um
         // segundo move ja partiu, aplicar a resposta do primeiro puxaria o card
         // de volta para a coluna intermediaria. O erro e mais obvio de imaginar,
         // mas os dois caminhos escrevem no mesmo lugar.
-        if (moveSeqRef.current.get(taskId) !== seq) return;
+        if (moveSeqRef.current.get(taskId) !== seq) return false;
         // Resposta autoritativa (position e completed_at vem do server).
         applyLocal((snap) =>
           withTask(snap, taskId, (item) => ({ ...item, ...moved })),
         );
-        await guardedRefresh();
+        try {
+          await guardedRefresh();
+        } catch {
+          if (!mountedRef.current) return false;
+          // A gravação já foi confirmada; uma falha na releitura não desfaz a
+          // transição persistida.
+          toast.warning("Tarefa movida, mas a atualização do quadro falhou.");
+        }
+        if (!mountedRef.current) return false;
+        toast.success(
+          `Tarefa movida para ${current.columns.find((column) => column.id === columnId)?.name ?? "a etapa selecionada"}.`,
+        );
+        focusTaskAction(taskId);
+        return true;
       } catch (mutationError) {
+        if (!mountedRef.current) return false;
         // Um move mais novo ja partiu: o estado atual e o dele, e desfazer aqui
         // mostraria o card num lugar que ninguem pediu.
         if (moveSeqRef.current.get(taskId) === seq) {
@@ -528,41 +481,33 @@ export function TasksDashboard() {
               ? mutationError.message
               : "Erro ao mover a tarefa.",
           );
+          focusTaskAction(taskId);
         }
+        return false;
       } finally {
         // So o ultimo movimento limpa o sinal: senao o primeiro a terminar
         // apagaria o "em andamento" de um segundo que ainda esta no ar.
-        if (moveSeqRef.current.get(taskId) === seq) markPending(taskId, false);
+        pendingMoveRef.current.delete(taskId);
+        if (mountedRef.current && moveSeqRef.current.get(taskId) === seq)
+          markPending(taskId, false);
       }
     },
-    [applyLocal, guardedRefresh, markPending],
+    [applyLocal, focusTaskAction, guardedRefresh, markPending],
   );
 
-  const handleQuickMove = useCallback(
-    (taskId: string, direction: -1 | 1) => {
-      const current = snapshotRef.current;
-      if (!current) return;
-      const task = current.tasks.find((item) => item.id === taskId);
-      if (!task) return;
-      const ordered = [...current.columns].sort((a, b) => a.position - b.position);
-      const index = ordered.findIndex((column) => column.id === task.column_id);
-      const target = ordered[index + direction];
-      if (!target) return;
-      // (null, null) = fim da coluna de destino.
-      void moveTaskTo(taskId, target.id, null, null);
+  const handleMoveTask = useCallback(
+    (taskId: string, columnId: string) => {
+      void moveTaskTo(taskId, columnId, null, null);
     },
     [moveTaskTo],
   );
 
   /**
    * Movimentacao disparada pelo select de Etapa do modal. Passa pela MESMA
-   * moveTaskTo do drag e das setas, com o mesmo contador de sequencia: nao ha
-   * terceiro caminho de movimentacao no modulo.
+   * moveTaskTo do card e da lista, com a mesma trava de gravação.
    */
   const moveFromModal = useCallback(
-    (id: string, columnId: string) => {
-      void moveTaskTo(id, columnId, null, null);
-    },
+    (id: string, columnId: string) => moveTaskTo(id, columnId, null, null),
     [moveTaskTo],
   );
 
@@ -631,7 +576,8 @@ export function TasksDashboard() {
           title,
           // "top" entra ANTES do primeiro card da coluna: o vizinho de baixo e
           // ele. "bottom" nao manda vizinho e o server poe no fim.
-          after_task_id: placement === "top" ? (columnTasks[0]?.id ?? null) : null,
+          after_task_id:
+            placement === "top" ? (columnTasks[0]?.id ?? null) : null,
         });
         // Troca no LUGAR, sem remover e reinserir: assim o card nao pisca nem
         // aparece duplicado entre a resposta e o refresh.
@@ -678,9 +624,15 @@ export function TasksDashboard() {
   // -------------------------------------------------------------------------
 
   const patchColumnOptimistic = useCallback(
-    async (columnId: string, patch: Partial<TaskColumn>, errorLabel: string) => {
+    async (
+      columnId: string,
+      patch: Partial<TaskColumn>,
+      errorLabel: string,
+    ) => {
       const current = snapshotRef.current;
-      const previous = current?.columns.find((column) => column.id === columnId);
+      const previous = current?.columns.find(
+        (column) => column.id === columnId,
+      );
       if (!previous) return;
 
       applyLocal((snap) => ({
@@ -710,7 +662,11 @@ export function TasksDashboard() {
 
   const handleRenameColumn = useCallback(
     (columnId: string, name: string) => {
-      void patchColumnOptimistic(columnId, { name }, "Erro ao renomear a etapa.");
+      void patchColumnOptimistic(
+        columnId,
+        { name },
+        "Erro ao renomear a etapa.",
+      );
     },
     [patchColumnOptimistic],
   );
@@ -741,13 +697,18 @@ export function TasksDashboard() {
     (columnId: string, direction: -1 | 1) => {
       const current = snapshotRef.current;
       if (!current) return;
-      const ordered = [...current.columns].sort((a, b) => a.position - b.position);
+      const ordered = [...current.columns].sort(
+        (a, b) => a.position - b.position,
+      );
       const index = ordered.findIndex((column) => column.id === columnId);
       const target = index + direction;
       if (index < 0 || target < 0 || target >= ordered.length) return;
 
       const reordered = [...ordered];
-      [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+      [reordered[index], reordered[target]] = [
+        reordered[target],
+        reordered[index],
+      ];
       const previousColumns = current.columns;
 
       // A rota de reorder exige o conjunto COMPLETO de ids e recusa lista
@@ -779,26 +740,29 @@ export function TasksDashboard() {
     [applyLocal, guardedRefresh],
   );
 
-  const handleCreateColumn = useCallback((name: string) => {
-    const current = snapshotRef.current;
-    if (!current) return;
-    void (async () => {
-      try {
-        await apiCreateColumn({ board_id: current.board.id, name });
-        await guardedRefresh();
-        toast.success("Etapa criada.");
-      } catch (mutationError) {
-        toast.error(
-          mutationError instanceof Error
-            ? mutationError.message
-            : "Erro ao criar a etapa.",
-        );
-      }
-    })();
-  }, [guardedRefresh]);
+  const handleCreateColumn = useCallback(
+    (name: string) => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      void (async () => {
+        try {
+          await apiCreateColumn({ board_id: current.board.id, name });
+          await guardedRefresh();
+          toast.success("Etapa criada.");
+        } catch (mutationError) {
+          toast.error(
+            mutationError instanceof Error
+              ? mutationError.message
+              : "Erro ao criar a etapa.",
+          );
+        }
+      })();
+    },
+    [guardedRefresh],
+  );
 
   /**
-   * Patch otimista de UMA propriedade da tarefa, usado pelo arrasto quando o
+   * Patch otimista de UMA propriedade da tarefa, usado na edicao quando o
    * agrupamento nao e por etapa. Reaproveita o mesmo rollback por tarefa do
    * moveTaskTo em vez de inventar outro caminho.
    */
@@ -825,7 +789,9 @@ export function TasksDashboard() {
       const seq = (patchSeqRef.current.get(taskId) ?? 0) + 1;
       patchSeqRef.current.set(taskId, seq);
 
-      applyLocal((snap) => withTask(snap, taskId, (item) => ({ ...item, ...patch })));
+      applyLocal((snap) =>
+        withTask(snap, taskId, (item) => ({ ...item, ...patch })),
+      );
       markPending(taskId, true);
       try {
         const updated = await apiPatchTask(taskId, patch);
@@ -862,7 +828,9 @@ export function TasksDashboard() {
 
   const handleUnarchive = useCallback(
     (taskId: string) => {
-      void patchTaskProperty(taskId, { archived_at: null } as Partial<TaskCardData>);
+      void patchTaskProperty(taskId, {
+        archived_at: null,
+      } as Partial<TaskCardData>);
     },
     [patchTaskProperty],
   );
@@ -900,205 +868,6 @@ export function TasksDashboard() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Drag and drop
-  // -------------------------------------------------------------------------
-
-  const sensors = useSensors(
-    // Distancia de ativacao: sem ela TODO clique vira arrasto e o card nunca
-    // abre. O mesmo numero e usado no TaskCard para separar clique de arrasto no
-    // pointerup, e os dois precisam continuar iguais.
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
-    }),
-    // No toque a ativacao e por TEMPO, nao por distancia: com distancia, deslizar
-    // o dedo para rolar a coluna arrancaria o card. Com 220ms de pressao e 6px de
-    // tolerancia, rolar na vertical, rolar o board na horizontal e arrastar um
-    // card convivem no mesmo dedo. Foi o ajuste mais sensivel da fase.
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 220, tolerance: 6 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    draggingRef.current = true;
-    setActiveDrag({
-      id: String(event.active.id),
-      type: event.active.data.current?.type === "column" ? "column" : "task",
-    });
-  }, []);
-
-  const finishDrag = useCallback(() => {
-    draggingRef.current = false;
-    setActiveDrag(null);
-    setOverColumnId(null);
-    // Refresh que foi adiado porque chegou no meio do gesto.
-    if (missedRefreshRef.current) {
-      missedRefreshRef.current = false;
-      void refresh();
-    }
-  }, [refresh]);
-
-  const handleDragOver = useCallback((event: DragEndEvent) => {
-    const overId = event.over ? String(event.over.id) : null;
-    if (!overId) {
-      setOverColumnId(null);
-      return;
-    }
-    const order = boardOrderRef.current;
-    const asColumn = order.columns.find((column) => column.id === overId);
-    const owning = order.columns.find((column) => column.taskIds.includes(overId));
-    setOverColumnId(asColumn?.id ?? owning?.id ?? null);
-  }, []);
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const activeId = String(event.active.id);
-      const overId = event.over ? String(event.over.id) : null;
-      const isColumn = event.active.data.current?.type === "column";
-      const order = boardOrderRef.current;
-      const board = snapshotRef.current;
-
-      // Encerra o gesto ANTES de disparar a mutacao: a partir daqui o refresh
-      // volta a ser imediato, e nao ha mais nada debaixo do dedo.
-      finishDrag();
-      if (!board) return;
-
-      if (isColumn) {
-        // O alvo pode ser um card; nesse caso vale a coluna dona dele.
-        const overColumn = overId
-          ? (order.columns.find((column) => column.id === overId)?.id ??
-            order.columns.find((column) => column.taskIds.includes(overId))?.id ??
-            null)
-          : null;
-        const ids = resolveColumnOrder(order, activeId, overColumn);
-        if (!ids) return;
-
-        const previousColumns = board.columns;
-        const byId = new Map(board.columns.map((column) => [column.id, column]));
-        applyLocal((snap) => ({
-          ...snap,
-          columns: ids.map((id, index) => ({
-            ...byId.get(id)!,
-            position: (index + 1) * 1000,
-          })),
-        }));
-        void (async () => {
-          try {
-            // Lista COMPLETA: o endpoint recusa parcial com incomplete_order.
-            await apiReorderColumns(board.board.id, ids);
-            await guardedRefresh();
-          } catch (mutationError) {
-            applyLocal((snap) => ({ ...snap, columns: previousColumns }));
-            toast.error(
-              mutationError instanceof Error
-                ? mutationError.message
-                : "Erro ao reordenar as etapas.",
-            );
-          }
-        })();
-        return;
-      }
-
-      if (!overId) return;
-      const task = board.tasks.find((item) => item.id === activeId);
-      if (!task) return;
-
-      // Toda a semantica do drop (agrupamento, filtro, reordenacao ambigua) mora
-      // em resolveBoardDrop, funcao pura e testada. Este handler so despacha.
-      const action = resolveBoardDrop(
-        {
-          order,
-          groups: groupsRef.current,
-          groupBy: groupByRef.current,
-          filtersActive: filtersActiveRef.current,
-          pinnedColumnIds: pinnedColumnIdsRef.current,
-          task,
-        },
-        overId,
-      );
-
-      if (action.kind === "none") return;
-      if (action.kind === "priority") {
-        void patchTaskProperty(activeId, {
-          priority: action.value as TaskCardData["priority"],
-        });
-        return;
-      }
-      if (action.kind === "assignee") {
-        void patchTaskProperty(activeId, { assignee_id: action.value });
-        return;
-      }
-      void moveTaskTo(
-        activeId,
-        action.columnId,
-        action.beforeTaskId,
-        action.afterTaskId,
-      );
-    },
-    [applyLocal, finishDrag, guardedRefresh, moveTaskTo, patchTaskProperty],
-  );
-
-  // Leitores de tela em portugues. O dnd-kit traz os textos em ingles por
-  // padrao, e um board inteiro anunciado em outro idioma e pior que silencio.
-  const screenReaderInstructions = useMemo<ScreenReaderInstructions>(
-    () => ({
-      draggable:
-        "Para mover, pressione espaço ou Enter. Use as setas para escolher o destino, espaço ou Enter para soltar, e Escape para cancelar.",
-    }),
-    [],
-  );
-
-  const announcements = useMemo<Announcements>(() => {
-    const describe = (id: string) => {
-      const board = snapshotRef.current;
-      if (!board) return id;
-      const column = board.columns.find((item) => item.id === id);
-      if (column) return `Etapa ${column.name}`;
-      const task = board.tasks.find((item) => item.id === id);
-      return task
-        ? `Tarefa ${shortIdOf(board.board.key, task.number)}, ${task.title}`
-        : id;
-    };
-    const placement = (activeId: string, overId: string | null) => {
-      const order = boardOrderRef.current;
-      const target = resolveDropTarget(order, activeId, overId);
-      if (!target) return null;
-      const board = snapshotRef.current;
-      const column = board?.columns.find((item) => item.id === target.columnId);
-      const list = order.columns.find((item) => item.id === target.columnId);
-      const total = (list?.taskIds.filter((id) => id !== activeId).length ?? 0) + 1;
-      const index =
-        target.beforeTaskId === null
-          ? 1
-          : (list?.taskIds.filter((id) => id !== activeId).indexOf(target.beforeTaskId) ?? 0) + 2;
-      return { columnName: column?.name ?? "", index, total };
-    };
-
-    return {
-      onDragStart: ({ active }) => `${describe(String(active.id))} levantada.`,
-      onDragOver: ({ active, over }) => {
-        if (!over) return "Fora de qualquer etapa.";
-        const spot = placement(String(active.id), String(over.id));
-        return spot
-          ? `${describe(String(active.id))} sobre ${spot.columnName}, posição ${spot.index} de ${spot.total}.`
-          : `${describe(String(active.id))} sobre ${describe(String(over.id))}.`;
-      },
-      onDragEnd: ({ active, over }) => {
-        if (!over) return `${describe(String(active.id))} devolvida ao lugar de origem.`;
-        const spot = placement(String(active.id), String(over.id));
-        return spot
-          ? `${describe(String(active.id))} movida para ${spot.columnName}, posição ${spot.index} de ${spot.total}.`
-          : `${describe(String(active.id))} solta em ${describe(String(over.id))}.`;
-      },
-      onDragCancel: ({ active }) =>
-        `Movimentação de ${describe(String(active.id))} cancelada.`,
-    };
   }, []);
 
   const handleRequestDeleteColumn = useCallback((columnId: string) => {
@@ -1200,9 +969,7 @@ export function TasksDashboard() {
 
   if (!snapshot) {
     return (
-      <div className={emptyBlockClass}>
-        Nenhum quadro cadastrado ainda.
-      </div>
+      <div className={emptyBlockClass}>Nenhum quadro cadastrado ainda.</div>
     );
   }
 
@@ -1237,20 +1004,12 @@ export function TasksDashboard() {
         onFiltersChange={setFilters}
         onGroupByChange={setGroupBy}
         onViewChange={(next) => setViewState({ view: next })}
-        onIncludeArchivedChange={(next) => setViewState({ includeArchived: next })}
+        onIncludeArchivedChange={(next) =>
+          setViewState({ includeArchived: next })
+        }
         onClearFilters={clearFilters}
         onManageBoards={() => setBoardManagerOpen(true)}
       />
-
-      {!canReorder && groups.some((group) => group.tasks.length > 1) ? (
-        <p className="text-[11px] font-semibold text-slate-500">
-          {groupBy === "column"
-            ? "Reordenar dentro da etapa está indisponível com filtro ativo: a lista visível não é a ordenação real. Mover entre etapas continua funcionando."
-            : "Agrupado por " +
-              (groupBy === "priority" ? "prioridade" : "responsável") +
-              ": arrastar entre grupos altera a propriedade, e não há ordem para reordenar."}
-        </p>
-      ) : null}
 
       {/* Zero etapas e verificado ANTES da visao: um quadro sem etapa nao tem o
           que listar, e na visao em lista nao havia saida nenhuma (a pessoa via
@@ -1279,117 +1038,81 @@ export function TasksDashboard() {
           boardKey={snapshot.board.key}
           labelsById={labelsById}
           assigneesById={assigneesById}
-          columnCount={columns.length}
-          columnIndexOf={columnIndexOf}
+          columns={columns}
+          pendingTaskIds={pendingTaskIds}
           selectedTaskId={selectedTaskId}
           filtersActive={filtersActive}
           onOpenTask={openTask}
-          onQuickMove={handleQuickMove}
+          onMoveTask={handleMoveTask}
           onUnarchive={handleUnarchive}
           onClearFilters={clearFilters}
         />
       ) : (
-        <DndContext
-          sensors={sensors}
-          // closestCorners lida melhor que closestCenter com listas verticais de
-          // alturas diferentes, que e exatamente o caso de cards de tamanhos
-          // variados dentro da coluna.
-          collisionDetection={closestCorners}
-          accessibility={{ announcements, screenReaderInstructions }}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={finishDrag}
-        >
-          <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-            <div data-testid="board-scroll" className={boardScrollClass}>
-              <div data-testid="board-row" className={boardRowClass}>
-                {groups.map((group, index) => (
-                  <BoardColumn
-                    key={group.id}
-                    group={group}
-                    column={columnById.get(group.id) ?? null}
-                    boardKey={snapshot.board.key}
-                    labelsById={labelsById}
-                    assigneesById={assigneesById}
-                    canMoveLeft={index > 0}
-                    canMoveRight={index < groups.length - 1}
-                    selectedTaskId={selectedTaskId}
-                    pendingTaskIds={pendingTaskIds}
-                    isDropTarget={
-                      activeDrag?.type === "task" && overColumnId === group.id
-                    }
-                    canReorder={canReorder}
-                    filtersActive={filtersActive}
-                    onOpenTask={openTask}
-                    onQuickMove={handleQuickMove}
-                    onUnarchive={handleUnarchive}
-                    onCreateTask={handleCreateTask}
-                    onRenameColumn={handleRenameColumn}
-                    onRecolorColumn={handleRecolorColumn}
-                    onRequestWipLimit={handleRequestWipLimit}
-                    onMoveColumn={handleMoveColumn}
-                    onRequestDeleteColumn={handleRequestDeleteColumn}
-                    onClearFilters={clearFilters}
-                  />
-                ))}
+        <div data-testid="board-scroll" className={boardScrollClass}>
+          <div data-testid="board-row" className={boardRowClass}>
+            {groups.map((group, index) => (
+              <BoardColumn
+                key={group.id}
+                group={group}
+                column={columnById.get(group.id) ?? null}
+                boardKey={snapshot.board.key}
+                labelsById={labelsById}
+                assigneesById={assigneesById}
+                canMoveLeft={index > 0}
+                canMoveRight={index < groups.length - 1}
+                selectedTaskId={selectedTaskId}
+                pendingTaskIds={pendingTaskIds}
+                columns={columns}
+                filtersActive={filtersActive}
+                onOpenTask={openTask}
+                onMoveTask={handleMoveTask}
+                onUnarchive={handleUnarchive}
+                onCreateTask={handleCreateTask}
+                onRenameColumn={handleRenameColumn}
+                onRecolorColumn={handleRecolorColumn}
+                onRequestWipLimit={handleRequestWipLimit}
+                onMoveColumn={handleMoveColumn}
+                onRequestDeleteColumn={handleRequestDeleteColumn}
+                onClearFilters={clearFilters}
+              />
+            ))}
 
-                {groupBy === "column" ? (
-                  // COMPACTO. O botao ocupava uma coluna inteira de 13rem para
-                  // dizer duas palavras, e numa fileira centrada esse bloco
-                  // desloca o centro visual do quadro. Vira o disco de "+" na
-                  // anatomia dos compactos da casa (o X do modal de usuario),
-                  // tracejado por ser acao de CRIAR.
-                  //
-                  // O texto que saiu vira `aria-label` e `title`: icone nao
-                  // fala, e sem os dois o botao fica sem nome acessivel. Mesmo
-                  // cuidado do avatar do header do admin.
-                  // MAIOR e CENTRADO NA VERTICAL (decisao da Ana, 30/08). O
-                  // `self-center` alinha o disco ao meio da altura das colunas
-                  // em vez de encostar no topo: numa fileira de colunas altas,
-                  // um alvo de 48px grudado na borda de cima le como sobra de
-                  // layout, e nao como acao.
-                  //
-                  // `h-12 w-12` com icone `h-5 w-5`: a familia grande dos
-                  // compactos da casa. O nome acessivel continua no
-                  // `aria-label` mais `title`, porque icone nao fala.
-                  <div
-                    data-testid="board-nova-etapa"
-                    className="flex shrink-0 items-center self-center"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setNewColumnOpen(true)}
-                      aria-label="Nova etapa"
-                      title="Nova etapa"
-                      className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
-                  </div>
-                ) : null}
+            {groupBy === "column" ? (
+              // COMPACTO. O botao ocupava uma coluna inteira de 13rem para
+              // dizer duas palavras, e numa fileira centrada esse bloco
+              // desloca o centro visual do quadro. Vira o disco de "+" na
+              // anatomia dos compactos da casa (o X do modal de usuario),
+              // tracejado por ser acao de CRIAR.
+              //
+              // O texto que saiu vira `aria-label` e `title`: icone nao
+              // fala, e sem os dois o botao fica sem nome acessivel. Mesmo
+              // cuidado do avatar do header do admin.
+              // MAIOR e CENTRADO NA VERTICAL (decisao da Ana, 30/08). O
+              // `self-center` alinha o disco ao meio da altura das colunas
+              // em vez de encostar no topo: numa fileira de colunas altas,
+              // um alvo de 48px grudado na borda de cima le como sobra de
+              // layout, e nao como acao.
+              //
+              // `h-12 w-12` com icone `h-5 w-5`: a familia grande dos
+              // compactos da casa. O nome acessivel continua no
+              // `aria-label` mais `title`, porque icone nao fala.
+              <div
+                data-testid="board-nova-etapa"
+                className="flex shrink-0 items-center self-center"
+              >
+                <button
+                  type="button"
+                  onClick={() => setNewColumnOpen(true)}
+                  aria-label="Nova etapa"
+                  title="Nova etapa"
+                  className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
               </div>
-            </div>
-          </SortableContext>
-
-          {/* Card levantado: mesma borda e sombra do board, com rotacao leve e
-              sombra mais funda para ler como "fora do plano". */}
-          <DragOverlay dropAnimation={null}>
-            {activeDragTask ? (
-              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_var(--bnt-shadow)]">
-                <span className="font-mono text-[11px] font-bold text-slate-500">
-                  {shortIdOf(snapshot.board.key, activeDragTask.number)}
-                </span>
-                <TaskCardBody
-                  task={activeDragTask}
-                  boardKey={snapshot.board.key}
-                  labelsById={labelsById}
-                  assigneesById={assigneesById}
-                />
-              </article>
             ) : null}
-          </DragOverlay>
-        </DndContext>
+          </div>
+        </div>
       )}
 
       {/* Alvo do atalho `N`. Invisivel: o composer de verdade vive em cada
@@ -1422,8 +1145,8 @@ export function TasksDashboard() {
           labels={snapshot.labels}
           siblingsInColumn={
             tasksByColumn.get(
-              snapshot.tasks.find((task) => task.id === selectedTaskId)?.column_id ??
-                "",
+              snapshot.tasks.find((task) => task.id === selectedTaskId)
+                ?.column_id ?? "",
             ) ?? []
           }
           onClose={closeTask}
@@ -1511,7 +1234,10 @@ export function TasksDashboard() {
           }
         }}
       >
-        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}>
+        <AlertDialogContent
+          overlayClassName={LAYER_DIALOG}
+          className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}
+        >
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir etapa
           </AlertDialogTitle>
