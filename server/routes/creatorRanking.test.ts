@@ -195,7 +195,8 @@ const CREATOR_PROFILES = [
     calendar_color: "rose",
     visible_to_creators: true,
   },
-  // Bia NAO consentiu (lote 11j): o @ dela sai para os outros creators.
+  // Bia NAO consentiu (lote 11j): para os outros creators o @ da rede dela
+  // (bia.tk) da lugar ao @ da conta (bia).
   {
     user_id: BIA,
     instagram_handle: null,
@@ -438,9 +439,14 @@ describe("montarRanking", () => {
     // Uma consulta por tabela, e nao uma por pessoa.
     expect(double.de("profiles")).toHaveLength(1);
     expect(double.de("creator_profiles")).toHaveLength(1);
-    // A montagem e CRUA (o @ da Bia esta la) e diz quem nao consentiu: so a
-    // Ana ligou o consentimento; Caio e Duda nem tem linha de perfil.
-    expect(ranking.ocultos).toEqual([BIA, CAIO, DUDA]);
+    // A montagem e CRUA (o @ da rede da Bia esta la) e diz quem nao consentiu,
+    // com o @ da conta de cada um: so a Ana ligou o consentimento; Caio e
+    // Duda nem tem linha de perfil.
+    expect(ranking.ocultos).toEqual([
+      { user_id: BIA, handle_da_conta: "bia" },
+      { user_id: CAIO, handle_da_conta: "caio" },
+      { user_id: DUDA, handle_da_conta: null },
+    ]);
   });
 
   it("mes anterior vem fechado, sem fecha_em", async () => {
@@ -535,7 +541,7 @@ describe("montarRanking", () => {
     expect("ocultos" in meu).toBe(false);
   });
 
-  it("personalizarRanking aplica o consentimento (lote 11j): o @ de quem esta em ocultos sai, menos para a propria pessoa; o admin ve tudo", () => {
+  it("personalizarRanking aplica o consentimento (lote 11j): o @ da rede de quem esta em ocultos vira o @ da conta, menos para a propria pessoa; o admin ve tudo", () => {
     const base: RankingMontado = {
       mes: "2026-09",
       fechado: false,
@@ -555,12 +561,12 @@ describe("montarRanking", () => {
         },
       ],
       minha_posicao: null,
-      ocultos: [ANA],
+      ocultos: [{ user_id: ANA, handle_da_conta: "ana" }],
     };
     const paraBia = personalizarRanking(base, BIA);
     expect(paraBia.posicoes[0]).toMatchObject({
       name: "Ana",
-      handle: null,
+      handle: "ana",
       rede_do_handle: null,
     });
     const paraAna = personalizarRanking(base, ANA);
@@ -629,9 +635,10 @@ describe("GET /api/creator/ranking", () => {
       [4, false],
     ]);
     expect(data.minha_posicao).toMatchObject({ posicao: 1, user_id: BIA });
-    // Consentimento (lote 11j), na visao da Bia: o proprio @ dela aparece
-    // mesmo sem consentir; o da Ana aparece porque a Ana consentiu; o do Caio
-    // (o @ da conta, sem linha de perfil) sai.
+    // Consentimento (lote 11j), na visao da Bia: o proprio @ da rede dela
+    // aparece mesmo sem consentir; o da Ana aparece porque a Ana consentiu; o
+    // do Caio e o @ da conta (sem linha de perfil), que nao esta sob
+    // consentimento e fica como esta.
     const porId = new Map(data.posicoes.map((p) => [p.user_id, p]));
     expect(porId.get(BIA)).toMatchObject({
       handle: "bia.tk",
@@ -643,7 +650,7 @@ describe("GET /api/creator/ranking", () => {
     });
     expect(porId.get(CAIO)).toMatchObject({
       name: null,
-      handle: null,
+      handle: "caio",
       rede_do_handle: null,
     });
     expect("ocultos" in data).toBe(false);
@@ -688,13 +695,17 @@ describe("GET /api/creator/ranking", () => {
     const guardado = JSON.parse(redis.memoria.get(chave)!) as RankingMontado;
     expect(guardado.posicoes.every((p) => !p.eu)).toBe(true);
     expect(guardado.minha_posicao).toBeNull();
-    // E CRU quanto ao consentimento (lote 11j): o @ da Bia esta no cache, com
-    // a lista de quem nao consentiu ao lado; quem esconde e a personalizacao,
-    // e o admin le este mesmo cache vendo tudo.
+    // E CRU quanto ao consentimento (lote 11j): o @ da rede da Bia esta no
+    // cache, com a lista de quem nao consentiu (e o @ da conta) ao lado; quem
+    // troca e a personalizacao, e o admin le este mesmo cache vendo tudo.
     expect(guardado.posicoes.find((p) => p.user_id === BIA)?.handle).toBe(
       "bia.tk",
     );
-    expect(guardado.ocultos).toEqual([BIA, CAIO, DUDA]);
+    expect(guardado.ocultos).toEqual([
+      { user_id: BIA, handle_da_conta: "bia" },
+      { user_id: CAIO, handle_da_conta: "caio" },
+      { user_id: DUDA, handle_da_conta: null },
+    ]);
 
     // Outra pessoa, mesmo mes: sai do cache, com o `eu` DELA.
     estado.usuario = {
@@ -711,9 +722,13 @@ describe("GET /api/creator/ranking", () => {
       posicao: 2,
       user_id: ANA,
     });
-    // Para a Ana, o @ da Bia (que nao consentiu) sai; o dela mesma fica.
+    // Para a Ana, o @ da rede da Bia (que nao consentiu) vira o @ da conta;
+    // o dela mesma fica.
     const posicoesDaAna = (segunda.body.data as RankingDoMes).posicoes;
-    expect(posicoesDaAna.find((p) => p.user_id === BIA)?.handle).toBeNull();
+    expect(posicoesDaAna.find((p) => p.user_id === BIA)).toMatchObject({
+      handle: "bia",
+      rede_do_handle: null,
+    });
     expect(posicoesDaAna.find((p) => p.user_id === ANA)?.handle).toBe(
       "ana.cria",
     );

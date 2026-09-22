@@ -1166,8 +1166,8 @@ describe("GET /creators/calendar", () => {
     expect(r.body.data.marcacoes).toHaveLength(1);
     const m = r.body.data.marcacoes[0];
     expect(m.autor.name).toBe("Ana");
-    // O admin ve o @ mesmo sem consentimento (lote 11j): a linha de perfil da
-    // Ana nao tem `visible_to_creators` ligado.
+    // O @ da conta aparece para todo mundo, admin inclusive: o consentimento
+    // (lote 11j) so cobre o @ das redes, e o calendario nao o mostra.
     expect(m.autor.handle).toBe("ana");
     expect(m.calendar_color).toBe("cyan");
     expect(m.collabs.map((c: { name: string }) => c.name)).toEqual(["Bia"]);

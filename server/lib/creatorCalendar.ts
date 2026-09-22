@@ -30,11 +30,6 @@ import { AVATAR_PADRAO } from "../../shared/creatorAvatar";
 import { lerAvatares } from "./creatorAvatar";
 import type { Linha } from "./creatorDashboard";
 import { textoDe } from "./creatorDashboard";
-import {
-  aplicarConsentimento,
-  consentimentoDaLinha,
-  lerConsentimentos,
-} from "./creatorProfile";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -325,37 +320,27 @@ function janelaDoDia(agora: Date): { inicio: string; fim: string } {
  * linha de perfil fica com o padrao; valor fora da lista lanca, como no
  * perfil: e o dado em si.
  */
-/**
- * Cor e consentimento de cada creator, numa consulta so de `creator_profiles`
- * (lote 11j: o consentimento entrou na MESMA leitura que a cor ja fazia, e nao
- * numa segunda, porque o mes inteiro e uma leitura por tabela).
- */
-async function lerPerfisDoCalendario(userIds: string[]): Promise<{
-  cores: Map<string, CorDoCalendario>;
-  visiveis: Map<string, boolean>;
-}> {
-  const cores = new Map<string, CorDoCalendario>();
-  const visiveis = new Map<string, boolean>();
+async function lerCoresDosCreators(
+  userIds: string[],
+): Promise<Map<string, CorDoCalendario>> {
+  const mapa = new Map<string, CorDoCalendario>();
   const vistos = new Set<string>();
   const unicos: string[] = [];
   for (const id of userIds) {
     if (vistos.has(id)) continue;
     vistos.add(id);
     unicos.push(id);
-    cores.set(id, COR_PADRAO_DO_CALENDARIO);
-    visiveis.set(id, false);
+    mapa.set(id, COR_PADRAO_DO_CALENDARIO);
   }
-  if (unicos.length === 0) return { cores, visiveis };
+  if (unicos.length === 0) return mapa;
 
   const { data, error } = await supabaseAdmin
     .from("creator_profiles")
-    .select("user_id, calendar_color, visible_to_creators")
+    .select("user_id, calendar_color")
     .in("user_id", unicos);
   if (error) throw erroEncadeavel(error);
   const linhas: Linha[] = data ?? [];
   for (const linha of linhas) {
-    const userId = textoDe(linha.user_id, "user_id");
-    visiveis.set(userId, consentimentoDaLinha(linha.visible_to_creators));
     const cor = linha.calendar_color;
     if (cor === null || cor === undefined) continue;
     if (!ehCorDoCalendario(cor)) {
@@ -363,40 +348,9 @@ async function lerPerfisDoCalendario(userIds: string[]): Promise<{
         `[creatorCalendar] calendar_color fora da lista: ${String(cor)}`,
       );
     }
-    cores.set(userId, cor);
+    mapa.set(textoDe(linha.user_id, "user_id"), cor);
   }
-  return { cores, visiveis };
-}
-
-/**
- * O lote de autores como quem olha pode ve-lo (lote 11j). A regra e a de
- * `aplicarConsentimento`; aqui so se aplica a cada entrada do lote.
- */
-function autoresParaOViewer(
-  autores: Map<string, AutorDaMarcacao>,
-  visiveis: Map<string, boolean>,
-  viewerId: string | null,
-): Map<string, AutorDaMarcacao> {
-  const mapa = new Map<string, AutorDaMarcacao>();
-  autores.forEach((autor, id) => {
-    mapa.set(
-      id,
-      aplicarConsentimento(autor, visiveis.get(id) === true, viewerId),
-    );
-  });
   return mapa;
-}
-
-/** Autores lidos e ja filtrados pelo consentimento para `viewerId`. */
-async function lerAutoresParaOViewer(
-  userIds: string[],
-  viewerId: string,
-): Promise<Map<string, AutorDaMarcacao>> {
-  const [autores, visiveis] = await Promise.all([
-    lerAutores(userIds),
-    lerConsentimentos(userIds),
-  ]);
-  return autoresParaOViewer(autores, visiveis, viewerId);
 }
 
 /**
@@ -467,14 +421,10 @@ export async function listarMesDoCalendario(
     ...linhas.map((linha) => textoDe(linha.user_id, "user_id")),
     ...idsDeParceiros,
   ];
-  const [autoresLidos, perfis] = await Promise.all([
+  const [autores, cores] = await Promise.all([
     lerAutores(todos),
-    lerPerfisDoCalendario(todos),
+    lerCoresDosCreators(todos),
   ]);
-  const cores = perfis.cores;
-  // O @ de quem nao consentiu sai para os outros creators (lote 11j). O admin
-  // (viewerId null) ve tudo.
-  const autores = autoresParaOViewer(autoresLidos, perfis.visiveis, viewerId);
 
   return linhas.map((linha) => {
     const marcacao = lerMarcacao(linha, autores);
@@ -579,13 +529,11 @@ export async function marcarDia(
   const linhas: Linha[] = inseridas.data ?? [];
   if (linhas.length === 0) return { ok: false, code: "event_already_marked" };
 
-  // So o proprio creator esta no lote: o consentimento nao esconde nada de
-  // quem olha para si mesmo, entao nao ha o que aplicar aqui.
-  const [autores, perfis] = await Promise.all([
+  const [autores, cores] = await Promise.all([
     lerAutores([userId]),
-    lerPerfisDoCalendario([userId]),
+    lerCoresDosCreators([userId]),
   ]);
-  const cor = perfis.cores.get(userId) ?? COR_PADRAO_DO_CALENDARIO;
+  const cor = cores.get(userId) ?? COR_PADRAO_DO_CALENDARIO;
   const criadas = linhas.map((linha) => ({
     ...lerMarcacao(linha, autores),
     calendar_color: cor,
@@ -705,10 +653,7 @@ export async function pedirCollab(
   const linha: Linha | null = criado.data;
   if (!linha) throw new Error("[creatorCalendar] insert sem linha de volta");
 
-  const autores = await lerAutoresParaOViewer(
-    [requesterId, ownerId],
-    requesterId,
-  );
+  const autores = await lerAutores([requesterId, ownerId]);
   const marcacao = lerMarcacao(linhaDaMarcacao, autores);
   return {
     ok: true,
@@ -751,7 +696,6 @@ function montarPedido(
 async function montarPedidos(
   linhas: Linha[],
   ladoOposto: "requester_id" | "owner_id",
-  viewerId: string,
 ): Promise<PedidoDeCollab[]> {
   if (linhas.length === 0) return [];
 
@@ -767,13 +711,10 @@ async function montarPedidos(
     marcacoes.set(textoDe(linha.id, "id"), linha);
   }
 
-  const autores = await lerAutoresParaOViewer(
-    [
-      ...linhas.map((linha) => textoDe(linha[ladoOposto], ladoOposto)),
-      ...(data ?? []).map((linha: Linha) => textoDe(linha.user_id, "user_id")),
-    ],
-    viewerId,
-  );
+  const autores = await lerAutores([
+    ...linhas.map((linha) => textoDe(linha[ladoOposto], ladoOposto)),
+    ...(data ?? []).map((linha: Linha) => textoDe(linha.user_id, "user_id")),
+  ]);
 
   const pedidos: PedidoDeCollab[] = [];
   for (const linha of linhas) {
@@ -818,12 +759,8 @@ export async function listarPedidosDeCollab(userId: string): Promise<{
   if (enviados.error) throw erroEncadeavel(enviados.error);
 
   return {
-    recebidos: await montarPedidos(
-      recebidos.data ?? [],
-      "requester_id",
-      userId,
-    ),
-    enviados: await montarPedidos(enviados.data ?? [], "owner_id", userId),
+    recebidos: await montarPedidos(recebidos.data ?? [], "requester_id"),
+    enviados: await montarPedidos(enviados.data ?? [], "owner_id"),
   };
 }
 
@@ -881,7 +818,7 @@ export async function responderPedidoDeCollab(
     throw new Error("[creatorCalendar] pedido respondido sem marcacao");
   }
   const requesterId = textoDe(linha.requester_id, "requester_id");
-  const autores = await lerAutoresParaOViewer([requesterId, ownerId], ownerId);
+  const autores = await lerAutores([requesterId, ownerId]);
   const marcacao = lerMarcacao(linhaDaMarcacao, autores);
   return {
     ok: true,

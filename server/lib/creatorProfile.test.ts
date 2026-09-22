@@ -27,7 +27,6 @@ import {
 import {
   aplicarConsentimento,
   consentimentoDaLinha,
-  lerConsentimentos,
   salvarPerfilDoCreator,
   type EntradaDoPerfil,
 } from "./creatorProfile";
@@ -166,65 +165,41 @@ describe("salvarPerfilDoCreator: followers_updated_at", () => {
   });
 });
 
-describe("consentimento (lote 11j): o que outro creator ve", () => {
+describe("consentimento (lote 11j): o @ da rede que outro creator ve", () => {
   const OUTRO = "44444444-4444-4444-4444-444444444444";
-  const autor = { user_id: UID, handle: "cria" };
   const posicao = {
     user_id: UID,
     handle: "ana.cria",
     rede_do_handle: "instagram" as const,
   };
 
-  it("so `true` libera o @; null, undefined e qualquer outra coisa escondem", () => {
+  it("so `true` libera o @ da rede; null, undefined e qualquer outra coisa nao", () => {
     expect(consentimentoDaLinha(true)).toBe(true);
     for (const valor of [false, null, undefined, "true", 1]) {
       expect(consentimentoDaLinha(valor)).toBe(false);
     }
   });
 
-  it("sem consentimento o @ sai para outro creator, e a rede junto onde existe", () => {
-    expect(aplicarConsentimento(autor, false, OUTRO)).toEqual({
+  it("sem consentimento, para outro creator o @ da rede da lugar ao @ da conta, com a rede nula", () => {
+    expect(aplicarConsentimento(posicao, false, OUTRO, "ana")).toEqual({
       user_id: UID,
-      handle: null,
+      handle: "ana",
+      rede_do_handle: null,
     });
-    expect(aplicarConsentimento(posicao, false, OUTRO)).toEqual({
+    // Sem @ de conta tambem: fica sem @, e a tela cai no nome.
+    expect(aplicarConsentimento(posicao, false, OUTRO, null)).toEqual({
       user_id: UID,
       handle: null,
       rede_do_handle: null,
     });
   });
 
-  it("com consentimento, para a propria pessoa e para o admin (null) nada muda, e e o MESMO objeto", () => {
-    expect(aplicarConsentimento(posicao, true, OUTRO)).toBe(posicao);
-    expect(aplicarConsentimento(posicao, false, UID)).toBe(posicao);
-    expect(aplicarConsentimento(posicao, false, null)).toBe(posicao);
-    // Sem @ nao ha o que esconder: o objeto volta igual.
-    const semHandle = { user_id: UID, handle: null };
-    expect(aplicarConsentimento(semHandle, false, OUTRO)).toBe(semHandle);
-  });
-
-  it("lerConsentimentos: uma consulta com `in`, sem linha e false, lista vazia nao vai ao banco", async () => {
-    const double = criarSupabaseDouble({
-      creator_profiles: (c: Chamada) => ({
-        rows: [{ user_id: UID, visible_to_creators: true }].filter((l) =>
-          c.filtros.some(
-            (f) =>
-              f.tipo === "in" &&
-              Array.isArray(f.valor) &&
-              f.valor.includes(l.user_id),
-          ),
-        ),
-      }),
-    });
-    estado.client = double.client;
-    const mapa = await lerConsentimentos([UID, OUTRO, UID]);
-    expect(mapa.get(UID)).toBe(true);
-    expect(mapa.get(OUTRO)).toBeUndefined();
-    expect(double.de("creator_profiles")).toHaveLength(1);
-    expect(double.de("creator_profiles")[0].filtros).toEqual([
-      { tipo: "in", coluna: "user_id", valor: [UID, OUTRO] },
-    ]);
-    expect((await lerConsentimentos([])).size).toBe(0);
-    expect(double.de("creator_profiles")).toHaveLength(1);
+  it("com consentimento, para a propria pessoa, para o admin (null) e quando o @ ja e o da conta nada muda, e e o MESMO objeto", () => {
+    expect(aplicarConsentimento(posicao, true, OUTRO, "ana")).toBe(posicao);
+    expect(aplicarConsentimento(posicao, false, UID, "ana")).toBe(posicao);
+    expect(aplicarConsentimento(posicao, false, null, "ana")).toBe(posicao);
+    // O @ mostrado ja e o da conta (rede nula): nao ha o que trocar.
+    const daConta = { user_id: UID, handle: "cria", rede_do_handle: null };
+    expect(aplicarConsentimento(daConta, false, OUTRO, "cria")).toBe(daConta);
   });
 });

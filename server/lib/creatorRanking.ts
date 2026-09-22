@@ -5,16 +5,18 @@
 // lista e de TODOS os creators ativos, para quem nao pontuou aparecer com zero
 // no fim, e nao sumir: sumir parece erro, zero e informacao.
 //
-// O que sai de OUTRA pessoa e o mesmo que o calendario ja expoe (nome, @,
-// avatar, cor), lido pelas mesmas funcoes, e sob a mesma regra de
-// consentimento (lote 11j, `aplicarConsentimento`): o @ de quem nao ligou
-// "mostrar meu @" sai para os outros creators.
+// O que sai de OUTRA pessoa e o mesmo que o calendario ja expoe (nome, @ da
+// conta, avatar, cor), lido pelas mesmas funcoes, MAIS o @ da rede do perfil
+// de creator, que e o unico dado sob consentimento (lote 11j,
+// `aplicarConsentimento`): para quem nao ligou "mostrar meu @", os outros
+// creators veem o @ da conta no lugar do @ da rede.
 //
 // A montagem e NEUTRA (nao sabe quem olha), de proposito: e ela que vai para o
 // cache por mes, e um cache com `eu` marcado serviria a posicao de uma pessoa
 // para todas as outras. Quem olha entra depois, em `personalizarRanking`. O @
-// vai CRU para o cache, com a lista de quem nao consentiu ao lado: o admin le
-// o mesmo cache e ve tudo, e e a personalizacao que esconde.
+// da rede vai CRU para o cache, com a lista de quem nao consentiu (e o @ da
+// conta de cada um) ao lado: o admin le o mesmo cache e ve tudo, e e a
+// personalizacao que troca.
 
 import { inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
 import {
@@ -211,9 +213,10 @@ async function lerContagens(
  * cache; `personalizarRanking` e `rankingParaOAdmin` devolvem `RankingDoMes`.
  */
 export type RankingMontado = RankingDoMes & {
-  /** user_ids com `visible_to_creators` false: o @ deles sai para os outros
-   * creators. Ausente no cache gravado antes do lote 11j (TTL de 60 s). */
-  ocultos?: string[];
+  /** Quem esta com `visible_to_creators` false, com o @ da conta de cada um:
+   * para os outros creators o @ da rede da lugar a ele. Ausente no cache
+   * gravado antes do lote 11j (TTL de 60 s). */
+  ocultos?: Array<{ user_id: string; handle_da_conta: string | null }>;
 };
 
 /**
@@ -307,7 +310,12 @@ export async function montarRanking(
     fecha_em: fechado ? null : fimIso,
     posicoes,
     minha_posicao: null,
-    ocultos: ids.filter((id) => !(perfis.get(id)?.visivel ?? false)),
+    ocultos: ids
+      .filter((id) => !(perfis.get(id)?.visivel ?? false))
+      .map((id) => ({
+        user_id: id,
+        handle_da_conta: autores.get(id)?.handle ?? null,
+      })),
   };
 }
 
@@ -327,16 +335,23 @@ function rankingDaMontagem(
 
 /**
  * O ranking neutro com quem olha marcado e o consentimento aplicado (lote
- * 11j): o @ de quem esta em `ocultos` sai, menos o do proprio viewer. Nao
- * muda o objeto do cache.
+ * 11j): o @ da rede de quem esta em `ocultos` da lugar ao @ da conta, menos
+ * para o proprio viewer. Nao muda o objeto do cache.
  */
 export function personalizarRanking(
   base: RankingMontado,
   viewerId: string,
 ): RankingDoMes {
-  const ocultos = new Set(base.ocultos ?? []);
+  const ocultos = new Map(
+    (base.ocultos ?? []).map((o) => [o.user_id, o.handle_da_conta]),
+  );
   const posicoes = base.posicoes.map((p) => ({
-    ...aplicarConsentimento(p, !ocultos.has(p.user_id), viewerId),
+    ...aplicarConsentimento(
+      p,
+      !ocultos.has(p.user_id),
+      viewerId,
+      ocultos.get(p.user_id) ?? null,
+    ),
     eu: p.user_id === viewerId,
   }));
   return rankingDaMontagem(base, posicoes);
