@@ -451,7 +451,7 @@ describe("CreatorRanking: regra, estados e janela de deploy", () => {
       expect(el.textContent).toContain(`${linha.pontos} pt`);
     }
     expect(screen.getByTestId("creator-ranking-regra").textContent).toContain(
-      "Cliques contam até 30 por dia",
+      "não vira ponto",
     );
   });
 

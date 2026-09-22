@@ -49,14 +49,15 @@ describe("PONTOS_POR_PUBLICACAO", () => {
     ]);
   });
 
-  it("os pesos sao os da tabela publica", () => {
+  it("os pesos sao os da tabela publica (valores da Ana, set/2026)", () => {
     expect(PONTOS_POR_PUBLICACAO).toEqual({
-      instagram: { post: 10, reel: 15, story: 5 },
-      tiktok: { video: 15 },
-      linkedin: { post: 10 },
+      instagram: { post: 3, reel: 10, story: 1 },
+      tiktok: { video: 10 },
+      linkedin: { post: 3 },
     });
-    expect(PONTOS_POR_VENDA).toBe(100);
-    expect(PONTOS_POR_CLIQUE).toBe(1);
+    expect(PONTOS_POR_VENDA).toBe(25);
+    // Clique deixou de pontuar: peso zero (segue contado como metrica bruta).
+    expect(PONTOS_POR_CLIQUE).toBe(0);
     expect(TETO_DE_CLIQUES_POR_DIA).toBe(30);
   });
 });
@@ -67,13 +68,14 @@ describe("calcularPontos", () => {
   });
 
   it("cada coluna pesa o que a tabela diz, e o total e a soma", () => {
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, ig_posts: 2 })).toBe(20);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, reels: 2 })).toBe(30);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, stories: 2 })).toBe(10);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, videos: 2 })).toBe(30);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, li_posts: 2 })).toBe(20);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, vendas: 2 })).toBe(200);
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, cliques: 2 })).toBe(2);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, ig_posts: 2 })).toBe(6);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, reels: 2 })).toBe(20);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, stories: 2 })).toBe(2);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, videos: 2 })).toBe(20);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, li_posts: 2 })).toBe(6);
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, vendas: 2 })).toBe(50);
+    // Clique nao pontua mais: qualquer quantidade soma zero.
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, cliques: 2 })).toBe(0);
     expect(
       calcularPontos({
         ig_posts: 1,
@@ -85,10 +87,10 @@ describe("calcularPontos", () => {
         cliques: 7,
         cadastros: 1,
       }),
-    ).toBe(10 + 15 + 5 + 15 + 10 + 100 + 7 + 20);
-    // Cadastro pelo link (lote 11i): 20 cada.
-    expect(calcularPontos({ ...CONTAGENS_ZERADAS, cadastros: 3 })).toBe(60);
-    expect(PONTOS_POR_CADASTRO).toBe(20);
+    ).toBe(3 + 10 + 1 + 10 + 3 + 25 + 0 + 8);
+    // Cadastro pelo link (lote 11i): 8 cada (valor da Ana).
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, cadastros: 3 })).toBe(24);
+    expect(PONTOS_POR_CADASTRO).toBe(8);
   });
 
   it("totalDePublicacoes soma os cinco tipos sem peso", () => {
@@ -106,7 +108,7 @@ describe("calcularPontos", () => {
 });
 
 describe("tabelaDePontos", () => {
-  it("uma linha por par (rede, tipo) na ordem das redes, depois venda e clique", () => {
+  it("uma linha por par (rede, tipo) na ordem das redes, depois venda e cadastro (clique nao pontua)", () => {
     const linhas = tabelaDePontos();
     expect(linhas.map((l) => l.chave)).toEqual([
       "instagram:post",
@@ -116,20 +118,17 @@ describe("tabelaDePontos", () => {
       "linkedin:post",
       "venda",
       "cadastro",
-      "clique",
     ]);
-    expect(linhas.map((l) => l.pontos)).toEqual([
-      10, 15, 5, 15, 10, 100, 20, 1,
-    ]);
+    expect(linhas.map((l) => l.pontos)).toEqual([3, 10, 1, 10, 3, 25, 8]);
   });
 
-  it("os rotulos vem dos mapas compartilhados, e o teto aparece na linha do clique", () => {
+  it("os rotulos vem dos mapas compartilhados; clique saiu da tabela", () => {
     const linhas = tabelaDePontos();
     expect(linhas[0].acao).toBe("Post no Instagram confirmado");
     expect(linhas[3].acao).toBe("Vídeo no TikTok confirmado");
     expect(linhas[4].acao).toBe("Post no LinkedIn confirmado");
     expect(linhas[6].acao).toBe("Cadastro pelo seu link");
-    expect(linhas[7].acao).toContain("até 30 por dia");
+    expect(linhas.some((l) => l.chave === "clique")).toBe(false);
   });
 });
 

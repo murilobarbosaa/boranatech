@@ -335,15 +335,18 @@ describe("montarRanking", () => {
     const ranking = await montarRanking(2026, 9, HOJE);
     expect(ranking.mes).toBe("2026-09");
     expect(ranking.fechado).toBe(false);
-    expect(ranking.fecha_em).toBe("2026-10-01T03:00:00.000Z");
+    // Data de fechamento fixa (Ana): fim do dia 22/10 = meia-noite de 23/10 BR.
+    expect(ranking.fecha_em).toBe("2026-10-23T03:00:00.000Z");
     expect(ranking.minha_posicao).toBeNull();
     expect(
       ranking.posicoes.map((p) => [p.posicao, p.user_id, p.pontos]),
     ).toEqual([
-      // Empate 155 x 155 e 1 venda x 1 venda: Bia tem mais publicacoes.
-      [1, BIA, 155],
-      [2, ANA, 155],
-      [3, CAIO, 65],
+      // Valores da Ana: Ana 1 reel (10) + 1 venda (25) = 35; Bia 2 posts (6) +
+      // 1 story (1) + 1 venda (25) = 32; Caio 1 video (10) + 1 li post (3) +
+      // 2 cadastros (16) = 29. Clique nao pontua. Ana lidera.
+      [1, ANA, 35],
+      [2, BIA, 32],
+      [3, CAIO, 29],
       // Duda esta ativa e nao pontuou: fim da lista, zero.
       [4, DUDA, 0],
     ]);
@@ -362,7 +365,8 @@ describe("montarRanking", () => {
   it("expoe de cada pessoa o mesmo que o calendario: nome, @, avatar e cor", async () => {
     montar();
     const ranking = await montarRanking(2026, 9, HOJE);
-    const [bia, ana, caio, duda] = ranking.posicoes;
+    // Ordem pelos valores da Ana: Ana (35) na frente de Bia (32).
+    const [ana, bia, caio, duda] = ranking.posicoes;
     expect(bia).toMatchObject({
       name: "Bia",
       handle: "bia.tk",
@@ -399,7 +403,7 @@ describe("montarRanking", () => {
       handle: "caio",
       rede_do_handle: null,
       calendar_color: "violet",
-      pontos: 65,
+      pontos: 29,
       contagens: { publicacoes: 2, vendas: 0, cliques: 0, cadastros: 2 },
       avatar: {
         mode: "icon",
@@ -505,13 +509,14 @@ describe("GET /api/creator/ranking", () => {
     expect(res.status).toBe(200);
     const data = res.body.data as RankingDoMes;
     expect(data.mes).toBe(MES_ATUAL);
+    // Viewer e a Bia, agora em 2o (Ana lidera com os valores da Ana).
     expect(data.posicoes.map((p) => [p.posicao, p.eu])).toEqual([
-      [1, true],
-      [2, false],
+      [1, false],
+      [2, true],
       [3, false],
       [4, false],
     ]);
-    expect(data.minha_posicao).toMatchObject({ posicao: 1, user_id: BIA });
+    expect(data.minha_posicao).toMatchObject({ posicao: 2, user_id: BIA });
   });
 
   it("?mes= abre um mes anterior, fechado", async () => {
@@ -559,7 +564,7 @@ describe("GET /api/creator/ranking", () => {
     expect(segunda.status).toBe(200);
     expect(double.rpcCalls).toHaveLength(1);
     expect(segunda.body.data.minha_posicao).toMatchObject({
-      posicao: 2,
+      posicao: 1,
       user_id: ANA,
     });
   });

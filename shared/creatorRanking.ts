@@ -30,24 +30,41 @@ import { ROTULO_DO_TIPO } from "./creatorPost";
  * cobrem EXATAMENTE os mesmos pares, para um tipo novo nao entrar valendo zero
  * em silencio.
  */
+// Valores definidos pela Ana (set/2026), aplicados GENERICO por tipo sobre a
+// estrutura por-rede do Murilo: Story = 1, Post = 3, Reel = 10 (video do TikTok
+// pontua como reel; post do LinkedIn como post). Sem Live.
+// TODO(Ana): decidir se mantem a distincao POR REDE (pesos diferentes por rede)
+// ou fica generico como agora; por ora fica generico, como ela pediu.
 export const PONTOS_POR_PUBLICACAO: Record<
   RedeDeCreator,
   Partial<Record<TipoDePublicacao, number>>
 > = {
-  instagram: { post: 10, reel: 15, story: 5 },
-  tiktok: { video: 15 },
-  linkedin: { post: 10 },
+  instagram: { post: 3, reel: 10, story: 1 },
+  tiktok: { video: 10 },
+  linkedin: { post: 3 },
 };
 
-export const PONTOS_POR_VENDA = 100;
-export const PONTOS_POR_CLIQUE = 1;
+export const PONTOS_POR_VENDA = 25;
+// Clique deixou de pontuar (decisao da Ana): continua REGISTRADO como metrica
+// bruta (a coluna `cliques` segue vindo da funcao SQL e aparece no painel), mas
+// nao entra no total. Peso zero em vez de remover a coluna pra nao mexer no banco.
+export const PONTOS_POR_CLIQUE = 0;
 /**
  * Cadastro pelo link (lote 11i): a conta nova que se cadastrou com o codigo
  * guardado no navegador. Entre o clique e a venda: e mais que curiosidade e
  * menos que dinheiro. Um por conta, para sempre (indice unico no banco).
  */
-export const PONTOS_POR_CADASTRO = 20;
+export const PONTOS_POR_CADASTRO = 8;
 export const TETO_DE_CLIQUES_POR_DIA = 30;
+
+/**
+ * Teto diario de Story que pontua (Ana): so as 3 primeiras do dia valem.
+ * ATENCAO: o teto de fato precisa ser aplicado na funcao SQL `creator_ranking_counts`
+ * (como o teto de clique), o que exige migration. Esta constante e a fonte do
+ * numero; a aplicacao no banco fica pendente.
+ * TODO(Ana): aplicar o teto de story na funcao SQL (migration).
+ */
+export const TETO_DE_STORIES_POR_DIA = 3;
 
 /**
  * Quantas horas depois de criada uma conta ainda conta como "cadastro pelo
@@ -63,6 +80,20 @@ export const JANELA_DE_CADASTRO_HORAS = 48;
  * o que mostrar, e a rota recusa com o mesmo 400 do mes futuro.
  */
 export const PRIMEIRO_MES_DO_RANKING = "2026-07";
+
+/**
+ * Data de FECHAMENTO exibida na contagem regressiva ("Fecha em X dias"), em dia
+ * civil de Brasilia (AAAA-MM-DD, o ultimo dia que ainda conta). A Ana definiu
+ * 22/10/2026. Antes disso o `fecha_em` usava o fim do mes corrente, o que dava
+ * "Fecha em 10 dias" no fim de setembro.
+ *
+ * ATENCAO (decisao pendente): o ranking e MENSAL (cada mes tem o seu), e uma data
+ * fixa unica nao se encaixa nesse modelo depois que ela passa. Isto corrige o
+ * numero mostrado agora, mas so faz sentido se o ranking for uma COMPETICAO unica
+ * que termina nessa data.
+ * TODO(Ana): confirmar se e competicao unica (fecha 22/10 e acabou) ou por mes.
+ */
+export const DIA_DE_FECHAMENTO_DO_RANKING = "2026-10-22";
 
 /** Segundos que o servidor guarda um mes calculado. Atrasar um minuto e aceitavel. */
 export const CACHE_DO_RANKING_SEGUNDOS = 60;
@@ -159,12 +190,9 @@ export function tabelaDePontos(): LinhaDaTabelaDePontos[] {
     acao: "Cadastro pelo seu link",
     pontos: PONTOS_POR_CADASTRO,
   });
-  linhas.push({
-    chave: "clique",
-    // TODO(Ana)
-    acao: `Clique no link (até ${TETO_DE_CLIQUES_POR_DIA} por dia)`,
-    pontos: PONTOS_POR_CLIQUE,
-  });
+  // Clique NAO entra na tabela "Como pontuar": deixou de valer ponto (decisao da
+  // Ana). Continua contado como metrica bruta e aparece nas contagens, mas nao e
+  // uma forma de GANHAR ponto.
   return linhas;
 }
 

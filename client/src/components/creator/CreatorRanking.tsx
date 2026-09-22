@@ -466,9 +466,9 @@ function ComoPontuar() {
         ))}
       </ul>
       <p className="mt-3 text-xs font-semibold text-slate-600">
-        {/* TODO(Ana) */}
-        Só publicação confirmada vale. Cliques contam até{" "}
-        {TETO_DE_CLIQUES_POR_DIA} por dia.
+        {/* TODO(Ana): revisar a palavra final. */}
+        Só publicação confirmada vale. O clique é só registrado (até{" "}
+        {TETO_DE_CLIQUES_POR_DIA} por dia), não vira ponto.
       </p>
     </section>
   );
@@ -490,7 +490,7 @@ function RankingEmBreve() {
         // TODO(Ana)
         titulo="Ranking do mês"
         // TODO(Ana)
-        frase="Os pontos vêm das publicações que você registrar, dos cliques no seu link e das vendas do mês. Os três primeiros levam prêmio."
+        frase="Os pontos vêm das publicações que você registrar, dos cadastros pelo seu link e das vendas do mês. Os três primeiros levam prêmio."
       />
     </section>
   );
@@ -566,7 +566,7 @@ export function CreatorRanking({
         // TODO(Ana)
         titulo={`Ranking de ${soOMes(mes)}`}
         // TODO(Ana)
-        frase="Publicações confirmadas, vendas pelo cupom e cliques no seu link viram pontos. Os três primeiros do mês levam prêmio."
+        frase="Publicações confirmadas, cadastros e vendas pelo cupom viram pontos. Os três primeiros do mês levam prêmio."
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">

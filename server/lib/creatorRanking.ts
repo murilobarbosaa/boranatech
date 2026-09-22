@@ -14,7 +14,7 @@
 // cache por mes, e um cache com `eu` marcado serviria a posicao de uma pessoa
 // para todas as outras. Quem olha entra depois, em `personalizarRanking`.
 
-import { inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
+import { inicioDoDiaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import {
   limitesDoMes,
   parseMesDoCalendario,
@@ -28,6 +28,7 @@ import {
   calcularPontos,
   compararCandidatos,
   CONTAGENS_ZERADAS,
+  DIA_DE_FECHAMENTO_DO_RANKING,
   mesDoDia,
   mesTemRanking,
   mesVizinho,
@@ -188,6 +189,12 @@ export async function montarRanking(
   const primeiroDoSeguinte = `${mesVizinho(chave, 1)}-01`;
   const inicioIso = inicioDoDiaBrasilia(primeiro);
   const fimIso = inicioDoDiaBrasilia(primeiroDoSeguinte);
+  // Data de fechamento MOSTRADA (contagem regressiva): a data fixa da Ana, no
+  // instante em que o dia dela acaba (meia-noite do dia seguinte). Desacoplada
+  // do `fimIso`, que continua sendo o fim da JANELA DE CONTAGEM do mes.
+  const fechaEmIso = inicioDoDiaBrasilia(
+    somarDiaCivil(DIA_DE_FECHAMENTO_DO_RANKING, 1),
+  );
 
   const [contagens, ativos] = await Promise.all([
     lerContagens(inicioIso, fimIso),
@@ -240,7 +247,7 @@ export async function montarRanking(
   return {
     mes: chave,
     fechado,
-    fecha_em: fechado ? null : fimIso,
+    fecha_em: fechado ? null : fechaEmIso,
     posicoes,
     minha_posicao: null,
   };
