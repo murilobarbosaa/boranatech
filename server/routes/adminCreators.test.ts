@@ -1167,6 +1167,9 @@ describe("GET /creators/calendar", () => {
     expect(r.body.data.marcacoes).toHaveLength(1);
     const m = r.body.data.marcacoes[0];
     expect(m.autor.name).toBe("Ana");
+    // O @ da conta aparece para todo mundo, admin inclusive: o consentimento
+    // (lote 11j) so cobre o @ das redes, e o calendario nao o mostra.
+    expect(m.autor.handle).toBe("ana");
     expect(m.calendar_color).toBe("cyan");
     expect(m.collabs.map((c: { name: string }) => c.name)).toEqual(["Bia"]);
     expect(m.meu_pedido).toBeNull();
@@ -1256,6 +1259,9 @@ describe("GET /creators/ranking (lote 11c)", () => {
             user_id: UID,
             instagram_handle: "ana.cria",
             calendar_color: "cyan",
+            // Sem consentimento: para outro creator o @ sairia (lote 11j);
+            // o admin ve tudo, e a lista de ocultos nao vai na resposta.
+            visible_to_creators: false,
           },
         ]),
       },
@@ -1268,6 +1274,7 @@ describe("GET /creators/ranking (lote 11c)", () => {
     expect(r.status).toBe(200);
     expect(r.body.data.mes).toBe(mesAtual);
     expect(r.body.data.minha_posicao).toBeNull();
+    expect(r.body.data.ocultos).toBeUndefined();
     expect(
       r.body.data.posicoes.map(
         (p: {

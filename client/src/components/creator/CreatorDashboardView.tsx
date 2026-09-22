@@ -464,10 +464,7 @@ function Serie({
     );
   }
 
-  // JANELA DE DEPLOY: o backend anterior ao lote 06b so manda `events_since`
-  // (primeiro evento de qualquer tipo). O front novo cai para ele como marco de
-  // cliques e simplesmente nao mostra o selo de vendas.
-  const clicksSince = eventos.clicks_since ?? eventos.events_since ?? null;
+  const clicksSince = eventos.clicks_since;
   const salesSince = eventos.sales_since ?? null;
 
   const comDelta = deltaPermitido(

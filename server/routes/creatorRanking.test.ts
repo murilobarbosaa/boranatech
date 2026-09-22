@@ -96,6 +96,8 @@ import {
 import {
   montarRanking,
   personalizarRanking,
+  rankingParaOAdmin,
+  type RankingMontado,
   resolverMesDoRanking,
 } from "../lib/creatorRanking";
 import {
@@ -112,6 +114,8 @@ const BIA = "22222222-2222-2222-2222-222222222222";
 const CAIO = "33333333-3333-3333-3333-333333333333";
 const DUDA = "44444444-4444-4444-4444-444444444444";
 const SAIU = "55555555-5555-5555-5555-555555555555";
+// Saiu do programa e nao pontuou (lote 11j): nao aparece em mes nenhum.
+const SAIU_ZERADO = "77777777-7777-7777-7777-777777777777";
 const ELI = "66666666-6666-6666-6666-666666666666";
 
 const USUARIO = { id: BIA, email: "bia@exemplo.com", role: "authenticated" };
@@ -160,6 +164,13 @@ const CREATORS = [
     granted_at: "2026-07-20T12:00:00+00:00",
     revoked_at: "2026-09-10T12:00:00+00:00",
   },
+  {
+    id: "c-saiu-zerado",
+    user_id: SAIU_ZERADO,
+    kind: "afiliado",
+    granted_at: "2026-07-21T12:00:00+00:00",
+    revoked_at: "2026-09-11T12:00:00+00:00",
+  },
   // Influencer ativo (lote 11b): fora do ranking, mesmo pontuando.
   {
     id: "c-eli",
@@ -183,14 +194,19 @@ const CREATOR_PROFILES = [
     instagram_handle: "ana.cria",
     tiktok_handle: "ana.tk",
     calendar_color: "rose",
+    visible_to_creators: true,
   },
+  // Bia NAO consentiu (lote 11j): para os outros creators o @ da rede dela
+  // (bia.tk) da lugar ao @ da conta (bia).
   {
     user_id: BIA,
     instagram_handle: null,
     tiktok_handle: "bia.tk",
     calendar_color: "cyan",
+    visible_to_creators: false,
   },
-  // Caio nao tem perfil de creator: cai no @ da conta e na cor padrao.
+  // Caio nao tem perfil de creator: cai no @ da conta e na cor padrao, e sem
+  // linha nao ha consentimento.
 ];
 
 let double: ReturnType<typeof criarSupabaseDouble>;
@@ -283,6 +299,11 @@ beforeEach(() => {
   ];
 });
 
+/** O total de alguem da fixture pela regra do shared, nunca escrito a mao. */
+function pontosDe(id: string): number {
+  return calcularPontos(contagensDoBanco.find((c) => c.user_id === id)!);
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -345,8 +366,6 @@ describe("montarRanking", () => {
     // Data de fechamento fixa (Ana): fim do dia 22/10 = meia-noite de 23/10 BR.
     expect(ranking.fecha_em).toBe("2026-10-23T03:00:00.000Z");
     expect(ranking.minha_posicao).toBeNull();
-    const pontosDe = (id: string) =>
-      calcularPontos(contagensDoBanco.find((c) => c.user_id === id)!);
     // A fixture EMPATA Ana e Bia em pontos, e Caio fica abaixo: sem estas
     // duas guardas a ordem abaixo poderia passar por outro motivo.
     expect(pontosDe(ANA)).toBe(pontosDe(BIA));
@@ -363,8 +382,18 @@ describe("montarRanking", () => {
       // Duda esta ativa e nao pontuou: fim da lista, zero.
       [4, DUDA, 0],
     ]);
-    // Quem foi revogado nao aparece, mesmo tendo linha na contagem.
+    // Quem foi revogado nao aparece no mes CORRENTE, mesmo tendo linha na
+    // contagem; e a leitura de creators e UMA, so dos ativos (lote 11j: os
+    // revogados so sao lidos em mes fechado).
     expect(ranking.posicoes.some((p) => p.user_id === SAIU)).toBe(false);
+    expect(ranking.posicoes.every((p) => p.saiu_do_programa === false)).toBe(
+      true,
+    );
+    expect(
+      double
+        .de("creators")
+        .some((c) => c.filtros.some((f) => f.tipo === "not.is")),
+    ).toBe(false);
     // Nem o influencer (lote 11b): a leitura de creators filtra o kind.
     expect(ranking.posicoes.some((p) => p.user_id === ELI)).toBe(false);
     expect(double.de("creators")[0].filtros).toEqual(
@@ -430,6 +459,14 @@ describe("montarRanking", () => {
     // Uma consulta por tabela, e nao uma por pessoa.
     expect(double.de("profiles")).toHaveLength(1);
     expect(double.de("creator_profiles")).toHaveLength(1);
+    // A montagem e CRUA (o @ da rede da Bia esta la) e diz quem nao consentiu,
+    // com o @ da conta de cada um: so a Ana ligou o consentimento; Caio e
+    // Duda nem tem linha de perfil.
+    expect(ranking.ocultos).toEqual([
+      { user_id: BIA, handle_da_conta: "bia" },
+      { user_id: CAIO, handle_da_conta: "caio" },
+      { user_id: DUDA, handle_da_conta: null },
+    ]);
   });
 
   it("mes anterior vem fechado, sem fecha_em", async () => {
@@ -444,8 +481,46 @@ describe("montarRanking", () => {
     });
   });
 
+  it("mes FECHADO e congelado (lote 11j): quem saiu do programa depois de pontuar fica, marcado; quem saiu sem pontuar nao aparece", async () => {
+    montar();
+    const ranking = await montarRanking(2026, 8, HOJE);
+    // SAIU: 5 vendas, a frente de todo mundo pelos pesos atuais, mesmo
+    // revogado em 10/09. A guarda diz isso pela regra, nao por um numero.
+    expect(pontosDe(SAIU)).toBeGreaterThan(pontosDe(ANA));
+    expect(
+      ranking.posicoes.map((p) => [p.posicao, p.user_id, p.saiu_do_programa]),
+    ).toEqual([
+      [1, SAIU, true],
+      // O desempate de sempre: Ana e Bia empatadas, Ana com a venda.
+      [2, ANA, false],
+      [3, BIA, false],
+      [4, CAIO, false],
+      [5, DUDA, false],
+    ]);
+    expect(ranking.posicoes[0]).toMatchObject({
+      pontos: pontosDe(SAIU),
+      name: null,
+      handle: null,
+    });
+    expect(ranking.posicoes.some((p) => p.user_id === SAIU_ZERADO)).toBe(false);
+    // Alem dos ativos, o mes fechado le os revogados (so afiliados).
+    const revogados = double
+      .de("creators")
+      .filter((c) => c.filtros.some((f) => f.tipo === "not.is"));
+    expect(revogados.length).toBeGreaterThan(0);
+    expect(revogados[0].filtros).toEqual(
+      expect.arrayContaining([
+        { tipo: "not.is", coluna: "revoked_at", valor: null },
+        { tipo: "eq", coluna: "kind", valor: "afiliado" },
+      ]),
+    );
+    // Nome, @ e perfil de quem saiu entram no mesmo lote dos ativos.
+    expect(double.de("profiles")).toHaveLength(1);
+    expect(double.de("profiles")[0].filtros[0].valor).toContain(SAIU);
+  });
+
   it("personalizarRanking marca quem olha, sem mexer no objeto base", () => {
-    const base: RankingDoMes = {
+    const base: RankingMontado = {
       mes: "2026-09",
       fechado: false,
       fecha_em: "2026-10-01T03:00:00.000Z",
@@ -476,6 +551,7 @@ describe("montarRanking", () => {
         },
       ],
       minha_posicao: null,
+      ocultos: [],
     };
     const meu = personalizarRanking(base, BIA);
     expect(meu.posicoes.map((p) => p.eu)).toEqual([false, true]);
@@ -483,6 +559,58 @@ describe("montarRanking", () => {
     expect(personalizarRanking(base, CAIO).minha_posicao).toBeNull();
     expect(base.posicoes.every((p) => !p.eu)).toBe(true);
     expect(base.minha_posicao).toBeNull();
+    // `ocultos` e da montagem, nao da resposta.
+    expect("ocultos" in meu).toBe(false);
+  });
+
+  it("personalizarRanking aplica o consentimento (lote 11j): o @ da rede de quem esta em ocultos vira o @ da conta, menos para a propria pessoa; o admin ve tudo", () => {
+    const base: RankingMontado = {
+      mes: "2026-09",
+      fechado: false,
+      fecha_em: "2026-10-01T03:00:00.000Z",
+      posicoes: [
+        {
+          posicao: 1,
+          user_id: ANA,
+          name: "Ana",
+          handle: "ana.cria",
+          rede_do_handle: "instagram",
+          avatar_url: null,
+          calendar_color: "rose",
+          pontos: 10,
+          contagens: { publicacoes: 1, vendas: 0, cliques: 0, cadastros: 0 },
+          eu: false,
+        },
+      ],
+      minha_posicao: null,
+      ocultos: [{ user_id: ANA, handle_da_conta: "ana" }],
+    };
+    const paraBia = personalizarRanking(base, BIA);
+    expect(paraBia.posicoes[0]).toMatchObject({
+      name: "Ana",
+      handle: "ana",
+      rede_do_handle: null,
+    });
+    const paraAna = personalizarRanking(base, ANA);
+    expect(paraAna.posicoes[0]).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+      eu: true,
+    });
+    expect(rankingParaOAdmin(base).posicoes[0]).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+      eu: false,
+    });
+    expect("ocultos" in rankingParaOAdmin(base)).toBe(false);
+    // Cache gravado antes do lote 11j, sem `ocultos`: nada e escondido.
+    const { ocultos: _semUso, ...antigo } = base;
+    void _semUso;
+    expect(personalizarRanking(antigo, BIA).posicoes[0].handle).toBe(
+      "ana.cria",
+    );
+    // O objeto do cache nao muda.
+    expect(base.posicoes[0].handle).toBe("ana.cria");
   });
 });
 
@@ -530,15 +658,41 @@ describe("GET /api/creator/ranking", () => {
       [4, false],
     ]);
     expect(data.minha_posicao).toMatchObject({ posicao: 2, user_id: BIA });
+    // Consentimento (lote 11j), na visao da Bia: o proprio @ da rede dela
+    // aparece mesmo sem consentir; o da Ana aparece porque a Ana consentiu; o
+    // do Caio e o @ da conta (sem linha de perfil), que nao esta sob
+    // consentimento e fica como esta.
+    const porId = new Map(data.posicoes.map((p) => [p.user_id, p]));
+    expect(porId.get(BIA)).toMatchObject({
+      handle: "bia.tk",
+      rede_do_handle: "tiktok",
+    });
+    expect(porId.get(ANA)).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+    });
+    expect(porId.get(CAIO)).toMatchObject({
+      name: null,
+      handle: "caio",
+      rede_do_handle: null,
+    });
+    expect("ocultos" in data).toBe(false);
   });
 
-  it("?mes= abre um mes anterior, fechado", async () => {
+  it("?mes= abre um mes anterior, fechado, com quem saiu do programa marcado", async () => {
     montar();
     const res = await chamar("GET", `/ranking?mes=${MES_ANTERIOR}`);
     expect(res.status).toBe(200);
     expect(res.body.data.mes).toBe(MES_ANTERIOR);
     expect(res.body.data.fechado).toBe(true);
     expect(res.body.data.fecha_em).toBeNull();
+    const data = res.body.data as RankingDoMes;
+    expect(data.posicoes[0]).toMatchObject({
+      user_id: SAIU,
+      saiu_do_programa: true,
+      eu: false,
+    });
+    expect(data.posicoes.some((p) => p.user_id === SAIU_ZERADO)).toBe(false);
   });
 
   it("400 month_out_of_range para mes futuro, anterior ao programa ou invalido", async () => {
@@ -561,9 +715,20 @@ describe("GET /api/creator/ranking", () => {
     expect(double.rpcCalls).toHaveLength(1);
     expect(redis.set).toHaveBeenCalledWith(chave, expect.any(String), "EX", 60);
     // O que foi guardado e NEUTRO: nenhum `eu`, nenhuma `minha_posicao`.
-    const guardado = JSON.parse(redis.memoria.get(chave)!) as RankingDoMes;
+    const guardado = JSON.parse(redis.memoria.get(chave)!) as RankingMontado;
     expect(guardado.posicoes.every((p) => !p.eu)).toBe(true);
     expect(guardado.minha_posicao).toBeNull();
+    // E CRU quanto ao consentimento (lote 11j): o @ da rede da Bia esta no
+    // cache, com a lista de quem nao consentiu (e o @ da conta) ao lado; quem
+    // troca e a personalizacao, e o admin le este mesmo cache vendo tudo.
+    expect(guardado.posicoes.find((p) => p.user_id === BIA)?.handle).toBe(
+      "bia.tk",
+    );
+    expect(guardado.ocultos).toEqual([
+      { user_id: BIA, handle_da_conta: "bia" },
+      { user_id: CAIO, handle_da_conta: "caio" },
+      { user_id: DUDA, handle_da_conta: null },
+    ]);
 
     // Outra pessoa, mesmo mes: sai do cache, com o `eu` DELA.
     estado.usuario = {
@@ -580,6 +745,16 @@ describe("GET /api/creator/ranking", () => {
       posicao: 1,
       user_id: ANA,
     });
+    // Para a Ana, o @ da rede da Bia (que nao consentiu) vira o @ da conta;
+    // o dela mesma fica.
+    const posicoesDaAna = (segunda.body.data as RankingDoMes).posicoes;
+    expect(posicoesDaAna.find((p) => p.user_id === BIA)).toMatchObject({
+      handle: "bia",
+      rede_do_handle: null,
+    });
+    expect(posicoesDaAna.find((p) => p.user_id === ANA)?.handle).toBe(
+      "ana.cria",
+    );
   });
 
   it("erro na funcao SQL vira 500 com a mensagem de tela, sem vazar o erro", async () => {

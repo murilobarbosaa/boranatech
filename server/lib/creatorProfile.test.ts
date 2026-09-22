@@ -24,7 +24,12 @@ import {
   type Chamada,
   type LinhaQualquer,
 } from "../routes/adminUsersHarness.test";
-import { salvarPerfilDoCreator, type EntradaDoPerfil } from "./creatorProfile";
+import {
+  aplicarConsentimento,
+  consentimentoDaLinha,
+  salvarPerfilDoCreator,
+  type EntradaDoPerfil,
+} from "./creatorProfile";
 
 const UID = "33333333-3333-3333-3333-333333333333";
 
@@ -157,5 +162,44 @@ describe("salvarPerfilDoCreator: followers_updated_at", () => {
     expect(
       double.de("creator_profiles").filter((c) => c.op === "upsert"),
     ).toHaveLength(0);
+  });
+});
+
+describe("consentimento (lote 11j): o @ da rede que outro creator ve", () => {
+  const OUTRO = "44444444-4444-4444-4444-444444444444";
+  const posicao = {
+    user_id: UID,
+    handle: "ana.cria",
+    rede_do_handle: "instagram" as const,
+  };
+
+  it("so `true` libera o @ da rede; null, undefined e qualquer outra coisa nao", () => {
+    expect(consentimentoDaLinha(true)).toBe(true);
+    for (const valor of [false, null, undefined, "true", 1]) {
+      expect(consentimentoDaLinha(valor)).toBe(false);
+    }
+  });
+
+  it("sem consentimento, para outro creator o @ da rede da lugar ao @ da conta, com a rede nula", () => {
+    expect(aplicarConsentimento(posicao, false, OUTRO, "ana")).toEqual({
+      user_id: UID,
+      handle: "ana",
+      rede_do_handle: null,
+    });
+    // Sem @ de conta tambem: fica sem @, e a tela cai no nome.
+    expect(aplicarConsentimento(posicao, false, OUTRO, null)).toEqual({
+      user_id: UID,
+      handle: null,
+      rede_do_handle: null,
+    });
+  });
+
+  it("com consentimento, para a propria pessoa, para o admin (null) e quando o @ ja e o da conta nada muda, e e o MESMO objeto", () => {
+    expect(aplicarConsentimento(posicao, true, OUTRO, "ana")).toBe(posicao);
+    expect(aplicarConsentimento(posicao, false, UID, "ana")).toBe(posicao);
+    expect(aplicarConsentimento(posicao, false, null, "ana")).toBe(posicao);
+    // O @ mostrado ja e o da conta (rede nula): nao ha o que trocar.
+    const daConta = { user_id: UID, handle: "cria", rede_do_handle: null };
+    expect(aplicarConsentimento(daConta, false, OUTRO, "cria")).toBe(daConta);
   });
 });

@@ -216,6 +216,13 @@ export type PosicaoDoRanking = {
   };
   /** Se esta linha e a de quem esta olhando. */
   eu: boolean;
+  /**
+   * Lote 11j: num mes FECHADO, quem saiu do programa depois de pontuar
+   * continua na lista, marcado. Ausente no backend anterior ao lote e sempre
+   * false no mes corrente (a lista do mes corrente e so de quem esta no
+   * programa).
+   */
+  saiu_do_programa?: boolean;
 };
 
 export type RankingDoMes = {

@@ -5,14 +5,18 @@
 // lista e de TODOS os creators ativos, para quem nao pontuou aparecer com zero
 // no fim, e nao sumir: sumir parece erro, zero e informacao.
 //
-// O que sai de OUTRA pessoa e o mesmo que o calendario ja expoe (nome, @,
-// avatar, cor), lido pelas mesmas funcoes. `visible_to_creators` nao entra
-// aqui pelo mesmo motivo que nao entra la: nenhum lugar da base o aplica a
-// terceiros hoje, e o ranking nao inaugura uma regra que o calendario nao tem.
+// O que sai de OUTRA pessoa e o mesmo que o calendario ja expoe (nome, @ da
+// conta, avatar, cor), lido pelas mesmas funcoes, MAIS o @ da rede do perfil
+// de creator, que e o unico dado sob consentimento (lote 11j,
+// `aplicarConsentimento`): para quem nao ligou "mostrar meu @", os outros
+// creators veem o @ da conta no lugar do @ da rede.
 //
 // A montagem e NEUTRA (nao sabe quem olha), de proposito: e ela que vai para o
 // cache por mes, e um cache com `eu` marcado serviria a posicao de uma pessoa
-// para todas as outras. Quem olha entra depois, em `personalizarRanking`.
+// para todas as outras. Quem olha entra depois, em `personalizarRanking`. O @
+// da rede vai CRU para o cache, com a lista de quem nao consentiu (e o @ da
+// conta de cada um) ao lado: o admin le o mesmo cache e ve tudo, e e a
+// personalizacao que troca.
 
 import { inicioDoDiaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 import {
@@ -42,6 +46,7 @@ import {
 import { lerAutores } from "./creatorCalendar";
 import type { Linha } from "./creatorDashboard";
 import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
+import { aplicarConsentimento, consentimentoDaLinha } from "./creatorProfile";
 import { coletarTudoProvandoTotal } from "./paginate";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -75,7 +80,14 @@ export function resolverMesDoRanking(
   return { ok: true, valor: { ...lido, chave } };
 }
 
-type CreatorAtivo = { user_id: string; granted_at: string };
+type CreatorDoRanking = { user_id: string; granted_at: string };
+
+function lerCreator(l: Linha): CreatorDoRanking {
+  return {
+    user_id: textoDe(l.user_id, "user_id"),
+    granted_at: textoDe(l.granted_at, "granted_at"),
+  };
+}
 
 /**
  * Os creators ATIVOS do ranking: so os `afiliado` (lote 11b). Os `influencer`
@@ -83,7 +95,7 @@ type CreatorAtivo = { user_id: string; granted_at: string };
  * usa o calendario, registra publicacao e vende e a dos afiliados, e um
  * ranking com 24 zeros no fim so empurra quem pontuou para longe da vista.
  */
-async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
+async function lerCreatorsAtivos(): Promise<CreatorDoRanking[]> {
   const linhas = await coletarTudoProvandoTotal<Linha>(
     (from, to) =>
       supabaseAdmin
@@ -96,16 +108,38 @@ async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
         .range(from, to),
     { op: "creator ranking creators", rowKey: (l) => String(l.user_id) },
   );
-  return linhas.map((l) => ({
-    user_id: textoDe(l.user_id, "user_id"),
-    granted_at: textoDe(l.granted_at, "granted_at"),
-  }));
+  return linhas.map(lerCreator);
+}
+
+/**
+ * Os afiliados que SAIRAM do programa (lote 11j). So o mes fechado os le: no
+ * corrente a lista e de quem esta no programa hoje, e num mes que ja acabou o
+ * resultado nao pode mudar porque alguem saiu depois. Quem entra e decidido
+ * em `montarRanking`, pelas contagens do mes: revogado sem ponto naquele mes
+ * nao aparece em lugar nenhum.
+ */
+async function lerCreatorsRevogados(): Promise<CreatorDoRanking[]> {
+  const linhas = await coletarTudoProvandoTotal<Linha>(
+    (from, to) =>
+      supabaseAdmin
+        .from("creators")
+        .select("user_id, granted_at", { count: "exact" })
+        .not("revoked_at", "is", null)
+        .eq("kind", "afiliado")
+        .order("granted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    { op: "creator ranking revogados", rowKey: (l) => String(l.user_id) },
+  );
+  return linhas.map(lerCreator);
 }
 
 type PerfilDeCreator = {
   handle: string | null;
   rede_do_handle: RedeDeCreator | null;
   calendar_color: string;
+  /** `visible_to_creators` (lote 11j); sem linha e false. */
+  visivel: boolean;
 };
 
 /**
@@ -121,7 +155,9 @@ async function lerPerfisDeCreator(
   if (userIds.length === 0) return mapa;
   const { data, error } = await supabaseAdmin
     .from("creator_profiles")
-    .select("user_id, instagram_handle, tiktok_handle, calendar_color")
+    .select(
+      "user_id, instagram_handle, tiktok_handle, calendar_color, visible_to_creators",
+    )
     .in("user_id", userIds);
   if (error) throw erroEncadeavel(error);
   const linhas: Linha[] = data ?? [];
@@ -138,6 +174,7 @@ async function lerPerfisDeCreator(
       handle: instagram ?? tiktok,
       rede_do_handle: instagram ? "instagram" : tiktok ? "tiktok" : null,
       calendar_color: cor,
+      visivel: consentimentoDaLinha(linha.visible_to_creators),
     });
   }
   return mapa;
@@ -172,18 +209,32 @@ async function lerContagens(
 }
 
 /**
+ * A montagem neutra com o que a personalizacao precisa e o client nao recebe:
+ * quem nao consentiu em mostrar o @ (lote 11j). E este objeto que vai para o
+ * cache; `personalizarRanking` e `rankingParaOAdmin` devolvem `RankingDoMes`.
+ */
+export type RankingMontado = RankingDoMes & {
+  /** Quem esta com `visible_to_creators` false, com o @ da conta de cada um:
+   * para os outros creators o @ da rede da lugar a ele. Ausente no cache
+   * gravado antes do lote 11j (TTL de 60 s). */
+  ocultos?: Array<{ user_id: string; handle_da_conta: string | null }>;
+};
+
+/**
  * O ranking de um mes, NEUTRO (sem `eu`, sem `minha_posicao`). E o que vai
  * para o cache; `personalizarRanking` poe quem olha.
  *
  * Intervalo: [meia-noite de Brasilia do dia 1, meia-noite de Brasilia do dia 1
- * do mes seguinte). Creator revogado sai da lista mesmo num mes fechado em que
- * pontuou: a lista e de quem esta no programa hoje.
+ * do mes seguinte). No mes CORRENTE a lista e de quem esta no programa hoje.
+ * Num mes FECHADO ela e congelada (lote 11j): quem saiu do programa depois de
+ * pontuar naquele mes continua la, marcado com `saiu_do_programa`; quem saiu
+ * sem pontuar nao aparece.
  */
 export async function montarRanking(
   ano: number,
   mes: number,
   hoje: string,
-): Promise<RankingDoMes> {
+): Promise<RankingMontado> {
   const { primeiro } = limitesDoMes(ano, mes);
   const chave = mesDoDia(primeiro);
   const primeiroDoSeguinte = `${mesVizinho(chave, 1)}-01`;
@@ -195,26 +246,42 @@ export async function montarRanking(
   const fechaEmIso = inicioDoDiaBrasilia(
     somarDiaCivil(DIA_DE_FECHAMENTO_DO_RANKING, 1),
   );
+  const fechado = chave < mesDoDia(hoje);
 
-  const [contagens, ativos] = await Promise.all([
+  const [contagens, ativos, revogados] = await Promise.all([
     lerContagens(inicioIso, fimIso),
     lerCreatorsAtivos(),
+    fechado ? lerCreatorsRevogados() : Promise.resolve([]),
   ]);
-  const ids = ativos.map((c) => c.user_id);
+  // Revogado entra so com ponto no mes: "contagem > 0" e "pontos > 0" sao a
+  // mesma coisa, porque toda coluna contada vale ponto positivo.
+  const quemSaiu = revogados.filter((c) => {
+    const contagem = contagens.get(c.user_id);
+    return contagem !== undefined && calcularPontos(contagem) > 0;
+  });
+  const listados = [
+    ...ativos.map((c) => ({ ...c, saiu: false })),
+    ...quemSaiu.map((c) => ({ ...c, saiu: true })),
+  ];
+  const ids = listados.map((c) => c.user_id);
   const [autores, perfis] = await Promise.all([
     lerAutores(ids),
     lerPerfisDeCreator(ids),
   ]);
 
-  const candidatos = ativos.map((c) => {
+  const candidatos = listados.map((c) => {
     const contagem = contagens.get(c.user_id) ?? CONTAGENS_ZERADAS;
-    const candidato: CandidatoDoRanking & { contagem: ContagensDoRanking } = {
+    const candidato: CandidatoDoRanking & {
+      contagem: ContagensDoRanking;
+      saiu: boolean;
+    } = {
       user_id: c.user_id,
       granted_at: c.granted_at,
       pontos: calcularPontos(contagem),
       vendas: contagem.vendas,
       publicacoes: totalDePublicacoes(contagem),
       contagem,
+      saiu: c.saiu,
     };
     return candidato;
   });
@@ -240,31 +307,64 @@ export async function montarRanking(
         cadastros: c.contagem.cadastros,
       },
       eu: false,
+      saiu_do_programa: c.saiu,
     };
   });
 
-  const fechado = chave < mesDoDia(hoje);
   return {
     mes: chave,
     fechado,
     fecha_em: fechado ? null : fechaEmIso,
     posicoes,
     minha_posicao: null,
+    ocultos: ids
+      .filter((id) => !(perfis.get(id)?.visivel ?? false))
+      .map((id) => ({
+        user_id: id,
+        handle_da_conta: autores.get(id)?.handle ?? null,
+      })),
   };
 }
 
-/** O ranking neutro com quem olha marcado. Nao muda o objeto do cache. */
-export function personalizarRanking(
-  base: RankingDoMes,
-  viewerId: string,
+/** Os campos que saem para o client, e nada da montagem (`ocultos`). */
+function rankingDaMontagem(
+  base: RankingMontado,
+  posicoes: PosicaoDoRanking[],
 ): RankingDoMes {
-  const posicoes = base.posicoes.map((p) => ({
-    ...p,
-    eu: p.user_id === viewerId,
-  }));
   return {
-    ...base,
+    mes: base.mes,
+    fechado: base.fechado,
+    fecha_em: base.fecha_em,
     posicoes,
     minha_posicao: posicoes.find((p) => p.eu) ?? null,
   };
+}
+
+/**
+ * O ranking neutro com quem olha marcado e o consentimento aplicado (lote
+ * 11j): o @ da rede de quem esta em `ocultos` da lugar ao @ da conta, menos
+ * para o proprio viewer. Nao muda o objeto do cache.
+ */
+export function personalizarRanking(
+  base: RankingMontado,
+  viewerId: string,
+): RankingDoMes {
+  const ocultos = new Map(
+    (base.ocultos ?? []).map((o) => [o.user_id, o.handle_da_conta]),
+  );
+  const posicoes = base.posicoes.map((p) => ({
+    ...aplicarConsentimento(
+      p,
+      !ocultos.has(p.user_id),
+      viewerId,
+      ocultos.get(p.user_id) ?? null,
+    ),
+    eu: p.user_id === viewerId,
+  }));
+  return rankingDaMontagem(base, posicoes);
+}
+
+/** O ranking como o admin o ve: tudo, sem `eu` e sem `ocultos`. */
+export function rankingParaOAdmin(base: RankingMontado): RankingDoMes {
+  return rankingDaMontagem(base, base.posicoes);
 }

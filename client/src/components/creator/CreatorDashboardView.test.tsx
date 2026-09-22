@@ -126,7 +126,6 @@ function painelBase(): CreatorDashboard {
     eventos: {
       clicks_since: "2026-09-10T12:00:00Z",
       sales_since: "2026-09-15T18:00:00Z",
-      events_since: "2026-09-10T12:00:00Z",
       serie: [
         { dia: "2026-09-14", ...ZERO },
         {
@@ -346,7 +345,6 @@ describe("CreatorDashboardView: estados sem dado", () => {
       ...p.eventos,
       clicks_since: null,
       sales_since: null,
-      events_since: null,
       serie: [],
       ultimo_click_at: null,
       ultima_venda_at: null,
@@ -782,7 +780,6 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
     const p = painelBase();
     p.eventos.sales_since = "2026-07-10T15:00:00Z";
     p.eventos.clicks_since = "2026-09-16T12:00:00Z";
-    p.eventos.events_since = "2026-09-16T12:00:00Z";
     desenhar(p);
     expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
       "Cliques desde 16/09/2026",
@@ -804,7 +801,6 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
     // eram, e o zero deles e zero de verdade, mesmo sem clique nenhum.
     const p = painelBase();
     p.eventos.clicks_since = "2026-09-14T05:10:00Z";
-    p.eventos.events_since = "2026-09-14T05:10:00Z";
     p.eventos.sales_since = "2026-07-10T15:00:00Z";
     p.eventos.serie = [
       { dia: "2026-09-12", ...ZERO, sales: 1 },
@@ -825,30 +821,6 @@ describe("CreatorDashboardView: vendas reconstruidas antes do marco de cliques",
         .getByTestId("creator-grafico")
         .getAttribute("data-cliques-ausentes"),
     ).toBe("2");
-  });
-
-  it("JANELA DE DEPLOY: o backend anterior, sem os marcos novos, ainda desenha a serie", () => {
-    // A Vercel sobe antes do Railway. Por 1 a 3 minutos o front novo recebe o
-    // payload antigo, que so tem `events_since`: o marco de cliques cai para
-    // ele e o selo de vendas simplesmente nao aparece.
-    const p = painelBase();
-    const eventosAntigos: Record<string, unknown> = { ...p.eventos };
-    delete eventosAntigos.clicks_since;
-    delete eventosAntigos.sales_since;
-    const antigo = {
-      ...p,
-      eventos: eventosAntigos,
-    } as unknown as CreatorDashboard;
-    desenhar(antigo);
-    expect(screen.getByTestId("creator-cliques-desde").textContent).toBe(
-      "Cliques desde 10/09/2026",
-    );
-    expect(screen.queryByTestId("creator-vendas-desde")).toBeNull();
-    expect(
-      screen
-        .getByTestId("creator-grafico")
-        .getAttribute("data-cliques-ausentes"),
-    ).toBe("0");
   });
 });
 

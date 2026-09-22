@@ -9,6 +9,7 @@ import {
   type CodigoDeSeguidores,
   type CreatorPerfilDados,
   type CreatorPixMascarada,
+  type RedeDeCreator,
   type Resultado,
   type TipoDeChavePix,
   COR_PADRAO_DO_CALENDARIO,
@@ -424,4 +425,53 @@ export async function enriquecerPaginaDoQuadro(
     }
   }
   return mapa;
+}
+
+// ---------------------------------------------------------------------------
+// CONSENTIMENTO (lote 11j): o que OUTRO creator ve do @ DAS REDES de alguem.
+//
+// O checkbox do perfil promete "Mostrar meu @ e meus seguidores para outros
+// creators", e o @ ali e o das REDES (Instagram, TikTok), que o creator
+// cadastrou no perfil de creator. O @ da conta no site (`profiles.handle`) e
+// publico por natureza e continua aparecendo para todo mundo: no calendario,
+// nas collabs e no ranking. Por isso a regra so age no ranking, que e o unico
+// lugar que mostra o @ da rede de terceiros, e age TROCANDO o @ da rede pelo
+// @ da conta, nunca escondendo o nome. Seguidores nunca sairam para terceiros.
+// O proprio viewer sempre ve o seu @ da rede; o admin ve tudo.
+
+/**
+ * `true` e o unico valor que libera o @ da rede. A coluna e NOT NULL boolean,
+ * entao qualquer outra coisa e "nao consentiu", que e o lado seguro do erro: um
+ * @ a mais trocado pelo da conta, nunca um a menos. Por isso NAO lanca como
+ * `lerPerfilDoCreator`: aqui o valor degradado nao se confunde com correto.
+ */
+export function consentimentoDaLinha(valor: unknown): boolean {
+  return valor === true;
+}
+
+/** O minimo que a regra precisa: quem e, o @ mostrado e de qual rede ele e. */
+export type AutorComHandleDeRede = {
+  user_id: string;
+  handle: string | null;
+  rede_do_handle: RedeDeCreator | null;
+};
+
+/**
+ * A posicao como quem olha pode ve-la. `viewerId` null e o admin, que ve tudo;
+ * o proprio viewer ve o seu @ da rede mesmo sem consentir; para qualquer outro
+ * creator, sem `visivel`, o @ da rede da lugar ao @ da conta
+ * (`handleDaConta`, o `profiles.handle` que `lerAutores` ja le), com
+ * `rede_do_handle` nulo. Quando o @ mostrado ja e o da conta
+ * (`rede_do_handle` nulo) nao ha o que trocar. Devolve o MESMO objeto quando
+ * nada muda.
+ */
+export function aplicarConsentimento<T extends AutorComHandleDeRede>(
+  autor: T,
+  visivel: boolean,
+  viewerId: string | null,
+  handleDaConta: string | null,
+): T {
+  if (viewerId === null || viewerId === autor.user_id || visivel) return autor;
+  if (autor.rede_do_handle === null) return autor;
+  return { ...autor, handle: handleDaConta, rede_do_handle: null };
 }

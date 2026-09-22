@@ -94,6 +94,11 @@ const CHIP =
 const CHIP_VOCE =
   "rounded-full border-2 border-ink-on-accent bg-[var(--bnt-accent-solid)] px-2 py-0.5 text-[11px] font-black uppercase text-ink-on-accent";
 
+// Discreto de proposito (lote 11j): num mes fechado, quem saiu do programa
+// depois de pontuar fica na lista com esta marca, sem cor de destaque.
+const CHIP_SAIU =
+  "rounded-full border-2 border-slate-300 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600";
+
 const BOTAO_DO_MES =
   "bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 disabled:cursor-not-allowed disabled:opacity-40";
 
@@ -320,6 +325,15 @@ function LugarDoPodio({
                 Você
               </span>
             ) : null}
+            {p.saiu_do_programa ? (
+              <span
+                data-testid={`creator-ranking-saiu-podio-${lugar}`}
+                className={CHIP_SAIU}
+              >
+                {/* TODO(Ana) */}
+                saiu do programa
+              </span>
+            ) : null}
           </p>
           {p.name && p.handle ? (
             <p className="text-xs font-bold text-slate-600">{p.name}</p>
@@ -384,6 +398,15 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
               className={CHIP_VOCE}
             >
               Você
+            </span>
+          ) : null}
+          {p.saiu_do_programa ? (
+            <span
+              data-testid={`creator-ranking-saiu-${p.user_id}`}
+              className={CHIP_SAIU}
+            >
+              {/* TODO(Ana) */}
+              saiu do programa
             </span>
           ) : null}
         </span>

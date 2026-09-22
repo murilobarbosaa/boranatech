@@ -175,7 +175,6 @@ const PAINEL: CreatorDashboard = {
   eventos: {
     clicks_since: null,
     sales_since: null,
-    events_since: null,
     serie: [],
     periodo: {
       clicks: 0,

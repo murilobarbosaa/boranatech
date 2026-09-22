@@ -440,6 +440,45 @@ describe("CreatorRanking: lista", () => {
   });
 });
 
+describe("CreatorRanking: quem saiu do programa (lote 11j)", () => {
+  it("num mes fechado, a marca aparece no podio e na lista para quem saiu, e so para eles", async () => {
+    responderCom(
+      ranking(
+        [
+          posicao(1, "a", 500, { saiu_do_programa: true }),
+          posicao(2, "b", 100, { saiu_do_programa: false }),
+          posicao(3, "c", 25),
+          posicao(4, "d", 5, { saiu_do_programa: true }),
+          posicao(5, "e", 1),
+        ],
+        { mes: "2026-08", fechado: true, fecha_em: null },
+      ),
+    );
+    montar("/creator?aba=ranking&mes=2026-08");
+    const podio = await screen.findByTestId("creator-ranking-podio");
+    expect(
+      within(podio).getByTestId("creator-ranking-saiu-podio-1").textContent,
+    ).toBe("saiu do programa");
+    expect(
+      within(podio).queryByTestId("creator-ranking-saiu-podio-2"),
+    ).toBeNull();
+    expect(
+      within(podio).queryByTestId("creator-ranking-saiu-podio-3"),
+    ).toBeNull();
+    const lista = screen.getByTestId("creator-ranking-lista");
+    expect(
+      within(lista).getByTestId("creator-ranking-saiu-d").textContent,
+    ).toBe("saiu do programa");
+    expect(within(lista).queryByTestId("creator-ranking-saiu-e")).toBeNull();
+    // Continua na ordem do servidor: sair do programa nao mexe na posicao.
+    expect(
+      within(lista)
+        .getAllByTestId(/creator-ranking-linha-/)
+        .map((el) => el.getAttribute("data-testid")),
+    ).toEqual(["creator-ranking-linha-d", "creator-ranking-linha-e"]);
+  });
+});
+
 describe("CreatorRanking: regra, estados e janela de deploy", () => {
   it("a tabela 'Como pontuar' e a constante compartilhada, linha por linha", async () => {
     responderCom(ranking([]));

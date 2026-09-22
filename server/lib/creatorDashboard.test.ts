@@ -392,7 +392,6 @@ describe("montarPainelDoCreator: totais e codigos", () => {
       commission_paid_cents: 0,
       conversao_pct: null,
     });
-    expect(painel.eventos.events_since).toBeNull();
     expect(painel.eventos.clicks_since).toBeNull();
     expect(painel.eventos.sales_since).toBeNull();
     expect(double.de("creator_events")).toHaveLength(0);
@@ -488,8 +487,6 @@ describe("montarPainelDoCreator: eventos", () => {
     // nao o primeiro clique do creator (10/09 na fixture).
     expect(eventos.clicks_since).toBe("2026-09-14T05:10:00Z");
     expect(eventos.sales_since).toBe("2026-09-15T18:00:00Z");
-    // Alias por um lote: igual ao marco de cliques.
-    expect(eventos.events_since).toBe("2026-09-14T05:10:00Z");
     expect(eventos.ultimo_click_at).toBe("2026-09-18T01:30:00Z");
     expect(eventos.ultima_venda_at).toBe("2026-09-15T18:00:00Z");
 
@@ -529,10 +526,9 @@ describe("montarPainelDoCreator: eventos", () => {
     montarPadrao({ creator_events: respostaQueFiltra([]) });
     const { eventos } = await painelOk("7d", "creator");
     // Com codigo, o marco de cliques e o inicio da medicao mesmo sem evento:
-    // zero clique desde entao e zero de verdade. O alias acompanha. A serie
-    // continua vazia, porque o inicio dela e o primeiro evento real.
+    // zero clique desde entao e zero de verdade. A serie continua vazia,
+    // porque o inicio dela e o primeiro evento real.
     expect(eventos.clicks_since).toBe("2026-09-14T05:10:00Z");
-    expect(eventos.events_since).toBe("2026-09-14T05:10:00Z");
     expect(eventos.sales_since).toBeNull();
     expect(eventos.serie).toEqual([]);
     expect(eventos.periodo).toEqual(ZERO);
@@ -548,7 +544,7 @@ describe("montarPainelDoCreator: eventos", () => {
     expect(eventos.periodo_anterior).toBeNull();
   });
 
-  it("events_since dentro da janela: a serie comeca nele, sem inventar dia", async () => {
+  it("primeiro evento dentro da janela: a serie comeca nele, sem inventar dia", async () => {
     montarPadrao({
       creator_events: respostaQueFiltra([
         {
@@ -572,7 +568,7 @@ describe("montarPainelDoCreator: eventos", () => {
     expect(argsDistintos().map((a) => a.p_from)).toEqual([INICIO_7D]);
   });
 
-  it("all: a serie vai de events_since ate hoje e o banco recebe events_since", async () => {
+  it("all: a serie vai do primeiro evento ate hoje e o banco recebe esse inicio", async () => {
     montarPadrao();
     estado.rpc.porInicio = new Map([["2026-09-10T12:00:00Z", SERIE_7D]]);
     const { eventos } = await painelOk("all", "creator");
@@ -802,7 +798,6 @@ describe("montarPainelDoCreator: vendas reconstruidas antes do marco de cliques"
     expect(eventos.sales_since).toBe("2026-07-10T15:00:00Z");
     // O primeiro clique e de 15/09; o marco e o deploy do lote 01, antes dele.
     expect(eventos.clicks_since).toBe("2026-09-14T05:10:00Z");
-    expect(eventos.events_since).toBe("2026-09-14T05:10:00Z");
   });
 
   it("all: a serie comeca na venda de julho, e o banco recebe esse inicio", async () => {
@@ -862,7 +857,6 @@ describe("montarPainelDoCreator: vendas reconstruidas antes do marco de cliques"
     montarPadrao({ creator_events: respostaQueFiltra([VENDA_DE_JULHO]) });
     const { eventos } = await painelOk("7d", "creator");
     expect(eventos.clicks_since).toBe("2026-09-14T05:10:00Z");
-    expect(eventos.events_since).toBe("2026-09-14T05:10:00Z");
     expect(eventos.sales_since).toBe("2026-07-10T15:00:00Z");
     expect(eventos.serie).toHaveLength(7);
   });
