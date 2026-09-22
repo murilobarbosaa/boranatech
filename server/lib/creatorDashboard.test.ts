@@ -234,6 +234,7 @@ const ZERO = {
   clicks: 0,
   checkouts: 0,
   sales: 0,
+  signups: 0,
   revenue_cents: 0,
   commission_cents: 0,
 };
@@ -429,6 +430,7 @@ describe("montarPainelDoCreator: eventos", () => {
       clicks: 5,
       checkouts: 0,
       sales: 1,
+      signups: 0,
       revenue_cents: 2093,
       commission_cents: 628,
     });
@@ -437,6 +439,7 @@ describe("montarPainelDoCreator: eventos", () => {
       clicks: 7,
       checkouts: 0,
       sales: 1,
+      signups: 0,
       revenue_cents: 2093,
       commission_cents: 628,
     });
@@ -600,6 +603,7 @@ describe("montarPainelDoCreator: eventos", () => {
       clicks: 7,
       checkouts: 0,
       sales: 1,
+      signups: 0,
       revenue_cents: 2093,
       commission_cents: 628,
     });
@@ -633,6 +637,7 @@ describe("montarPainelDoCreator: eventos", () => {
       clicks: 0,
       checkouts: 2,
       sales: 1,
+      signups: 0,
       revenue_cents: 2093,
       commission_cents: 628,
     });
@@ -847,6 +852,7 @@ describe("montarPainelDoCreator: vendas reconstruidas antes do marco de cliques"
       clicks: 3,
       checkouts: 0,
       sales: 1,
+      signups: 0,
       revenue_cents: 2242,
       commission_cents: 224,
     });

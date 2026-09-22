@@ -17,6 +17,7 @@ import {
   mesDoDia,
   mesTemRanking,
   mesVizinho,
+  PONTOS_POR_CADASTRO,
   PONTOS_POR_CLIQUE,
   PONTOS_POR_PUBLICACAO,
   PONTOS_POR_VENDA,
@@ -82,8 +83,12 @@ describe("calcularPontos", () => {
         li_posts: 1,
         vendas: 1,
         cliques: 7,
+        cadastros: 1,
       }),
-    ).toBe(10 + 15 + 5 + 15 + 10 + 100 + 7);
+    ).toBe(10 + 15 + 5 + 15 + 10 + 100 + 7 + 20);
+    // Cadastro pelo link (lote 11i): 20 cada.
+    expect(calcularPontos({ ...CONTAGENS_ZERADAS, cadastros: 3 })).toBe(60);
+    expect(PONTOS_POR_CADASTRO).toBe(20);
   });
 
   it("totalDePublicacoes soma os cinco tipos sem peso", () => {
@@ -110,9 +115,12 @@ describe("tabelaDePontos", () => {
       "tiktok:video",
       "linkedin:post",
       "venda",
+      "cadastro",
       "clique",
     ]);
-    expect(linhas.map((l) => l.pontos)).toEqual([10, 15, 5, 15, 10, 100, 1]);
+    expect(linhas.map((l) => l.pontos)).toEqual([
+      10, 15, 5, 15, 10, 100, 20, 1,
+    ]);
   });
 
   it("os rotulos vem dos mapas compartilhados, e o teto aparece na linha do clique", () => {
@@ -120,7 +128,8 @@ describe("tabelaDePontos", () => {
     expect(linhas[0].acao).toBe("Post no Instagram confirmado");
     expect(linhas[3].acao).toBe("Vídeo no TikTok confirmado");
     expect(linhas[4].acao).toBe("Post no LinkedIn confirmado");
-    expect(linhas[6].acao).toContain("até 30 por dia");
+    expect(linhas[6].acao).toBe("Cadastro pelo seu link");
+    expect(linhas[7].acao).toContain("até 30 por dia");
   });
 });
 

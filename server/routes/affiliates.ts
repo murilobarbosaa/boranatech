@@ -2,10 +2,13 @@ import { createHash } from "node:crypto";
 import { Router } from "express";
 
 import { AFFILIATE_CODE_PATTERN } from "../../shared/affiliateCode";
+import { JANELA_DE_CADASTRO_HORAS } from "../../shared/creatorRanking";
 import { recordCreatorEvent } from "../lib/creatorEvents";
 import { env } from "../lib/env";
 import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { requireAuth, validateSupabaseJwt } from "../middleware/auth";
+import { createError } from "../middleware/error";
 
 const router = Router();
 const CLICK_WINDOW_SECONDS = 60 * 60;
@@ -172,5 +175,138 @@ router.post("/:code/click", async (req, res) => {
     res.json({ recorded: true });
   }
 });
+
+// CADASTRO PELO LINK (lote 11i). A conta nova, no primeiro acesso autenticado,
+// manda o codigo que estava guardado no navegador (o mesmo `useAffiliate` que
+// atribui a venda), e isso vira UM evento `signup` por conta, para sempre: o
+// indice unico parcial (migration 20260922100000) e quem garante, e o 23505
+// dele e lido como "ja existia", nao como erro. Regras, todas do servidor:
+// codigo ativo (inexistente ou pausado e 404 generico, anti-oraculo como a
+// rota publica); a conta nao pode ser a do dono do codigo; e a conta precisa
+// ser NOVA, `profiles.created_at` ha no maximo JANELA_DE_CADASTRO_HORAS (o
+// perfil nasce no cadastro pelo trigger de novo usuario, a milissegundos do
+// auth.users.created_at, e e uma leitura indexada em vez de uma chamada a API
+// de admin). O router e montado ANTES do validateSupabaseJwt global, entao a
+// rota valida o JWT por conta propria. Throttle por usuario no Redis, um por
+// minuto, fail-open como o do clique: o indice unico ja segura a duplicata.
+const SIGNUP_WINDOW_SECONDS = 60;
+
+router.post(
+  "/signup",
+  validateSupabaseJwt,
+  requireAuth,
+  async (req, res, next) => {
+    const userId = req.user!.id;
+    const corpo = (req.body ?? {}) as { code?: unknown };
+    const code =
+      typeof corpo.code === "string" ? normalizeCode(corpo.code) : "";
+    if (!isValidCode(code)) {
+      return next(
+        // TODO(Ana)
+        createError(404, "affiliate_not_found", "Código não encontrado."),
+      );
+    }
+    try {
+      if (cacheConnection) {
+        try {
+          const result = await cacheConnection.set(
+            `affiliate:signup:${userId}`,
+            "1",
+            "EX",
+            SIGNUP_WINDOW_SECONDS,
+            "NX",
+          );
+          if (result !== "OK") {
+            return next(
+              // TODO(Ana)
+              createError(
+                429,
+                "too_many_attempts",
+                "Tente de novo em instantes.",
+              ),
+            );
+          }
+        } catch (err) {
+          console.warn(
+            "[affiliates] Throttle Redis indisponivel no signup, seguindo",
+            err,
+          );
+        }
+      }
+
+      const { data: afiliado, error: erroAfiliado } = await supabaseAdmin
+        .from("affiliates")
+        .select("id, user_id")
+        .eq("code", code)
+        .eq("status", "active")
+        .maybeSingle();
+      if (erroAfiliado) throw erroAfiliado;
+      const linhaAfiliado = afiliado as {
+        id: string;
+        user_id: string | null;
+      } | null;
+      if (!linhaAfiliado) {
+        return next(
+          // TODO(Ana)
+          createError(404, "affiliate_not_found", "Código não encontrado."),
+        );
+      }
+      if (linhaAfiliado.user_id === userId) {
+        return next(
+          // TODO(Ana)
+          createError(
+            403,
+            "own_code",
+            "O seu próprio código não conta como cadastro.",
+          ),
+        );
+      }
+
+      const { data: perfil, error: erroPerfil } = await supabaseAdmin
+        .from("profiles")
+        .select("created_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (erroPerfil) throw erroPerfil;
+      const criadaEm = (perfil as { created_at: string } | null)?.created_at;
+      const idadeMs = criadaEm ? Date.now() - Date.parse(criadaEm) : Infinity;
+      if (!criadaEm || idadeMs > JANELA_DE_CADASTRO_HORAS * 60 * 60 * 1000) {
+        return next(
+          createError(
+            409,
+            "account_too_old",
+            // TODO(Ana)
+            "Essa conta não é nova: o cadastro pelo link só conta nas primeiras horas.",
+          ),
+        );
+      }
+
+      const { error: erroInsercao } = await supabaseAdmin
+        .from("creator_events")
+        .insert({
+          affiliate_id: linhaAfiliado.id,
+          event_type: "signup",
+          user_id: userId,
+          metadata: { origem: "cadastro" },
+        });
+      if (erroInsercao) {
+        // 23505 no indice parcial: esta conta ja tem o seu cadastro registrado
+        // (por este ou por outro codigo). Idempotente por construcao.
+        if ((erroInsercao as { code?: string }).code === "23505") {
+          res.status(200).json({ registrado: false });
+          return;
+        }
+        throw erroInsercao;
+      }
+      res.status(201).json({ registrado: true });
+    } catch (err) {
+      console.error("[affiliates] Erro ao registrar cadastro pelo link", err);
+      return next(
+        // TODO(Ana)
+        createError(500, "db_error", "Erro ao registrar o cadastro."),
+      );
+    }
+  },
+);
 
 export default router;

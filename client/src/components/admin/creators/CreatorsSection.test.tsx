@@ -799,7 +799,7 @@ describe("ranking do mes no painel do creator (lote 11c)", () => {
     posicao: number,
     user_id: string,
     pontos: number,
-    contagens = { publicacoes: 1, vendas: 0, cliques: 0 },
+    contagens = { publicacoes: 1, vendas: 0, cliques: 0, cadastros: 0 },
   ) {
     return {
       posicao,
@@ -845,8 +845,18 @@ describe("ranking do mes no painel do creator (lote 11c)", () => {
           fechado: false,
           fecha_em: null,
           posicoes: [
-            posicao(1, OUTRO, 155, { publicacoes: 3, vendas: 1, cliques: 30 }),
-            posicao(2, UUID_A, 40, { publicacoes: 2, vendas: 0, cliques: 10 }),
+            posicao(1, OUTRO, 155, {
+              publicacoes: 3,
+              vendas: 1,
+              cliques: 30,
+              cadastros: 0,
+            }),
+            posicao(2, UUID_A, 40, {
+              publicacoes: 2,
+              vendas: 0,
+              cliques: 10,
+              cadastros: 1,
+            }),
             posicao(3, "77777777-7777-7777-7777-777777777777", 5),
           ],
         },
@@ -862,6 +872,7 @@ describe("ranking do mes no painel do creator (lote 11c)", () => {
     expect(bloco.textContent).toContain("de 3 em setembro");
     expect(bloco.textContent).toContain("40 pontos");
     expect(bloco.textContent).toContain("2 publicações");
+    expect(bloco.textContent).toContain("1 cadastros");
     expect(bloco.textContent).toContain("10 cliques");
     const podio = screen.getByTestId("creators-ranking-podio");
     expect(

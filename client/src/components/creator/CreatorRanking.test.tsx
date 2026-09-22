@@ -72,7 +72,12 @@ function posicao(
     avatar_url: null,
     calendar_color: "violet",
     pontos,
-    contagens: { publicacoes: pontos > 0 ? 1 : 0, vendas: 0, cliques: 0 },
+    contagens: {
+      publicacoes: pontos > 0 ? 1 : 0,
+      vendas: 0,
+      cliques: 0,
+      cadastros: 0,
+    },
     eu: false,
     ...extra,
   };
@@ -211,7 +216,7 @@ describe("CreatorRanking: podio", () => {
     responderCom(
       ranking([
         posicao(1, "a", 155, {
-          contagens: { publicacoes: 3, vendas: 1, cliques: 30 },
+          contagens: { publicacoes: 3, vendas: 1, cliques: 30, cadastros: 2 },
           calendar_color: "rose",
         }),
         posicao(2, "b", 100),
@@ -229,7 +234,7 @@ describe("CreatorRanking: podio", () => {
     ).toBe("155");
     expect(primeiro.textContent).toContain("@ha");
     expect(primeiro.textContent).toContain(
-      "3 publicações, 1 venda, 30 cliques",
+      "3 publicações, 1 venda, 2 cadastros, 30 cliques",
     );
     expect(
       within(podio)
