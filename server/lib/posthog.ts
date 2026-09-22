@@ -4,6 +4,7 @@ import {
   somarDiaCivil,
 } from "../../shared/brasiliaDay";
 import { env } from "./env";
+import { POSTHOG_QUERY_TIMEOUT_MS } from "./posthogTimeout";
 
 // PostHog como maquina de estados explicita. O host NAO e hardcoded: vem de
 // env.posthogHost (POSTHOG_HOST, default us.posthog.com), para nao consultar a
@@ -109,7 +110,6 @@ export class PosthogQueryError extends Error {
 // Teto por query: HogQL dessas agregacoes responde em poucos segundos; 8s pega
 // um request travado sem cortar uma query normal lenta. No abort o fetch rejeita,
 // vira PosthogQueryError e o estado 'error' (falha-segura, nunca pendura a aba).
-const POSTHOG_QUERY_TIMEOUT_MS = 8000;
 
 function cellToNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value) || 0;
@@ -118,7 +118,9 @@ function cellToNumber(value: unknown): number {
 // Leitura via HogQL no endpoint /query/ (POST), autorizado pela Personal API Key
 // (phx_). Em qualquer nao-2xx, lanca com status HTTP e uma dica util (401/403 =
 // key sem escopo para /query/), em vez de engolir e retornar zero.
-async function runPosthogQuery(hogql: string): Promise<PosthogQueryResponse> {
+export async function runPosthogQuery(
+  hogql: string,
+): Promise<PosthogQueryResponse> {
   const response = await fetch(
     `${env.posthogHost}/api/projects/${env.posthogProjectId}/query/`,
     {
@@ -177,6 +179,78 @@ function hogTime(date: Date): string {
   return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
+export function posthogWindow(from: Date, to: Date): string {
+  return `timestamp >= toDateTime('${hogTime(from)}') and timestamp < toDateTime('${hogTime(to)}')`;
+}
+
+export function pageQueries(win: string) {
+  const pageFromUrl =
+    "if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/'))";
+  const pageFromPrev =
+    "if(trimRight(properties.$prev_pageview_pathname, '/') = '', '/', trimRight(properties.$prev_pageview_pathname, '/'))";
+  return {
+    pageviews: `select count() from events where event = '$pageview' and ${win}`,
+    pages: `select ${pageFromUrl} as page, count() as views from events where event = '$pageview' and ${win} group by page order by views desc limit 10`,
+    pageleave: `select ${pageFromPrev} as page, avg(properties.$prev_pageview_duration) as avg_time, avg(properties.$prev_pageview_max_scroll_percentage) as avg_scroll, count() as leaves from events where event = '$pageleave' and ${win} and properties.$prev_pageview_pathname is not null group by page`,
+    exit_last: `select last_page, count() as exits from (select properties.$session_id as sid, argMax(${pageFromUrl}, timestamp) as last_page from events where event = '$pageview' and ${win} and properties.$session_id is not null group by sid) group by last_page`,
+    exit_sessions: `select ${pageFromUrl} as page, count(distinct properties.$session_id) as sessions from events where event = '$pageview' and ${win} and properties.$session_id is not null group by page`,
+  } as const;
+}
+
+function optionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+export function assemblePageStats(
+  pages: PosthogQueryResponse,
+  pageLeave: PosthogQueryResponse,
+  exitLast: PosthogQueryResponse,
+  exitSessions: PosthogQueryResponse,
+): PageStat[] {
+  const leaveByPage = new Map<
+    string,
+    { avgTime: number | null; avgScroll: number | null; leaves: number }
+  >();
+  for (const row of pageLeave.results || []) {
+    leaveByPage.set(String(row[0] ?? ""), {
+      avgTime: optionalNumber(row[1]),
+      avgScroll: optionalNumber(row[2]),
+      leaves: cellToNumber(row[3]),
+    });
+  }
+  const exitsByPage = new Map<string, number>();
+  for (const row of exitLast.results || [])
+    exitsByPage.set(String(row[0] ?? ""), cellToNumber(row[1]));
+  const sessionsByPage = new Map<string, number>();
+  for (const row of exitSessions.results || [])
+    sessionsByPage.set(String(row[0] ?? ""), cellToNumber(row[1]));
+
+  return (pages.results || [])
+    .map((row) => {
+      const page = String(row[0] ?? "/");
+      const views = cellToNumber(row[1]);
+      const leave = leaveByPage.get(page);
+      const avgTimeSeconds = leave && leave.leaves > 0 ? leave.avgTime : null;
+      const avgScrollPercent =
+        leave && leave.leaves > 0 && leave.avgScroll !== null
+          ? Math.min(100, Math.max(0, leave.avgScroll * 100))
+          : null;
+      const sessions = sessionsByPage.get(page) ?? 0;
+      const exitRatePercent =
+        sessions > 0
+          ? Math.min(
+              100,
+              Math.max(0, ((exitsByPage.get(page) ?? 0) / sessions) * 100),
+            )
+          : null;
+      return { page, views, avgTimeSeconds, avgScrollPercent, exitRatePercent };
+    })
+    .filter((item) => item.views > 0)
+    .slice(0, 10);
+}
+
 // Estado de leitura do PostHog para o admin. Nunca retorna zeros por falha:
 // - falta de env -> not_configured (lista o que falta).
 // - falha de rede/HTTP -> error (com reason e httpStatus).
@@ -205,13 +279,7 @@ export async function getPosthogStats(
   ];
   const eventList = eventNames.map((e) => `'${e}'`).join(",");
 
-  // Normalizacao de pagina, identica entre as queries para as chaves casarem.
-  // pageview: extrai o pathname do $current_url (URL completo) via path().
-  // pageleave: $prev_pageview_pathname JA e um pathname, entao so trimRight.
-  const pageFromUrl =
-    "if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/'))";
-  const pageFromPrev =
-    "if(trimRight(properties.$prev_pageview_pathname, '/') = '', '/', trimRight(properties.$prev_pageview_pathname, '/'))";
+  const pageSql = pageQueries(win);
 
   try {
     const [
@@ -225,96 +293,40 @@ export async function getPosthogStats(
       exitLast,
       exitSessions,
     ] = await Promise.all([
-        runPosthogQuery(
-          `select count() from events where event = '$pageview' and ${win}`,
-        ),
-        runPosthogQuery(
-          `select count(distinct person_id) from events where event = '$pageview' and ${win}`,
-        ),
-        runPosthogQuery(
-          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and ${win} group by page order by views desc limit 10`,
-        ),
-        runPosthogQuery(
-          `select event, count() as total from events where event in (${eventList}) and ${win} group by event`,
-        ),
-        // Ranking de gate Pro com taxa de conversao. subscribers = pessoas que
-        // bateram no gate E aparecem em subscription_completed no MESMO periodo
-        // (overlap de person_id; aproximacao documentada, nao "estritamente
-        // depois"). Query unica via subquery IN.
-        runPosthogQuery(
-          `select properties.feature as feature, count() as hits, count(distinct person_id) as people, count(distinct if(person_id in (select distinct person_id from events where event = 'subscription_completed' and ${win}), person_id, null)) as subscribers from events where event = 'pro_gate_hit' and ${win} and properties.feature is not null group by feature order by people desc limit 20`,
-        ),
-        runPosthogQuery(
-          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and ${win} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
-        ),
-        // Tempo medio e scroll medio por pagina: vem do $pageleave, referentes a
-        // pagina ANTERIOR ($prev_pageview_pathname e a chave correta, NAO o
-        // $current_url do proprio pageleave). avg_scroll e fracao 0..1.
-        runPosthogQuery(
-          `select ${pageFromPrev} as page, avg(properties.$prev_pageview_duration) as avg_time, avg(properties.$prev_pageview_max_scroll_percentage) as avg_scroll, count() as leaves from events where event = '$pageleave' and ${win} and properties.$prev_pageview_pathname is not null group by page`,
-        ),
-        // Taxa de saida (numerador): sessoes cujo ULTIMO pageview foi a pagina X.
-        // argMax(page, timestamp) por sessao = pagina do ultimo pageview.
-        runPosthogQuery(
-          `select last_page, count() as exits from (select properties.$session_id as sid, argMax(${pageFromUrl}, timestamp) as last_page from events where event = '$pageview' and ${win} and properties.$session_id is not null group by sid) group by last_page`,
-        ),
-        // Taxa de saida (denominador): sessoes distintas que passaram pela pagina X.
-        runPosthogQuery(
-          `select ${pageFromUrl} as page, count(distinct properties.$session_id) as sessions from events where event = '$pageview' and ${win} and properties.$session_id is not null group by page`,
-        ),
-      ]);
+      runPosthogQuery(pageSql.pageviews),
+      runPosthogQuery(
+        `select count(distinct person_id) from events where event = '$pageview' and ${win}`,
+      ),
+      runPosthogQuery(pageSql.pages),
+      runPosthogQuery(
+        `select event, count() as total from events where event in (${eventList}) and ${win} group by event`,
+      ),
+      // Ranking de gate Pro com taxa de conversao. subscribers = pessoas que
+      // bateram no gate E aparecem em subscription_completed no MESMO periodo
+      // (overlap de person_id; aproximacao documentada, nao "estritamente
+      // depois"). Query unica via subquery IN.
+      runPosthogQuery(
+        `select properties.feature as feature, count() as hits, count(distinct person_id) as people, count(distinct if(person_id in (select distinct person_id from events where event = 'subscription_completed' and ${win}), person_id, null)) as subscribers from events where event = 'pro_gate_hit' and ${win} and properties.feature is not null group by feature order by people desc limit 20`,
+      ),
+      runPosthogQuery(
+        `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and ${win} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
+      ),
+      // Tempo medio e scroll medio por pagina: vem do $pageleave, referentes a
+      // pagina ANTERIOR ($prev_pageview_pathname e a chave correta, NAO o
+      // $current_url do proprio pageleave). avg_scroll e fracao 0..1.
+      runPosthogQuery(pageSql.pageleave),
+      // Taxa de saida (numerador): sessoes cujo ULTIMO pageview foi a pagina X.
+      // argMax(page, timestamp) por sessao = pagina do ultimo pageview.
+      runPosthogQuery(pageSql.exit_last),
+      // Taxa de saida (denominador): sessoes distintas que passaram pela pagina X.
+      runPosthogQuery(pageSql.exit_sessions),
+    ]);
 
     const stats = emptyStats();
     stats.totalPageviews = cellToNumber(pageviews.results?.[0]?.[0]);
     stats.uniqueUsers = cellToNumber(uniqueUsers.results?.[0]?.[0]);
 
-    // Mapas por pagina para o merge com a lista de top-10 (chaves normalizadas
-    // do mesmo jeito em todas as queries).
-    const leaveByPage = new Map<
-      string,
-      { avgTime: number; avgScroll: number; leaves: number }
-    >();
-    for (const row of pageLeave.results || []) {
-      leaveByPage.set(String(row[0] ?? ""), {
-        avgTime: cellToNumber(row[1]),
-        avgScroll: cellToNumber(row[2]),
-        leaves: cellToNumber(row[3]),
-      });
-    }
-    const exitsByPage = new Map<string, number>();
-    for (const row of exitLast.results || []) {
-      exitsByPage.set(String(row[0] ?? ""), cellToNumber(row[1]));
-    }
-    const sessionsByPage = new Map<string, number>();
-    for (const row of exitSessions.results || []) {
-      sessionsByPage.set(String(row[0] ?? ""), cellToNumber(row[1]));
-    }
-
-    stats.pages = (pages.results || [])
-      .map((row) => {
-        const page = String(row[0] ?? "/");
-        const views = cellToNumber(row[1]);
-        const leave = leaveByPage.get(page);
-        // null quando nao ha $pageleave para a pagina (views sem leave): ausencia,
-        // nunca 0. avg_scroll e fracao 0..1 -> percent, clamp 0..100.
-        const avgTimeSeconds =
-          leave && leave.leaves > 0 ? leave.avgTime : null;
-        const avgScrollPercent =
-          leave && leave.leaves > 0
-            ? Math.min(100, Math.max(0, leave.avgScroll * 100))
-            : null;
-        const sessions = sessionsByPage.get(page) ?? 0;
-        const exitRatePercent =
-          sessions > 0
-            ? Math.min(
-                100,
-                Math.max(0, ((exitsByPage.get(page) ?? 0) / sessions) * 100),
-              )
-            : null;
-        return { page, views, avgTimeSeconds, avgScrollPercent, exitRatePercent };
-      })
-      .filter((item) => item.views > 0)
-      .slice(0, 10);
+    stats.pages = assemblePageStats(pages, pageLeave, exitLast, exitSessions);
 
     for (const row of customEvents.results || []) {
       const eventName = eventNames.find((event) => event === String(row[0]));
@@ -376,7 +388,9 @@ export async function getPosthogHealth(): Promise<PosthogHealthState> {
   const win = `timestamp >= toDateTime('${hogTime(from)}') and timestamp <= toDateTime('${hogTime(to)}')`;
 
   try {
-    const res = await runPosthogQuery(`select count() from events where ${win}`);
+    const res = await runPosthogQuery(
+      `select count() from events where ${win}`,
+    );
     const total = cellToNumber(res.results?.[0]?.[0]);
     return { state: "ok", hasData: total > 0 };
   } catch (err) {

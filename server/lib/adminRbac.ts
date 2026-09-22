@@ -165,6 +165,7 @@ export const ADMIN_ROUTE_MANIFEST: readonly AdminRoutePolicy[] = [
   ...read("dashboard.read", "low", ALL_ROLES, [
     ["GET", "/api/admin/dashboard"],
     ["GET", "/api/admin/posthog-stats"],
+    ["GET", "/api/admin/posthog-pages"],
     ["GET", "/api/admin/online-now"],
     ["GET", "/api/admin/health-band"],
     ["GET", "/api/admin/churn-risk"],

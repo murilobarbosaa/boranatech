@@ -64,7 +64,8 @@ describe("manifesto administrativo fechado", () => {
     // 134 -> 135 com o calendario dos creators no admin (lote 10d), em
     // creators.read.
     // 135 -> 136 com o ranking do mes no admin (lote 11c), em creators.read.
-    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(136);
+    // 136 -> 137 com GET /api/admin/posthog-pages (ADM-D08A).
+    expect(ADMIN_ROUTE_MANIFEST).toHaveLength(137);
     for (const route of ADMIN_ROUTE_MANIFEST) {
       expect(roleWouldBeAllowed("owner", route)).toBe(true);
       if (route.nature === "mutation") {

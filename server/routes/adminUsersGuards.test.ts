@@ -188,7 +188,8 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // So leitura, mas atras das duas guardas como todo o resto do admin.
 // 74 -> 75 em 2026-09-21 (creators, lote 11c), com
 // `GET /admin/creators/ranking`. Valor MEDIDO por `rotasDeclaradas().length`.
-const EXPECTED_ROUTE_COUNT = 75;
+// 75 -> 76 com GET /posthog-pages (ADM-D08A), leitura administrativa.
+const EXPECTED_ROUTE_COUNT = 76;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
