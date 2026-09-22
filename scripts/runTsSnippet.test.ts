@@ -1,3 +1,14 @@
+import { spawnSync } from "node:child_process";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { capabilityOf } from "./languageCapabilities.mts";
@@ -17,6 +28,34 @@ import {
 const runner = capabilityOf("ts").runner!;
 const executar = makeExecutor(runner);
 const LIMITE = 30000;
+
+// Censo de processos vivos que citam um diretorio, lido direto de /proc: sem
+// shell e sem pgrep, que casariam a linha de comando do proprio teste.
+//
+// O filtro e pelo EXECUTAVEL, nunca por /proc/<pid>/comm: o node renomeia a
+// thread principal para "MainThread", e um censo que filtrava comm === "node"
+// devolveu ZERO com quatro processos vivos que o ps mostrava. Instrumento que
+// falha passando e exatamente o defeito que este arquivo existe para pegar.
+function processosCitando(dir: string): string[] {
+  const achados: string[] = [];
+  for (const pid of readdirSync("/proc")) {
+    if (!/^\d+$/.test(pid)) continue;
+    let cmd: string;
+    try {
+      cmd = readFileSync(`/proc/${pid}/cmdline`).toString("utf8");
+    } catch {
+      continue;
+    }
+    if (!cmd.includes(dir)) continue;
+    try {
+      if (!realpathSync(`/proc/${pid}/exe`).endsWith("/node")) continue;
+    } catch {
+      continue;
+    }
+    achados.push(`${pid} ${cmd.replace(/\0/g, " ").trim().slice(0, 120)}`);
+  }
+  return achados;
+}
 
 describe("runner de ts: checagem de tipos antes da execucao", () => {
   it("codigo valido roda e imprime", () => {
@@ -67,6 +106,27 @@ describe("runner de ts: checagem de tipos antes da execucao", () => {
     expect(r.timeout).toBe(true);
   }, LIMITE);
 
+  // Lote de higiene. O timeout do executor mata o WRAPPER; em ts o trecho roda
+  // num neto (node -> wrapper -> cli do tsx -> processo do trecho), que era
+  // adotado pelo init e girava a 100% de CPU para sempre. Medido: cada rodada
+  // deste arquivo deixava DOIS processos vivos, e o hook roda a suite duas
+  // vezes por commit.
+  it("o laco infinito nao deixa processo vivo na maquina", async () => {
+    const r = executar("while (true) {}\n");
+    expect(r.timeout).toBe(true);
+    const dir = executar.dir;
+    expect(typeof dir).toBe("string");
+    // Espera curta: o SIGKILL do grupo leva um instante para ser entregue, e
+    // afirmar no ato acusaria o conserto certo.
+    const prazo = Date.now() + 3000;
+    let vivos = processosCitando(dir!);
+    while (vivos.length > 0 && Date.now() < prazo) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      vivos = processosCitando(dir!);
+    }
+    expect(vivos).toEqual([]);
+  }, LIMITE);
+
   it("process nao esta declarado, e o ambiente do filho nao tem a chave", () => {
     // Duas protecoes independentes: a checagem de tipos recusa `process`, e
     // mesmo que ela fosse pulada o ambiente montado do zero nao carrega o .env.
@@ -75,6 +135,55 @@ describe("runner de ts: checagem de tipos antes da execucao", () => {
     expect(r.erro).toMatch(/TS2\d{3}/);
     expect(r.erro).toContain("process");
   }, LIMITE);
+});
+
+// Lote de higiene b. Depois do prazo o wrapper mata o grupo e fica vivo
+// esperando o SIGTERM do executor. DENTRO do executor esse sinal sempre chega,
+// dois segundos depois. FORA dele nao chega nunca: quem rodar
+// `node scripts/runTsSnippet.mjs arquivo.ts` a mao, depurando um trecho que
+// trava, ficava com um wrapper parado para sempre. A 0% de CPU, mas e a mesma
+// classe de defeito deste lote: processo da verificacao que sobrevive ao
+// proposito dele.
+//
+// So da para exercitar esse caminho rodando o wrapper DIRETO, sem o executor,
+// que e o que este bloco faz.
+describe("wrapper rodado direto, sem o executor", () => {
+  // Existe para a suite nao travar enquanto o controle FALHA: sem ele, um
+  // wrapper que nunca sai seguraria o vitest ate o limite do arquivo.
+  //
+  // O valor precisa ficar acima de PRAZO_MS + ESPERA_MAX_MS, que hoje sao
+  // 8000 + 15000 = 23000: o teto do wrapper so COMECA a contar depois de o
+  // prazo estourar. Com 25000 o controle passava por menos de 2 s de folga
+  // (medido: 23059 ms) e falharia sob carga sem nada estar quebrado. Teste
+  // que falha por aperto de relogio e a mesma classe de ruido que este lote
+  // existe para tirar da suite.
+  const TETO_DO_CONTROLE = 40000;
+
+  it("CONTROLE: sem sinal nenhum, o wrapper desiste sozinho", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wrapper-direto-"));
+    try {
+      const arquivo = path.join(dir, `trava${runner.ext}`);
+      writeFileSync(arquivo, "while (true) {}\n");
+      const inicio = Date.now();
+      const r = spawnSync(runner.command, [...(runner.args ?? []), arquivo], {
+        encoding: "utf8",
+        timeout: TETO_DO_CONTROLE,
+        cwd: dir,
+      });
+      const levou = Date.now() - inicio;
+      // Terminou por conta propria, e nao porque ESTE controle o matou.
+      expect({ levou, erro: String(r.error ?? "") }).toEqual({
+        levou: expect.any(Number),
+        erro: "",
+      });
+      expect(levou).toBeLessThan(TETO_DO_CONTROLE);
+      expect(r.status).not.toBe(0);
+      // E nao deixou o grupo do trecho vivo atras de si.
+      expect(processosCitando(dir)).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60000);
 });
 
 describe("erroDoStderr e linhaDoErro leem o diagnostico do compilador", () => {

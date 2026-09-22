@@ -30,7 +30,7 @@
 // --tabela-revisao: depois do relatorio, imprime a tabela da revisao humana
 // (tabelaRevisao), uma linha por pergunta de codigo.
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -112,7 +112,12 @@ export interface Execucao {
   sinal?: string | null;
 }
 
-export type Executor = (code: string) => Execucao;
+// A assinatura de chamada NAO muda: todo call site continua `executar(code)`.
+// O `dir` opcional existe para o teste poder afirmar sobre processo e arquivo
+// deste executor sem adivinhar /tmp, que casaria o diretorio de outro worktree
+// rodando a suite ao mesmo tempo. Opcional porque os stubs de teste passam uma
+// funcao simples como Executor e continuam validos.
+export type Executor = ((code: string) => Execucao) & { dir?: string };
 
 // Spawn com o ambiente saneado, num lugar so: o executor de trecho unico e o
 // de grupo de arquivos usam este mesmo caminho, para nao existir uma segunda
@@ -125,6 +130,11 @@ function spawnSaneado(
   return spawnSync(runner.command, [...(runner.args ?? []), arquivo], {
     encoding: "utf8",
     timeout: TIMEOUT_MS,
+    // O sinal do timeout fica no padrao (SIGTERM) de proposito, e NAO vira
+    // killSignal: "SIGKILL". Em ts o comando e um wrapper que precisa matar o
+    // grupo do trecho antes de sair: SIGKILL nao e capturavel, o handler dele
+    // nao rodaria e o neto continuaria orfao a 100% de CPU. O sinal que o
+    // executor manda tem que ser capturavel.
     // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
     // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
     // criou usuario.json na raiz do worktree.
@@ -160,13 +170,42 @@ function daExecucao(r: SpawnSyncReturns<string>): Execucao {
 }
 
 export function makeExecutor(runner: Runner): Executor {
-  const dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
+  // Lote de higiene. O diretorio nasce SOB DEMANDA e morre assim que fica
+  // VAZIO, em vez de viver ate a saida do processo.
+  //
+  // A versao anterior removia o diretorio num process.once("exit"), e isso
+  // nao funciona aqui: o vitest roda com pool `forks` e encerra os workers por
+  // sinal, entao o handler nao chega a rodar. Medido numa suite inteira, na
+  // janela exata: 13 diretorios criados, 11 deles VAZIOS (todo arquivo de
+  // trecho removido) e sobrevivendo mesmo assim.
+  //
+  // Remover quando vazio preserva a reutilizacao entre chamadas, que NAO e
+  // acidente: `isolamento do executor` escreve marcador.txt numa chamada e o
+  // le na seguinte. Um diretorio por chamada quebraria esse teste. Com a regra
+  // do vazio, o diretorio daquele teste continua vivo (tem marcador.txt) e o
+  // de um trecho comum sai na hora.
+  let dir: string | null = null;
   let n = 0;
-  return (code: string): Execucao => {
-    const file = path.join(dir, `q${n++}${runner.ext}`);
+  const executar: Executor = (code: string): Execucao => {
+    if (dir === null) dir = mkdtempSync(path.join(tmpdir(), "verify-pool-"));
+    executar.dir = dir;
+    const atual = dir;
+    const file = path.join(atual, `q${n++}${runner.ext}`);
     writeFileSync(file, code);
-    return daExecucao(spawnSaneado(runner, file, dir));
+    try {
+      return daExecucao(spawnSaneado(runner, file, atual));
+    } finally {
+      rmSync(file, { force: true });
+      // Escrito pelo wrapper de ts a cada execucao, nao pelo autor do trecho:
+      // sem remove-lo, o diretorio nunca fica vazio em ts.
+      rmSync(path.join(atual, "__ambiente.d.ts"), { force: true });
+      if (readdirSync(atual).length === 0) {
+        rmSync(atual, { recursive: true, force: true });
+        if (dir === atual) dir = null;
+      }
+    }
   };
+  return executar;
 }
 
 export interface ArquivoDoGrupo {
@@ -183,19 +222,26 @@ export type ExecutorDeGrupo = (arquivos: ArquivoDoGrupo[]) => Execucao;
 export function makeGroupExecutor(runner: Runner): ExecutorDeGrupo {
   return (arquivos: ArquivoDoGrupo[]): Execucao => {
     const dir = mkdtempSync(path.join(tmpdir(), "verify-grupo-"));
-    // Em js o import relativo entre arquivos .js so resolve como ESM com isto.
-    if (runner.ext === ".mjs" || runner.ext === ".js") {
-      writeFileSync(
-        path.join(dir, "package.json"),
-        JSON.stringify({ type: "module" }),
-      );
+    try {
+      // Em js o import relativo entre arquivos .js so resolve como ESM com isto.
+      if (runner.ext === ".mjs" || runner.ext === ".js") {
+        writeFileSync(
+          path.join(dir, "package.json"),
+          JSON.stringify({ type: "module" }),
+        );
+      }
+      let ultimo = "";
+      for (const arquivo of arquivos) {
+        ultimo = path.join(dir, arquivo.nome);
+        writeFileSync(ultimo, arquivo.corpo);
+      }
+      return daExecucao(spawnSaneado(runner, ultimo, dir));
+    } finally {
+      // O diretorio do grupo nao e reutilizado e ninguem o le depois da
+      // execucao, entao ele sai aqui mesmo, em vez de esperar a saida do
+      // processo como no executor de trecho unico.
+      rmSync(dir, { recursive: true, force: true });
     }
-    let ultimo = "";
-    for (const arquivo of arquivos) {
-      ultimo = path.join(dir, arquivo.nome);
-      writeFileSync(ultimo, arquivo.corpo);
-    }
-    return daExecucao(spawnSaneado(runner, ultimo, dir));
   };
 }
 
