@@ -3,11 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Medal,
-  MousePointerClick,
-  Send,
-  ShoppingBag,
   Trophy,
-  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
@@ -20,12 +16,12 @@ import { IconeDaRede } from "@/components/creator/IconeDaRede";
 import { AdminApiError, adminFetch, contentFetch } from "@/lib/adminApi";
 import { diaBrasilia } from "@shared/brasiliaDay";
 import {
+  detalharPontuacao,
   mesDoDia,
   mesTemRanking,
   mesVizinho,
   PRIMEIRO_MES_DO_RANKING,
   tabelaDePontos,
-  TETO_DE_CLIQUES_POR_DIA,
   type PosicaoDoRanking,
   type RankingDoMes,
 } from "@shared/creatorRanking";
@@ -88,11 +84,13 @@ const MESES = [
 
 const POR_PAGINA = 20;
 
-const CHIP =
-  "inline-flex items-center gap-1 rounded-full border-2 border-slate-300 bg-slate-50 px-2 py-0.5 text-[11px] font-black text-slate-700";
-
 const CHIP_VOCE =
   "rounded-full border-2 border-ink-on-accent bg-[var(--bnt-accent-solid)] px-2 py-0.5 text-[11px] font-black uppercase text-ink-on-accent";
+
+// Balde de PONTO do detalhamento (Conteudo/Vendas/Cadastros): tom da marca
+// (violeta), pra ler como "isto soma". Clique nao aparece no ranking publico.
+const CHIP_PONTO =
+  "inline-flex items-center gap-1 rounded-full border-2 border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-black text-violet-900";
 
 // Discreto de proposito (lote 11j): num mes fechado, quem saiu do programa
 // depois de pontuar fica na lista com esta marca, sem cor de destaque.
@@ -164,23 +162,54 @@ function nomeDeExibicao(p: PosicaoDoRanking): string {
   return p.handle ? `@${p.handle}` : (p.name ?? "Creator");
 }
 
-// TODO(Ana)
-function fraseDasContagens(p: PosicaoDoRanking): string {
-  const partes: string[] = [];
-  const { publicacoes, vendas, cliques } = p.contagens;
-  // O backend anterior ao lote 11i nao manda cadastros: zero e "nenhum".
-  const cadastros = p.contagens.cadastros ?? 0;
-  if (publicacoes > 0) {
-    partes.push(
-      `${publicacoes} ${publicacoes === 1 ? "publicação" : "publicações"}`,
-    );
-  }
-  if (vendas > 0) partes.push(`${vendas} ${vendas === 1 ? "venda" : "vendas"}`);
-  if (cadastros > 0)
-    partes.push(`${cadastros} ${cadastros === 1 ? "cadastro" : "cadastros"}`);
-  if (cliques > 0)
-    partes.push(`${cliques} ${cliques === 1 ? "clique" : "cliques"}`);
-  return partes.join(", ");
+/**
+ * Detalhamento de ONDE vem a pontuacao: um chip por balde (conteudo, vendas,
+ * cadastros) com os PONTOS. Clique NAO aparece no ranking publico. Os numeros
+ * vem de `detalharPontuacao` (mesmo total autoritativo da regra), pra nunca
+ * divergir do total mostrado. `align` controla o alinhamento no card.
+ */
+function DetalheDaPontuacao({
+  p,
+  align,
+}: {
+  p: PosicaoDoRanking;
+  align: "center" | "end";
+}) {
+  const d = detalharPontuacao({
+    pontos: p.pontos,
+    vendas: p.contagens.vendas,
+    cadastros: p.contagens.cadastros ?? 0,
+    cliques: p.contagens.cliques,
+  });
+  // TODO(Ana): rotulos do detalhamento.
+  const baldes = [
+    { chave: "conteudo", rotulo: "Conteúdo", pts: d.conteudo },
+    { chave: "vendas", rotulo: "Vendas", pts: d.vendas },
+    { chave: "cadastros", rotulo: "Cadastros", pts: d.cadastros },
+  ].filter((b) => b.pts > 0);
+  return (
+    <span
+      data-testid={`creator-ranking-detalhe-${p.user_id}`}
+      className={`flex flex-wrap items-center gap-1.5 ${
+        align === "center" ? "justify-center" : "sm:justify-end"
+      }`}
+    >
+      {p.pontos === 0 ? (
+        <span className="text-xs font-semibold text-slate-500">
+          {/* TODO(Ana) */}
+          sem pontos ainda
+        </span>
+      ) : (
+        baldes.map((b) => (
+          <span key={b.chave} className={CHIP_PONTO}>
+            {b.rotulo} {b.pts}
+          </span>
+        ))
+      )}
+      {/* Clique NAO aparece no ranking publico (decisao da Ana): fica so nas
+          telas privadas (Numeros do creator, admin). Segue contado no banco. */}
+    </span>
+  );
 }
 
 /** O @ com o glifo da rede, ou o nome quando nao ha @. */
@@ -349,10 +378,9 @@ function LugarDoPodio({
               pts
             </span>
           </p>
-          <p className="mt-1 text-xs font-semibold text-slate-700">
-            {/* TODO(Ana) */}
-            {fraseDasContagens(p) || "sem pontos ainda"}
-          </p>
+          <div className="mt-1.5">
+            <DetalheDaPontuacao p={p} align="center" />
+          </div>
         </>
       ) : (
         <p className="mt-4 text-sm font-bold text-slate-600">
@@ -410,40 +438,8 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
             </span>
           ) : null}
         </span>
-        <span className="flex flex-wrap gap-1.5 sm:ml-auto">
-          {semPontos ? (
-            <span className="text-xs font-semibold text-slate-500">
-              {/* TODO(Ana) */}
-              sem pontos ainda
-            </span>
-          ) : (
-            <>
-              {p.contagens.publicacoes > 0 ? (
-                <span className={CHIP}>
-                  <Send aria-hidden="true" className="h-3 w-3" />
-                  {p.contagens.publicacoes}
-                </span>
-              ) : null}
-              {p.contagens.vendas > 0 ? (
-                <span className={CHIP}>
-                  <ShoppingBag aria-hidden="true" className="h-3 w-3" />
-                  {p.contagens.vendas}
-                </span>
-              ) : null}
-              {(p.contagens.cadastros ?? 0) > 0 ? (
-                <span className={CHIP}>
-                  <UserPlus aria-hidden="true" className="h-3 w-3" />
-                  {p.contagens.cadastros}
-                </span>
-              ) : null}
-              {p.contagens.cliques > 0 ? (
-                <span className={CHIP}>
-                  <MousePointerClick aria-hidden="true" className="h-3 w-3" />
-                  {p.contagens.cliques}
-                </span>
-              ) : null}
-            </>
-          )}
+        <span className="sm:ml-auto">
+          <DetalheDaPontuacao p={p} align="end" />
         </span>
       </span>
       <span className="shrink-0 text-right">
@@ -490,8 +486,7 @@ function ComoPontuar() {
       </ul>
       <p className="mt-3 text-xs font-semibold text-slate-600">
         {/* TODO(Ana): revisar a palavra final. */}
-        Só publicação confirmada vale. O clique é só registrado (até{" "}
-        {TETO_DE_CLIQUES_POR_DIA} por dia), não vira ponto.
+        Só publicação confirmada vale.
       </p>
     </section>
   );

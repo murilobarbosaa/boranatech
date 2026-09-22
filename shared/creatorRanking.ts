@@ -58,6 +58,15 @@ export const PONTOS_POR_CADASTRO = 8;
 export const TETO_DE_CLIQUES_POR_DIA = 30;
 
 /**
+ * Teto diario de Story que pontua (Ana): so as 3 primeiras do dia valem.
+ * ATENCAO: o teto de fato precisa ser aplicado na funcao SQL `creator_ranking_counts`
+ * (como o teto de clique), o que exige migration. Esta constante e a fonte do
+ * numero; a aplicacao no banco fica pendente.
+ * TODO(Ana): aplicar o teto de story na funcao SQL (migration).
+ */
+export const TETO_DE_STORIES_POR_DIA = 3;
+
+/**
  * Quantas horas depois de criada uma conta ainda conta como "cadastro pelo
  * link" (lote 11i). Existe para o link nao "adotar" contas antigas que so
  * passaram por ele depois: a atribuicao e do primeiro acesso autenticado da
@@ -143,6 +152,42 @@ export function calcularPontos(c: ContagensDoRanking): number {
     c.cadastros * PONTOS_POR_CADASTRO +
     c.cliques * PONTOS_POR_CLIQUE
   );
+}
+
+/**
+ * Detalhamento de ONDE vem a pontuacao, para explicar o total na tela sem
+ * duplicar a regra. `conteudo` sai como o RESTO (total menos vendas e cadastros),
+ * entao a soma dos tres fecha EXATAMENTE o total, e o clique aparece so como
+ * contagem bruta (peso zero: nao entra no total). Reusa o mesmo total
+ * autoritativo (`pontos`) e as mesmas constantes, sem recalcular a formula.
+ */
+export interface DetalheDaPontuacao {
+  conteudo: number;
+  vendas: number;
+  cadastros: number;
+  total: number;
+  /** Contagem BRUTA de cliques: exibida como metrica, NAO soma ponto. */
+  cliques: number;
+}
+
+export function detalharPontuacao(entrada: {
+  pontos: number;
+  vendas: number;
+  cadastros: number;
+  cliques: number;
+}): DetalheDaPontuacao {
+  const vendas = entrada.vendas * PONTOS_POR_VENDA;
+  const cadastros = entrada.cadastros * PONTOS_POR_CADASTRO;
+  // O que sobra do total depois de vendas e cadastros e o conteudo (o clique
+  // vale zero, entao nao aparece no total). Deriva do total autoritativo.
+  const conteudo = entrada.pontos - vendas - cadastros;
+  return {
+    conteudo,
+    vendas,
+    cadastros,
+    total: entrada.pontos,
+    cliques: entrada.cliques,
+  };
 }
 
 /** Uma linha da tabela "Como pontuar", gerada da regra (nunca escrita a mao). */

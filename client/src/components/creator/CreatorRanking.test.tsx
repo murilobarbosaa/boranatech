@@ -233,9 +233,13 @@ describe("CreatorRanking: podio", () => {
         .textContent,
     ).toBe("155");
     expect(primeiro.textContent).toContain("@ha");
-    expect(primeiro.textContent).toContain(
-      "3 publicações, 1 venda, 2 cadastros, 30 cliques",
-    );
+    // Detalhamento em PONTOS: conteudo (o resto: 155-25-16=114), vendas e
+    // cadastros. Clique NAO aparece no ranking publico, nem o numero nem a palavra.
+    expect(primeiro.textContent).toContain("Conteúdo 114");
+    expect(primeiro.textContent).toContain("Vendas 25");
+    expect(primeiro.textContent).toContain("Cadastros 16");
+    expect(primeiro.textContent).not.toContain("clique");
+    expect(primeiro.textContent).not.toContain("Clique");
     expect(
       within(podio)
         .getByTestId("creator-ranking-podio-2")
@@ -490,8 +494,12 @@ describe("CreatorRanking: regra, estados e janela de deploy", () => {
       expect(el.textContent).toContain(`${linha.pontos} pt`);
     }
     expect(screen.getByTestId("creator-ranking-regra").textContent).toContain(
-      "não vira ponto",
+      "Só publicação confirmada vale",
     );
+    // Clique nao e mencionado na regra publica.
+    expect(
+      screen.getByTestId("creator-ranking-regra").textContent,
+    ).not.toContain("clique");
   });
 
   it("carregando mostra o esqueleto dentro do cartao, e erro oferece tentar de novo", async () => {

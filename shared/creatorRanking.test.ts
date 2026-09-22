@@ -14,6 +14,7 @@ import {
   calcularPontos,
   compararCandidatos,
   CONTAGENS_ZERADAS,
+  detalharPontuacao,
   mesDoDia,
   mesTemRanking,
   mesVizinho,
@@ -104,6 +105,48 @@ describe("calcularPontos", () => {
         li_posts: 5,
       }),
     ).toBe(15);
+  });
+});
+
+describe("detalharPontuacao", () => {
+  it("os tres baldes somam EXATAMENTE o total, e o clique nao entra", () => {
+    const c = {
+      ...CONTAGENS_ZERADAS,
+      reels: 1, // 10
+      vendas: 2, // 50
+      cadastros: 3, // 24
+      cliques: 42, // 0 pts
+    };
+    const total = calcularPontos(c); // 84
+    const d = detalharPontuacao({
+      pontos: total,
+      vendas: c.vendas,
+      cadastros: c.cadastros,
+      cliques: c.cliques,
+    });
+    expect(d.total).toBe(total);
+    expect(d.vendas).toBe(50);
+    expect(d.cadastros).toBe(24);
+    expect(d.conteudo).toBe(10); // o resto = conteudo
+    // A soma dos baldes fecha o total, sem o clique.
+    expect(d.conteudo + d.vendas + d.cadastros).toBe(total);
+    // O clique aparece como contagem bruta, nunca como ponto.
+    expect(d.cliques).toBe(42);
+  });
+
+  it("conteudo e o resto mesmo sem venda nem cadastro", () => {
+    const c = { ...CONTAGENS_ZERADAS, ig_posts: 2, cliques: 5 }; // 6 pts
+    const total = calcularPontos(c);
+    const d = detalharPontuacao({
+      pontos: total,
+      vendas: 0,
+      cadastros: 0,
+      cliques: 5,
+    });
+    expect(d.conteudo).toBe(6);
+    expect(d.vendas).toBe(0);
+    expect(d.cadastros).toBe(0);
+    expect(d.total).toBe(6);
   });
 });
 
