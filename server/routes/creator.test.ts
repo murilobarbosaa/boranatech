@@ -1428,6 +1428,16 @@ describe("GET /api/creator/calendar", () => {
       avatar_url: null,
       avatar: AVATAR_ICONE,
     });
+    // CONSENTIMENTO (lote 11j): OUTRO tem linha de perfil sem
+    // `visible_to_creators` ligado, entao para mim o @ dele sai; nome e
+    // avatar ficam, que e o que o calendario compartilhado precisa.
+    expect(r.body.data.marcacoes[1].autor).toEqual({
+      user_id: OUTRO_UID,
+      name: "Outra Cria",
+      handle: null,
+      avatar_url: null,
+      avatar: AVATAR_ICONE,
+    });
     // Sem pedido, `meu_pedido` e null EXPLICITO, nao ausente: ausente e o
     // backend anterior ao lote 10c, e o client trata os dois diferente.
     expect(r.body.data.marcacoes[1].meu_pedido).toBeNull();
@@ -1441,6 +1451,29 @@ describe("GET /api/creator/calendar", () => {
     expect(double.de("creator_profiles")[0].filtros).toEqual([
       { tipo: "in", coluna: "user_id", valor: [UID, OUTRO_UID] },
     ]);
+  });
+
+  it("consentimento (lote 11j): com `visible_to_creators` ligado o @ do outro aparece, e a leitura de creator_profiles continua sendo UMA", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_calendar_events: { rows: [MARCACAO, MARCACAO_DE_OUTRO] },
+      creator_collab_requests: respostaQueFiltra([]),
+      profiles: perfis(),
+      creator_profiles: respostaQueFiltra([
+        {
+          user_id: OUTRO_UID,
+          calendar_color: "emerald",
+          visible_to_creators: true,
+        },
+      ]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", `/calendar?mes=${DIA_MARCADO.slice(0, 7)}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.marcacoes[1].autor.handle).toBe("outracria");
+    // O meu proprio @ aparece para mim mesmo sem linha de perfil.
+    expect(r.body.data.marcacoes[0].autor.handle).toBe("cria");
+    expect(double.de("creator_profiles")).toHaveLength(1);
   });
 
   it("collabs (lote 10c): a aceita aparece em `collabs` para um TERCEIRO, com nome e avatar; a pendente nao; minha_collab so para o parceiro", async () => {
@@ -1948,6 +1981,7 @@ describe("POST /api/creator/calendar/:id/collab", () => {
           ? { rows: [{ ...PEDIDO, requester_id: UID, owner_id: OUTRO_UID }] }
           : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
       ...avisoOk(),
     });
     estado.usuario = USUARIO;
@@ -2064,6 +2098,7 @@ describe("POST /api/creator/calendar/:id/collab", () => {
           ? { rows: [{ ...PEDIDO, requester_id: UID, owner_id: OUTRO_UID }] }
           : { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
       // A notificacao quebra: o pedido ja esta gravado e continua de pe.
       notifications: { error: { message: "timeout" } },
       notification_recipients: { rows: [] },
@@ -2091,15 +2126,37 @@ describe("GET /api/creator/collabs", () => {
       ]),
       creator_calendar_events: { rows: [MARCACAO] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("GET", "/collabs");
     expect(r.status).toBe(200);
     expect(r.body.data.recebidos).toHaveLength(1);
     expect(r.body.data.recebidos[0].id).toBe(PEDIDO_ID);
-    // O outro lado do pedido recebido e quem pediu.
-    expect(r.body.data.recebidos[0].outra_pessoa.user_id).toBe(OUTRO_UID);
+    // O outro lado do pedido recebido e quem pediu, e sem consentimento
+    // (lote 11j) ele vem sem @, so com o nome.
+    expect(r.body.data.recebidos[0].outra_pessoa).toMatchObject({
+      user_id: OUTRO_UID,
+      name: "Outra Cria",
+      handle: null,
+    });
     expect(r.body.data.enviados).toHaveLength(1);
+  });
+
+  it("consentimento (lote 11j): a outra pessoa vem com @ quando consentiu", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_collab_requests: respostaQueFiltra([PEDIDO]),
+      creator_calendar_events: { rows: [MARCACAO] },
+      profiles: perfis(),
+      creator_profiles: respostaQueFiltra([
+        { user_id: OUTRO_UID, visible_to_creators: true },
+      ]),
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("GET", "/collabs");
+    expect(r.status).toBe(200);
+    expect(r.body.data.recebidos[0].outra_pessoa.handle).toBe("outracria");
   });
 
   it("pedido cuja marcacao sumiu fica FORA da lista, com aviso no log", async () => {
@@ -2110,6 +2167,7 @@ describe("GET /api/creator/collabs", () => {
       // A marcacao do pedido nao existe mais.
       creator_calendar_events: { rows: [] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
     });
     estado.usuario = USUARIO;
     const r = await chamar("GET", "/collabs");
@@ -2129,6 +2187,7 @@ describe("POST /api/creator/collabs/:id/responder", () => {
           : { rows: [] },
       creator_calendar_events: { rows: [MARCACAO] },
       profiles: perfis(),
+      creator_profiles: respostaQueFiltra([]),
       ...avisoOk(),
     });
     estado.usuario = USUARIO;

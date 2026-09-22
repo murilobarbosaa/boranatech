@@ -66,7 +66,11 @@ import {
   resolverDonosDasPublicacoes,
 } from "../lib/creatorPosts";
 import { lerContato, listarMesDoCalendario } from "../lib/creatorCalendar";
-import { montarRanking, resolverMesDoRanking } from "../lib/creatorRanking";
+import {
+  montarRanking,
+  rankingParaOAdmin,
+  resolverMesDoRanking,
+} from "../lib/creatorRanking";
 import { parseMesDoCalendario } from "../../shared/creatorCalendar";
 import {
   CACHE_DO_RANKING_SEGUNDOS,
@@ -4431,7 +4435,7 @@ router.get("/creators/ranking", async (req, res, next) => {
       CACHE_DO_RANKING_SEGUNDOS,
       () => montarRanking(mes.valor.ano, mes.valor.mes, hoje),
     );
-    res.json({ data: ranking });
+    res.json({ data: rankingParaOAdmin(ranking) });
   } catch (err) {
     next(
       // TODO(Ana)

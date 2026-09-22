@@ -6,13 +6,15 @@
 // no fim, e nao sumir: sumir parece erro, zero e informacao.
 //
 // O que sai de OUTRA pessoa e o mesmo que o calendario ja expoe (nome, @,
-// avatar, cor), lido pelas mesmas funcoes. `visible_to_creators` nao entra
-// aqui pelo mesmo motivo que nao entra la: nenhum lugar da base o aplica a
-// terceiros hoje, e o ranking nao inaugura uma regra que o calendario nao tem.
+// avatar, cor), lido pelas mesmas funcoes, e sob a mesma regra de
+// consentimento (lote 11j, `aplicarConsentimento`): o @ de quem nao ligou
+// "mostrar meu @" sai para os outros creators.
 //
 // A montagem e NEUTRA (nao sabe quem olha), de proposito: e ela que vai para o
 // cache por mes, e um cache com `eu` marcado serviria a posicao de uma pessoa
-// para todas as outras. Quem olha entra depois, em `personalizarRanking`.
+// para todas as outras. Quem olha entra depois, em `personalizarRanking`. O @
+// vai CRU para o cache, com a lista de quem nao consentiu ao lado: o admin le
+// o mesmo cache e ve tudo, e e a personalizacao que esconde.
 
 import { inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
 import {
@@ -41,6 +43,7 @@ import {
 import { lerAutores } from "./creatorCalendar";
 import type { Linha } from "./creatorDashboard";
 import { numeroDe, textoDe, textoOuNull } from "./creatorDashboard";
+import { aplicarConsentimento, consentimentoDaLinha } from "./creatorProfile";
 import { coletarTudoProvandoTotal } from "./paginate";
 import { erroEncadeavel } from "./supabaseError";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -105,6 +108,8 @@ type PerfilDeCreator = {
   handle: string | null;
   rede_do_handle: RedeDeCreator | null;
   calendar_color: string;
+  /** `visible_to_creators` (lote 11j); sem linha e false. */
+  visivel: boolean;
 };
 
 /**
@@ -120,7 +125,9 @@ async function lerPerfisDeCreator(
   if (userIds.length === 0) return mapa;
   const { data, error } = await supabaseAdmin
     .from("creator_profiles")
-    .select("user_id, instagram_handle, tiktok_handle, calendar_color")
+    .select(
+      "user_id, instagram_handle, tiktok_handle, calendar_color, visible_to_creators",
+    )
     .in("user_id", userIds);
   if (error) throw erroEncadeavel(error);
   const linhas: Linha[] = data ?? [];
@@ -137,6 +144,7 @@ async function lerPerfisDeCreator(
       handle: instagram ?? tiktok,
       rede_do_handle: instagram ? "instagram" : tiktok ? "tiktok" : null,
       calendar_color: cor,
+      visivel: consentimentoDaLinha(linha.visible_to_creators),
     });
   }
   return mapa;
@@ -171,6 +179,17 @@ async function lerContagens(
 }
 
 /**
+ * A montagem neutra com o que a personalizacao precisa e o client nao recebe:
+ * quem nao consentiu em mostrar o @ (lote 11j). E este objeto que vai para o
+ * cache; `personalizarRanking` e `rankingParaOAdmin` devolvem `RankingDoMes`.
+ */
+export type RankingMontado = RankingDoMes & {
+  /** user_ids com `visible_to_creators` false: o @ deles sai para os outros
+   * creators. Ausente no cache gravado antes do lote 11j (TTL de 60 s). */
+  ocultos?: string[];
+};
+
+/**
  * O ranking de um mes, NEUTRO (sem `eu`, sem `minha_posicao`). E o que vai
  * para o cache; `personalizarRanking` poe quem olha.
  *
@@ -182,7 +201,7 @@ export async function montarRanking(
   ano: number,
   mes: number,
   hoje: string,
-): Promise<RankingDoMes> {
+): Promise<RankingMontado> {
   const { primeiro } = limitesDoMes(ano, mes);
   const chave = mesDoDia(primeiro);
   const primeiroDoSeguinte = `${mesVizinho(chave, 1)}-01`;
@@ -243,21 +262,42 @@ export async function montarRanking(
     fecha_em: fechado ? null : fimIso,
     posicoes,
     minha_posicao: null,
+    ocultos: ids.filter((id) => !(perfis.get(id)?.visivel ?? false)),
   };
 }
 
-/** O ranking neutro com quem olha marcado. Nao muda o objeto do cache. */
-export function personalizarRanking(
-  base: RankingDoMes,
-  viewerId: string,
+/** Os campos que saem para o client, e nada da montagem (`ocultos`). */
+function rankingDaMontagem(
+  base: RankingMontado,
+  posicoes: PosicaoDoRanking[],
 ): RankingDoMes {
-  const posicoes = base.posicoes.map((p) => ({
-    ...p,
-    eu: p.user_id === viewerId,
-  }));
   return {
-    ...base,
+    mes: base.mes,
+    fechado: base.fechado,
+    fecha_em: base.fecha_em,
     posicoes,
     minha_posicao: posicoes.find((p) => p.eu) ?? null,
   };
+}
+
+/**
+ * O ranking neutro com quem olha marcado e o consentimento aplicado (lote
+ * 11j): o @ de quem esta em `ocultos` sai, menos o do proprio viewer. Nao
+ * muda o objeto do cache.
+ */
+export function personalizarRanking(
+  base: RankingMontado,
+  viewerId: string,
+): RankingDoMes {
+  const ocultos = new Set(base.ocultos ?? []);
+  const posicoes = base.posicoes.map((p) => ({
+    ...aplicarConsentimento(p, !ocultos.has(p.user_id), viewerId),
+    eu: p.user_id === viewerId,
+  }));
+  return rankingDaMontagem(base, posicoes);
+}
+
+/** O ranking como o admin o ve: tudo, sem `eu` e sem `ocultos`. */
+export function rankingParaOAdmin(base: RankingMontado): RankingDoMes {
+  return rankingDaMontagem(base, base.posicoes);
 }

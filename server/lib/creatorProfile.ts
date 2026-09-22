@@ -9,6 +9,7 @@ import {
   type CodigoDeSeguidores,
   type CreatorPerfilDados,
   type CreatorPixMascarada,
+  type RedeDeCreator,
   type Resultado,
   type TipoDeChavePix,
   COR_PADRAO_DO_CALENDARIO,
@@ -424,4 +425,89 @@ export async function enriquecerPaginaDoQuadro(
     }
   }
   return mapa;
+}
+
+// ---------------------------------------------------------------------------
+// CONSENTIMENTO (lote 11j): o que OUTRO creator ve de alguem.
+//
+// O checkbox do perfil promete "Mostrar meu @ e meus seguidores para outros
+// creators". Ate o lote 11j nada aplicava a promessa: calendario, pedidos de
+// collab e ranking mostravam o @ de todo mundo. A regra mora AQUI, numa funcao
+// so, e os leitores a chamam com quem olha: guarda escrita em cada chamador e
+// a que some no primeiro que esquecer.
+//
+// O que se esconde e SO o @ (`handle`, e a rede dele quando existe): nome e
+// avatar continuam, porque sao o que o calendario compartilhado precisa para
+// duas pessoas nao repetirem assunto no dia. Seguidores nunca sairam para
+// terceiros. O proprio viewer sempre ve o seu @; o admin ve tudo.
+
+/**
+ * `true` e o unico valor que libera o @. A coluna e NOT NULL boolean, entao
+ * qualquer outra coisa e "nao consentiu", que e o lado seguro do erro: um @ a
+ * mais escondido, nunca um a menos. Por isso NAO lanca como
+ * `lerPerfilDoCreator`: aqui o valor degradado nao se confunde com correto.
+ */
+export function consentimentoDaLinha(valor: unknown): boolean {
+  return valor === true;
+}
+
+/**
+ * `visible_to_creators` de cada creator, numa consulta so. Sem linha em
+ * `creator_profiles` e `false`, o mesmo padrao do perfil vazio: quem nunca
+ * salvou o perfil nunca consentiu.
+ */
+export async function lerConsentimentos(
+  userIds: string[],
+): Promise<Map<string, boolean>> {
+  const mapa = new Map<string, boolean>();
+  const vistos = new Set<string>();
+  const unicos: string[] = [];
+  for (const id of userIds) {
+    if (vistos.has(id)) continue;
+    vistos.add(id);
+    unicos.push(id);
+  }
+  if (unicos.length === 0) return mapa;
+  const { data, error } = await supabaseAdmin
+    .from("creator_profiles")
+    .select("user_id, visible_to_creators")
+    .in("user_id", unicos);
+  if (error) throw erroEncadeavel(error);
+  const linhas: Linha[] = data ?? [];
+  for (const linha of linhas) {
+    mapa.set(
+      textoDe(linha.user_id, "user_id"),
+      consentimentoDaLinha(linha.visible_to_creators),
+    );
+  }
+  return mapa;
+}
+
+/** O minimo que a regra precisa: quem e, e o @ (com a rede, no ranking). */
+export type AutorComHandle = {
+  user_id: string;
+  handle: string | null;
+  rede_do_handle?: RedeDeCreator | null;
+};
+
+/**
+ * O autor como quem olha pode ve-lo. `viewerId` null e o admin (a mesma
+ * convencao de `listarMesDoCalendario`), que ve tudo; o proprio viewer ve o
+ * seu @ mesmo com o consentimento desligado; para qualquer outro creator o @
+ * sai quando `visivel` e false. Devolve o MESMO objeto quando nada muda.
+ */
+export function aplicarConsentimento<T extends AutorComHandle>(
+  autor: T,
+  visivel: boolean,
+  viewerId: string | null,
+): T {
+  if (viewerId === null || viewerId === autor.user_id || visivel) return autor;
+  if (autor.handle === null && (autor.rede_do_handle ?? null) === null) {
+    return autor;
+  }
+  // A rede so e zerada onde existe: o autor do calendario nao tem o campo, e
+  // inventa-lo ali mudaria a forma da resposta.
+  return "rede_do_handle" in autor
+    ? { ...autor, handle: null, rede_do_handle: null }
+    : { ...autor, handle: null };
 }

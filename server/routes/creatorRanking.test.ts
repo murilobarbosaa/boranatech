@@ -95,6 +95,8 @@ import {
 import {
   montarRanking,
   personalizarRanking,
+  rankingParaOAdmin,
+  type RankingMontado,
   resolverMesDoRanking,
 } from "../lib/creatorRanking";
 import {
@@ -182,14 +184,18 @@ const CREATOR_PROFILES = [
     instagram_handle: "ana.cria",
     tiktok_handle: "ana.tk",
     calendar_color: "rose",
+    visible_to_creators: true,
   },
+  // Bia NAO consentiu (lote 11j): o @ dela sai para os outros creators.
   {
     user_id: BIA,
     instagram_handle: null,
     tiktok_handle: "bia.tk",
     calendar_color: "cyan",
+    visible_to_creators: false,
   },
-  // Caio nao tem perfil de creator: cai no @ da conta e na cor padrao.
+  // Caio nao tem perfil de creator: cai no @ da conta e na cor padrao, e sem
+  // linha nao ha consentimento.
 ];
 
 let double: ReturnType<typeof criarSupabaseDouble>;
@@ -413,6 +419,9 @@ describe("montarRanking", () => {
     // Uma consulta por tabela, e nao uma por pessoa.
     expect(double.de("profiles")).toHaveLength(1);
     expect(double.de("creator_profiles")).toHaveLength(1);
+    // A montagem e CRUA (o @ da Bia esta la) e diz quem nao consentiu: so a
+    // Ana ligou o consentimento; Caio e Duda nem tem linha de perfil.
+    expect(ranking.ocultos).toEqual([BIA, CAIO, DUDA]);
   });
 
   it("mes anterior vem fechado, sem fecha_em", async () => {
@@ -428,7 +437,7 @@ describe("montarRanking", () => {
   });
 
   it("personalizarRanking marca quem olha, sem mexer no objeto base", () => {
-    const base: RankingDoMes = {
+    const base: RankingMontado = {
       mes: "2026-09",
       fechado: false,
       fecha_em: "2026-10-01T03:00:00.000Z",
@@ -459,6 +468,7 @@ describe("montarRanking", () => {
         },
       ],
       minha_posicao: null,
+      ocultos: [],
     };
     const meu = personalizarRanking(base, BIA);
     expect(meu.posicoes.map((p) => p.eu)).toEqual([false, true]);
@@ -466,6 +476,58 @@ describe("montarRanking", () => {
     expect(personalizarRanking(base, CAIO).minha_posicao).toBeNull();
     expect(base.posicoes.every((p) => !p.eu)).toBe(true);
     expect(base.minha_posicao).toBeNull();
+    // `ocultos` e da montagem, nao da resposta.
+    expect("ocultos" in meu).toBe(false);
+  });
+
+  it("personalizarRanking aplica o consentimento (lote 11j): o @ de quem esta em ocultos sai, menos para a propria pessoa; o admin ve tudo", () => {
+    const base: RankingMontado = {
+      mes: "2026-09",
+      fechado: false,
+      fecha_em: "2026-10-01T03:00:00.000Z",
+      posicoes: [
+        {
+          posicao: 1,
+          user_id: ANA,
+          name: "Ana",
+          handle: "ana.cria",
+          rede_do_handle: "instagram",
+          avatar_url: null,
+          calendar_color: "rose",
+          pontos: 10,
+          contagens: { publicacoes: 1, vendas: 0, cliques: 0, cadastros: 0 },
+          eu: false,
+        },
+      ],
+      minha_posicao: null,
+      ocultos: [ANA],
+    };
+    const paraBia = personalizarRanking(base, BIA);
+    expect(paraBia.posicoes[0]).toMatchObject({
+      name: "Ana",
+      handle: null,
+      rede_do_handle: null,
+    });
+    const paraAna = personalizarRanking(base, ANA);
+    expect(paraAna.posicoes[0]).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+      eu: true,
+    });
+    expect(rankingParaOAdmin(base).posicoes[0]).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+      eu: false,
+    });
+    expect("ocultos" in rankingParaOAdmin(base)).toBe(false);
+    // Cache gravado antes do lote 11j, sem `ocultos`: nada e escondido.
+    const { ocultos: _semUso, ...antigo } = base;
+    void _semUso;
+    expect(personalizarRanking(antigo, BIA).posicoes[0].handle).toBe(
+      "ana.cria",
+    );
+    // O objeto do cache nao muda.
+    expect(base.posicoes[0].handle).toBe("ana.cria");
   });
 });
 
@@ -512,6 +574,24 @@ describe("GET /api/creator/ranking", () => {
       [4, false],
     ]);
     expect(data.minha_posicao).toMatchObject({ posicao: 1, user_id: BIA });
+    // Consentimento (lote 11j), na visao da Bia: o proprio @ dela aparece
+    // mesmo sem consentir; o da Ana aparece porque a Ana consentiu; o do Caio
+    // (o @ da conta, sem linha de perfil) sai.
+    const porId = new Map(data.posicoes.map((p) => [p.user_id, p]));
+    expect(porId.get(BIA)).toMatchObject({
+      handle: "bia.tk",
+      rede_do_handle: "tiktok",
+    });
+    expect(porId.get(ANA)).toMatchObject({
+      handle: "ana.cria",
+      rede_do_handle: "instagram",
+    });
+    expect(porId.get(CAIO)).toMatchObject({
+      name: null,
+      handle: null,
+      rede_do_handle: null,
+    });
+    expect("ocultos" in data).toBe(false);
   });
 
   it("?mes= abre um mes anterior, fechado", async () => {
@@ -543,9 +623,16 @@ describe("GET /api/creator/ranking", () => {
     expect(double.rpcCalls).toHaveLength(1);
     expect(redis.set).toHaveBeenCalledWith(chave, expect.any(String), "EX", 60);
     // O que foi guardado e NEUTRO: nenhum `eu`, nenhuma `minha_posicao`.
-    const guardado = JSON.parse(redis.memoria.get(chave)!) as RankingDoMes;
+    const guardado = JSON.parse(redis.memoria.get(chave)!) as RankingMontado;
     expect(guardado.posicoes.every((p) => !p.eu)).toBe(true);
     expect(guardado.minha_posicao).toBeNull();
+    // E CRU quanto ao consentimento (lote 11j): o @ da Bia esta no cache, com
+    // a lista de quem nao consentiu ao lado; quem esconde e a personalizacao,
+    // e o admin le este mesmo cache vendo tudo.
+    expect(guardado.posicoes.find((p) => p.user_id === BIA)?.handle).toBe(
+      "bia.tk",
+    );
+    expect(guardado.ocultos).toEqual([BIA, CAIO, DUDA]);
 
     // Outra pessoa, mesmo mes: sai do cache, com o `eu` DELA.
     estado.usuario = {
@@ -562,6 +649,12 @@ describe("GET /api/creator/ranking", () => {
       posicao: 2,
       user_id: ANA,
     });
+    // Para a Ana, o @ da Bia (que nao consentiu) sai; o dela mesma fica.
+    const posicoesDaAna = (segunda.body.data as RankingDoMes).posicoes;
+    expect(posicoesDaAna.find((p) => p.user_id === BIA)?.handle).toBeNull();
+    expect(posicoesDaAna.find((p) => p.user_id === ANA)?.handle).toBe(
+      "ana.cria",
+    );
   });
 
   it("erro na funcao SQL vira 500 com a mensagem de tela, sem vazar o erro", async () => {
