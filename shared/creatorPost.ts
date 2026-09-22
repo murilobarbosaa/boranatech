@@ -243,6 +243,7 @@ const INSTAGRAM_RE = new RegExp(
 // nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `stories`,
 // `share`, `explore`, `accounts`), que nunca sao perfil.
 const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DA_REDE}$`);
+const COMPARTILHAMENTO_DO_INSTAGRAM_RE = /^share(\/|$)/i;
 const CAMINHOS_RESERVADOS_DO_INSTAGRAM = [
   "p",
   "reel",
@@ -333,6 +334,16 @@ function detectarPublicacao(
   }
 
   if (host === "instagram.com") {
+    // LINK DE COMPARTILHAMENTO (lote 11k): `instagram.com/share/reel/<token>`,
+    // `share/p/<token>` e `share/<token>` sao o que o botao Compartilhar do
+    // app escreve. O token NAO e o shortcode: e um redirecionamento, e sem
+    // esta recusa `INSTAGRAM_RE` engolia `share` como usuario e gravava o
+    // token como id de post, apontando para lugar nenhum. Recusado ANTES de
+    // qualquer outra leitura; o servidor tenta resolver
+    // (server/lib/instagramShareLink.ts).
+    if (COMPARTILHAMENTO_DO_INSTAGRAM_RE.test(caminho)) {
+      return { ok: false, code: "share_link_unsupported" };
+    }
     const story = STORY_RE.exec(caminho);
     // `stories/highlights/<id>/` tem a forma de story com usuario
     // "highlights", e nao e: destaque e uma colecao fixa do perfil, sem data,

@@ -37,6 +37,8 @@ const estado = vi.hoisted(() => ({
   // por ele, e um stub engoliria as proprias requisicoes do teste. O
   // resolvedor tem teste proprio (server/lib/tiktokShortLink.test.ts).
   resolver: vi.fn(),
+  // O mesmo para o link de compartilhamento do Instagram (lote 11k).
+  resolverCompartilhamento: vi.fn(),
 }));
 
 vi.mock("../lib/env", () => ({
@@ -65,6 +67,15 @@ vi.mock("../lib/tiktokShortLink", async (importOriginal) => {
   return {
     ...real,
     resolverLinkCurtoDoTikTok: (url: unknown) => estado.resolver(url),
+  };
+});
+vi.mock("../lib/instagramShareLink", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("../lib/instagramShareLink")>();
+  return {
+    ...real,
+    resolverLinkDeCompartilhamentoDoInstagram: (url: unknown, tipo: unknown) =>
+      estado.resolverCompartilhamento(url, tipo),
   };
 });
 
@@ -135,6 +146,10 @@ beforeEach(() => {
   estado.redis = null;
   estado.usuario = null;
   estado.sentry = vi.fn();
+  estado.resolverCompartilhamento = vi.fn(async () => ({
+    ok: false,
+    code: "share_link_unresolved",
+  }));
   estado.resolver = vi.fn(async () => ({
     ok: false,
     code: "short_link_unresolved",
@@ -1196,6 +1211,93 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
     // A contagem do dia foi a unica ida ao banco.
     expect(double.de("creator_posts")).toHaveLength(1);
+  });
+
+  it("link de compartilhamento do Instagram (lote 11k): o servidor resolve com o tipo escolhido e grava a canonica", async () => {
+    estado.resolverCompartilhamento = vi.fn(async () => ({
+      ok: true,
+      valor: {
+        network: "instagram",
+        kind: "reel",
+        external_id: "DAbCdEfGhIj",
+        url: "https://www.instagram.com/reel/DAbCdEfGhIj/",
+      },
+    }));
+    const reel = {
+      ...PUBLICACAO,
+      kind: "reel",
+      url: "https://www.instagram.com/reel/DAbCdEfGhIj/",
+    };
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert" ? { rows: [reel] } : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      rede: "instagram",
+      tipo: "reel",
+    });
+    expect(r.status).toBe(201);
+    expect(r.body.data.post.url).toBe(reel.url);
+    expect(estado.resolverCompartilhamento).toHaveBeenCalledWith(
+      "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      "reel",
+    );
+    expect(estado.resolver).not.toHaveBeenCalled();
+    expect(escritasEm("creator_posts")[0].payload).toMatchObject({
+      network: "instagram",
+      kind: "reel",
+      external_id: "DAbCdEfGhIj",
+    });
+  });
+
+  it("link de compartilhamento que nao resolve: 400 share_link_unresolved com a frase que ensina a barra, nada gravado", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.instagram.com/share/p/BAJ4kQ7Xyz",
+      rede: "instagram",
+      tipo: "post",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("share_link_unresolved");
+    expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.share_link_unsupported);
+    expect(estado.resolverCompartilhamento).toHaveBeenCalledTimes(1);
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("link de compartilhamento com OUTRA rede escolhida: 400 share_link_unsupported, sem abrir a URL", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      rede: "tiktok",
+      tipo: "video",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("share_link_unsupported");
+    expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.share_link_unsupported);
+    expect(estado.resolverCompartilhamento).not.toHaveBeenCalled();
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
+  it("no teto do dia, o link de compartilhamento recebe 429 SEM nenhuma chamada ao resolvedor", async () => {
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: {
+        rows: Array.from({ length: 10 }, (_, i) => ({ id: `id-${i}` })),
+      },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      rede: "instagram",
+      tipo: "reel",
+    });
+    expect(r.status).toBe(429);
+    expect(estado.resolverCompartilhamento).not.toHaveBeenCalled();
   });
 
   it("link curto do TikTok com OUTRO tipo escolhido: continua short_link_unsupported, sem abrir a URL", async () => {

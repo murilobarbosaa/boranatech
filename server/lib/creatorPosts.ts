@@ -31,6 +31,10 @@ import {
   ehLinkCurtoDoTikTok,
   resolverLinkCurtoDoTikTok,
 } from "./tiktokShortLink";
+import {
+  ehLinkDeCompartilhamentoDoInstagram,
+  resolverLinkDeCompartilhamentoDoInstagram,
+} from "./instagramShareLink";
 
 /**
  * PUBLICACOES REGISTRADAS PELO CREATOR (lote 09, status no lote 10b): toda
@@ -86,6 +90,7 @@ export type RegistroRecusado =
       code:
         | CodigoSimplesDoLink
         | "short_link_unresolved"
+        | "share_link_unresolved"
         | "invalid_post_network"
         | "invalid_post_type"
         | "post_already_registered"
@@ -264,8 +269,18 @@ export async function registrarPublicacao(
     rede === "tiktok" &&
     tipo === "video" &&
     ehLinkCurtoDoTikTok(url);
+  // Link de compartilhamento do Instagram (lote 11k): mesmo desenho, no mesmo
+  // ponto. A rede precisa ser instagram; o tipo escolhido vai para o
+  // resolvedor, que devolve o mismatch quando o destino e de outro tipo.
+  const precisaResolverCompartilhamento =
+    !link.ok &&
+    link.code === "share_link_unsupported" &&
+    rede === "instagram" &&
+    ehLinkDeCompartilhamentoDoInstagram(url);
   // Link que nem forma de publicacao tem sai aqui, sem tocar no banco.
-  if (!link.ok && !precisaResolver) return link;
+  if (!link.ok && !precisaResolver && !precisaResolverCompartilhamento) {
+    return link;
+  }
 
   // O TETO DO DIA VEM ANTES DE ABRIR CONEXAO: o decimo primeiro link curto do
   // dia recebe 429 sem uma unica requisicao ao TikTok. Na ordem inversa, o
@@ -285,6 +300,14 @@ export async function registrarPublicacao(
 
   if (precisaResolver) {
     const resolvido = await resolverLinkCurtoDoTikTok(url);
+    if (!resolvido.ok) return resolvido;
+    link = resolvido;
+  }
+  if (precisaResolverCompartilhamento) {
+    const resolvido = await resolverLinkDeCompartilhamentoDoInstagram(
+      url,
+      tipo,
+    );
     if (!resolvido.ok) return resolvido;
     link = resolvido;
   }

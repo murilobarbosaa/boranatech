@@ -185,7 +185,7 @@ export function CreatorPublicacoes() {
     // requisicao.
     const conferido = normalizarLinkDePublicacao(link, rede, tipo);
     // Link curto do TikTok com tipo video (lote 10c): o SERVIDOR resolve o
-    // redirecionamento, entao aqui ele passa; os do Instagram e do LinkedIn
+    // redirecionamento, entao aqui ele passa; `instagr.am` e `lnkd.in`
     // continuam barrados.
     const curtoDoTikTok =
       !conferido.ok &&
@@ -195,7 +195,13 @@ export function CreatorPublicacoes() {
       /(^|\/\/|\.)(vm\.tiktok\.com|vt\.tiktok\.com|tiktok\.com\/t\/)/i.test(
         link.trim(),
       );
-    if (!conferido.ok && !curtoDoTikTok) {
+    // Link de compartilhamento do Instagram (lote 11k): o servidor tenta
+    // resolver; se nao conseguir, a frase dele ensina a colar o da barra.
+    const compartilhamentoDoInstagram =
+      !conferido.ok &&
+      conferido.code === "share_link_unsupported" &&
+      rede === "instagram";
+    if (!conferido.ok && !curtoDoTikTok && !compartilhamentoDoInstagram) {
       // A frase e a MESMA que o servidor devolveria (lote 11k): uma fonte so.
       setErro(mensagemDoLinkRecusado(conferido));
       return;

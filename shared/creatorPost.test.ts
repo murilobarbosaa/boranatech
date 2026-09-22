@@ -555,6 +555,43 @@ describe("normalizarLinkDePublicacao: recusas", () => {
   });
 });
 
+describe("normalizarLinkDePublicacao: link de compartilhamento do Instagram (lote 11k)", () => {
+  it("share/reel, share/p e share/<token> sao share_link_unsupported, e NUNCA viram post do usuario 'share'", () => {
+    for (const entrada of [
+      "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      "https://www.instagram.com/share/p/BAJ4kQ7Xyz/",
+      "instagram.com/share/BAJ4kQ7Xyz?igsh=abc",
+      "https://www.instagram.com/SHARE/reel/BAJ4kQ7Xyz",
+    ]) {
+      for (const tipo of ["post", "reel", "story"] as const) {
+        expect(
+          normalizarLinkDePublicacao(entrada, "instagram", tipo),
+          `${entrada} ${tipo}`,
+        ).toEqual({ ok: false, code: "share_link_unsupported" });
+      }
+    }
+  });
+
+  it("vem antes da rede e do tipo: com o TikTok escolhido continua sendo a recusa do compartilhamento", () => {
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+        "tiktok",
+        "video",
+      ),
+    ).toEqual({ ok: false, code: "share_link_unsupported" });
+    // Um usuario chamado "share.cria" continua sendo perfil, nao
+    // compartilhamento.
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.instagram.com/share.cria/",
+        "instagram",
+        "post",
+      ),
+    ).toEqual({ ok: false, code: "profile_link" });
+  });
+});
+
 describe("mensagens da recusa (lote 11k): uma fonte para a rota e para a tela", () => {
   it("todo codigo simples tem frase, e nenhuma e a generica de outro", () => {
     const codigos: CodigoSimplesDoLink[] = [

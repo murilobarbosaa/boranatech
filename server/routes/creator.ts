@@ -343,6 +343,7 @@ const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   tiktok_photo_unsupported: 400,
   profile_link: 400,
   short_link_unresolved: 400,
+  share_link_unresolved: 400,
   invalid_post_network: 400,
   invalid_post_type: 400,
   post_network_mismatch: 400,
@@ -362,6 +363,9 @@ const MENSAGEM_DA_PUBLICACAO: Record<
   invalid_post_network: "Escolha a rede: Instagram, TikTok ou LinkedIn.",
   short_link_unresolved:
     "Não conseguimos abrir esse link curto. Abra a publicação no navegador e cole o link da barra de endereço.",
+  // O Instagram nao redirecionou (pagina de login para robo, provavelmente):
+  // a mesma frase da recusa, que ja ensina o caminho.
+  share_link_unresolved: MENSAGEM_DO_LINK.share_link_unsupported,
   invalid_post_type:
     "Escolha o tipo da publicação: post, reel, story ou vídeo do TikTok.",
   post_already_registered: "Você já registrou esta publicação.",

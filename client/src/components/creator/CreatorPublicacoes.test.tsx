@@ -370,6 +370,42 @@ describe("CreatorPublicacoes: registro", () => {
     );
   });
 
+  it("link de compartilhamento do Instagram (lote 11k): vai ao servidor, que resolve; com outra rede, barrado aqui com a frase propria", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    estado.responder = async (_path, method) =>
+      method === "POST"
+        ? { data: { post: REEL } }
+        : { data: { posts: [], total: 0, no_mes: 0 } };
+    escolherRede("instagram");
+    await escolherTipo("Reel");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz" },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    await waitFor(() => expect(chamadasCom("POST")).toHaveLength(1));
+    expect(chamadasCom("POST")[0].body).toEqual({
+      url: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz",
+      rede: "instagram",
+      tipo: "reel",
+    });
+
+    cleanup();
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("tiktok");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "https://www.instagram.com/share/reel/BAJ4kQ7Xyz" },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe(MENSAGEM_DO_LINK.share_link_unsupported);
+    expect(chamadasCom("POST")).toHaveLength(1);
+  });
+
   it("link curto do TikTok com outra rede escolhida: continua barrado aqui", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
