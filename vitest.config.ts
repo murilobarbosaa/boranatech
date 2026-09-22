@@ -50,7 +50,20 @@ export default defineConfig({
     // vezes (a segunda sobre o indice materializado, que inclui este arquivo),
     // e a flag teria que ser repetida nas duas; o CI e as execucoes manuais
     // ficariam de fora de qualquer jeito.
-    maxWorkers: 4,
+    //
+    // NO CI, 2. O runner `ubuntu-latest` tem 4 vCPU, e 4 workers `forks` mais
+    // o processo principal do vitest (que recebe os relatorios de cada worker
+    // por RPC) saturam os 4 nucleos: na run 35770625809 (2026-09-22) a suite
+    // passou inteira (6955 testes) e o job caiu com
+    // `Error: [vitest-worker]: Timeout calling "onTaskUpdate"`, um worker sem
+    // tempo de CPU para reportar ao principal dentro do prazo do RPC. O
+    // rerun passou, o que e a assinatura de saturacao, nao de teste quebrado.
+    // Com 2 workers sobram 2 nucleos para o principal e para o jsdom, e o job
+    // continua na mesma ordem de grandeza (a suite e limitada por I/O de
+    // transform e collect, nao pelos workers). So `process.env.CI`, que o
+    // GitHub Actions define e a maquina local e o hook nao: o teto de 4 acima
+    // continua valendo aqui.
+    maxWorkers: process.env.CI ? 2 : 4,
     include: [
       "client/src/**/*.test.{ts,tsx}",
       "server/**/*.test.ts",
