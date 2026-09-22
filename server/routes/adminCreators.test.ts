@@ -82,6 +82,7 @@ vi.mock("../middleware/auth", () => ({
   isDevProUser: () => false,
 }));
 
+import { calcularPontos } from "../../shared/creatorRanking";
 import {
   criarSupabaseDouble,
   respostaQueFiltra,
@@ -1277,10 +1278,17 @@ describe("GET /creators/ranking (lote 11c)", () => {
         }) => [p.posicao, p.user_id, p.pontos, p.eu],
       ),
     ).toEqual([
-      // 1 reel (15) + 1 venda (100) + 10 cliques (10) + 2 cadastros (40).
-      [1, UID, 165, false],
+      // O total sai da REGRA compartilhada, nao de um numero escrito aqui: os
+      // pesos mudam em shared/creatorRanking.ts sem passar por este arquivo
+      // (ba6d1f06 trocou venda, clique e cadastro, e o literal 165 ficou para
+      // tras com a rota devolvendo 51). Este teste afirma a MONTAGEM (quem
+      // entra, em que ordem, com que contagem); o peso de cada coluna e
+      // assunto de shared/creatorRanking.test.ts.
+      [1, UID, calcularPontos(CONTAGENS[0]), false],
       [2, BIA, 0, false],
     ]);
+    // A fixture pontua de verdade, senao a ordem acima nao afirmaria nada.
+    expect(calcularPontos(CONTAGENS[0])).toBeGreaterThan(0);
     expect(r.body.data.posicoes[0].handle).toBe("ana.cria");
     expect(r.body.data.posicoes[0].calendar_color).toBe("cyan");
     // A leitura de creators filtra o kind, como na rota do creator.
