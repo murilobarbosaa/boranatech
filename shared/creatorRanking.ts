@@ -58,15 +58,6 @@ export const PONTOS_POR_CADASTRO = 8;
 export const TETO_DE_CLIQUES_POR_DIA = 30;
 
 /**
- * Teto diario de Story que pontua (Ana): so as 3 primeiras do dia valem.
- * ATENCAO: o teto de fato precisa ser aplicado na funcao SQL `creator_ranking_counts`
- * (como o teto de clique), o que exige migration. Esta constante e a fonte do
- * numero; a aplicacao no banco fica pendente.
- * TODO(Ana): aplicar o teto de story na funcao SQL (migration).
- */
-export const TETO_DE_STORIES_POR_DIA = 3;
-
-/**
  * Quantas horas depois de criada uma conta ainda conta como "cadastro pelo
  * link" (lote 11i). Existe para o link nao "adotar" contas antigas que so
  * passaram por ele depois: a atribuicao e do primeiro acesso autenticado da

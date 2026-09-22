@@ -86,6 +86,7 @@ vi.mock("../lib/avatarResolver", () => ({
 
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
+  calcularPontos,
   CONTAGENS_ZERADAS,
   mesDoDia,
   mesVizinho,
@@ -247,21 +248,27 @@ beforeEach(() => {
   estado.usuario = USUARIO;
   estado.sentry = vi.fn();
   erroDaRpc = null;
+  // Os PESOS vem de shared/creatorRanking.ts e mudam sem passar por aqui;
+  // nenhum total e escrito a mao neste arquivo (os testes usam
+  // `calcularPontos`), e o cenario de EMPATE abaixo e afirmado como empate
+  // pelo proprio `calcularPontos`, para o teste acusar quando um peso novo o
+  // desfizer, em vez de passar por coincidencia.
   contagensDoBanco = [
-    // Ana: 1 reel (15) + 1 venda (100) + 40 cliques ja com teto (40) = 155.
+    // Ana: 1 reel, 1 venda e cliques ja com teto (o clique nao pontua).
     { user_id: ANA, ...CONTAGENS_ZERADAS, reels: 1, vendas: 1, cliques: 40 },
-    // Bia: 2 posts IG (20) + 1 story (5) + 1 venda (100) + 30 cliques = 155.
-    // Empata com Ana em pontos e vendas; Bia tem 3 publicacoes contra 1.
+    // Bia: EMPATA com Ana em pontos pelos pesos atuais (3 posts + 1 reel + 2
+    // cadastros), com ZERO venda e mais publicacoes que ela. E o desempate
+    // por vendas que poe a Ana na frente, e nao o de publicacoes.
     {
       user_id: BIA,
       ...CONTAGENS_ZERADAS,
-      ig_posts: 2,
-      stories: 1,
-      vendas: 1,
+      ig_posts: 3,
+      reels: 1,
+      cadastros: 2,
       cliques: 30,
     },
-    // Caio: 1 video (15) + 1 post LinkedIn (10) + 2 cadastros pelo link
-    // (40, lote 11i) = 65.
+    // Caio: 1 video, 1 post LinkedIn e 2 cadastros pelo link; menos que as
+    // duas.
     {
       user_id: CAIO,
       ...CONTAGENS_ZERADAS,
@@ -338,15 +345,21 @@ describe("montarRanking", () => {
     // Data de fechamento fixa (Ana): fim do dia 22/10 = meia-noite de 23/10 BR.
     expect(ranking.fecha_em).toBe("2026-10-23T03:00:00.000Z");
     expect(ranking.minha_posicao).toBeNull();
+    const pontosDe = (id: string) =>
+      calcularPontos(contagensDoBanco.find((c) => c.user_id === id)!);
+    // A fixture EMPATA Ana e Bia em pontos, e Caio fica abaixo: sem estas
+    // duas guardas a ordem abaixo poderia passar por outro motivo.
+    expect(pontosDe(ANA)).toBe(pontosDe(BIA));
+    expect(pontosDe(CAIO)).toBeLessThan(pontosDe(ANA));
     expect(
       ranking.posicoes.map((p) => [p.posicao, p.user_id, p.pontos]),
     ).toEqual([
-      // Valores da Ana: Ana 1 reel (10) + 1 venda (25) = 35; Bia 2 posts (6) +
-      // 1 story (1) + 1 venda (25) = 32; Caio 1 video (10) + 1 li post (3) +
-      // 2 cadastros (16) = 29. Clique nao pontua. Ana lidera.
-      [1, ANA, 35],
-      [2, BIA, 32],
-      [3, CAIO, 29],
+      // Empate em pontos: Ana tem 1 venda e Bia nenhuma, entao Ana lidera,
+      // mesmo com Bia tendo mais publicacoes (o desempate por publicacoes so
+      // vem depois do de vendas).
+      [1, ANA, pontosDe(ANA)],
+      [2, BIA, pontosDe(BIA)],
+      [3, CAIO, pontosDe(CAIO)],
       // Duda esta ativa e nao pontuou: fim da lista, zero.
       [4, DUDA, 0],
     ]);
@@ -365,7 +378,7 @@ describe("montarRanking", () => {
   it("expoe de cada pessoa o mesmo que o calendario: nome, @, avatar e cor", async () => {
     montar();
     const ranking = await montarRanking(2026, 9, HOJE);
-    // Ordem pelos valores da Ana: Ana (35) na frente de Bia (32).
+    // Ordem: Ana na frente de Bia pelo desempate por vendas.
     const [ana, bia, caio, duda] = ranking.posicoes;
     expect(bia).toMatchObject({
       name: "Bia",
@@ -381,7 +394,7 @@ describe("montarRanking", () => {
         border: "classic",
       },
       calendar_color: "cyan",
-      contagens: { publicacoes: 3, vendas: 1, cliques: 30, cadastros: 0 },
+      contagens: { publicacoes: 4, vendas: 0, cliques: 30, cadastros: 2 },
       eu: false,
     });
     // O primeiro @ cadastrado e o do Instagram.
@@ -403,7 +416,7 @@ describe("montarRanking", () => {
       handle: "caio",
       rede_do_handle: null,
       calendar_color: "violet",
-      pontos: 29,
+      pontos: calcularPontos(contagensDoBanco.find((c) => c.user_id === CAIO)!),
       contagens: { publicacoes: 2, vendas: 0, cliques: 0, cadastros: 2 },
       avatar: {
         mode: "icon",
