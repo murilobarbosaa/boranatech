@@ -262,6 +262,14 @@ const STORY_RE = new RegExp(`^stories/(${USUARIO_DA_REDE})/(${ID_NUMERICO})$`);
 
 const TIKTOK_RE = new RegExp(`^@(${USUARIO_DA_REDE})/video/(${ID_NUMERICO})$`);
 
+// CARROSSEL DE FOTOS DO TIKTOK (lote 11k): `tiktok.com/@u/photo/<id>` tem a
+// forma do video com `photo` no lugar. Recusado com codigo proprio, e nao
+// aceito: aceitar exige uma contagem nova na funcao SQL do ranking e um peso
+// decidido pela Ana, fora deste lote. A frase diz que so video conta hoje.
+const FOTO_DO_TIKTOK_RE = new RegExp(
+  `^@${USUARIO_DA_REDE}/photo/${ID_NUMERICO}$`,
+);
+
 // LINKEDIN (lote 10d; ugcPost e post sem texto no 11k). O LinkedIn escreve o
 // link de um post de duas formas: `linkedin.com/posts/<slug>_<texto>-<tipo>-
 // <digitos>-<sufixo>` (o botao Copiar link do feed e do app) e
@@ -396,6 +404,9 @@ function detectarPublicacao(
     }
     const m = TIKTOK_RE.exec(caminho);
     if (!m) {
+      if (FOTO_DO_TIKTOK_RE.test(caminho)) {
+        return { ok: false, code: "tiktok_photo_unsupported" };
+      }
       return {
         ok: false,
         code: PERFIL_DO_TIKTOK_RE.test(caminho)

@@ -231,6 +231,33 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
     );
   });
 
+  it("carrossel de fotos e tiktok_photo_unsupported (lote 11k), em qualquer rede escolhida; foto com id truncado e invalida", () => {
+    for (const entrada of [
+      "https://www.tiktok.com/@ana.cria/photo/7311122233344455567",
+      "tiktok.com/@Ana.Cria/photo/7311122233344455567/?is_from_webapp=1",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "tiktok", "video"),
+        entrada,
+      ).toEqual({ ok: false, code: "tiktok_photo_unsupported" });
+    }
+    // Vem antes da rede: nao ha publicacao para comparar.
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.tiktok.com/@ana.cria/photo/7311122233344455567",
+        "instagram",
+        "post",
+      ),
+    ).toEqual({ ok: false, code: "tiktok_photo_unsupported" });
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.tiktok.com/@ana.cria/photo/1",
+        "tiktok",
+        "video",
+      ),
+    ).toEqual({ ok: false, code: "invalid_post_url" });
+  });
+
   it("perfil e profile_link (lote 11k); id truncado e video sem @ sao invalidos", () => {
     for (const entrada of [
       "https://www.tiktok.com/@ana.cria",

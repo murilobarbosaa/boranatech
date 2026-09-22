@@ -1105,6 +1105,23 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });
 
+  it("carrossel de fotos do TikTok (lote 11k): 400 tiktok_photo_unsupported com a frase do shared, nada gravado", async () => {
+    montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: "https://www.tiktok.com/@ana.cria/photo/7311122233344455567",
+      rede: "tiktok",
+      tipo: "video",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("tiktok_photo_unsupported");
+    expect(r.body.error.message).toBe(
+      MENSAGEM_DO_LINK.tiktok_photo_unsupported,
+    );
+    expect(estado.resolver).not.toHaveBeenCalled();
+    expect(escritasEm("creator_posts")).toHaveLength(0);
+  });
+
   it("link de perfil (lote 11k): 400 profile_link com a frase do shared, nas tres redes", async () => {
     for (const [url, rede, tipo] of [
       ["https://www.instagram.com/ana.cria/", "instagram", "post"],

@@ -311,6 +311,23 @@ describe("CreatorPublicacoes: registro", () => {
     expect(chamadasCom("POST")).toHaveLength(0);
   });
 
+  it("carrossel de fotos do TikTok (lote 11k): a frase propria, e NENHUMA requisicao", async () => {
+    responderLista([], 0);
+    render(<CreatorPublicacoes />);
+    await screen.findByTestId("creator-publicacoes-vazio");
+    escolherRede("tiktok");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: {
+        value: "https://www.tiktok.com/@ana.cria/photo/7311122233344455567",
+      },
+    });
+    fireEvent.click(screen.getByTestId("creator-publicacoes-registrar"));
+    expect(
+      screen.getByTestId("creator-publicacoes-erro-campo").textContent,
+    ).toBe(MENSAGEM_DO_LINK.tiktok_photo_unsupported);
+    expect(chamadasCom("POST")).toHaveLength(0);
+  });
+
   it("link de perfil (lote 11k): a frase do perfil, e NENHUMA requisicao", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoes />);
