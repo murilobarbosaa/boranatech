@@ -261,18 +261,21 @@ const STORY_RE = new RegExp(`^stories/(${USUARIO_DA_REDE})/(${ID_NUMERICO})$`);
 
 const TIKTOK_RE = new RegExp(`^@(${USUARIO_DA_REDE})/video/(${ID_NUMERICO})$`);
 
-// LINKEDIN (lote 10d). O LinkedIn escreve o link de um post de duas formas:
-// `linkedin.com/posts/<slug>-activity-<digitos>-<sufixo>` (o botao Copiar
-// link do feed) e `linkedin.com/feed/update/urn:li:activity:<digitos>/`; a
-// segunda tambem aparece com `share` e `ugcPost` no lugar de `activity`. Os
-// tres sao espacos de id DISTINTOS, entao o `external_id` leva o tipo do urn
-// junto com os digitos, e a canonica e a forma `feed/update`, que e a que o
-// LinkedIn resolve para os tres. Artigo (`/pulse/`), perfil (`/in/`) e pagina
-// de empresa nao sao publicacao.
+// LINKEDIN (lote 10d; ugcPost e post sem texto no 11k). O LinkedIn escreve o
+// link de um post de duas formas: `linkedin.com/posts/<slug>_<texto>-<tipo>-
+// <digitos>-<sufixo>` (o botao Copiar link do feed e do app) e
+// `linkedin.com/feed/update/urn:li:<tipo>:<digitos>/`. O <tipo> e o espaco de
+// id do urn: `ugcPost` e o post ORIGINAL com midia (o mais comum no Copiar
+// link do app), `activity` e o texto puro ou o compartilhamento, `share` e a
+// forma antiga. Os tres sao espacos DISTINTOS, entao o `external_id` leva o
+// tipo junto com os digitos, e a canonica e a forma `feed/update`, que o
+// LinkedIn resolve para os tres. No `posts/`, o separador antes do tipo e `-`
+// quando ha texto e `_` quando o post nao tem texto (`<slug>_activity-...`).
+// Artigo (`/pulse/`), perfil (`/in/`) e pagina de empresa nao sao publicacao.
 const ID_DO_LINKEDIN = "[0-9]{10,25}";
 const TIPOS_DE_URN_DO_LINKEDIN = ["activity", "share", "ugcPost"] as const;
 const LINKEDIN_POSTS_RE = new RegExp(
-  `^posts/[^/]+-activity-(${ID_DO_LINKEDIN})-[A-Za-z0-9_-]+$`,
+  `^posts/[^/]+[_-](${TIPOS_DE_URN_DO_LINKEDIN.join("|")})-(${ID_DO_LINKEDIN})-[A-Za-z0-9_-]+$`,
 );
 const LINKEDIN_URN_RE = new RegExp(
   `^feed/update/urn:li:(${TIPOS_DE_URN_DO_LINKEDIN.join("|")}):(${ID_DO_LINKEDIN})$`,
@@ -405,7 +408,7 @@ function detectarPublicacao(
   if (host === "linkedin.com") {
     const doFeed = LINKEDIN_POSTS_RE.exec(caminho);
     if (doFeed)
-      return { ok: true, valor: publicacaoDoLinkedin("activity", doFeed[1]) };
+      return { ok: true, valor: publicacaoDoLinkedin(doFeed[1], doFeed[2]) };
     const urn = LINKEDIN_URN_RE.exec(caminho);
     if (urn) return { ok: true, valor: publicacaoDoLinkedin(urn[1], urn[2]) };
     return {

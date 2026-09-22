@@ -427,6 +427,50 @@ describe("normalizarLinkDePublicacao: LinkedIn (lote 10d)", () => {
     expect(ugc.ok && ugc.valor.external_id).toBe(`ugcPost:${ID_LINKEDIN}`);
   });
 
+  it("posts/ com ugcPost, share e o post sem texto (`_activity-`) caem na canonica do proprio tipo (lote 11k)", () => {
+    for (const [entrada, tipoDoUrn] of [
+      [
+        `https://www.linkedin.com/posts/ana-cria_bora-na-tech-ugcPost-${ID_LINKEDIN}-Ab3C?utm_source=share`,
+        "ugcPost",
+      ],
+      [
+        `https://www.linkedin.com/posts/ana-cria_bora-na-tech-share-${ID_LINKEDIN}-Ab3C`,
+        "share",
+      ],
+      // Post sem texto: o slug encosta no tipo com `_`, nao com `-`.
+      [
+        `https://www.linkedin.com/posts/ana-cria_activity-${ID_LINKEDIN}-Ab3C`,
+        "activity",
+      ],
+      [`linkedin.com/posts/ana-cria_ugcPost-${ID_LINKEDIN}-Ab3C/`, "ugcPost"],
+    ] as const) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "linkedin", "post"),
+        entrada,
+      ).toEqual({
+        ok: true,
+        valor: {
+          network: "linkedin",
+          kind: "post",
+          external_id: `${tipoDoUrn}:${ID_LINKEDIN}`,
+          url: `https://www.linkedin.com/feed/update/urn:li:${tipoDoUrn}:${ID_LINKEDIN}/`,
+        },
+      });
+    }
+    // O mesmo post colado pelo `posts/` e pelo `feed/update` e UM registro.
+    const a = normalizarLinkDePublicacao(
+      `https://www.linkedin.com/posts/ana-cria_x-ugcPost-${ID_LINKEDIN}-Ab3C`,
+      "linkedin",
+      "post",
+    );
+    const b = normalizarLinkDePublicacao(
+      `https://www.linkedin.com/feed/update/urn:li:ugcPost:${ID_LINKEDIN}/`,
+      "linkedin",
+      "post",
+    );
+    expect(a).toEqual(b);
+  });
+
   it("lnkd.in e link curto SEM resolvedor; perfil e profile_link; artigo, empresa e id curto sao invalidos", () => {
     expect(
       normalizarLinkDePublicacao(
