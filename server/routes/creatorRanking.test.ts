@@ -113,6 +113,8 @@ const BIA = "22222222-2222-2222-2222-222222222222";
 const CAIO = "33333333-3333-3333-3333-333333333333";
 const DUDA = "44444444-4444-4444-4444-444444444444";
 const SAIU = "55555555-5555-5555-5555-555555555555";
+// Saiu do programa e nao pontuou (lote 11j): nao aparece em mes nenhum.
+const SAIU_ZERADO = "77777777-7777-7777-7777-777777777777";
 const ELI = "66666666-6666-6666-6666-666666666666";
 
 const USUARIO = { id: BIA, email: "bia@exemplo.com", role: "authenticated" };
@@ -160,6 +162,13 @@ const CREATORS = [
     kind: "afiliado",
     granted_at: "2026-07-20T12:00:00+00:00",
     revoked_at: "2026-09-10T12:00:00+00:00",
+  },
+  {
+    id: "c-saiu-zerado",
+    user_id: SAIU_ZERADO,
+    kind: "afiliado",
+    granted_at: "2026-07-21T12:00:00+00:00",
+    revoked_at: "2026-09-11T12:00:00+00:00",
   },
   // Influencer ativo (lote 11b): fora do ranking, mesmo pontuando.
   {
@@ -353,8 +362,18 @@ describe("montarRanking", () => {
       // Duda esta ativa e nao pontuou: fim da lista, zero.
       [4, DUDA, 0],
     ]);
-    // Quem foi revogado nao aparece, mesmo tendo linha na contagem.
+    // Quem foi revogado nao aparece no mes CORRENTE, mesmo tendo linha na
+    // contagem; e a leitura de creators e UMA, so dos ativos (lote 11j: os
+    // revogados so sao lidos em mes fechado).
     expect(ranking.posicoes.some((p) => p.user_id === SAIU)).toBe(false);
+    expect(ranking.posicoes.every((p) => p.saiu_do_programa === false)).toBe(
+      true,
+    );
+    expect(
+      double
+        .de("creators")
+        .some((c) => c.filtros.some((f) => f.tipo === "not.is")),
+    ).toBe(false);
     // Nem o influencer (lote 11b): a leitura de creators filtra o kind.
     expect(ranking.posicoes.some((p) => p.user_id === ELI)).toBe(false);
     expect(double.de("creators")[0].filtros).toEqual(
@@ -434,6 +453,42 @@ describe("montarRanking", () => {
       p_inicio: "2026-08-01T03:00:00.000Z",
       p_fim: "2026-09-01T03:00:00.000Z",
     });
+  });
+
+  it("mes FECHADO e congelado (lote 11j): quem saiu do programa depois de pontuar fica, marcado; quem saiu sem pontuar nao aparece", async () => {
+    montar();
+    const ranking = await montarRanking(2026, 8, HOJE);
+    // SAIU: 5 vendas (500), a frente de todo mundo, mesmo revogado em 10/09.
+    expect(
+      ranking.posicoes.map((p) => [p.posicao, p.user_id, p.saiu_do_programa]),
+    ).toEqual([
+      [1, SAIU, true],
+      // O desempate de sempre: Bia e Ana com 155, Bia com mais publicacoes.
+      [2, BIA, false],
+      [3, ANA, false],
+      [4, CAIO, false],
+      [5, DUDA, false],
+    ]);
+    expect(ranking.posicoes[0]).toMatchObject({
+      pontos: 500,
+      name: null,
+      handle: null,
+    });
+    expect(ranking.posicoes.some((p) => p.user_id === SAIU_ZERADO)).toBe(false);
+    // Alem dos ativos, o mes fechado le os revogados (so afiliados).
+    const revogados = double
+      .de("creators")
+      .filter((c) => c.filtros.some((f) => f.tipo === "not.is"));
+    expect(revogados.length).toBeGreaterThan(0);
+    expect(revogados[0].filtros).toEqual(
+      expect.arrayContaining([
+        { tipo: "not.is", coluna: "revoked_at", valor: null },
+        { tipo: "eq", coluna: "kind", valor: "afiliado" },
+      ]),
+    );
+    // Nome, @ e perfil de quem saiu entram no mesmo lote dos ativos.
+    expect(double.de("profiles")).toHaveLength(1);
+    expect(double.de("profiles")[0].filtros[0].valor).toContain(SAIU);
   });
 
   it("personalizarRanking marca quem olha, sem mexer no objeto base", () => {
@@ -594,13 +649,20 @@ describe("GET /api/creator/ranking", () => {
     expect("ocultos" in data).toBe(false);
   });
 
-  it("?mes= abre um mes anterior, fechado", async () => {
+  it("?mes= abre um mes anterior, fechado, com quem saiu do programa marcado", async () => {
     montar();
     const res = await chamar("GET", `/ranking?mes=${MES_ANTERIOR}`);
     expect(res.status).toBe(200);
     expect(res.body.data.mes).toBe(MES_ANTERIOR);
     expect(res.body.data.fechado).toBe(true);
     expect(res.body.data.fecha_em).toBeNull();
+    const data = res.body.data as RankingDoMes;
+    expect(data.posicoes[0]).toMatchObject({
+      user_id: SAIU,
+      saiu_do_programa: true,
+      eu: false,
+    });
+    expect(data.posicoes.some((p) => p.user_id === SAIU_ZERADO)).toBe(false);
   });
 
   it("400 month_out_of_range para mes futuro, anterior ao programa ou invalido", async () => {

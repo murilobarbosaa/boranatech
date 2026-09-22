@@ -77,7 +77,14 @@ export function resolverMesDoRanking(
   return { ok: true, valor: { ...lido, chave } };
 }
 
-type CreatorAtivo = { user_id: string; granted_at: string };
+type CreatorDoRanking = { user_id: string; granted_at: string };
+
+function lerCreator(l: Linha): CreatorDoRanking {
+  return {
+    user_id: textoDe(l.user_id, "user_id"),
+    granted_at: textoDe(l.granted_at, "granted_at"),
+  };
+}
 
 /**
  * Os creators ATIVOS do ranking: so os `afiliado` (lote 11b). Os `influencer`
@@ -85,7 +92,7 @@ type CreatorAtivo = { user_id: string; granted_at: string };
  * usa o calendario, registra publicacao e vende e a dos afiliados, e um
  * ranking com 24 zeros no fim so empurra quem pontuou para longe da vista.
  */
-async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
+async function lerCreatorsAtivos(): Promise<CreatorDoRanking[]> {
   const linhas = await coletarTudoProvandoTotal<Linha>(
     (from, to) =>
       supabaseAdmin
@@ -98,10 +105,30 @@ async function lerCreatorsAtivos(): Promise<CreatorAtivo[]> {
         .range(from, to),
     { op: "creator ranking creators", rowKey: (l) => String(l.user_id) },
   );
-  return linhas.map((l) => ({
-    user_id: textoDe(l.user_id, "user_id"),
-    granted_at: textoDe(l.granted_at, "granted_at"),
-  }));
+  return linhas.map(lerCreator);
+}
+
+/**
+ * Os afiliados que SAIRAM do programa (lote 11j). So o mes fechado os le: no
+ * corrente a lista e de quem esta no programa hoje, e num mes que ja acabou o
+ * resultado nao pode mudar porque alguem saiu depois. Quem entra e decidido
+ * em `montarRanking`, pelas contagens do mes: revogado sem ponto naquele mes
+ * nao aparece em lugar nenhum.
+ */
+async function lerCreatorsRevogados(): Promise<CreatorDoRanking[]> {
+  const linhas = await coletarTudoProvandoTotal<Linha>(
+    (from, to) =>
+      supabaseAdmin
+        .from("creators")
+        .select("user_id, granted_at", { count: "exact" })
+        .not("revoked_at", "is", null)
+        .eq("kind", "afiliado")
+        .order("granted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    { op: "creator ranking revogados", rowKey: (l) => String(l.user_id) },
+  );
+  return linhas.map(lerCreator);
 }
 
 type PerfilDeCreator = {
@@ -194,8 +221,10 @@ export type RankingMontado = RankingDoMes & {
  * para o cache; `personalizarRanking` poe quem olha.
  *
  * Intervalo: [meia-noite de Brasilia do dia 1, meia-noite de Brasilia do dia 1
- * do mes seguinte). Creator revogado sai da lista mesmo num mes fechado em que
- * pontuou: a lista e de quem esta no programa hoje.
+ * do mes seguinte). No mes CORRENTE a lista e de quem esta no programa hoje.
+ * Num mes FECHADO ela e congelada (lote 11j): quem saiu do programa depois de
+ * pontuar naquele mes continua la, marcado com `saiu_do_programa`; quem saiu
+ * sem pontuar nao aparece.
  */
 export async function montarRanking(
   ano: number,
@@ -207,26 +236,42 @@ export async function montarRanking(
   const primeiroDoSeguinte = `${mesVizinho(chave, 1)}-01`;
   const inicioIso = inicioDoDiaBrasilia(primeiro);
   const fimIso = inicioDoDiaBrasilia(primeiroDoSeguinte);
+  const fechado = chave < mesDoDia(hoje);
 
-  const [contagens, ativos] = await Promise.all([
+  const [contagens, ativos, revogados] = await Promise.all([
     lerContagens(inicioIso, fimIso),
     lerCreatorsAtivos(),
+    fechado ? lerCreatorsRevogados() : Promise.resolve([]),
   ]);
-  const ids = ativos.map((c) => c.user_id);
+  // Revogado entra so com ponto no mes: "contagem > 0" e "pontos > 0" sao a
+  // mesma coisa, porque toda coluna contada vale ponto positivo.
+  const quemSaiu = revogados.filter((c) => {
+    const contagem = contagens.get(c.user_id);
+    return contagem !== undefined && calcularPontos(contagem) > 0;
+  });
+  const listados = [
+    ...ativos.map((c) => ({ ...c, saiu: false })),
+    ...quemSaiu.map((c) => ({ ...c, saiu: true })),
+  ];
+  const ids = listados.map((c) => c.user_id);
   const [autores, perfis] = await Promise.all([
     lerAutores(ids),
     lerPerfisDeCreator(ids),
   ]);
 
-  const candidatos = ativos.map((c) => {
+  const candidatos = listados.map((c) => {
     const contagem = contagens.get(c.user_id) ?? CONTAGENS_ZERADAS;
-    const candidato: CandidatoDoRanking & { contagem: ContagensDoRanking } = {
+    const candidato: CandidatoDoRanking & {
+      contagem: ContagensDoRanking;
+      saiu: boolean;
+    } = {
       user_id: c.user_id,
       granted_at: c.granted_at,
       pontos: calcularPontos(contagem),
       vendas: contagem.vendas,
       publicacoes: totalDePublicacoes(contagem),
       contagem,
+      saiu: c.saiu,
     };
     return candidato;
   });
@@ -252,10 +297,10 @@ export async function montarRanking(
         cadastros: c.contagem.cadastros,
       },
       eu: false,
+      saiu_do_programa: c.saiu,
     };
   });
 
-  const fechado = chave < mesDoDia(hoje);
   return {
     mes: chave,
     fechado,
