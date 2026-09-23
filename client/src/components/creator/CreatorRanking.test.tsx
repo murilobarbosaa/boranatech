@@ -233,11 +233,12 @@ describe("CreatorRanking: podio", () => {
         .textContent,
     ).toBe("155");
     expect(primeiro.textContent).toContain("@ha");
-    // Detalhamento em PONTOS: conteudo (o resto: 155-25-16=114), vendas e
-    // cadastros. Clique NAO aparece no ranking publico, nem o numero nem a palavra.
-    expect(primeiro.textContent).toContain("Conteúdo 114");
-    expect(primeiro.textContent).toContain("Vendas 25");
-    expect(primeiro.textContent).toContain("Cadastros 16");
+    // Detalhamento com QUANTIDADE e PONTOS: 3 publicacoes valem o resto do total
+    // (155-25-16=114), 1 venda vale 25 e 2 cadastros valem 16. Clique NAO aparece
+    // no ranking publico, nem o numero nem a palavra.
+    expect(primeiro.textContent).toContain("3 publicações · 114 pts");
+    expect(primeiro.textContent).toContain("1 venda · 25 pts");
+    expect(primeiro.textContent).toContain("2 cadastros · 16 pts");
     expect(primeiro.textContent).not.toContain("clique");
     expect(primeiro.textContent).not.toContain("Clique");
     expect(
@@ -366,6 +367,99 @@ describe("CreatorRanking: podio", () => {
     const podio = await screen.findByTestId("creator-ranking-podio");
     expect(within(podio).getAllByText("ainda ninguém")).toHaveLength(3);
     expect(screen.getAllByText("sem pontos ainda")).toHaveLength(2);
+  });
+});
+
+describe("CreatorRanking: chips de detalhamento (quantidade e pontos)", () => {
+  // Le os pontos de cada chip ("... · N pts") do texto ja renderizado e soma no
+  // lado do teste (regex + reduce), sem reusar `detalharPontuacao`: a regra de
+  // ouro (a soma dos chips fecha o total) fica conferida por aritmetica propria.
+  function somaDosChips(detalhe: HTMLElement): number {
+    const casados = Array.from(
+      (detalhe.textContent ?? "").matchAll(/·\s*(\d+)\s*pts/g),
+    );
+    return casados.reduce((soma, m) => soma + Number(m[1]), 0);
+  }
+
+  it("Exemplo A: 2 vendas e 50 pontos mostram so '2 vendas · 50 pts'", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 50, {
+          contagens: { publicacoes: 0, vendas: 2, cliques: 0, cadastros: 0 },
+        }),
+      ]),
+    );
+    montar();
+    const cartao = await screen.findByTestId("creator-ranking-podio-1");
+    expect(cartao.textContent).toContain("2 vendas · 50 pts");
+    // Nenhum outro balde: sem publicacao, sem cadastro.
+    expect(cartao.textContent).not.toContain("publica");
+    expect(cartao.textContent).not.toContain("cadastro");
+  });
+
+  it("Exemplo B: 2 vendas, 1 cadastro e 6 publicacoes, cada chip com a conta", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 77, {
+          contagens: { publicacoes: 6, vendas: 2, cliques: 0, cadastros: 1 },
+        }),
+      ]),
+    );
+    montar();
+    const cartao = await screen.findByTestId("creator-ranking-podio-1");
+    expect(cartao.textContent).toContain("6 publicações · 19 pts");
+    expect(cartao.textContent).toContain("2 vendas · 50 pts");
+    expect(cartao.textContent).toContain("1 cadastro · 8 pts");
+  });
+
+  it("singular: 1 venda vale 25 e 1 publicacao vale 3", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 28, {
+          contagens: { publicacoes: 1, vendas: 1, cliques: 0, cadastros: 0 },
+        }),
+      ]),
+    );
+    montar();
+    const cartao = await screen.findByTestId("creator-ranking-podio-1");
+    expect(cartao.textContent).toContain("1 venda · 25 pts");
+    expect(cartao.textContent).toContain("1 publicação · 3 pts");
+  });
+
+  it("cadastros ausente (backend antigo): sem chip de cadastro e sem erro", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 25, {
+          contagens: { publicacoes: 0, vendas: 1, cliques: 0 },
+        }),
+      ]),
+    );
+    montar();
+    const cartao = await screen.findByTestId("creator-ranking-podio-1");
+    expect(cartao.textContent).toContain("1 venda · 25 pts");
+    expect(cartao.textContent).not.toContain("cadastro");
+  });
+
+  it("regra de ouro: a soma dos pontos dos chips fecha o total (A=50, B=77)", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "b", 77, {
+          contagens: { publicacoes: 6, vendas: 2, cliques: 0, cadastros: 1 },
+        }),
+        posicao(2, "a", 50, {
+          contagens: { publicacoes: 0, vendas: 2, cliques: 0, cadastros: 0 },
+        }),
+      ]),
+    );
+    montar();
+    await screen.findByTestId("creator-ranking-podio");
+    // B (77) no lugar 1, A (50) no lugar 2. Somas escritas a mao: 19+50+8=77 e 50.
+    expect(somaDosChips(screen.getByTestId("creator-ranking-detalhe-b"))).toBe(
+      77,
+    );
+    expect(somaDosChips(screen.getByTestId("creator-ranking-detalhe-a"))).toBe(
+      50,
+    );
   });
 });
 

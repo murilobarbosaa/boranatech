@@ -163,10 +163,25 @@ function nomeDeExibicao(p: PosicaoDoRanking): string {
 }
 
 /**
+ * Singular e plural de uma contagem, num lugar so: "1 venda" ou "2 vendas".
+ * Fica aqui, e nao em ternarios espalhados pelos baldes, pra a regra ser uma.
+ */
+// TODO(Ana): revisar os rotulos (publicação, venda, cadastro).
+function contagemEmPalavras(
+  qtd: number,
+  singular: string,
+  plural: string,
+): string {
+  return `${qtd} ${qtd === 1 ? singular : plural}`;
+}
+
+/**
  * Detalhamento de ONDE vem a pontuacao: um chip por balde (conteudo, vendas,
- * cadastros) com os PONTOS. Clique NAO aparece no ranking publico. Os numeros
- * vem de `detalharPontuacao` (mesmo total autoritativo da regra), pra nunca
- * divergir do total mostrado. `align` controla o alinhamento no card.
+ * cadastros) com a QUANTIDADE e os PONTOS ("2 vendas · 50 pts"), pra o rotulo
+ * nao parecer contagem quando e ponto. A quantidade vem de `p.contagens`; os
+ * pontos de `detalharPontuacao` (mesmo total autoritativo da regra), com o de
+ * conteudo saindo como o resto, entao a soma dos chips fecha sempre o total.
+ * Clique NAO aparece no ranking publico. `align` controla o alinhamento.
  */
 function DetalheDaPontuacao({
   p,
@@ -181,11 +196,30 @@ function DetalheDaPontuacao({
     cadastros: p.contagens.cadastros ?? 0,
     cliques: p.contagens.cliques,
   });
-  // TODO(Ana): rotulos do detalhamento.
   const baldes = [
-    { chave: "conteudo", rotulo: "Conteúdo", pts: d.conteudo },
-    { chave: "vendas", rotulo: "Vendas", pts: d.vendas },
-    { chave: "cadastros", rotulo: "Cadastros", pts: d.cadastros },
+    {
+      chave: "conteudo",
+      texto: contagemEmPalavras(
+        p.contagens.publicacoes,
+        "publicação",
+        "publicações",
+      ),
+      pts: d.conteudo,
+    },
+    {
+      chave: "vendas",
+      texto: contagemEmPalavras(p.contagens.vendas, "venda", "vendas"),
+      pts: d.vendas,
+    },
+    {
+      chave: "cadastros",
+      texto: contagemEmPalavras(
+        p.contagens.cadastros ?? 0,
+        "cadastro",
+        "cadastros",
+      ),
+      pts: d.cadastros,
+    },
   ].filter((b) => b.pts > 0);
   return (
     <span
@@ -202,7 +236,8 @@ function DetalheDaPontuacao({
       ) : (
         baldes.map((b) => (
           <span key={b.chave} className={CHIP_PONTO}>
-            {b.rotulo} {b.pts}
+            {/* TODO(Ana): quantidade e pontos juntos ("2 vendas · 50 pts"). */}
+            {`${b.texto} · ${b.pts} pts`}
           </span>
         ))
       )}
