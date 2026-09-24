@@ -342,6 +342,7 @@ const STATUS_DA_PUBLICACAO: Record<CodigoDeRegistro, number> = {
   share_link_unsupported: 400,
   tiktok_photo_unsupported: 400,
   profile_link: 400,
+  highlight_link: 400,
   short_link_unresolved: 400,
   share_link_unresolved: 400,
   invalid_post_network: 400,

@@ -117,13 +117,16 @@ export function statusInicialDaPublicacao(
  * frase em `MENSAGEM_DO_LINK`. `profile_link`, `share_link_unsupported` e
  * `tiktok_photo_unsupported` existem porque "Link inválido" mandava a pessoa
  * conferir um link que ela copiou certo, e a frase precisa dizer o que colar.
+ * `highlight_link` (lote 11l) e o link do DESTAQUE inteiro, que nao e um story
+ * so: a frase ensina a abrir o story dentro dele e copiar o link desse.
  */
 export type CodigoSimplesDoLink =
   | "invalid_post_url"
   | "short_link_unsupported"
   | "share_link_unsupported"
   | "tiktok_photo_unsupported"
-  | "profile_link";
+  | "profile_link"
+  | "highlight_link";
 
 export type CodigoDeLinkDePublicacao =
   | CodigoSimplesDoLink
@@ -167,6 +170,9 @@ export const MENSAGEM_DO_LINK: Record<CodigoSimplesDoLink, string> = {
   tiktok_photo_unsupported:
     "Por enquanto só vídeos do TikTok contam. Carrossel de fotos fica para depois.",
   profile_link: "Esse é o link do perfil. Cole o link de uma publicação.",
+  // TODO(Ana)
+  highlight_link:
+    "Esse é o link do destaque inteiro. Abra o story dentro do destaque e copie o link dele.",
 };
 
 /** Mensagem da rede que nao casa com o link, com o nome da rede detectada. */
@@ -271,6 +277,22 @@ const STORY_RE = new RegExp(
   `^stories/(${USUARIO_DO_INSTAGRAM})/(${ID_NUMERICO})$`,
 );
 
+// STORY ABERTO DE DENTRO DE UM DESTAQUE (lote 11l): o Copiar link do app
+// escreve `instagram.com/s/<token>?story_media_id=<mediaId>_<ownerId>&igsh=...`.
+// O `<token>` identifica o DESTAQUE; quem identifica o story e o
+// `story_media_id`, e o `<mediaId>` dele e o MESMO id do link
+// `stories/<usuario>/<id>`. Entao o `external_id` e o `<mediaId>`, e o mesmo
+// story colado pelos dois caminhos cai no mesmo unique. O `<ownerId>` (id
+// numerico da conta) fica so na canonica, que e o link que abre o story.
+//
+// `/s/<token>` SEM `story_media_id` e o link do destaque inteiro, e
+// `stories/highlights/<id>` tambem: os dois sao `highlight_link`. Destaque e
+// uma colecao fixa do perfil, sem data, e registra-lo contaria o mesmo
+// destaque todo mes.
+const DESTAQUE_DO_INSTAGRAM_RE = /^s\/([A-Za-z0-9_-]+={0,2})$/;
+const STORY_MEDIA_ID_RE = new RegExp(`^(${ID_NUMERICO})_([0-9]{1,32})$`);
+const STORIES_HIGHLIGHTS_RE = /^stories\/highlights(\/|$)/i;
+
 const TIKTOK_RE = new RegExp(
   `^@(${USUARIO_DO_TIKTOK})/video/(${ID_NUMERICO})$`,
 );
@@ -303,15 +325,23 @@ const LINKEDIN_URN_RE = new RegExp(
   `^feed/update/urn:li:(${TIPOS_DE_URN_DO_LINKEDIN.join("|")}):(${ID_DO_LINKEDIN})$`,
 );
 
-/** Host e caminho de uma URL colada, sem protocolo, sem query e sem hash. */
-function partesDaUrl(valor: string): { host: string; caminho: string } | null {
+/**
+ * Host e caminho de uma URL colada, sem protocolo e sem hash, e a query a
+ * parte. O caminho NUNCA leva a query: `?igshid=`, `?is_from_webapp=1`,
+ * `?utm_source=share` e afins sao rastreamento da rede, nao identidade da
+ * publicacao. A query so e lida onde ela E a identidade (o `story_media_id` do
+ * story aberto de um destaque, lote 11l), e ali e lido um parametro, pelo nome.
+ */
+function partesDaUrl(
+  valor: string,
+): { host: string; caminho: string; query: string } | null {
   let resto = valor.trim();
   if (resto === "") return null;
   resto = resto.replace(/^https?:\/\//i, "");
-  // Query e hash saem antes de tudo: `?igshid=`, `?is_from_webapp=1`,
-  // `?utm_source=share` e afins sao rastreamento da rede, nao identidade da
-  // publicacao.
-  resto = resto.split("?")[0].split("#")[0];
+  resto = resto.split("#")[0];
+  const interrogacao = resto.indexOf("?");
+  const query = interrogacao === -1 ? "" : resto.slice(interrogacao + 1);
+  if (interrogacao !== -1) resto = resto.slice(0, interrogacao);
   const barra = resto.indexOf("/");
   const host = (barra === -1 ? resto : resto.slice(0, barra)).toLowerCase();
   const caminho = barra === -1 ? "" : resto.slice(barra + 1);
@@ -319,6 +349,7 @@ function partesDaUrl(valor: string): { host: string; caminho: string } | null {
   return {
     host: host.replace(/^www\./, ""),
     caminho: caminho.replace(/\/+$/, ""),
+    query,
   };
 }
 
@@ -348,7 +379,7 @@ function detectarPublicacao(
 
   const partes = partesDaUrl(valor);
   if (!partes) return { ok: false, code: "invalid_post_url" };
-  const { host, caminho } = partes;
+  const { host, caminho, query } = partes;
 
   if (HOSTS_CURTOS.includes(host)) {
     return { ok: false, code: "short_link_unsupported" };
@@ -365,11 +396,33 @@ function detectarPublicacao(
     if (COMPARTILHAMENTO_DO_INSTAGRAM_RE.test(caminho)) {
       return { ok: false, code: "share_link_unsupported" };
     }
-    const story = STORY_RE.exec(caminho);
     // `stories/highlights/<id>/` tem a forma de story com usuario
-    // "highlights", e nao e: destaque e uma colecao fixa do perfil, sem data,
-    // e registra-lo como story do dia contaria o mesmo destaque todo mes.
-    if (story && story[1].toLowerCase() !== "highlights") {
+    // "highlights", e nao e: e o destaque inteiro. Lido ANTES de `STORY_RE`,
+    // que o engoliria.
+    if (STORIES_HIGHLIGHTS_RE.test(caminho)) {
+      return { ok: false, code: "highlight_link" };
+    }
+    const destaque = DESTAQUE_DO_INSTAGRAM_RE.exec(caminho);
+    if (destaque) {
+      const midia = STORY_MEDIA_ID_RE.exec(
+        new URLSearchParams(query).get("story_media_id") ?? "",
+      );
+      if (!midia) return { ok: false, code: "highlight_link" };
+      const token = destaque[1];
+      const mediaId = midia[1];
+      const ownerId = midia[2];
+      return {
+        ok: true,
+        valor: {
+          network: "instagram",
+          kind: "story",
+          external_id: mediaId,
+          url: `https://www.instagram.com/s/${token}?story_media_id=${mediaId}_${ownerId}`,
+        },
+      };
+    }
+    const story = STORY_RE.exec(caminho);
+    if (story) {
       // O dono vai para minuscula na canonica, como o @ do TikTok: e nome de
       // usuario, e o Instagram nao distingue maiuscula nele. O id (os digitos)
       // e o que identifica o story, entao a unicidade nao depende disso.

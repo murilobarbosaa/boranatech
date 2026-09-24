@@ -153,6 +153,81 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     }
   });
 
+  it("story aberto de um destaque (lote 11l): o id e o mediaId do story_media_id, o mesmo do link stories/", () => {
+    const TOKEN = "aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3";
+    const esperado = {
+      network: "instagram",
+      kind: "story",
+      external_id: ID_STORY,
+      url: `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890`,
+    };
+    for (const entrada of [
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890&igsh=MWx0bTZ3aGJ2`,
+      `instagram.com/s/${TOKEN}/?igsh=MWx0bTZ3aGJ2&story_media_id=${ID_STORY}_1234567890`,
+      `https://instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890#x`,
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "story"),
+        entrada,
+      ).toEqual({ ok: true, valor: esperado });
+    }
+    // O mesmo story pelos dois caminhos: mesmo external_id, logo mesmo unique.
+    const peloStories = normalizarLinkDePublicacao(
+      `https://www.instagram.com/stories/ana.cria/${ID_STORY}/`,
+      "instagram",
+      "story",
+    );
+    expect(peloStories.ok && peloStories.valor.external_id).toBe(
+      esperado.external_id,
+    );
+    // Tipo escolhido errado: o link e de story.
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890`,
+        "instagram",
+        "reel",
+      ),
+    ).toEqual({
+      ok: false,
+      code: "post_type_mismatch",
+      tipo_detectado: "story",
+    });
+  });
+
+  it("destaque inteiro e highlight_link (lote 11l): /s/ sem story_media_id valido e stories/highlights/", () => {
+    const TOKEN = "aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3";
+    for (const entrada of [
+      `https://www.instagram.com/s/${TOKEN}`,
+      `https://www.instagram.com/s/${TOKEN}?igsh=MWx0bTZ3aGJ2`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=37000abc_12`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=12_1234567890`,
+      "https://www.instagram.com/stories/highlights/17900000000000000/",
+      "instagram.com/stories/Highlights/17900000000000000",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "story"),
+        entrada,
+      ).toEqual({ ok: false, code: "highlight_link" });
+    }
+    // So o story_media_id e lido da query: outro parametro nao vira id.
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/s/${TOKEN}?media_id=${ID_STORY}_1234567890`,
+        "instagram",
+        "story",
+      ),
+    ).toEqual({ ok: false, code: "highlight_link" });
+    // E nos outros caminhos a query continua ignorada.
+    const comQuery = normalizarLinkDePublicacao(
+      `https://www.instagram.com/stories/ana.cria/${ID_STORY}/?story_media_id=999999999_1`,
+      "instagram",
+      "story",
+    );
+    expect(comQuery.ok && comQuery.valor.external_id).toBe(ID_STORY);
+  });
+
   it("usuario do Instagram vai de 1 a 30 caracteres (lote 11l), no story, no post e no perfil", () => {
     const u30 = "ana.cria.tech.e.carreira.dev12";
     expect(u30).toHaveLength(30);
@@ -210,7 +285,6 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
       `https://www.instagram.com/stories/${ID_STORY}/`,
       "https://www.instagram.com/stories/ana.cria/",
       "https://www.instagram.com/stories/ana.cria/12/",
-      "https://www.instagram.com/stories/highlights/17900000000000000/",
     ]) {
       expect(normalizarLinkDePublicacao(entrada, "instagram", "story")).toEqual(
         {
@@ -700,6 +774,7 @@ describe("mensagens da recusa (lote 11k): uma fonte para a rota e para a tela", 
       "share_link_unsupported",
       "tiktok_photo_unsupported",
       "profile_link",
+      "highlight_link",
     ];
     expect(Object.keys(MENSAGEM_DO_LINK).sort()).toEqual([...codigos].sort());
     const frases = codigos.map((c) => MENSAGEM_DO_LINK[c]);

@@ -1105,6 +1105,61 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });
 
+  it("story aberto de um destaque (lote 11l): grava o mediaId como external_id e a canonica sem igsh", async () => {
+    const canonica =
+      "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3?story_media_id=3456789012345678901_1234567890";
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert"
+          ? {
+              rows: [
+                {
+                  ...PUBLICACAO,
+                  kind: "story",
+                  url: canonica,
+                  status: "confirmado",
+                  confirmed_at: "2026-09-16T15:00:00.000Z",
+                },
+              ],
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: `${canonica}&igsh=MWx0bTZ3aGJ2`,
+      rede: "instagram",
+      tipo: "story",
+    });
+    expect(r.status).toBe(201);
+    // O mesmo id do link stories/<usuario>/<id>: o unique reconhece o repetido.
+    expect(escritasEm("creator_posts")[0].payload).toMatchObject({
+      network: "instagram",
+      kind: "story",
+      external_id: "3456789012345678901",
+      url: canonica,
+    });
+  });
+
+  it("destaque inteiro (lote 11l): 400 highlight_link com a frase do shared, nada gravado", async () => {
+    for (const url of [
+      "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3?igsh=MWx0bTZ3aGJ2",
+      "https://www.instagram.com/stories/highlights/17900000000000000/",
+    ]) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", {
+        url,
+        rede: "instagram",
+        tipo: "story",
+      });
+      expect(r.status, url).toBe(400);
+      expect(r.body.error.code, url).toBe("highlight_link");
+      expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.highlight_link);
+      expect(escritasEm("creator_posts")).toHaveLength(0);
+    }
+  });
+
   it("carrossel de fotos do TikTok (lote 11k): 400 tiktok_photo_unsupported com a frase do shared, nada gravado", async () => {
     montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
     estado.usuario = USUARIO;
