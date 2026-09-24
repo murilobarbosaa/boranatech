@@ -20,6 +20,11 @@ const RUN_TS_SNIPPET = fileURLToPath(
   new URL("./runTsSnippet.mjs", import.meta.url),
 );
 
+// Wrapper de SQL (Lote 11a), absoluto pelo mesmo motivo.
+const RUN_SQL_SNIPPET = fileURLToPath(
+  new URL("./runSqlSnippet.mjs", import.meta.url),
+);
+
 export interface Runner {
   command: string;
   /** Argumentos ANTES do arquivo (o wrapper de TS entra aqui). */
@@ -69,6 +74,19 @@ export const LANGUAGE_CAPABILITIES: Record<string, LanguageCapability> = {
     runner: { command: "node", args: [RUN_TS_SNIPPET], ext: ".ts" },
     saidaEsperadaAplicavel: true,
     importRule: "forbidden",
+    saidaDeFerramenta: false,
+  },
+  // node:sqlite num banco :memory: (Lote 11a). O flag tira o
+  // ExperimentalWarning que o Node 24 ainda imprime no stderr a cada carga do
+  // modulo: sem ele, todo trecho que roda limpo teria stderr.
+  sql: {
+    runner: {
+      command: "node",
+      args: ["--disable-warning=ExperimentalWarning", RUN_SQL_SNIPPET],
+      ext: ".sql",
+    },
+    saidaEsperadaAplicavel: true,
+    importRule: "nao-se-aplica",
     saidaDeFerramenta: false,
   },
   python: {
