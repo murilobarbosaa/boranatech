@@ -29,6 +29,7 @@
 // (python.ts e frontend.ts ja tem cercas bash sem o prefixo "$ ", anteriores
 // a convencao).
 import { pathToFileURL } from "node:url";
+import { sqlBancoOf } from "../shared/roadmapV2/sqlBancos";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { avisoSemRunner, capabilityOf } from "./languageCapabilities.mts";
 // Reexportadas do modulo proprio (ver htmlStructure.mts): quem ja importava
@@ -36,6 +37,7 @@ import { avisoSemRunner, capabilityOf } from "./languageCapabilities.mts";
 export { estruturaCss, estruturaHtml, validarCss } from "./htmlStructure.mts";
 import { estruturaHtml, validarCss } from "./htmlStructure.mts";
 import {
+  type ArquivoDoGrupo,
   type Execucao,
   type Executor,
   type ExecutorDeGrupo,
@@ -68,6 +70,8 @@ export interface Bloco {
   lanca?: string;
   /** `arquivo=<nome>`: o bloco e um arquivo com esse nome dentro do passo. */
   arquivo?: string;
+  /** `banco=<nome>` (so em sql): base de shared/roadmapV2/sqlBancos.ts carregada antes. */
+  banco?: string;
   /**
    * Metadado desconhecido ou mal formado na cerca. Opcional porque um Bloco
    * construido a mao (teste, chamador futuro) nao tem cerca para ter problema;
@@ -109,7 +113,13 @@ export interface LinhaBloco extends ConferenciaBloco {
 // licao nao escrever fora do diretorio do executor.
 const NOME_DE_ARQUIVO_RE = /^[a-z0-9._-]+$/;
 
-const METADADOS_CONHECIDOS = new Set(["lanca", "arquivo"]);
+const METADADOS_CONHECIDOS = new Set(["lanca", "arquivo", "banco"]);
+
+// Nomes dos arquivos do grupo que executa um bloco com `banco=`: a base e
+// gravada com o nome que o runSqlSnippet.mjs procura ao lado do trecho, e o
+// erro dentro dela cita esse nome.
+const ARQUIVO_DA_BASE = "__banco.sql";
+const ARQUIVO_DO_TRECHO = "trecho.sql";
 
 // A cerca e `linguagem` seguida de pares `chave=valor` separados por espaco.
 // Eles sao INVISIVEIS na tela: o react-markdown usa so a primeira palavra para
@@ -120,6 +130,7 @@ export function lerCerca(info: string): {
   linguagem: string;
   lanca?: string;
   arquivo?: string;
+  banco?: string;
   problemasDaCerca: string[];
 } {
   const partes = info.trim().split(/\s+/).filter(Boolean);
@@ -127,6 +138,7 @@ export function lerCerca(info: string): {
   const problemasDaCerca: string[] = [];
   let lanca: string | undefined;
   let arquivo: string | undefined;
+  let banco: string | undefined;
   for (const parte of partes) {
     const igual = parte.indexOf("=");
     const chave = igual < 0 ? parte : parte.slice(0, igual);
@@ -147,8 +159,46 @@ export function lerCerca(info: string): {
       }
       arquivo = valor;
     }
+    // banco= (Lote 11a): so em sql, nome do registro, nunca junto de
+    // arquivo= (as duas coisas montam o grupo de arquivos, e a combinacao nao
+    // tem semantica definida).
+    if (chave === "banco") {
+      if (linguagem !== "sql") {
+        problemasDaCerca.push(
+          `banco= so vale em cerca sql (cerca ${linguagem})`,
+        );
+        continue;
+      }
+      if (sqlBancoOf(valor) === undefined) {
+        problemasDaCerca.push(
+          `banco desconhecido na cerca: ${valor} (fora de shared/roadmapV2/sqlBancos.ts)`,
+        );
+        continue;
+      }
+      banco = valor;
+    }
   }
-  return { linguagem, lanca, arquivo, problemasDaCerca };
+  if (banco !== undefined && arquivo !== undefined) {
+    problemasDaCerca.push("banco= e arquivo= na mesma cerca");
+    banco = undefined;
+  }
+  return { linguagem, lanca, arquivo, banco, problemasDaCerca };
+}
+
+// Grupo de arquivos que executa um bloco com `banco=`: a base primeiro, o
+// trecho por ultimo (o executor de grupo so executa o ultimo, e o wrapper de
+// sql carrega a base que achar ao lado dele).
+export function arquivosDoBloco(bloco: Bloco): ArquivoDoGrupo[] {
+  const base = bloco.banco === undefined ? undefined : sqlBancoOf(bloco.banco);
+  if (base === undefined) {
+    throw new Error(
+      `[verifyLessonBlocks] bloco sem base registrada: banco=${bloco.banco}`,
+    );
+  }
+  return [
+    { nome: ARQUIVO_DA_BASE, corpo: base },
+    { nome: ARQUIVO_DO_TRECHO, corpo: bloco.corpo },
+  ];
 }
 
 export function extrairBlocos(content: string): Bloco[] {
@@ -294,10 +344,13 @@ export function prosaDaTrilha(
 
 // Conferencia de UM bloco. Pura em relacao ao executor recebido (o teste
 // passa um stub); so e chamado em linguagem de codeLanguages com runner.
+// `executarGrupo` so e usado por bloco com `banco=`, que roda como grupo de
+// dois arquivos (a base e o trecho); opcional para os call sites antigos.
 export function conferirBloco(
   bloco: Bloco,
   codeLanguages: string[],
   executar: Executor,
+  executarGrupo?: ExecutorDeGrupo,
 ): ConferenciaBloco {
   const problemas = [
     ...(bloco.problemasDaCerca ?? []),
@@ -311,6 +364,18 @@ export function conferirBloco(
   if (bloco.linguagem === "css") problemas.push(...validarCss(bloco.corpo));
   const runner = capabilityOf(bloco.linguagem).runner;
   if (!runner) return { veredito: "nao-executado", problemas };
+  if (bloco.banco !== undefined) {
+    if (!executarGrupo) {
+      throw new Error(
+        "[verifyLessonBlocks] bloco com banco= sem executor de grupo",
+      );
+    }
+    return vereditoDaExecucao(
+      bloco,
+      executarGrupo(arquivosDoBloco(bloco)),
+      problemas,
+    );
+  }
   return vereditoDaExecucao(bloco, executar(bloco.corpo), problemas);
 }
 
@@ -457,6 +522,7 @@ async function main() {
     process.exit(1);
   }
   const executores = new Map<string, Executor>();
+  const executoresDeGrupo = new Map<string, ExecutorDeGrupo>();
   const naoExecuta: Executor = () => {
     throw new Error("[verify:lesson-blocks] linguagem sem runner executada");
   };
@@ -491,14 +557,18 @@ async function main() {
       ? capabilityOf(bloco.linguagem).runner
       : null;
     let executar = naoExecuta;
+    let executarGrupo: ExecutorDeGrupo | undefined;
     if (runner) {
       executar = executores.get(bloco.linguagem) ?? makeExecutor(runner);
       executores.set(bloco.linguagem, executar);
+      executarGrupo =
+        executoresDeGrupo.get(bloco.linguagem) ?? makeGroupExecutor(runner);
+      executoresDeGrupo.set(bloco.linguagem, executarGrupo);
     }
     return {
       passo: bloco.passo,
       linguagem: bloco.linguagem,
-      ...conferirBloco(bloco, codeLanguages, executar),
+      ...conferirBloco(bloco, codeLanguages, executar, executarGrupo),
     };
   });
   for (const linha of relatorioBlocos(linhas)) console.log(linha);

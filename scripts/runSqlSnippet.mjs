@@ -26,9 +26,10 @@
 //   <arquivo>:<linha>: error SQLITE_<NOME>: <mensagem>
 // <linha> e a linha onde COMECA a instrucao que falhou; <NOME> e o codigo
 // PRIMARIO, para `lanca=SQLITE_CONSTRAINT` casar por palavra inteira sem o
-// sufixo _UNIQUE. <arquivo> e o nome do arquivo executado.
+// sufixo _UNIQUE. <arquivo> e o nome do arquivo executado, ou __banco.sql
+// quando o erro esta na base carregada antes (ver NOME_DA_BASE).
 import { DatabaseSync, constants } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const arquivo = process.argv[2];
@@ -41,6 +42,10 @@ if (!arquivo) {
 // esgotaria a memoria antes do timeout do executor. Por isso a leitura e por
 // iteracao, nunca com .all().
 const MAX_REGISTROS = 200;
+
+// Base nomeada (Lote 11a, `banco=` na cerca de sql): o verificador de blocos
+// grava a base com este nome ao lado do trecho, e ela e carregada antes dele.
+const NOME_DA_BASE = "__banco.sql";
 
 // Codigos primarios do SQLite (sqlite.org/rescode.html). O estendido que o
 // node:sqlite devolve em `errcode` carrega o primario no byte baixo
@@ -171,7 +176,7 @@ function imprimirResultado(stmt, colunas) {
 // devolve exatamente o texto dela. O resto e o que sobra depois dele. Aspas,
 // identificadores, colchetes, crases e comentarios sao do tokenizer do SQLite,
 // que e quem decide de verdade onde uma instrucao termina.
-function executarTexto(texto, nome) {
+function executarTexto(texto, nome, imprimir) {
   let pos = 0;
   for (;;) {
     const inicio = pularBrancosEComentarios(texto, pos);
@@ -207,7 +212,7 @@ function executarTexto(texto, nome) {
         );
       }
       const colunas = stmt.columns();
-      if (colunas.length === 0) {
+      if (colunas.length === 0 || !imprimir) {
         stmt.run();
       } else {
         stmt.setReturnArrays(true);
@@ -217,12 +222,22 @@ function executarTexto(texto, nome) {
       pos = inicio + sql.length;
     } catch (erro) {
       const codigo = codigoPrimario(erro);
+      // O nome da base entra TAMBEM no texto, como no wrapper de ts:
+      // erroDoStderr descarta o prefixo, e sem isto a pessoa leria o erro e
+      // procuraria no bloco da licao, que esta certo.
+      const ondeEsta = nome === NOME_DA_BASE ? `em ${NOME_DA_BASE}: ` : "";
       process.stderr.write(
-        `${nome}:${linha}: error ${codigo}: ${erro.message}\n`,
+        `${nome}:${linha}: error ${codigo}: ${ondeEsta}${erro.message}\n`,
       );
       process.exit(1);
     }
   }
 }
 
-executarTexto(readFileSync(arquivo, "utf8"), path.basename(arquivo));
+// A base nao imprime nada: ela prepara o banco, e a saida do bloco e so a do
+// trecho.
+const base = path.join(path.dirname(arquivo), NOME_DA_BASE);
+if (path.basename(arquivo) !== NOME_DA_BASE && existsSync(base)) {
+  executarTexto(readFileSync(base, "utf8"), NOME_DA_BASE, false);
+}
+executarTexto(readFileSync(arquivo, "utf8"), path.basename(arquivo), true);
