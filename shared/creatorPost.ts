@@ -221,12 +221,18 @@ const CAMINHO_CURTO_DO_TIKTOK_RE = /^t\/[A-Za-z0-9]{4,32}$/;
 // assim.
 const CODIGO_DO_INSTAGRAM = "[A-Za-z0-9_-]{5,32}";
 
-// Nome de usuario, nas redes: o `@` do TikTok, o trecho opcional que o
-// Instagram poe antes de `/p/` e `/reel/`, e o dono do story em `/stories/`.
-// Uma constante so, com nome neutro, porque as formas sao a mesma; batizar de
-// "do TikTok" faria quem apertasse a regra de la mudar o Instagram junto, sem
-// perceber.
-const USUARIO_DA_REDE = "[A-Za-z0-9._]{2,24}";
+// Nome de usuario, UMA CONSTANTE POR REDE (lote 11l). Ate o 11k era uma so,
+// `[A-Za-z0-9._]{2,24}`, com o argumento de que as formas eram a mesma. Os
+// caracteres sao; o TAMANHO nao: o Instagram aceita de 1 a 30, o TikTok de 2 a
+// 24. A constante unica tinha o limite do TikTok e recusava como
+// `invalid_post_url` o story de quem tem usuario de 25 a 30 caracteres. Com
+// uma so, apertar ou soltar a regra de uma rede muda a outra sem ninguem
+// perceber, que foi exatamente o que aconteceu.
+//
+// Instagram: o trecho opcional antes de `/p/` e `/reel/`, o dono do story em
+// `/stories/` e o perfil. TikTok: o `@`.
+const USUARIO_DO_INSTAGRAM = "[A-Za-z0-9._]{1,30}";
+const USUARIO_DO_TIKTOK = "[A-Za-z0-9._]{2,24}";
 
 // Id numerico do video no TikTok e do story no Instagram. O piso de 5 digitos e
 // deliberado: `video/1` nao e id, e um link truncado, e aceitar isso gravaria
@@ -234,40 +240,47 @@ const USUARIO_DA_REDE = "[A-Za-z0-9._]{2,24}";
 const ID_NUMERICO = "[0-9]{5,32}";
 
 const INSTAGRAM_RE = new RegExp(
-  `^(?:${USUARIO_DA_REDE}/)?(p|reel|reels)/(${CODIGO_DO_INSTAGRAM})$`,
+  `^(?:${USUARIO_DO_INSTAGRAM}/)?(p|reel|reels)/(${CODIGO_DO_INSTAGRAM})$`,
 );
 
 // PERFIL (lote 11k): `instagram.com/<usuario>/`, `tiktok.com/@usuario` e
 // `linkedin.com/in/<slug>` sao o que a pessoa copia da propria pagina, e a
 // recusa diz isso em vez de "link invalido". Um segmento so, e no Instagram
-// nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `stories`,
-// `share`, `explore`, `accounts`), que nunca sao perfil.
-const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DA_REDE}$`);
+// nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `s`,
+// `stories`, `share`, `explore`, `accounts`), que nunca sao perfil. O `s`
+// entrou no 11l: com o usuario de 1 caractere, `instagram.com/s` passaria a
+// ser lido como perfil.
+const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DO_INSTAGRAM}$`);
 const COMPARTILHAMENTO_DO_INSTAGRAM_RE = /^share(\/|$)/i;
 const CAMINHOS_RESERVADOS_DO_INSTAGRAM = [
   "p",
   "reel",
   "reels",
+  "s",
   "stories",
   "share",
   "explore",
   "accounts",
 ];
-const PERFIL_DO_TIKTOK_RE = new RegExp(`^@${USUARIO_DA_REDE}$`);
+const PERFIL_DO_TIKTOK_RE = new RegExp(`^@${USUARIO_DO_TIKTOK}$`);
 const PERFIL_DO_LINKEDIN_RE = /^in\/[^/]+$/;
 
 // Story: `instagram.com/stories/<usuario>/<digitos>/`. O usuario e obrigatorio
 // (e assim que o Instagram escreve o link), e o id do story sao os digitos.
-const STORY_RE = new RegExp(`^stories/(${USUARIO_DA_REDE})/(${ID_NUMERICO})$`);
+const STORY_RE = new RegExp(
+  `^stories/(${USUARIO_DO_INSTAGRAM})/(${ID_NUMERICO})$`,
+);
 
-const TIKTOK_RE = new RegExp(`^@(${USUARIO_DA_REDE})/video/(${ID_NUMERICO})$`);
+const TIKTOK_RE = new RegExp(
+  `^@(${USUARIO_DO_TIKTOK})/video/(${ID_NUMERICO})$`,
+);
 
 // CARROSSEL DE FOTOS DO TIKTOK (lote 11k): `tiktok.com/@u/photo/<id>` tem a
 // forma do video com `photo` no lugar. Recusado com codigo proprio, e nao
 // aceito: aceitar exige uma contagem nova na funcao SQL do ranking e um peso
 // decidido pela Ana, fora deste lote. A frase diz que so video conta hoje.
 const FOTO_DO_TIKTOK_RE = new RegExp(
-  `^@${USUARIO_DA_REDE}/photo/${ID_NUMERICO}$`,
+  `^@${USUARIO_DO_TIKTOK}/photo/${ID_NUMERICO}$`,
 );
 
 // LINKEDIN (lote 10d; ugcPost e post sem texto no 11k). O LinkedIn escreve o

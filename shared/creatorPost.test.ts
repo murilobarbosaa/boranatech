@@ -153,6 +153,58 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     }
   });
 
+  it("usuario do Instagram vai de 1 a 30 caracteres (lote 11l), no story, no post e no perfil", () => {
+    const u30 = "ana.cria.tech.e.carreira.dev12";
+    expect(u30).toHaveLength(30);
+    for (const usuario of ["a", "ana.cria.tech.e.carreira1", u30]) {
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.instagram.com/stories/${usuario}/${ID_STORY}/`,
+          "instagram",
+          "story",
+        ),
+        usuario,
+      ).toEqual({
+        ok: true,
+        valor: {
+          network: "instagram",
+          kind: "story",
+          external_id: ID_STORY,
+          url: `https://www.instagram.com/stories/${usuario}/${ID_STORY}/`,
+        },
+      });
+      const post = normalizarLinkDePublicacao(
+        `https://www.instagram.com/${usuario}/p/${CODIGO_IG}/`,
+        "instagram",
+        "post",
+      );
+      expect(post.ok && post.valor.external_id, usuario).toBe(CODIGO_IG);
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.instagram.com/${usuario}/`,
+          "instagram",
+          "post",
+        ),
+        usuario,
+      ).toEqual({ ok: false, code: "profile_link" });
+    }
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/stories/${u30}1/${ID_STORY}/`,
+        "instagram",
+        "story",
+      ),
+    ).toEqual({ ok: false, code: "invalid_post_url" });
+    // `s` e caminho do Instagram, nao usuario de 1 caractere.
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.instagram.com/s/",
+        "instagram",
+        "post",
+      ),
+    ).toEqual({ ok: false, code: "invalid_post_url" });
+  });
+
   it("story sem usuario, destaque e id truncado nao sao story", () => {
     for (const entrada of [
       `https://www.instagram.com/stories/${ID_STORY}/`,
@@ -256,6 +308,27 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
         "video",
       ),
     ).toEqual({ ok: false, code: "invalid_post_url" });
+  });
+
+  it("usuario do TikTok continua de 2 a 24 caracteres (lote 11l separou do Instagram)", () => {
+    const u24 = "ana.cria.tech.e.carreira";
+    expect(u24).toHaveLength(24);
+    const aceito = normalizarLinkDePublicacao(
+      `https://www.tiktok.com/@${u24}/video/${ID_TIKTOK}`,
+      "tiktok",
+      "video",
+    );
+    expect(aceito.ok && aceito.valor.external_id).toBe(ID_TIKTOK);
+    for (const usuario of ["a", `${u24}1`]) {
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.tiktok.com/@${usuario}/video/${ID_TIKTOK}`,
+          "tiktok",
+          "video",
+        ),
+        usuario,
+      ).toEqual({ ok: false, code: "invalid_post_url" });
+    }
   });
 
   it("perfil e profile_link (lote 11k); id truncado e video sem @ sao invalidos", () => {
