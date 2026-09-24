@@ -44,6 +44,47 @@ possiveis por checagem, e a distincao entre os dois ultimos e o ponto:
 "nao consegui olhar" nao e "esta certo", e conflacionar os dois e a classe de
 defeito que `docs/postmortems-instrumentos.md` cataloga.
 
+## Entregar nao e concluir (lote 04b)
+
+Ate o lote 04, o ato de entregar marcava `user_progress.state.done` e abria
+"Projeto concluido!" sem olhar o resultado das checagens. A Ana entregou em
+producao uma URL que nao era o projeto pedido, duas das seis checagens
+falharam, e mesmo assim o projeto virou concluido. A regra agora:
+
+- **entregar** grava a entrega e dispara a verificacao. Nao marca `done` e nao
+  abre modal;
+- **`entregue` vira `verificado` so com todas as checagens em `ok`**. Ai, e so
+  ai, o cliente chama `toggleCompletion` (que alimenta contadores, badges e o
+  espelho de trilha) e comemora na variante "Projeto verificado!";
+- alguma em `falhou` ou `erro`: nenhum `done`, nenhum modal. O bloco de entrega
+  mostra "Falta N para verificar", o que fazer em cada uma, e as inconclusivas
+  numa linha a parte. "Verificar de novo", passando tudo, conclui e comemora;
+- projeto v2 **sem** `verificacaoAutomatica`: nao ha o que conferir, entao
+  entregar ja marca `done` e comemora na variante "Projeto entregue!";
+- validacao com IA aprovada marca `done` e comemora "Projeto validado!",
+  independente das checagens;
+- v1 continua com o botao "Marcar como concluido", autodeclarado.
+
+Resumo: `done` e marcado apenas em `verificado`, `validado` ou pelo botao de
+autodeclaracao do v1. Nao existe "desentregar": a entrega so pode ter os links
+alterados.
+
+Isto nao corrige quem ja entregou antes do lote: uma linha com `done: true`
+continua `true`. O chip mostra `entregue` (que tem precedencia sobre
+`concluido`), e o bloco de entrega mostra o que falta.
+
+## O que as checagens NAO julgam
+
+A conferencia automatica e estrutural: se o site abre, se o repositorio e
+publico, se tem README, commits, os arquivos e pastas esperados. Ela **nao
+julga se o que foi entregue e o projeto pedido**. Um site institucional no
+lugar da pagina pessoal passa em todas, se estiver no ar e bem montado. Quem
+julga isso e a validacao com IA, que le o codigo e confere cada requisito.
+
+A tela diz isso nos dois momentos, antes de entregar (junto de "O que a gente
+confere sozinho") e depois (junto do resultado). Sem a frase, "o site responde,
+o repositorio e publico" le como um aval que ninguem deu.
+
 ## A validacao com nota (lote 06)
 
 Antes o veredito da IA era binario e exigia 100%: um requisito "parcial" num
