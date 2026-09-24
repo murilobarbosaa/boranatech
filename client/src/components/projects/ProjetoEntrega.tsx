@@ -47,6 +47,46 @@ const ROTULO_CHECK: Record<string, string> = {
   min_commits_5: "Pelo menos 5 commits",
 };
 
+// TODO(Ana): linhas de "o que fazer" de cada conferencia que falha
+const CONSERTO_CHECK: Record<string, string> = {
+  readme_tem_link_deploy: "Coloque o link do site no ar dentro do README.",
+  readme_existe: "Escreva um README com o que é o projeto, o link e um print.",
+  min_commits_5: "Faça commits menores, um por etapa do projeto.",
+  repo_publico: "Deixe o repositório público em Settings, Danger Zone.",
+  deploy_responde: "Confira se o link abre numa aba anônima.",
+  artefato_responde: "Confira se o link abre numa aba anônima.",
+};
+
+/**
+ * O conserto de uma conferencia, quando ele e obvio.
+ *
+ * Devolve `null` quando nao ha conselho generico util. Um texto vago aqui seria
+ * pior que a ausencia dele: ocuparia a linha que deveria dizer algo acionavel.
+ */
+function consertoCheck(check: string): string | null {
+  if (CONSERTO_CHECK[check]) return CONSERTO_CHECK[check];
+  // TODO(Ana): conserto das conferencias de arquivo e pasta
+  if (check.startsWith("arquivo:"))
+    return "Coloque o arquivo na raiz do repositório, não dentro de uma pasta.";
+  if (check.startsWith("pasta:"))
+    return "Crie a pasta no repositório com esse nome.";
+  return null;
+}
+
+/**
+ * A CONFERENCIA AUTOMATICA NAO JULGA SE O PROJETO E O PEDIDO.
+ *
+ * A frase existe porque a ausencia dela enganou: a Ana entregou o site
+ * institucional no lugar da pagina pessoal e a tela, ao dizer que o site
+ * responde e o repositorio e publico, pareceu dar um aval que ela nunca deu.
+ * Sem esta linha, "tudo conferido" le como "esta certo".
+ */
+const LINHA_HONESTIDADE =
+  "A conferência automática olha a estrutura: se o site abre, se o repositório é público, se tem README e commits. Ela não julga se o projeto é o que foi pedido.";
+
+const LINHA_VALIDACAO =
+  "Quem confere isso é a validação com IA, que lê seu código e confere cada requisito.";
+
 function rotuloCheck(check: ProjetoVerificacaoAuto): string {
   if (ROTULO_CHECK[check]) return ROTULO_CHECK[check];
   if (check.startsWith("arquivo:"))
@@ -156,6 +196,16 @@ export default function ProjetoEntrega({
   }
 
   const mostrarFormulario = !submission || editando;
+  // `falhou` e `erro` sao coisas diferentes e ficam separados de proposito:
+  // "nao passou" pede conserto, "nao consegui conferir" pede outra tentativa.
+  // Juntar os dois faria a tela mandar consertar o que talvez esteja certo.
+  // Pelo mesmo motivo, na lista completa so quem deu `erro` mostra a mensagem:
+  // a de quem falhou ja aparece no bloco de destaque, junto do conserto.
+  const resultados = submission?.autoCheck ?? [];
+  const faltando = resultados.filter((r) => r.status === "falhou");
+  const inconclusivas = resultados.filter((r) => r.status === "erro");
+  // "Tudo conferido" so com todas em `ok`: a que deu `erro` nao foi conferida.
+  const tudoOk = faltando.length === 0 && inconclusivas.length === 0;
 
   async function enviar() {
     setErro(null);
@@ -259,6 +309,14 @@ export default function ProjetoEntrega({
                   </li>
                 ))}
               </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {LINHA_HONESTIDADE}
+              </p>
+              {ehCodigo && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {LINHA_VALIDACAO}
+                </p>
+              )}
             </div>
           )}
 
@@ -334,6 +392,50 @@ export default function ProjetoEntrega({
           </ul>
 
           {submission.autoCheck && submission.autoCheck.length > 0 && (
+            <>
+              {faltando.length > 0 ? (
+                <div className="rounded-xl border-2 border-rose-600 bg-rose-50 p-4 dark:bg-rose-950/30">
+                  <p className="font-display text-sm font-bold text-rose-800 dark:text-rose-200">
+                    {faltando.length === 1
+                      ? "Falta 1 para verificar"
+                      : `Falta ${faltando.length} para verificar`}
+                  </p>
+                  <ul className="mt-2 grid gap-2">
+                    {faltando.map((r) => (
+                      <li key={r.check} className="text-sm">
+                        <span className="font-semibold text-rose-800 dark:text-rose-200">
+                          {rotuloCheck(r.check as ProjetoVerificacaoAuto)}
+                        </span>
+                        <span className="text-rose-700 dark:text-rose-300">
+                          {" "}
+                          {r.mensagem}
+                        </span>
+                        {consertoCheck(r.check) && (
+                          <span className="mt-0.5 block text-muted-foreground">
+                            {consertoCheck(r.check)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : tudoOk ? (
+                <p className="flex items-center gap-2 font-display text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  <Check className="h-4 w-4" strokeWidth={3.5} aria-hidden />
+                  Tudo conferido
+                </p>
+              ) : null}
+
+              {inconclusivas.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Não conseguimos conferir agora. Tente &quot;Verificar de
+                  novo&quot; em alguns minutos.
+                </p>
+              )}
+            </>
+          )}
+
+          {submission.autoCheck && submission.autoCheck.length > 0 && (
             <ul className="grid gap-1.5">
               {submission.autoCheck.map((r) => (
                 <li key={r.check} className="flex items-start gap-2 text-sm">
@@ -364,11 +466,18 @@ export default function ProjetoEntrega({
                     }
                   >
                     {rotuloCheck(r.check as ProjetoVerificacaoAuto)}
-                    {r.status !== "ok" && ` · ${r.mensagem}`}
+                    {r.status === "erro" && ` · ${r.mensagem}`}
                   </span>
                 </li>
               ))}
             </ul>
+          )}
+
+          <p className="text-xs text-muted-foreground">{LINHA_HONESTIDADE}</p>
+          {ehCodigo && (
+            <p className="-mt-2 text-xs text-muted-foreground">
+              {LINHA_VALIDACAO}
+            </p>
           )}
 
           {erro && (
