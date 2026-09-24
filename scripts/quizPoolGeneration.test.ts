@@ -1767,3 +1767,35 @@ describe("completarExemplo por linguagem", () => {
     expect(completarExemplo(["bash"])!.trecho).toContain("$ git ____");
   });
 });
+
+// Lote 11a. sql ganha exemplos proprios, num ramo ANTES de qualquer ramo
+// compartilhado, como o ts ganhou no Lote 10: a lacuna de completar em SQL e
+// uma clausula ou palavra-chave (WHERE, GROUP BY, LEFT JOIN), que e o que a
+// linguagem tem de proprio. Sem ramo, sql caia no `return null` e a trilha
+// saia sem exemplo nenhum.
+describe("sql: exemplos de sintaxe proprios", () => {
+  it("completar: a lacuna e uma clausula, e o errado repete a linha inteira", () => {
+    const ex = completarExemplo(["sql"])!;
+    expect(ex.trecho).toBe("SELECT nome FROM alunos ____ nota >= 7;");
+    expect(ex.alternativas).toBe("WHERE, HAVING, ON e GROUP BY");
+    expect(ex.errado).toBe("SELECT nome FROM alunos WHERE nota >= 7;");
+  });
+
+  it("codigo no enunciado: sql traz o exemplo proibido com consulta ao lado do certo", () => {
+    const regras = buildCodeRules(["sql"]);
+    expect(regras).toContain("PROIBIDO (codigo no enunciado)");
+    expect(regras).toContain('codigo.trecho "SELECT COUNT(*) FROM alunos;"');
+    expect(regras).toContain("O que esta consulta imprime?");
+    expect(regras).not.toContain("print(len('abc'))");
+    expect(regras).toContain("SELECT nome FROM alunos ____ nota >= 7;");
+  });
+
+  it("CONTROLE: sem o ramo, uma trilha so de sql nao teria exemplo", () => {
+    // Uma linguagem qualquer fora dos ramos continua sem exemplo: o ramo de
+    // sql nao virou padrao para o resto.
+    expect(completarExemplo(["dockerfile"])).toBeNull();
+    expect(buildCodeRules(["dockerfile"])).not.toContain(
+      "PROIBIDO (codigo no enunciado)",
+    );
+  });
+});

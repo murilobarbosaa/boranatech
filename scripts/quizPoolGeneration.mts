@@ -427,6 +427,18 @@ export function completarExemplo(
       errado: 'git commit -m "ajusta o titulo"',
     };
   }
+  // sql (Lote 11a) tambem com ramo proprio, antes de qualquer compartilhado:
+  // a lacuna natural de SQL e uma clausula ou palavra-chave (WHERE, GROUP BY,
+  // LEFT JOIN), que e o que a linguagem tem de proprio. As erradas sao
+  // clausulas reais no lugar errado (HAVING sem GROUP BY, ON sem JOIN), o
+  // erro de quem esta aprendendo, nunca palavra inventada.
+  if (codeLanguages[0] === "sql") {
+    return {
+      trecho: `SELECT nome FROM alunos ${CODE_PLACEHOLDER} nota >= 7;`,
+      alternativas: "WHERE, HAVING, ON e GROUP BY",
+      errado: "SELECT nome FROM alunos WHERE nota >= 7;",
+    };
+  }
   // ts ANTES do ramo compartilhado com js, e nao dentro dele: o prompt de js
   // precisa ficar byte a byte (a pool dele esta publicada, mesmo criterio do
   // exemplo negativo logo abaixo). Em TypeScript a lacuna natural e sobre a
@@ -453,7 +465,7 @@ export function completarExemplo(
 // Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
 // 06c e 06d o modelo repetiu o trecho dentro de pergunta em quase toda secao,
 // mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa.
-// Python e bash; js fica sem: a pool de js esta publicada e o prompt dela fica
+// Python, bash e sql; js fica sem: a pool de js esta publicada e o prompt dela fica
 // byte a byte, mesmo criterio do exemplo de completar.
 function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
   if (codeLanguages[0] === "python") {
@@ -464,6 +476,11 @@ function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
   if (codeLanguages[0] === "bash") {
     return [
       `- PROIBIDO (codigo no enunciado): pergunta "O que $ git status imprime num repositorio sem alteracoes?" com codigo.trecho "$ git status". CERTO: pergunta "Num repositorio sem alteracoes, o que este comando imprime?" e o comando so em codigo.trecho.`,
+    ];
+  }
+  if (codeLanguages[0] === "sql") {
+    return [
+      `- PROIBIDO (codigo no enunciado): pergunta "O que SELECT COUNT(*) FROM alunos; devolve?" com codigo.trecho "SELECT COUNT(*) FROM alunos;". CERTO: pergunta "O que esta consulta imprime?" e a consulta so em codigo.trecho.`,
     ];
   }
   return [];
