@@ -14,6 +14,10 @@ import { fireProCelebration } from "@/lib/proConfetti";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { ProximoProjeto } from "@/components/projects/ProjetoLateral";
 
+// Acima do `z-50` do overlay e do conteudo do dialog, no mesmo patamar que
+// `dialog.tsx` documenta para o admin (`z-[2000]`).
+const Z_INDEX_CONFETE = 2000;
+
 export default function ProjetoConcluidoModal({
   aberto,
   onOpenChange,
@@ -52,7 +56,10 @@ export default function ProjetoConcluidoModal({
 
   useEffect(() => {
     if (!aberto || reduzirMovimento) return;
-    const parar = fireProCelebration({ x: 0.5, y: 0.35 });
+    const parar = fireProCelebration(
+      { x: 0.5, y: 0.35 },
+      { zIndex: Z_INDEX_CONFETE },
+    );
     return parar;
   }, [aberto, reduzirMovimento]);
 
