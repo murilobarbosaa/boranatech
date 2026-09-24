@@ -33,6 +33,7 @@ import {
   statusInicialDaPublicacao,
   TIPOS_DE_PUBLICACAO,
   type CodigoSimplesDoLink,
+  formaDoLinkRecusado,
 } from "./creatorPost";
 
 const CODIGO_IG = "Cx1AbCdEf_-";
@@ -818,5 +819,59 @@ describe("LIMITE_DE_REGISTROS_POR_DIA", () => {
 describe("REDES_DE_PUBLICACAO (lote 10d)", () => {
   it("e a MESMA lista de REDES_DE_CREATOR, nao uma copia", () => {
     expect(REDES_DE_PUBLICACAO).toBe(REDES_DE_CREATOR);
+  });
+});
+
+describe("formaDoLinkRecusado (lote 11l): o que vai para o log, sem usuario, id, token nem query", () => {
+  it("cada segmento vira o seu tipo, e so as palavras reservadas ficam escritas", () => {
+    const casos: Array<[unknown, { host: string; forma: string }]> = [
+      [
+        `https://www.instagram.com/stories/ana.cria/${ID_STORY}/?igsh=abc`,
+        { host: "instagram.com", forma: "stories/<usuario>/<num>" },
+      ],
+      [
+        "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4?story_media_id=1_2",
+        { host: "instagram.com", forma: "s/<token>" },
+      ],
+      [
+        `instagram.com/p/${CODIGO_IG}`,
+        { host: "instagram.com", forma: "p/<codigo>" },
+      ],
+      [
+        `https://www.instagram.com/ana.cria/reel/${CODIGO_IG}/`,
+        { host: "instagram.com", forma: "<texto>/reel/<codigo>" },
+      ],
+      [
+        "https://www.instagram.com/stories/highlights/17900000000000000/",
+        { host: "instagram.com", forma: "stories/highlights/<num>" },
+      ],
+      [
+        `https://www.tiktok.com/@Ana.Cria/video/${ID_TIKTOK}`,
+        { host: "tiktok.com", forma: "@<usuario>/video/<num>" },
+      ],
+      [
+        `https://www.linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}/`,
+        { host: "linkedin.com", forma: "feed/update/<urn>" },
+      ],
+      [
+        "https://www.linkedin.com/posts/ana-cria_texto-activity-1-x",
+        { host: "linkedin.com", forma: "posts/<slug>" },
+      ],
+      [
+        "https://www.instagram.com/",
+        { host: "instagram.com", forma: "<raiz>" },
+      ],
+      [
+        "https://a.com/1/2/3/4/5/6/7/8",
+        { host: "a.com", forma: "<num>/<num>/<num>/<num>/<num>/<num>/..." },
+      ],
+      // Texto solto no campo: o "host" nao tem cara de host e nao sai.
+      ["meu story de ontem", { host: "<invalido>", forma: "<raiz>" }],
+      ["", { host: "<nenhum>", forma: "<nenhuma>" }],
+      [42, { host: "<nenhum>", forma: "<nenhuma>" }],
+    ];
+    for (const [entrada, esperado] of casos) {
+      expect(formaDoLinkRecusado(entrada), String(entrada)).toEqual(esperado);
+    }
   });
 });

@@ -353,6 +353,95 @@ function partesDaUrl(
   };
 }
 
+// FORMA DO LINK RECUSADO (lote 11l): o que o servidor registra em log a cada
+// recusa, para medir QUAIS formatos os creators colam e a regra nao aceita.
+// Cada segmento do caminho vira o seu TIPO, e so as palavras que as redes
+// reservam (`p`, `stories`, `video`...) ficam escritas: usuario, id, token e
+// texto de slug nunca saem daqui, nem a query. Um segmento sai literal SO se
+// estiver na lista; qualquer outro vira um marcador, entao o que nao foi
+// previsto cai no generico e nao vaza.
+const SEGMENTOS_LITERAIS = new Set([
+  "p",
+  "reel",
+  "reels",
+  "tv",
+  "s",
+  "stories",
+  "highlights",
+  "share",
+  "explore",
+  "accounts",
+  "t",
+  "video",
+  "photo",
+  "posts",
+  "feed",
+  "update",
+  "in",
+  "pulse",
+  "company",
+]);
+
+// O marcador de um segmento que nao e literal depende do literal que o
+// antecede: `stories/<usuario>`, `p/<codigo>`, `s/<token>`, `posts/<slug>`.
+const MARCADOR_DEPOIS_DE: Record<string, string> = {
+  stories: "<usuario>",
+  p: "<codigo>",
+  reel: "<codigo>",
+  reels: "<codigo>",
+  tv: "<codigo>",
+  s: "<token>",
+  share: "<token>",
+  t: "<token>",
+  posts: "<slug>",
+  in: "<slug>",
+  pulse: "<slug>",
+  company: "<slug>",
+};
+
+// Mais do que isso nao e link de publicacao de rede nenhuma, e a linha de log
+// nao precisa crescer com o que a pessoa colou.
+const TETO_DE_SEGMENTOS = 6;
+
+const HOST_RE = /^[a-z0-9.-]{1,253}$/;
+
+function tipoDoSegmento(segmento: string, anterior: string | null): string {
+  const minusculo = segmento.toLowerCase();
+  if (SEGMENTOS_LITERAIS.has(minusculo)) return minusculo;
+  if (/^[0-9]+$/.test(segmento)) return "<num>";
+  if (segmento.startsWith("@")) return "@<usuario>";
+  if (minusculo.startsWith("urn:")) return "<urn>";
+  return (anterior && MARCADOR_DEPOIS_DE[anterior]) ?? "<texto>";
+}
+
+/**
+ * Host e forma do caminho de um link, sem nada que identifique a pessoa ou a
+ * publicacao. Host que nao tem cara de host (texto solto colado no campo) vira
+ * `<invalido>`, pelo mesmo motivo.
+ */
+export function formaDoLinkRecusado(valor: unknown): {
+  host: string;
+  forma: string;
+} {
+  if (typeof valor !== "string")
+    return { host: "<nenhum>", forma: "<nenhuma>" };
+  const partes = partesDaUrl(valor);
+  if (!partes) return { host: "<nenhum>", forma: "<nenhuma>" };
+  const segmentos = partes.caminho.split("/").filter((s) => s !== "");
+  const tipos: string[] = [];
+  let anterior: string | null = null;
+  for (const segmento of segmentos.slice(0, TETO_DE_SEGMENTOS)) {
+    const tipo = tipoDoSegmento(segmento, anterior);
+    tipos.push(tipo);
+    anterior = SEGMENTOS_LITERAIS.has(tipo) ? tipo : null;
+  }
+  if (segmentos.length > TETO_DE_SEGMENTOS) tipos.push("...");
+  return {
+    host: HOST_RE.test(partes.host) ? partes.host : "<invalido>",
+    forma: tipos.length === 0 ? "<raiz>" : tipos.join("/"),
+  };
+}
+
 function publicacaoDoLinkedin(
   tipoDoUrn: string,
   id: string,
