@@ -12,6 +12,7 @@ import {
   codeQuotaFor,
   codeRuleViolations,
   codeRuleWarnings,
+  codeQuotaExit,
   codeQuotaWarnings,
   codeTypeViolations,
   dependsOnExternal,
@@ -1293,7 +1294,11 @@ describe("codeQuotaWarnings: cota de codigo por nivel no portao", () => {
         ids: ["python-av-04", "python-av-05", "python-av-06", "python-av-07"],
       },
     ];
+    // Lote 11a: o aviso passou a ser por SECAO; a soma do nivel ficou como
+    // linha extra, nunca como a unica.
     expect(codeQuotaWarnings(qs, secoes)).toEqual([
+      'secao "avancado / A": 2 pergunta(s) de codigo de 3 prevista(s) (deficit de 1)',
+      'secao "avancado / B": 3 pergunta(s) de codigo de 4 prevista(s) (deficit de 1)',
       "nivel avancado: 5 perguntas de codigo de 7 previstas",
     ]);
   });
@@ -1312,6 +1317,110 @@ describe("codeQuotaWarnings: cota de codigo por nivel no portao", () => {
         },
       ]),
     ).toEqual([]);
+  });
+});
+
+// Lote 11a. O relatorio do Lote 10 afirmou que a cota de codigo era "so pedida
+// no prompt", e o codigo dizia outra coisa: missingCodeCount entra no retry. O
+// que falhava era o FIM: esgotadas as tentativas, a secao saia com deficit, e
+// o unico sinal era um aviso que (a) so avisava e (b) somava por nivel, entao
+// o deficit de uma secao e o excedente de outra do mesmo nivel se cancelavam
+// em silencio. As pools abaixo tem a forma exata do que o fallback do
+// generateSection devolve quando o modelo entrega uma pergunta de codigo a
+// menos em todas as tentativas (bestValid com deficit).
+describe("cota de codigo por SECAO no fim da geracao", () => {
+  const pergunta = (id: string, codigo: boolean): QuizQuestion => ({
+    id,
+    nivel: "intermediario",
+    pergunta: "Qual?",
+    alternativas: { a: "1", b: "2", c: "3", d: "4" },
+    correta: "a",
+    explicacao: "Porque sim.",
+    fonte: "basico.variaveis",
+    ...(codigo
+      ? {
+          tipo: "saida" as const,
+          codigo: { linguagem: "python", trecho: "print(1)" },
+          alternativasCodigo: true as const,
+        }
+      : {}),
+  });
+  // Secao A com cota 2 e so 1 de codigo; secao B com cota 2 e 2 de codigo.
+  const comDeficit = [
+    pergunta("python-int-01", true),
+    pergunta("python-int-02", false),
+    pergunta("python-int-03", false),
+    pergunta("python-int-04", true),
+    pergunta("python-int-05", true),
+    pergunta("python-int-06", false),
+  ];
+  const secoes = [
+    {
+      label: "intermediario / A",
+      codeQuota: 2,
+      ids: ["python-int-01", "python-int-02", "python-int-03"],
+    },
+    {
+      label: "intermediario / B",
+      codeQuota: 2,
+      ids: ["python-int-04", "python-int-05", "python-int-06"],
+    },
+  ];
+
+  it("secao com uma de codigo a menos: status diferente de zero e a secao nomeada", () => {
+    const fim = codeQuotaExit(comDeficit, secoes, false);
+    expect(fim.status).toBe(1);
+    expect(fim.linhas.join("\n")).toContain("intermediario / A");
+    expect(fim.linhas.join("\n")).not.toContain("intermediario / B");
+  });
+
+  it("com --aceitar-deficit-de-codigo: status zero, o uso do flag dito, e o aviso por secao", () => {
+    const fim = codeQuotaExit(comDeficit, secoes, true);
+    expect(fim.status).toBe(0);
+    expect(fim.linhas.join("\n")).toContain("--aceitar-deficit-de-codigo");
+    expect(fim.linhas.join("\n")).toContain("intermediario / A");
+    expect(codeQuotaWarnings(comDeficit, secoes)).toContain(
+      'secao "intermediario / A": 1 pergunta(s) de codigo de 2 prevista(s) (deficit de 1)',
+    );
+  });
+
+  it("deficit numa secao e excesso igual na outra: o aviso por secao ACUSA as duas", () => {
+    // A: cota 2, veio 1. B: cota 1, veio 2. Soma do nivel: 3 de 3, que e o
+    // cancelamento que a soma por nivel deixava passar calado.
+    const cancela = [
+      pergunta("python-int-01", true),
+      pergunta("python-int-02", false),
+      pergunta("python-int-03", false),
+      pergunta("python-int-04", true),
+      pergunta("python-int-05", true),
+      pergunta("python-int-06", false),
+    ];
+    const secoesCancela = [
+      { ...secoes[0], codeQuota: 2 },
+      { ...secoes[1], codeQuota: 1 },
+    ];
+    expect(codeQuotaWarnings(cancela, secoesCancela)).toEqual([
+      'secao "intermediario / A": 1 pergunta(s) de codigo de 2 prevista(s) (deficit de 1)',
+      'secao "intermediario / B": 2 pergunta(s) de codigo de 1 prevista(s) (excesso de 1)',
+    ]);
+    // Excesso nao reprova; o deficit da A, sim.
+    expect(codeQuotaExit(cancela, secoesCancela, false).status).toBe(1);
+  });
+
+  it("sem deficit: status zero e nenhum aviso", () => {
+    const fechada = [
+      pergunta("python-int-01", true),
+      pergunta("python-int-02", true),
+      pergunta("python-int-03", false),
+      pergunta("python-int-04", true),
+      pergunta("python-int-05", true),
+      pergunta("python-int-06", false),
+    ];
+    expect(codeQuotaWarnings(fechada, secoes)).toEqual([]);
+    expect(codeQuotaExit(fechada, secoes, false)).toEqual({
+      status: 0,
+      linhas: [],
+    });
   });
 });
 
