@@ -164,6 +164,13 @@ export function validateQuizPool(
           `${q}: ${field} cita posicao de alternativa ("${achado}"): a ordem na tela e embaralhada`,
         );
       }
+      // Portugues sem acento (ver portuguesSemAcento). Alternativa de
+      // pergunta com alternativasCodigo e codigo, nao prosa, e fica de fora.
+      if (!(question.alternativasCodigo && field.startsWith("alternativa "))) {
+        for (const palavra of portuguesSemAcento(value)) {
+          problems.push(`${q}: ${field} tem "${palavra}" sem acento`);
+        }
+      }
     }
 
     // Perguntas de codigo: tipo conhecido, codigo presente exatamente nos
@@ -293,18 +300,14 @@ export function validateQuizPool(
   return problems;
 }
 
-// AVISOS, nao problemas: em trilha com codeLanguages, nivel sem pergunta de
-// algum tipo de codigo. O sorteio garante 1 pergunta de codigo por nivel
-// (DRAW_MIN_CODE_PER_LEVEL), nao 1 de cada tipo, entao a prova continua
-// valida; e desequilibrio de pool, que vale saber (a pool de javascript saiu
-// do piloto sem completar no intermediario). Canal separado de
-// validateQuizPool de proposito: validateQuizPool.mts e generateRoadmapMeta
-// --check imprimem com prefixo [aviso] e nao reprovam.
-//
 // Lote 10c. Portugues sem acento em string que o usuario le. A lista e
 // DELIBERADAMENTE curta: so palavra comum cuja forma sem acento nao existe em
 // portugues. Ela nao tenta ser corretor ortografico, e cresce quando um caso
 // novo aparecer, no commit que o encontrar.
+//
+// ERRO desde o Lote 11a, em validateQuizPool (e por ele no pnpm check e no
+// portao final do gerador). Antes era aviso, ate a ultima pool publicada que
+// acusava sair limpa.
 const SEM_ACENTO = [
   "nao",
   "voce",
@@ -344,30 +347,22 @@ export function portuguesSemAcento(texto: string): string[] {
   );
 }
 
+// AVISOS, nao problemas: em trilha com codeLanguages, nivel sem pergunta de
+// algum tipo de codigo. O sorteio garante 1 pergunta de codigo por nivel
+// (DRAW_MIN_CODE_PER_LEVEL), nao 1 de cada tipo, entao a prova continua
+// valida; e desequilibrio de pool, que vale saber (a pool de javascript saiu
+// do piloto sem completar no intermediario). Canal separado de
+// validateQuizPool de proposito: validateQuizPool.mts e generateRoadmapMeta
+// --check imprimem com prefixo [aviso] e nao reprovam.
 export function quizPoolWarnings(
   pool: QuizPool,
   roadmap: RoadmapV2 | null,
 ): string[] {
   const out: string[] = [];
-  // ANTES do corte por codeLanguages de proposito: ortografia vale para as 29
-  // pools, e 27 delas nao tem codeLanguages nenhuma.
-  //
-  // Entra como AVISO, e nao como erro em validateQuizPool, porque pool
-  // PUBLICADA ainda acusa: javascript-int-14 cita no enunciado a mensagem
-  // literal `id invalido` que o proprio trecho imprime, e acentuar mudaria a
-  // mensagem. Para virar erro falta essa pool sair limpa, o que e lote proprio.
-  for (const question of pool.questions) {
-    for (const [field, value] of textFields(question)) {
-      if (question.alternativasCodigo && field.startsWith("alternativa ")) {
-        continue;
-      }
-      for (const palavra of portuguesSemAcento(value)) {
-        out.push(
-          `pool ${pool.slug}: ${question.id} ${field} tem "${palavra}" sem acento`,
-        );
-      }
-    }
-  }
+  // Portugues sem acento saiu daqui no Lote 11a: era AVISO porque a pool
+  // publicada de JavaScript ainda acusava (javascript-int-14, a mensagem
+  // literal `id invalido` do proprio trecho). Com o trecho consertado a
+  // medicao nas 29 pools deu zero, e o guarda virou ERRO em validateQuizPool.
   if (!roadmap?.codeLanguages || roadmap.codeLanguages.length === 0) return out;
   for (const nivel of NIVEIS) {
     for (const tipo of CODE_QUESTION_TIPOS) {

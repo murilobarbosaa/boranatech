@@ -379,44 +379,58 @@ describe("quizPoolWarnings: variedade de tipo de codigo por nivel", () => {
 // verifyQuizPoolByExecution e pela leitura humana das 18 linhas da tabela de
 // revisao: 14 perguntas da pool de TypeScript tinham portugues sem acento em
 // string que o usuario le. Nenhum dos tres olha ortografia, e nao deviam; o
-// que faltava era um guarda barato. Roadmap null nos casos abaixo para provar
-// que a checagem acontece ANTES do corte por codeLanguages.
-describe("quizPoolWarnings: portugues sem acento em string visivel", () => {
+// que faltava era um guarda barato.
+//
+// Lote 11a: o guarda passou de AVISO a ERRO. Ele era aviso porque a pool de
+// JavaScript publicada ainda acusava (javascript-int-14); com ela consertada,
+// a medicao nas 29 pools deu zero, e o erro vive em validateQuizPool, que
+// tambem roda no pnpm check (generateRoadmapMeta --check) e no portao final
+// do gerador.
+describe("validateQuizPool: portugues sem acento em string visivel e ERRO", () => {
   const poolCom = (campos: Partial<QuizQuestion>): QuizPool => ({
     slug: "a+b",
     questions: [{ ...pergunta("a+b-ini-01"), ...campos }],
   });
+  const acentos = (pool: QuizPool, trilha: RoadmapV2 = roadmap) =>
+    validateQuizPool(pool, "a+b", trilha).filter((problem) =>
+      problem.includes("sem acento"),
+    );
 
-  it("palavra sem acento em string visivel avisa, com pergunta, campo e palavra", () => {
+  it("palavra sem acento em string visivel reprova, com pergunta, campo e palavra", () => {
+    expect(acentos(poolCom({ pergunta: "Isto nao roda?" }))).toEqual([
+      'pool a+b, pergunta a+b-ini-01: pergunta tem "nao" sem acento',
+    ]);
+  });
+
+  it("deixou de ser aviso: quizPoolWarnings nao repete o problema", () => {
     expect(
       quizPoolWarnings(poolCom({ pergunta: "Isto nao roda?" }), null),
-    ).toEqual(['pool a+b: a+b-ini-01 pergunta tem "nao" sem acento']);
+    ).toEqual([]);
   });
 
   it("CONTROLE: a mesma palavra entre crases passa, porque e identificador", () => {
-    expect(
-      quizPoolWarnings(poolCom({ pergunta: "Isto `nao` roda?" }), null),
-    ).toEqual([]);
+    expect(acentos(poolCom({ pergunta: "Isto `nao` roda?" }))).toEqual([]);
   });
 
   it("CONTROLE: a mesma palavra em codigo.trecho passa", () => {
     expect(
-      quizPoolWarnings(
+      acentos(
         poolCom({
           tipo: "saida",
           codigo: {
             linguagem: "js",
             trecho: "const nao = 1;\nconsole.log(nao);",
           },
+          alternativas: { a: "1", b: "2", c: "3", d: "4" },
           alternativasCodigo: true,
         }),
-        null,
+        roadmapComCodigo,
       ),
     ).toEqual([]);
   });
 
   it("CONTROLE: pergunta limpa passa", () => {
-    expect(quizPoolWarnings(poolCom({}), null)).toEqual([]);
+    expect(acentos(poolCom({}))).toEqual([]);
   });
 
   // A exclusao de alternativasCodigo nao estava no desenho original: veio da
@@ -426,18 +440,15 @@ describe("quizPoolWarnings: portugues sem acento em string visivel", () => {
   it("CONTROLE: alternativa de codigo nao e acusada", () => {
     const alternativas = { a: "numero > 0", b: "numero", c: "1", d: "2" };
     expect(
-      quizPoolWarnings(
-        poolCom({ alternativas, alternativasCodigo: true }),
-        null,
-      ),
+      acentos(poolCom({ alternativas, alternativasCodigo: true })),
     ).toEqual([]);
   });
 
   it("CONTROLE NEGATIVO: a mesma alternativa em prosa E acusada", () => {
     const alternativas = { a: "numero > 0", b: "numero", c: "1", d: "2" };
-    expect(quizPoolWarnings(poolCom({ alternativas }), null)).toEqual([
-      'pool a+b: a+b-ini-01 alternativa a tem "numero" sem acento',
-      'pool a+b: a+b-ini-01 alternativa b tem "numero" sem acento',
+    expect(acentos(poolCom({ alternativas }))).toEqual([
+      'pool a+b, pergunta a+b-ini-01: alternativa a tem "numero" sem acento',
+      'pool a+b, pergunta a+b-ini-01: alternativa b tem "numero" sem acento',
     ]);
   });
 });
