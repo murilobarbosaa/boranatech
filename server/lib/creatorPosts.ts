@@ -11,6 +11,7 @@ import {
   type RedeDeCreator,
 } from "../../shared/creatorProfile";
 import {
+  formaDoLinkRecusado,
   LIMITE_DE_REGISTROS_POR_DIA,
   normalizarLinkDePublicacao,
   REDES_DE_PUBLICACAO,
@@ -236,6 +237,32 @@ export async function listarPublicacoes(
 }
 
 /**
+ * Linha de log de cada recusa do LINK (lote 11l): rede e tipo escolhidos, o
+ * codigo, o host e a FORMA do caminho (`stories/<usuario>/<num>`, `s/<token>`),
+ * nunca a URL crua, o usuario, o id ou a query. Existe para medir quais
+ * formatos os creators colam e a regra recusa: o furo do usuario de 25 a 30
+ * caracteres e o do story aberto de um destaque so apareceram por relato, e
+ * com esta linha aparecem na contagem. Recusa que nao e do link (rede ou tipo
+ * ausentes, repetida, teto do dia) nao entra: nao diz nada sobre formato.
+ */
+function registrarRecusaDoLink<T extends RegistroRecusado>(
+  recusa: T,
+  url: unknown,
+  rede: RedeDeCreator,
+  tipo: TipoDePublicacao,
+): T {
+  const { host, forma } = formaDoLinkRecusado(url);
+  console.info("[creatorPosts] link recusado", {
+    rede,
+    tipo,
+    code: recusa.code,
+    host,
+    forma,
+  });
+  return recusa;
+}
+
+/**
  * Registra o link colado com o tipo escolhido. O 409
  * (`post_already_registered`) vem do banco, pelo unique, e NAO de um select
  * antes: entre o select e o insert cabe outra requisicao da mesma pessoa, e o
@@ -279,7 +306,7 @@ export async function registrarPublicacao(
     ehLinkDeCompartilhamentoDoInstagram(url);
   // Link que nem forma de publicacao tem sai aqui, sem tocar no banco.
   if (!link.ok && !precisaResolver && !precisaResolverCompartilhamento) {
-    return link;
+    return registrarRecusaDoLink(link, url, rede, tipo);
   }
 
   // O TETO DO DIA VEM ANTES DE ABRIR CONEXAO: o decimo primeiro link curto do
@@ -300,7 +327,7 @@ export async function registrarPublicacao(
 
   if (precisaResolver) {
     const resolvido = await resolverLinkCurtoDoTikTok(url);
-    if (!resolvido.ok) return resolvido;
+    if (!resolvido.ok) return registrarRecusaDoLink(resolvido, url, rede, tipo);
     link = resolvido;
   }
   if (precisaResolverCompartilhamento) {
@@ -308,10 +335,10 @@ export async function registrarPublicacao(
       url,
       tipo,
     );
-    if (!resolvido.ok) return resolvido;
+    if (!resolvido.ok) return registrarRecusaDoLink(resolvido, url, rede, tipo);
     link = resolvido;
   }
-  if (!link.ok) return link;
+  if (!link.ok) return registrarRecusaDoLink(link, url, rede, tipo);
 
   const status = statusInicialDaPublicacao(tipo);
   const { data, error } = await supabaseAdmin

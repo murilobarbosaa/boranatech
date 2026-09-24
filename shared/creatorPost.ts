@@ -117,13 +117,16 @@ export function statusInicialDaPublicacao(
  * frase em `MENSAGEM_DO_LINK`. `profile_link`, `share_link_unsupported` e
  * `tiktok_photo_unsupported` existem porque "Link inválido" mandava a pessoa
  * conferir um link que ela copiou certo, e a frase precisa dizer o que colar.
+ * `highlight_link` (lote 11l) e o link do DESTAQUE inteiro, que nao e um story
+ * so: a frase ensina a abrir o story dentro dele e copiar o link desse.
  */
 export type CodigoSimplesDoLink =
   | "invalid_post_url"
   | "short_link_unsupported"
   | "share_link_unsupported"
   | "tiktok_photo_unsupported"
-  | "profile_link";
+  | "profile_link"
+  | "highlight_link";
 
 export type CodigoDeLinkDePublicacao =
   | CodigoSimplesDoLink
@@ -167,6 +170,9 @@ export const MENSAGEM_DO_LINK: Record<CodigoSimplesDoLink, string> = {
   tiktok_photo_unsupported:
     "Por enquanto só vídeos do TikTok contam. Carrossel de fotos fica para depois.",
   profile_link: "Esse é o link do perfil. Cole o link de uma publicação.",
+  // TODO(Ana)
+  highlight_link:
+    "Esse é o link do destaque inteiro. Abra o story dentro do destaque e copie o link dele.",
 };
 
 /** Mensagem da rede que nao casa com o link, com o nome da rede detectada. */
@@ -221,12 +227,18 @@ const CAMINHO_CURTO_DO_TIKTOK_RE = /^t\/[A-Za-z0-9]{4,32}$/;
 // assim.
 const CODIGO_DO_INSTAGRAM = "[A-Za-z0-9_-]{5,32}";
 
-// Nome de usuario, nas redes: o `@` do TikTok, o trecho opcional que o
-// Instagram poe antes de `/p/` e `/reel/`, e o dono do story em `/stories/`.
-// Uma constante so, com nome neutro, porque as formas sao a mesma; batizar de
-// "do TikTok" faria quem apertasse a regra de la mudar o Instagram junto, sem
-// perceber.
-const USUARIO_DA_REDE = "[A-Za-z0-9._]{2,24}";
+// Nome de usuario, UMA CONSTANTE POR REDE (lote 11l). Ate o 11k era uma so,
+// `[A-Za-z0-9._]{2,24}`, com o argumento de que as formas eram a mesma. Os
+// caracteres sao; o TAMANHO nao: o Instagram aceita de 1 a 30, o TikTok de 2 a
+// 24. A constante unica tinha o limite do TikTok e recusava como
+// `invalid_post_url` o story de quem tem usuario de 25 a 30 caracteres. Com
+// uma so, apertar ou soltar a regra de uma rede muda a outra sem ninguem
+// perceber, que foi exatamente o que aconteceu.
+//
+// Instagram: o trecho opcional antes de `/p/` e `/reel/`, o dono do story em
+// `/stories/` e o perfil. TikTok: o `@`.
+const USUARIO_DO_INSTAGRAM = "[A-Za-z0-9._]{1,30}";
+const USUARIO_DO_TIKTOK = "[A-Za-z0-9._]{2,24}";
 
 // Id numerico do video no TikTok e do story no Instagram. O piso de 5 digitos e
 // deliberado: `video/1` nao e id, e um link truncado, e aceitar isso gravaria
@@ -234,40 +246,63 @@ const USUARIO_DA_REDE = "[A-Za-z0-9._]{2,24}";
 const ID_NUMERICO = "[0-9]{5,32}";
 
 const INSTAGRAM_RE = new RegExp(
-  `^(?:${USUARIO_DA_REDE}/)?(p|reel|reels)/(${CODIGO_DO_INSTAGRAM})$`,
+  `^(?:${USUARIO_DO_INSTAGRAM}/)?(p|reel|reels)/(${CODIGO_DO_INSTAGRAM})$`,
 );
 
 // PERFIL (lote 11k): `instagram.com/<usuario>/`, `tiktok.com/@usuario` e
 // `linkedin.com/in/<slug>` sao o que a pessoa copia da propria pagina, e a
 // recusa diz isso em vez de "link invalido". Um segmento so, e no Instagram
-// nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `stories`,
-// `share`, `explore`, `accounts`), que nunca sao perfil.
-const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DA_REDE}$`);
+// nao pode ser um dos caminhos que a rede reserva (`p`, `reel`, `s`,
+// `stories`, `share`, `explore`, `accounts`), que nunca sao perfil. O `s`
+// entrou no 11l: com o usuario de 1 caractere, `instagram.com/s` passaria a
+// ser lido como perfil.
+const PERFIL_DO_INSTAGRAM_RE = new RegExp(`^${USUARIO_DO_INSTAGRAM}$`);
 const COMPARTILHAMENTO_DO_INSTAGRAM_RE = /^share(\/|$)/i;
 const CAMINHOS_RESERVADOS_DO_INSTAGRAM = [
   "p",
   "reel",
   "reels",
+  "s",
   "stories",
   "share",
   "explore",
   "accounts",
 ];
-const PERFIL_DO_TIKTOK_RE = new RegExp(`^@${USUARIO_DA_REDE}$`);
+const PERFIL_DO_TIKTOK_RE = new RegExp(`^@${USUARIO_DO_TIKTOK}$`);
 const PERFIL_DO_LINKEDIN_RE = /^in\/[^/]+$/;
 
 // Story: `instagram.com/stories/<usuario>/<digitos>/`. O usuario e obrigatorio
 // (e assim que o Instagram escreve o link), e o id do story sao os digitos.
-const STORY_RE = new RegExp(`^stories/(${USUARIO_DA_REDE})/(${ID_NUMERICO})$`);
+const STORY_RE = new RegExp(
+  `^stories/(${USUARIO_DO_INSTAGRAM})/(${ID_NUMERICO})$`,
+);
 
-const TIKTOK_RE = new RegExp(`^@(${USUARIO_DA_REDE})/video/(${ID_NUMERICO})$`);
+// STORY ABERTO DE DENTRO DE UM DESTAQUE (lote 11l): o Copiar link do app
+// escreve `instagram.com/s/<token>?story_media_id=<mediaId>_<ownerId>&igsh=...`.
+// O `<token>` identifica o DESTAQUE; quem identifica o story e o
+// `story_media_id`, e o `<mediaId>` dele e o MESMO id do link
+// `stories/<usuario>/<id>`. Entao o `external_id` e o `<mediaId>`, e o mesmo
+// story colado pelos dois caminhos cai no mesmo unique. O `<ownerId>` (id
+// numerico da conta) fica so na canonica, que e o link que abre o story.
+//
+// `/s/<token>` SEM `story_media_id` e o link do destaque inteiro, e
+// `stories/highlights/<id>` tambem: os dois sao `highlight_link`. Destaque e
+// uma colecao fixa do perfil, sem data, e registra-lo contaria o mesmo
+// destaque todo mes.
+const DESTAQUE_DO_INSTAGRAM_RE = /^s\/([A-Za-z0-9_-]+={0,2})$/;
+const STORY_MEDIA_ID_RE = new RegExp(`^(${ID_NUMERICO})_([0-9]{1,32})$`);
+const STORIES_HIGHLIGHTS_RE = /^stories\/highlights(\/|$)/i;
+
+const TIKTOK_RE = new RegExp(
+  `^@(${USUARIO_DO_TIKTOK})/video/(${ID_NUMERICO})$`,
+);
 
 // CARROSSEL DE FOTOS DO TIKTOK (lote 11k): `tiktok.com/@u/photo/<id>` tem a
 // forma do video com `photo` no lugar. Recusado com codigo proprio, e nao
 // aceito: aceitar exige uma contagem nova na funcao SQL do ranking e um peso
 // decidido pela Ana, fora deste lote. A frase diz que so video conta hoje.
 const FOTO_DO_TIKTOK_RE = new RegExp(
-  `^@${USUARIO_DA_REDE}/photo/${ID_NUMERICO}$`,
+  `^@${USUARIO_DO_TIKTOK}/photo/${ID_NUMERICO}$`,
 );
 
 // LINKEDIN (lote 10d; ugcPost e post sem texto no 11k). O LinkedIn escreve o
@@ -290,15 +325,23 @@ const LINKEDIN_URN_RE = new RegExp(
   `^feed/update/urn:li:(${TIPOS_DE_URN_DO_LINKEDIN.join("|")}):(${ID_DO_LINKEDIN})$`,
 );
 
-/** Host e caminho de uma URL colada, sem protocolo, sem query e sem hash. */
-function partesDaUrl(valor: string): { host: string; caminho: string } | null {
+/**
+ * Host e caminho de uma URL colada, sem protocolo e sem hash, e a query a
+ * parte. O caminho NUNCA leva a query: `?igshid=`, `?is_from_webapp=1`,
+ * `?utm_source=share` e afins sao rastreamento da rede, nao identidade da
+ * publicacao. A query so e lida onde ela E a identidade (o `story_media_id` do
+ * story aberto de um destaque, lote 11l), e ali e lido um parametro, pelo nome.
+ */
+function partesDaUrl(
+  valor: string,
+): { host: string; caminho: string; query: string } | null {
   let resto = valor.trim();
   if (resto === "") return null;
   resto = resto.replace(/^https?:\/\//i, "");
-  // Query e hash saem antes de tudo: `?igshid=`, `?is_from_webapp=1`,
-  // `?utm_source=share` e afins sao rastreamento da rede, nao identidade da
-  // publicacao.
-  resto = resto.split("?")[0].split("#")[0];
+  resto = resto.split("#")[0];
+  const interrogacao = resto.indexOf("?");
+  const query = interrogacao === -1 ? "" : resto.slice(interrogacao + 1);
+  if (interrogacao !== -1) resto = resto.slice(0, interrogacao);
   const barra = resto.indexOf("/");
   const host = (barra === -1 ? resto : resto.slice(0, barra)).toLowerCase();
   const caminho = barra === -1 ? "" : resto.slice(barra + 1);
@@ -306,6 +349,96 @@ function partesDaUrl(valor: string): { host: string; caminho: string } | null {
   return {
     host: host.replace(/^www\./, ""),
     caminho: caminho.replace(/\/+$/, ""),
+    query,
+  };
+}
+
+// FORMA DO LINK RECUSADO (lote 11l): o que o servidor registra em log a cada
+// recusa, para medir QUAIS formatos os creators colam e a regra nao aceita.
+// Cada segmento do caminho vira o seu TIPO, e so as palavras que as redes
+// reservam (`p`, `stories`, `video`...) ficam escritas: usuario, id, token e
+// texto de slug nunca saem daqui, nem a query. Um segmento sai literal SO se
+// estiver na lista; qualquer outro vira um marcador, entao o que nao foi
+// previsto cai no generico e nao vaza.
+const SEGMENTOS_LITERAIS = new Set([
+  "p",
+  "reel",
+  "reels",
+  "tv",
+  "s",
+  "stories",
+  "highlights",
+  "share",
+  "explore",
+  "accounts",
+  "t",
+  "video",
+  "photo",
+  "posts",
+  "feed",
+  "update",
+  "in",
+  "pulse",
+  "company",
+]);
+
+// O marcador de um segmento que nao e literal depende do literal que o
+// antecede: `stories/<usuario>`, `p/<codigo>`, `s/<token>`, `posts/<slug>`.
+const MARCADOR_DEPOIS_DE: Record<string, string> = {
+  stories: "<usuario>",
+  p: "<codigo>",
+  reel: "<codigo>",
+  reels: "<codigo>",
+  tv: "<codigo>",
+  s: "<token>",
+  share: "<token>",
+  t: "<token>",
+  posts: "<slug>",
+  in: "<slug>",
+  pulse: "<slug>",
+  company: "<slug>",
+};
+
+// Mais do que isso nao e link de publicacao de rede nenhuma, e a linha de log
+// nao precisa crescer com o que a pessoa colou.
+const TETO_DE_SEGMENTOS = 6;
+
+const HOST_RE = /^[a-z0-9.-]{1,253}$/;
+
+function tipoDoSegmento(segmento: string, anterior: string | null): string {
+  const minusculo = segmento.toLowerCase();
+  if (SEGMENTOS_LITERAIS.has(minusculo)) return minusculo;
+  if (/^[0-9]+$/.test(segmento)) return "<num>";
+  if (segmento.startsWith("@")) return "@<usuario>";
+  if (minusculo.startsWith("urn:")) return "<urn>";
+  return (anterior && MARCADOR_DEPOIS_DE[anterior]) ?? "<texto>";
+}
+
+/**
+ * Host e forma do caminho de um link, sem nada que identifique a pessoa ou a
+ * publicacao. Host que nao tem cara de host (texto solto colado no campo) vira
+ * `<invalido>`, pelo mesmo motivo.
+ */
+export function formaDoLinkRecusado(valor: unknown): {
+  host: string;
+  forma: string;
+} {
+  if (typeof valor !== "string")
+    return { host: "<nenhum>", forma: "<nenhuma>" };
+  const partes = partesDaUrl(valor);
+  if (!partes) return { host: "<nenhum>", forma: "<nenhuma>" };
+  const segmentos = partes.caminho.split("/").filter((s) => s !== "");
+  const tipos: string[] = [];
+  let anterior: string | null = null;
+  for (const segmento of segmentos.slice(0, TETO_DE_SEGMENTOS)) {
+    const tipo = tipoDoSegmento(segmento, anterior);
+    tipos.push(tipo);
+    anterior = SEGMENTOS_LITERAIS.has(tipo) ? tipo : null;
+  }
+  if (segmentos.length > TETO_DE_SEGMENTOS) tipos.push("...");
+  return {
+    host: HOST_RE.test(partes.host) ? partes.host : "<invalido>",
+    forma: tipos.length === 0 ? "<raiz>" : tipos.join("/"),
   };
 }
 
@@ -335,7 +468,7 @@ function detectarPublicacao(
 
   const partes = partesDaUrl(valor);
   if (!partes) return { ok: false, code: "invalid_post_url" };
-  const { host, caminho } = partes;
+  const { host, caminho, query } = partes;
 
   if (HOSTS_CURTOS.includes(host)) {
     return { ok: false, code: "short_link_unsupported" };
@@ -352,11 +485,33 @@ function detectarPublicacao(
     if (COMPARTILHAMENTO_DO_INSTAGRAM_RE.test(caminho)) {
       return { ok: false, code: "share_link_unsupported" };
     }
-    const story = STORY_RE.exec(caminho);
     // `stories/highlights/<id>/` tem a forma de story com usuario
-    // "highlights", e nao e: destaque e uma colecao fixa do perfil, sem data,
-    // e registra-lo como story do dia contaria o mesmo destaque todo mes.
-    if (story && story[1].toLowerCase() !== "highlights") {
+    // "highlights", e nao e: e o destaque inteiro. Lido ANTES de `STORY_RE`,
+    // que o engoliria.
+    if (STORIES_HIGHLIGHTS_RE.test(caminho)) {
+      return { ok: false, code: "highlight_link" };
+    }
+    const destaque = DESTAQUE_DO_INSTAGRAM_RE.exec(caminho);
+    if (destaque) {
+      const midia = STORY_MEDIA_ID_RE.exec(
+        new URLSearchParams(query).get("story_media_id") ?? "",
+      );
+      if (!midia) return { ok: false, code: "highlight_link" };
+      const token = destaque[1];
+      const mediaId = midia[1];
+      const ownerId = midia[2];
+      return {
+        ok: true,
+        valor: {
+          network: "instagram",
+          kind: "story",
+          external_id: mediaId,
+          url: `https://www.instagram.com/s/${token}?story_media_id=${mediaId}_${ownerId}`,
+        },
+      };
+    }
+    const story = STORY_RE.exec(caminho);
+    if (story) {
       // O dono vai para minuscula na canonica, como o @ do TikTok: e nome de
       // usuario, e o Instagram nao distingue maiuscula nele. O id (os digitos)
       // e o que identifica o story, entao a unicidade nao depende disso.

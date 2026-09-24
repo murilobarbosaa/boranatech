@@ -33,6 +33,7 @@ import {
   statusInicialDaPublicacao,
   TIPOS_DE_PUBLICACAO,
   type CodigoSimplesDoLink,
+  formaDoLinkRecusado,
 } from "./creatorPost";
 
 const CODIGO_IG = "Cx1AbCdEf_-";
@@ -153,12 +154,138 @@ describe("normalizarLinkDePublicacao: Instagram", () => {
     }
   });
 
+  it("story aberto de um destaque (lote 11l): o id e o mediaId do story_media_id, o mesmo do link stories/", () => {
+    const TOKEN = "aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3";
+    const esperado = {
+      network: "instagram",
+      kind: "story",
+      external_id: ID_STORY,
+      url: `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890`,
+    };
+    for (const entrada of [
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890&igsh=MWx0bTZ3aGJ2`,
+      `instagram.com/s/${TOKEN}/?igsh=MWx0bTZ3aGJ2&story_media_id=${ID_STORY}_1234567890`,
+      `https://instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890#x`,
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "story"),
+        entrada,
+      ).toEqual({ ok: true, valor: esperado });
+    }
+    // O mesmo story pelos dois caminhos: mesmo external_id, logo mesmo unique.
+    const peloStories = normalizarLinkDePublicacao(
+      `https://www.instagram.com/stories/ana.cria/${ID_STORY}/`,
+      "instagram",
+      "story",
+    );
+    expect(peloStories.ok && peloStories.valor.external_id).toBe(
+      esperado.external_id,
+    );
+    // Tipo escolhido errado: o link e de story.
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}_1234567890`,
+        "instagram",
+        "reel",
+      ),
+    ).toEqual({
+      ok: false,
+      code: "post_type_mismatch",
+      tipo_detectado: "story",
+    });
+  });
+
+  it("destaque inteiro e highlight_link (lote 11l): /s/ sem story_media_id valido e stories/highlights/", () => {
+    const TOKEN = "aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3";
+    for (const entrada of [
+      `https://www.instagram.com/s/${TOKEN}`,
+      `https://www.instagram.com/s/${TOKEN}?igsh=MWx0bTZ3aGJ2`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=${ID_STORY}`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=37000abc_12`,
+      `https://www.instagram.com/s/${TOKEN}?story_media_id=12_1234567890`,
+      "https://www.instagram.com/stories/highlights/17900000000000000/",
+      "instagram.com/stories/Highlights/17900000000000000",
+    ]) {
+      expect(
+        normalizarLinkDePublicacao(entrada, "instagram", "story"),
+        entrada,
+      ).toEqual({ ok: false, code: "highlight_link" });
+    }
+    // So o story_media_id e lido da query: outro parametro nao vira id.
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/s/${TOKEN}?media_id=${ID_STORY}_1234567890`,
+        "instagram",
+        "story",
+      ),
+    ).toEqual({ ok: false, code: "highlight_link" });
+    // E nos outros caminhos a query continua ignorada.
+    const comQuery = normalizarLinkDePublicacao(
+      `https://www.instagram.com/stories/ana.cria/${ID_STORY}/?story_media_id=999999999_1`,
+      "instagram",
+      "story",
+    );
+    expect(comQuery.ok && comQuery.valor.external_id).toBe(ID_STORY);
+  });
+
+  it("usuario do Instagram vai de 1 a 30 caracteres (lote 11l), no story, no post e no perfil", () => {
+    const u30 = "ana.cria.tech.e.carreira.dev12";
+    expect(u30).toHaveLength(30);
+    for (const usuario of ["a", "ana.cria.tech.e.carreira1", u30]) {
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.instagram.com/stories/${usuario}/${ID_STORY}/`,
+          "instagram",
+          "story",
+        ),
+        usuario,
+      ).toEqual({
+        ok: true,
+        valor: {
+          network: "instagram",
+          kind: "story",
+          external_id: ID_STORY,
+          url: `https://www.instagram.com/stories/${usuario}/${ID_STORY}/`,
+        },
+      });
+      const post = normalizarLinkDePublicacao(
+        `https://www.instagram.com/${usuario}/p/${CODIGO_IG}/`,
+        "instagram",
+        "post",
+      );
+      expect(post.ok && post.valor.external_id, usuario).toBe(CODIGO_IG);
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.instagram.com/${usuario}/`,
+          "instagram",
+          "post",
+        ),
+        usuario,
+      ).toEqual({ ok: false, code: "profile_link" });
+    }
+    expect(
+      normalizarLinkDePublicacao(
+        `https://www.instagram.com/stories/${u30}1/${ID_STORY}/`,
+        "instagram",
+        "story",
+      ),
+    ).toEqual({ ok: false, code: "invalid_post_url" });
+    // `s` e caminho do Instagram, nao usuario de 1 caractere.
+    expect(
+      normalizarLinkDePublicacao(
+        "https://www.instagram.com/s/",
+        "instagram",
+        "post",
+      ),
+    ).toEqual({ ok: false, code: "invalid_post_url" });
+  });
+
   it("story sem usuario, destaque e id truncado nao sao story", () => {
     for (const entrada of [
       `https://www.instagram.com/stories/${ID_STORY}/`,
       "https://www.instagram.com/stories/ana.cria/",
       "https://www.instagram.com/stories/ana.cria/12/",
-      "https://www.instagram.com/stories/highlights/17900000000000000/",
     ]) {
       expect(normalizarLinkDePublicacao(entrada, "instagram", "story")).toEqual(
         {
@@ -256,6 +383,27 @@ describe("normalizarLinkDePublicacao: TikTok", () => {
         "video",
       ),
     ).toEqual({ ok: false, code: "invalid_post_url" });
+  });
+
+  it("usuario do TikTok continua de 2 a 24 caracteres (lote 11l separou do Instagram)", () => {
+    const u24 = "ana.cria.tech.e.carreira";
+    expect(u24).toHaveLength(24);
+    const aceito = normalizarLinkDePublicacao(
+      `https://www.tiktok.com/@${u24}/video/${ID_TIKTOK}`,
+      "tiktok",
+      "video",
+    );
+    expect(aceito.ok && aceito.valor.external_id).toBe(ID_TIKTOK);
+    for (const usuario of ["a", `${u24}1`]) {
+      expect(
+        normalizarLinkDePublicacao(
+          `https://www.tiktok.com/@${usuario}/video/${ID_TIKTOK}`,
+          "tiktok",
+          "video",
+        ),
+        usuario,
+      ).toEqual({ ok: false, code: "invalid_post_url" });
+    }
   });
 
   it("perfil e profile_link (lote 11k); id truncado e video sem @ sao invalidos", () => {
@@ -627,6 +775,7 @@ describe("mensagens da recusa (lote 11k): uma fonte para a rota e para a tela", 
       "share_link_unsupported",
       "tiktok_photo_unsupported",
       "profile_link",
+      "highlight_link",
     ];
     expect(Object.keys(MENSAGEM_DO_LINK).sort()).toEqual([...codigos].sort());
     const frases = codigos.map((c) => MENSAGEM_DO_LINK[c]);
@@ -670,5 +819,59 @@ describe("LIMITE_DE_REGISTROS_POR_DIA", () => {
 describe("REDES_DE_PUBLICACAO (lote 10d)", () => {
   it("e a MESMA lista de REDES_DE_CREATOR, nao uma copia", () => {
     expect(REDES_DE_PUBLICACAO).toBe(REDES_DE_CREATOR);
+  });
+});
+
+describe("formaDoLinkRecusado (lote 11l): o que vai para o log, sem usuario, id, token nem query", () => {
+  it("cada segmento vira o seu tipo, e so as palavras reservadas ficam escritas", () => {
+    const casos: Array<[unknown, { host: string; forma: string }]> = [
+      [
+        `https://www.instagram.com/stories/ana.cria/${ID_STORY}/?igsh=abc`,
+        { host: "instagram.com", forma: "stories/<usuario>/<num>" },
+      ],
+      [
+        "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4?story_media_id=1_2",
+        { host: "instagram.com", forma: "s/<token>" },
+      ],
+      [
+        `instagram.com/p/${CODIGO_IG}`,
+        { host: "instagram.com", forma: "p/<codigo>" },
+      ],
+      [
+        `https://www.instagram.com/ana.cria/reel/${CODIGO_IG}/`,
+        { host: "instagram.com", forma: "<texto>/reel/<codigo>" },
+      ],
+      [
+        "https://www.instagram.com/stories/highlights/17900000000000000/",
+        { host: "instagram.com", forma: "stories/highlights/<num>" },
+      ],
+      [
+        `https://www.tiktok.com/@Ana.Cria/video/${ID_TIKTOK}`,
+        { host: "tiktok.com", forma: "@<usuario>/video/<num>" },
+      ],
+      [
+        `https://www.linkedin.com/feed/update/urn:li:activity:${ID_LINKEDIN}/`,
+        { host: "linkedin.com", forma: "feed/update/<urn>" },
+      ],
+      [
+        "https://www.linkedin.com/posts/ana-cria_texto-activity-1-x",
+        { host: "linkedin.com", forma: "posts/<slug>" },
+      ],
+      [
+        "https://www.instagram.com/",
+        { host: "instagram.com", forma: "<raiz>" },
+      ],
+      [
+        "https://a.com/1/2/3/4/5/6/7/8",
+        { host: "a.com", forma: "<num>/<num>/<num>/<num>/<num>/<num>/..." },
+      ],
+      // Texto solto no campo: o "host" nao tem cara de host e nao sai.
+      ["meu story de ontem", { host: "<invalido>", forma: "<raiz>" }],
+      ["", { host: "<nenhum>", forma: "<nenhuma>" }],
+      [42, { host: "<nenhum>", forma: "<nenhuma>" }],
+    ];
+    for (const [entrada, esperado] of casos) {
+      expect(formaDoLinkRecusado(entrada), String(entrada)).toEqual(esperado);
+    }
   });
 });

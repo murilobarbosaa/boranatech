@@ -1105,6 +1105,168 @@ describe("POST /api/creator/posts", () => {
     expect(escritasEm("creator_posts")).toHaveLength(0);
   });
 
+  it("story aberto de um destaque (lote 11l): grava o mediaId como external_id e a canonica sem igsh", async () => {
+    const canonica =
+      "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3?story_media_id=3456789012345678901_1234567890";
+    montar({
+      creators: concessaoAtiva(),
+      creator_posts: (c) =>
+        c.op === "insert"
+          ? {
+              rows: [
+                {
+                  ...PUBLICACAO,
+                  kind: "story",
+                  url: canonica,
+                  status: "confirmado",
+                  confirmed_at: "2026-09-16T15:00:00.000Z",
+                },
+              ],
+            }
+          : { rows: [] },
+    });
+    estado.usuario = USUARIO;
+    const r = await chamar("POST", "/posts", {
+      url: `${canonica}&igsh=MWx0bTZ3aGJ2`,
+      rede: "instagram",
+      tipo: "story",
+    });
+    expect(r.status).toBe(201);
+    // O mesmo id do link stories/<usuario>/<id>: o unique reconhece o repetido.
+    expect(escritasEm("creator_posts")[0].payload).toMatchObject({
+      network: "instagram",
+      kind: "story",
+      external_id: "3456789012345678901",
+      url: canonica,
+    });
+  });
+
+  it("destaque inteiro (lote 11l): 400 highlight_link com a frase do shared, nada gravado", async () => {
+    for (const url of [
+      "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3?igsh=MWx0bTZ3aGJ2",
+      "https://www.instagram.com/stories/highlights/17900000000000000/",
+    ]) {
+      montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+      estado.usuario = USUARIO;
+      const r = await chamar("POST", "/posts", {
+        url,
+        rede: "instagram",
+        tipo: "story",
+      });
+      expect(r.status, url).toBe(400);
+      expect(r.body.error.code, url).toBe("highlight_link");
+      expect(r.body.error.message).toBe(MENSAGEM_DO_LINK.highlight_link);
+      expect(escritasEm("creator_posts")).toHaveLength(0);
+    }
+  });
+
+  describe("log da recusa do link (lote 11l)", () => {
+    const ETIQUETA = "[creatorPosts] link recusado";
+    function linhasDeRecusa(espiao: ReturnType<typeof vi.spyOn>) {
+      return espiao.mock.calls.filter((args) => args[0] === ETIQUETA);
+    }
+
+    it("uma linha por recusa, com rede, tipo, code, host e forma, e nada da URL crua", async () => {
+      const espiao = vi.spyOn(console, "info").mockImplementation(() => {});
+      const casos = [
+        {
+          url: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE4MDQ5ODc2NTQzMjEwOTg3?igsh=MWx0bTZ3aGJ2",
+          rede: "instagram",
+          tipo: "story",
+          linha: {
+            rede: "instagram",
+            tipo: "story",
+            code: "highlight_link",
+            host: "instagram.com",
+            forma: "s/<token>",
+          },
+          segredos: ["aGlnaGxpZ2h0", "igsh", "MWx0bTZ3aGJ2"],
+        },
+        {
+          url: "https://www.instagram.com/stories/ana.cria/12/?utm_source=ig_story_item_share",
+          rede: "instagram",
+          tipo: "story",
+          linha: {
+            rede: "instagram",
+            tipo: "story",
+            code: "invalid_post_url",
+            host: "instagram.com",
+            forma: "stories/<usuario>/<num>",
+          },
+          segredos: ["ana.cria", "utm_source", "/12"],
+        },
+        {
+          url: "https://www.instagram.com/p/Cx1AbCdEf_-/",
+          rede: "instagram",
+          tipo: "reel",
+          linha: {
+            rede: "instagram",
+            tipo: "reel",
+            code: "post_type_mismatch",
+            host: "instagram.com",
+            forma: "p/<codigo>",
+          },
+          segredos: ["Cx1AbCdEf_-"],
+        },
+        {
+          // Recusa que vem do resolvedor tambem entra.
+          url: "https://vm.tiktok.com/ZMabc123/",
+          rede: "tiktok",
+          tipo: "video",
+          linha: {
+            rede: "tiktok",
+            tipo: "video",
+            code: "short_link_unresolved",
+            host: "vm.tiktok.com",
+            forma: "<texto>",
+          },
+          segredos: ["ZMabc123"],
+        },
+      ];
+      for (const caso of casos) {
+        espiao.mockClear();
+        montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
+        estado.usuario = USUARIO;
+        const r = await chamar("POST", "/posts", {
+          url: caso.url,
+          rede: caso.rede,
+          tipo: caso.tipo,
+        });
+        expect(r.status, caso.url).toBe(400);
+        const linhas = linhasDeRecusa(espiao);
+        expect(linhas, caso.url).toEqual([[ETIQUETA, caso.linha]]);
+        const texto = JSON.stringify(linhas);
+        for (const segredo of caso.segredos) {
+          expect(texto, `${caso.url} vazou ${segredo}`).not.toContain(segredo);
+        }
+      }
+    });
+
+    it("registro aceito e recusa que nao e do link nao geram a linha", async () => {
+      const espiao = vi.spyOn(console, "info").mockImplementation(() => {});
+      montar({
+        creators: concessaoAtiva(),
+        creator_posts: (c) =>
+          c.op === "insert"
+            ? { rows: [{ ...PUBLICACAO, kind: "post", url: LINK_POST }] }
+            : { rows: [] },
+      });
+      estado.usuario = USUARIO;
+      const aceito = await chamar("POST", "/posts", {
+        url: LINK_POST,
+        rede: "instagram",
+        tipo: "post",
+      });
+      expect(aceito.status).toBe(201);
+      const semTipo = await chamar("POST", "/posts", {
+        url: LINK_POST,
+        rede: "instagram",
+      });
+      expect(semTipo.body.error.code).toBe("invalid_post_type");
+      expect(linhasDeRecusa(espiao)).toEqual([]);
+    });
+  });
+
   it("carrossel de fotos do TikTok (lote 11k): 400 tiktok_photo_unsupported com a frase do shared, nada gravado", async () => {
     montar({ creators: concessaoAtiva(), creator_posts: { rows: [] } });
     estado.usuario = USUARIO;
