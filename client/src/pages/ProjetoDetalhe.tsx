@@ -23,6 +23,7 @@ import { type EstadoChip } from "@/components/projects/ProjetoEstadoChip";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import { useProjectSubmission } from "@/hooks/useProjectSubmission";
+import type { ProjectSubmission } from "@/services/projectSubmissionService";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { projetos } from "@/lib/data";
 import { labelForProjectArea } from "@/lib/projectAreaGroup";
@@ -69,6 +70,9 @@ export default function ProjetoDetalhe() {
   // Muda a copy do modal: "entregou" quando veio do formulario, "fechou"
   // quando veio do botao de autodeclaracao.
   const [entregou, setEntregou] = useState(false);
+  // Quantas conferencias passaram, quando a comemoracao veio de uma verificacao
+  // que fechou. `null` = a comemoracao nao veio dai.
+  const [verificacoesOk, setVerificacoesOk] = useState<number | null>(null);
   const [notaValidacao, setNotaValidacao] = useState<{
     atendidos: number;
     total: number;
@@ -222,6 +226,24 @@ export default function ProjetoDetalhe() {
         { valor: projeto.entregavel, legenda: "o que você entrega" },
       ];
   const fatosComValidacao = [...fatos, ...fatoValidacao];
+
+  // ENTREGAR NAO E CONCLUIR. A entrega grava links e dispara a conferencia; quem
+  // conclui e o RESULTADO dela. Antes o fluxo marcava `done` e comemorava no ato
+  // de entregar, entao uma URL que nao era o projeto pedido abria "Projeto
+  // concluido!" com duas conferencias falhando.
+  //
+  // `toggleCompletion` continua sendo chamado, e precisa continuar: e dele que
+  // vivem os contadores, os badges e o espelho de trilha. O que muda e QUANDO.
+  // Arrow e nao `function`: declaracao de funcao e hasteada, entao o TypeScript
+  // nao carrega para dentro dela o estreitamento do early return de `projeto`.
+  const concluirSeVerificou = (sub: ProjectSubmission | null | undefined) => {
+    const resultados = sub?.autoCheck ?? [];
+    if (resultados.length === 0) return;
+    if (!resultados.every((r) => r.status === "ok")) return;
+    if (!concluido) toggleCompletion(projeto.id);
+    setVerificacoesOk(resultados.length);
+    setCelebrando(true);
+  };
 
   const acaoPrincipal = submission
     ? { rotulo: "Ver entrega", ancora: "entrega" }
@@ -413,27 +435,35 @@ export default function ProjetoDetalhe() {
                         setValidado(true);
                         setNotaValidacao(nota);
                       }}
-                      onValidated={() => setCelebrando(true)}
+                      onValidated={() => {
+                        // Aprovada pela IA conclui mesmo com checagem
+                        // falhando: a IA julga o que as checagens nao julgam.
+                        if (!concluido) toggleCompletion(projeto.id);
+                        setCelebrando(true);
+                      }}
                       tipoEntrega={v2.tipoEntrega}
                       checks={v2.verificacaoAutomatica ?? []}
                       submission={submission}
                       status={statusEntrega}
                       onEntregar={async (input) => {
                         await entregar(input);
-                        if (!concluido) toggleCompletion(projeto.id);
                         setEntregou(true);
-                        setCelebrando(true);
-                        // A verificacao vem DEPOIS de abrir a comemoracao: ela
-                        // leva segundos e nao pode segurar o feedback.
+                        const temChecks =
+                          (v2.verificacaoAutomatica ?? []).length > 0;
+                        if (!temChecks) {
+                          if (!concluido) toggleCompletion(projeto.id);
+                          setCelebrando(true);
+                          return;
+                        }
                         try {
-                          await verificar();
+                          concluirSeVerificou(await verificar());
                         } catch {
                           // Falha aqui nao desfaz a entrega; o botao
                           // "Verificar de novo" continua disponivel.
                         }
                       }}
                       onVerificar={async () => {
-                        await verificar();
+                        concluirSeVerificou(await verificar());
                       }}
                     />
                   </div>
@@ -602,10 +632,12 @@ export default function ProjetoDetalhe() {
           if (!aberto) {
             setEntregou(false);
             setNotaValidacao(null);
+            setVerificacoesOk(null);
           }
         }}
         nome={projeto.nome}
         entregue={entregou}
+        verificacoes={verificacoesOk}
         nota={notaValidacao}
         totalEtapas={v2 ? v2.etapas.length : null}
         post={projeto.sugestaoLinkedIn}

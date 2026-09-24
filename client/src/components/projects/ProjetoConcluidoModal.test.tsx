@@ -119,6 +119,58 @@ describe("ProjetoConcluidoModal", () => {
   });
 });
 
+describe("o confete da variante verificada", () => {
+  const PROPS = {
+    onOpenChange: () => {},
+    nome: "Página Pessoal",
+    totalEtapas: 5,
+    post: "post do linkedin",
+    url: "https://boranatech.com.br/projetos/landing-page-pessoal",
+    proximo: PROXIMO,
+  };
+
+  it("dispara uma vez, com zIndex acima do z-50 do dialog", () => {
+    montar({ entregue: true, verificacoes: 6 });
+    expect(screen.getByText("Projeto verificado!")).toBeTruthy();
+    expect(confete.fire).toHaveBeenCalledTimes(1);
+    const [, opcoes] = confete.fire.mock.calls[0] as unknown as [
+      unknown,
+      { zIndex?: number } | undefined,
+    ];
+    expect(opcoes?.zIndex).toBeGreaterThan(50);
+  });
+
+  it("com prefers-reduced-motion nao dispara", () => {
+    movimento.reduzido = true;
+    montar({ entregue: true, verificacoes: 6 });
+    expect(screen.getByText("Projeto verificado!")).toBeTruthy();
+    expect(confete.fire).not.toHaveBeenCalled();
+  });
+
+  it("re-render do pai com outro resultado nao remonta o modal", () => {
+    // Um remount rodaria o cleanup e dispararia de novo. A prova e o MESMO no
+    // de dialog entre os renders, e o confete contado uma vez so.
+    function Pai({ resultado }: { resultado: string }) {
+      return (
+        <>
+          <p>{resultado}</p>
+          <ProjetoConcluidoModal {...PROPS} aberto entregue verificacoes={6} />
+        </>
+      );
+    }
+
+    const { rerender } = render(<Pai resultado="falta 2" />);
+    const antes = screen.getByRole("dialog");
+
+    rerender(<Pai resultado="tudo conferido" />);
+    const depois = screen.getByRole("dialog");
+
+    expect(screen.getByText("tudo conferido")).toBeTruthy();
+    expect(depois).toBe(antes);
+    expect(confete.fire).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("variante de validacao", () => {
   it("com nota, o titulo e o texto mudam", () => {
     montar({ nota: { atendidos: 8, total: 10, perfeito: false } });
