@@ -489,7 +489,7 @@ const pool: QuizPool = {
     {
       "id": "javascript-int-14",
       "nivel": "intermediario",
-      "pergunta": "Este código deveria buscar o usuário e, quando o id for inválido, imprimir a mensagem id invalido sem derrubar o programa. Com id -1 o Node encerra com erro. Qual é o defeito?",
+      "pergunta": "Este código deveria buscar o usuário e, quando o id for inválido, imprimir a mensagem `id inválido` sem derrubar o programa. Com id -1 o Node encerra com erro. Qual é o defeito?",
       "alternativas": {
         "a": "A rejeição não é tratada: falta um .catch depois do .then para imprimir a mensagem.",
         "b": "O .then precisa receber dois callbacks, senão a Promise nunca resolve.",
@@ -502,8 +502,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "function buscarUsuario(id) {\n  return new Promise((resolver, rejeitar) => {\n    if (id <= 0) return rejeitar(new Error('id invalido'));\n    setTimeout(() => resolver({ id, nome: 'Ana' }), 10);\n  });\n}\nbuscarUsuario(-1)\n  .then((usuario) => console.log(usuario.nome));",
-        "saidaEsperada": "id invalido"
+        "trecho": "function buscarUsuario(id) {\n  return new Promise((resolver, rejeitar) => {\n    if (id <= 0) return rejeitar(new Error('id inválido'));\n    setTimeout(() => resolver({ id, nome: 'Ana' }), 10);\n  });\n}\nbuscarUsuario(-1)\n  .then((usuario) => console.log(usuario.nome));",
+        "saidaEsperada": "id inválido"
       }
     },
     {
