@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import confetti from "canvas-confetti";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +16,7 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
+import { dispararConfete } from "@/lib/proConfetti";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PortfolioFreeGuide from "@/components/portfolio/PortfolioFreeGuide";
@@ -479,7 +479,7 @@ function ScoreHero({
             y: (rect.top + rect.height / 2) / window.innerHeight,
           }
         : { x: 0.5, y: 0.35 };
-      confetti({
+      dispararConfete({
         particleCount: 90,
         spread: 100,
         origin,
