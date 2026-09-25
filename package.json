@@ -16,6 +16,8 @@
     "generate:sitemap": "tsx scripts/generateSitemap.mts",
     "gen:roadmap-meta": "tsx scripts/generateRoadmapMeta.mts",
     "gen:projetos-v2": "tsx scripts/generateProjectsV2Registry.mts",
+    "projetos:pendentes": "tsx scripts/listPendingProjects.mts",
+    "audit:kit-links": "tsx scripts/auditKitLinks.mts",
     "gen:quiz-pool": "tsx scripts/generateQuizPool.mts",
     "validate:quiz-pool": "tsx scripts/validateQuizPool.mts",
     "verify:quiz-pool": "tsx scripts/verifyQuizPoolByExecution.mts",
