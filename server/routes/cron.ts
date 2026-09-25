@@ -23,6 +23,8 @@ import {
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { reconcileFiscalInvoices } from "../lib/fiscalReconcile";
+import { executarLoteMensal } from "../lib/fiscalLote";
+import { decidirLoteAutomatico, validarLoteManual } from "../lib/fiscalRegras";
 import {
   clampWindowDays,
   detectOrphanPayments,
@@ -2272,15 +2274,24 @@ router.post(
         unblocked: resultado.unblocked,
         skipped_no_user: resultado.skipped_no_user,
         skipped_before_cutoff: resultado.skipped_before_cutoff,
+        skipped_meio_fora_da_emissao: resultado.skipped_meio_fora_da_emissao,
+        skipped_meio_desconhecido: resultado.skipped_meio_desconhecido,
       };
 
       // 'partial' quando ha cobranca paga sem dono: o job rodou inteiro, mas o
       // resultado exige acao humana (ninguem sabe para quem emitir) e nao pode
       // aparecer como sucesso limpo na lista de crons. Mesmo criterio do
       // detect-orphan-payments.
+      // Meio DESCONHECIDO entra no mesmo criterio: cobranca paga que ninguem
+      // soube classificar nao vira nota, e isso precisa de gente olhando.
+      // Meio FORA da lista nao: e a regra do contador funcionando.
       await recordCronRun({
         jobName: "reconcile-fiscal-invoices",
-        status: resultado.skipped_no_user > 0 ? "partial" : "success",
+        status:
+          resultado.skipped_no_user > 0 ||
+          resultado.skipped_meio_desconhecido > 0
+            ? "partial"
+            : "success",
         startedAt,
         payload,
       });
@@ -2289,6 +2300,87 @@ router.post(
     } catch (err) {
       await recordCronRun({
         jobName: "reconcile-fiscal-invoices",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+// LOTE MENSAL de emissao fiscal (regras R2 e R3 do contador).
+//
+// O pg_cron chama TODO DIA (02:00 UTC, 23:00 de Brasilia hoje), porque cron
+// nao expressa "ultimo dia do mes". Quem decide e o handler, pelo dia CIVIL de
+// Brasilia do instante em que roda (`decidirLoteAutomatico`): 02:00Z de 01/11
+// ainda e 31/10 em Brasilia e dispara o lote de OUTUBRO.
+//
+// ACIONAMENTO MANUAL para recuperacao: `?mes=AAAA-MM`, mesma autenticacao do
+// cron. Aceita mes ja encerrado, ou o corrente so no seu ultimo dia
+// (`validarLoteManual`); qualquer outro seria emitir antes do lote. Rodar de
+// novo e seguro: o lote e idempotente (ver server/lib/fiscalLote.ts).
+router.post(
+  "/fiscal-monthly-batch",
+  withCronLock("fiscal-monthly-batch", 900, async (req, res, next) => {
+    const startedAt = new Date();
+    try {
+      if (!env.nfseEnabled) {
+        await recordCronRun({
+          jobName: "fiscal-monthly-batch",
+          status: "success",
+          startedAt,
+          payload: { skipped: "nfse_disabled" },
+        });
+        res.json({ data: { skipped: "nfse_disabled" } });
+        return;
+      }
+
+      const mesManual =
+        typeof req.query.mes === "string" ? req.query.mes : null;
+      let mes: string;
+      if (mesManual !== null) {
+        const validacao = validarLoteManual(mesManual, startedAt);
+        if (!validacao.ok) {
+          return next(
+            createError(
+              400,
+              validacao.motivo,
+              // TODO(Ana): mensagem do acionamento manual recusado.
+              validacao.motivo === "mes_invalido"
+                ? "Mês inválido. Use AAAA-MM."
+                : "Mês ainda aberto: o lote só roda depois do último dia do mês.",
+            ),
+          );
+        }
+        mes = validacao.mes;
+      } else {
+        const decisao = decidirLoteAutomatico(startedAt);
+        if (!decisao.disparar) {
+          await recordCronRun({
+            jobName: "fiscal-monthly-batch",
+            status: "success",
+            startedAt,
+            payload: { skipped: "nao_e_ultimo_dia", dia: decisao.dia },
+          });
+          res.json({ data: { skipped: "nao_e_ultimo_dia", dia: decisao.dia } });
+          return;
+        }
+        mes = decisao.mes;
+      }
+
+      const resultado = await executarLoteMensal(mes);
+      const payload = { ...resultado, manual: mesManual !== null };
+      await recordCronRun({
+        jobName: "fiscal-monthly-batch",
+        status: "success",
+        startedAt,
+        payload,
+      });
+      res.json({ data: payload });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "fiscal-monthly-batch",
         status: "error",
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),

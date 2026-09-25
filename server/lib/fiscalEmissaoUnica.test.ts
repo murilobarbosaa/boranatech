@@ -115,6 +115,8 @@ function semearLinha(over: Partial<Linha> = {}): Linha {
     user_id: "user-1",
     status: "processing",
     amount_cents: 2990,
+    refunded_cents: 0,
+    competencia: "2026-10-15",
     service_description: "Assinatura Bora na Tech Pro, plano mensal",
     provider_invoice_id: "nota-1",
     attempts: 1,

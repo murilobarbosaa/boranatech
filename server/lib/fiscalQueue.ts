@@ -39,6 +39,13 @@ import {
   resolveTomador,
   type FiscalProfileRow,
 } from "./fiscalInvoice";
+import {
+  MOTIVO_ESTORNO_INTEGRAL,
+  decidirElegibilidade,
+  valorLiquidoCents,
+  type DecisaoDeElegibilidade,
+  type MeioPagamento,
+} from "./fiscalRegras";
 import { uploadFiscalDocument } from "./fiscalStorage";
 import { enqueueEmail } from "./queue";
 import { queueConnection } from "./redis";
@@ -172,10 +179,30 @@ export type RegisterFiscalInvoiceInput = {
   planCode: string | null;
   periodStart: string | null;
   periodEnd: string | null;
+  /**
+   * Meio da cobranca (regra R1), classificado por quem conhece o provedor.
+   * `null` = nao foi possivel classificar; nao vira nota.
+   */
+  meio: MeioPagamento | null;
+  /** Instante ISO da VENDA; a competencia (R6) sai dele. */
+  occurredAt: string;
 };
 
 /**
- * Registra a intencao de emitir e enfileira. Chamado pelos ganchos do webhook.
+ * Registra a nota no pagamento, SEM enfileirar (regra R2 do contador). Chamado
+ * pelos ganchos do webhook.
+ *
+ * QUEM ENFILEIRA E O LOTE DO FIM DO MES (server/lib/fiscalLote.ts). A linha
+ * nasce em 'awaiting_batch', estado que nenhuma varredura da reconciliacao
+ * reenfileira. Enfileirar aqui emitiria a nota no dia da venda, e o erro nao
+ * apareceria em lugar nenhum: a nota sairia certa, so que no mes errado para o
+ * contador.
+ *
+ * AS EXCLUSOES MORAM AQUI DENTRO, e nao nos ganchos: meio fora de
+ * NFSE_MEIOS_EMISSAO (R1) e venda anterior ao corte (R8) nao viram linha. Tres
+ * ganchos chamam esta funcao (fatura paga, boleto, Pix); guarda no chamador
+ * precisaria ser repetida em cada um e sumiria no primeiro que alguem
+ * esquecesse (CLAUDE.md, "protecao dentro da funcao").
  *
  * `ignoreDuplicates` no upsert e deliberado: numa reentrega, a linha ja existe e
  * pode estar em 'processing' ou 'issued'. Sobrescrever devolveria uma nota
@@ -190,8 +217,29 @@ export type RegisterFiscalInvoiceInput = {
  */
 export async function registerFiscalInvoice(
   input: RegisterFiscalInvoiceInput,
-): Promise<void> {
+): Promise<DecisaoDeElegibilidade> {
   const chargeKey = chargeKeyOf(input.paymentProvider, input.providerChargeId);
+  // Sem lista de meios nao ha decisao possivel. O boot ja aborta sem ela com a
+  // emissao ligada; esta guarda cobre chamada direta (script, teste).
+  if (env.nfseMeiosEmissao === null) {
+    throw new Error(
+      "NFSE_MEIOS_EMISSAO ausente ou invalido; nenhuma nota e registrada sem a lista de meios.",
+    );
+  }
+  const decisao = decidirElegibilidade({
+    meio: input.meio,
+    occurredAtIso: input.occurredAt,
+    meiosEmissao: env.nfseMeiosEmissao,
+    cutoffISO: env.nfseEmitirDesde,
+  });
+  if (!decisao.elegivel) {
+    // Meio desconhecido e o unico dos tres que pede investigacao: os outros sao
+    // a regra funcionando.
+    const log =
+      decisao.motivo === "meio_desconhecido" ? console.error : console.log;
+    log(`[fiscal] ${chargeKey} nao vira nota (${decisao.motivo}).`);
+    return decisao;
+  }
   const { error } = await supabaseAdmin.from("fiscal_invoices").upsert(
     {
       user_id: input.userId,
@@ -202,7 +250,9 @@ export async function registerFiscalInvoice(
         input.paymentProvider === "stripe" ? input.providerChargeId : null,
       stripe_invoice_id: input.stripeInvoiceId,
       stripe_payment_intent_id: input.stripePaymentIntentId,
-      status: "pending",
+      status: "awaiting_batch",
+      competencia: decisao.competencia,
+      meio_pagamento: decisao.meio,
       amount_cents: input.amountCents,
       plan_code: input.planCode,
       service_description: buildServiceDescription({
@@ -216,7 +266,7 @@ export async function registerFiscalInvoice(
   if (error) {
     throw new Error(`Falha ao registrar nota fiscal: ${error.message}`);
   }
-  await enqueueFiscalInvoice(chargeKey);
+  return decisao;
 }
 
 /**
@@ -294,6 +344,12 @@ type FiscalInvoiceRow = {
   user_id: string;
   status: string;
   amount_cents: number;
+  /** Acumulado estornado antes da emissao (regra R5). */
+  refunded_cents: number;
+  /** Dia civil de Brasilia da venda (regra R6). */
+  competencia: string | null;
+  /** Valor que foi para a nota; nulo ate a emissao. */
+  valor_liquido_cents: number | null;
   service_description: string | null;
   provider_invoice_id: string | null;
   attempts: number;
@@ -440,7 +496,9 @@ async function enfileirarEmailDaNota(
       numero: refs.numero ?? null,
       codigoVerificacao: refs.codigoVerificacao ?? null,
       descricao: row.service_description,
-      valorLabel: formatBrl(row.amount_cents),
+      // O valor da NOTA, que e o liquido. O bruto so aparece em linha anterior a
+      // esta regra, que nao tem o liquido gravado.
+      valorLabel: formatBrl(row.valor_liquido_cents ?? row.amount_cents),
       pdfBase64,
       pdfFilename: pdfBase64
         ? `nota-fiscal-${refs.numero ?? row.id}.pdf`
@@ -466,7 +524,7 @@ async function loadRow(chargeKey: string): Promise<FiscalInvoiceRow | null> {
   const { data, error } = await supabaseAdmin
     .from("fiscal_invoices")
     .select(
-      "id, user_id, status, amount_cents, service_description, provider_invoice_id, attempts, tomador_email",
+      "id, user_id, status, amount_cents, refunded_cents, competencia, valor_liquido_cents, service_description, provider_invoice_id, attempts, tomador_email",
     )
     .eq("charge_key", chargeKey)
     .maybeSingle();
@@ -529,8 +587,19 @@ export async function processFiscalInvoiceJob(
     return;
   }
 
-  // Idempotencia: ja emitida ou cancelada nao volta atras.
+  // Idempotencia: ja emitida, cancelada ou dispensada nao volta atras.
   if (isTerminalFiscalStatus(row.status)) return;
+
+  // ANTES DO LOTE NINGUEM EMITE (regra R2). Um job para uma linha que ainda
+  // espera o lote so pode ter vindo de um enfileiramento indevido (retry manual,
+  // job antigo), e emitir aqui anteciparia a nota para fora do lote. No-op: o
+  // lote do fim do mes e quem a devolve para a fila.
+  if (row.status === "awaiting_batch") {
+    console.warn(
+      `[fiscal] job para ${chargeKey} antes do lote; ignorado, a nota sai no lote do mes.`,
+    );
+    return;
+  }
 
   const provider = getFiscalProvider();
 
@@ -576,37 +645,68 @@ export async function processFiscalInvoiceJob(
     );
   }
 
-  const { profile, authEmail } = await loadTomadorSources(row.user_id);
-  const tomador = resolveTomador(profile, authEmail);
-
-  // Dado de cadastro faltando NAO e falha retentavel: o tempo nao preenche CPF.
-  // Estado proprio, sem relancar, para o job encerrar limpo em vez de queimar
-  // 12 tentativas contra uma coluna vazia.
-  if (!tomador.ok) {
+  // VALOR LIQUIDO (regra R5), lido AGORA e nao so no lote: um estorno que
+  // chegue entre o lote e este job ainda desce o valor. Estorno integral nao
+  // emite nota, com motivo proprio e em estado terminal.
+  const liquido = valorLiquidoCents(row.amount_cents, row.refunded_cents);
+  if (liquido <= 0) {
     await patchRow(row.id, {
-      status: "blocked_missing_data",
-      error_code: "missing_tomador_data",
-      error_message: `Cadastro incompleto para emissao: ${tomador.missing.join(", ")}.`,
+      status: "skipped",
+      error_code: MOTIVO_ESTORNO_INTEGRAL,
+      error_message:
+        "Cobranca estornada integralmente antes da emissao; nenhuma nota emitida.",
     });
-    console.warn(
-      `[fiscal] nota ${row.id} bloqueada por cadastro incompleto (${tomador.missing.join(", ")}).`,
+    console.log(
+      `[fiscal] nota ${row.id} dispensada: estorno integral antes da emissao.`,
     );
     return;
   }
 
-  // Snapshot do tomador CONGELADO agora, junto com a transicao para
+  // A competencia E a informacao (R6): sem ela a nota sairia com a data de
+  // outro dia. Nao ha default possivel; falha definitiva, visivel no admin.
+  if (!row.competencia) {
+    await patchRow(row.id, {
+      status: "failed",
+      error_code: "competencia_ausente",
+      error_message: "Nota sem competencia registrada; nao ha data de venda.",
+    });
+    console.error(`[fiscal] nota ${row.id} sem competencia; nao emitida.`);
+    return;
+  }
+
+  // TOMADOR (regra R4): com nome e documento validos a nota leva o tomador;
+  // sem eles, sai SEM tomador. Nenhuma nota espera dado do cliente depois do
+  // lote, entao cadastro incompleto deixou de ser motivo de bloqueio. A decisao
+  // de completude continua sendo a de `resolveTomador`, a mesma do cliente.
+  const { profile, authEmail } = await loadTomadorSources(row.user_id);
+  const resolucao = resolveTomador(profile, authEmail);
+  const tomador = resolucao.ok ? resolucao.tomador : undefined;
+  if (!resolucao.ok) {
+    console.warn(
+      `[fiscal] nota ${row.id} segue SEM tomador (cadastro incompleto: ${resolucao.missing.join(", ")}).`,
+    );
+  }
+
+  // Snapshot do tomador e do valor CONGELADO agora, junto com a transicao para
   // 'processing': depois disto a nota nao le mais `profiles`, e uma correcao de
-  // perfil nao muda o que foi enviado ao provedor.
+  // perfil nao muda o que foi enviado ao provedor. Sem tomador, os campos ficam
+  // nulos, que e a verdade: a nota nao identificou ninguem.
   await patchRow(row.id, {
     status: "processing",
     attempts: row.attempts + 1,
     provider: provider.name,
-    tomador_nome: tomador.tomador.nome,
-    tomador_documento: tomador.tomador.documento,
-    tomador_tipo_documento: tomador.tomador.tipoDocumento,
-    tomador_email: tomador.tomador.email,
-    tomador_endereco: tomador.tomador.endereco ?? null,
+    valor_liquido_cents: liquido,
+    tomador_nome: tomador?.nome ?? null,
+    tomador_documento: tomador?.documento ?? null,
+    tomador_tipo_documento: tomador?.tipoDocumento ?? null,
+    tomador_email: tomador?.email ?? null,
+    tomador_endereco: tomador?.endereco ?? null,
   });
+  const rowEmitida: FiscalInvoiceRow = {
+    ...row,
+    valor_liquido_cents: liquido,
+    tomador_email: tomador?.email ?? null,
+  };
 
   // O BURACO DE DUPLICIDADE DA FASE 1 ESTA FECHADO, e nao por confianca: o
   // adapter da Focus CONSULTA a `ref` antes de postar e trata o 422 de "ref ja
@@ -617,10 +717,11 @@ export async function processFiscalInvoiceJob(
   // A `ref` continua sendo o nosso fiscal_invoices.id, como desde a Fase 1.
   const resultado = await provider.issue({
     referenceId: row.id,
-    tomador: tomador.tomador,
+    ...(tomador ? { tomador } : {}),
     servico: {
       descricao: row.service_description ?? "Assinatura Bora na Tech Pro",
-      valorCents: row.amount_cents,
+      valorCents: liquido,
+      competencia: row.competencia,
     },
   });
 
@@ -632,7 +733,7 @@ export async function processFiscalInvoiceJob(
     await patchRow(row.id, {
       provider_invoice_id: resultado.providerInvoiceId,
     });
-    await finalizarEmissao(row, provider, resultado);
+    await finalizarEmissao(rowEmitida, provider, resultado);
     return;
   }
 

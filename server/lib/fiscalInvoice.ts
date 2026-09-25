@@ -21,12 +21,14 @@ import type {
 } from "../providers/fiscalTypes";
 
 export type FiscalInvoiceStatusRow =
+  | "awaiting_batch"
   | "pending"
   | "processing"
   | "issued"
   | "failed"
   | "canceled"
-  | "blocked_missing_data";
+  | "blocked_missing_data"
+  | "skipped";
 
 /**
  * Estados dos quais o pipeline NUNCA sai sozinho.
@@ -40,6 +42,9 @@ export type FiscalInvoiceStatusRow =
 const TERMINAL_STATUSES = new Set<FiscalInvoiceStatusRow>([
   "issued",
   "canceled",
+  // Dispensada pelo estorno integral antes da emissao (regra R5): nao ha
+  // dinheiro sobre o qual emitir, e reprocessar nao traz dinheiro de volta.
+  "skipped",
 ]);
 
 export function isTerminalFiscalStatus(status: string): boolean {

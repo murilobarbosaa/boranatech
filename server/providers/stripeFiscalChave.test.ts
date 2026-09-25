@@ -13,6 +13,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * registro e a fila reais. Cartao (`invoice.paid`) pelo registro real com o
  * MESMO input que o gancho da fatura monta: o handler da fatura nao e exportado
  * e so e alcancavel pelo `handleWebhook` inteiro.
+ *
+ * FISCAL-REGRAS 01: a linha nasce 'awaiting_batch' e NINGUEM enfileira no
+ * pagamento (R2); o meio vem da charge (R1); a competencia e o dia de Brasilia
+ * do evento de pagamento (R6).
  */
 
 const estado = vi.hoisted(() => ({
@@ -21,11 +25,16 @@ const estado = vi.hoisted(() => ({
     opcoes: unknown;
   }>,
   jobs: [] as Array<{ nome: string; dados: unknown; opcoes: unknown }>,
+  meios: ["cartao", "pix", "boleto"] as string[],
 }));
 
 vi.mock("../lib/env", () => ({
   env: {
     nfseEnabled: true,
+    get nfseMeiosEmissao() {
+      return estado.meios;
+    },
+    nfseEmitirDesde: "2026-08-01",
     redisUrl: "",
     supabaseUrl: "https://exemplo.supabase.co",
     stripeSecretKey: "sk_test_x",
@@ -53,6 +62,12 @@ vi.mock("../lib/stripeClient", () => ({
       retrieve: async (id: string) => {
         expect(id).toBe("pi_boleto_1");
         return { latest_charge: "ch_boleto_1" };
+      },
+    },
+    charges: {
+      retrieve: async (id: string) => {
+        expect(id).toBe("ch_boleto_1");
+        return { id, payment_method_details: { type: "boleto" } };
       },
     },
   }),
@@ -179,6 +194,7 @@ function boletoPago() {
 beforeEach(() => {
   estado.upsertsFiscais = [];
   estado.jobs = [];
+  estado.meios = ["cartao", "pix", "boleto"];
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -200,6 +216,9 @@ describe("boleto pago segue registrando a nota da Stripe", () => {
       stripe_charge_id: "ch_boleto_1",
       stripe_invoice_id: null,
       stripe_payment_intent_id: "pi_boleto_1",
+      status: "awaiting_batch",
+      competencia: "2026-08-29",
+      meio_pagamento: "boleto",
       amount_cents: 15540,
       plan_code: "pro_annual",
     });
@@ -207,13 +226,18 @@ describe("boleto pago segue registrando a nota da Stripe", () => {
       onConflict: "charge_key",
       ignoreDuplicates: true,
     });
-    expect(estado.jobs).toEqual([
-      {
-        nome: "issue",
-        dados: { kind: "issue", chargeKey: "stripe:ch_boleto_1" },
-        opcoes: { jobId: "issue-stripe-ch_boleto_1" },
-      },
-    ]);
+    expect(estado.jobs).toEqual([]);
+  });
+
+  it("boleto fora de NFSE_MEIOS_EMISSAO nao gera linha", async () => {
+    estado.meios = ["cartao", "pix"];
+    await onBoletoAsyncPaymentSucceeded(
+      boletoPago(),
+      new Date("2026-08-29T12:00:00.000Z"),
+    );
+
+    expect(estado.upsertsFiscais).toEqual([]);
+    expect(estado.jobs).toEqual([]);
   });
 });
 
@@ -230,6 +254,8 @@ describe("fatura paga (cartao) segue registrando a nota da Stripe", () => {
       planCode: "pro_monthly",
       periodStart: "2026-09-01T00:00:00.000Z",
       periodEnd: "2026-10-01T00:00:00.000Z",
+      meio: "cartao",
+      occurredAt: "2026-09-01T15:00:00.000Z",
     });
 
     expect(estado.upsertsFiscais).toHaveLength(1);
@@ -239,14 +265,74 @@ describe("fatura paga (cartao) segue registrando a nota da Stripe", () => {
       stripe_charge_id: "ch_cartao_1",
       stripe_invoice_id: "in_cartao_1",
       stripe_payment_intent_id: "pi_cartao_1",
+      status: "awaiting_batch",
+      competencia: "2026-09-01",
+      meio_pagamento: "cartao",
       amount_cents: 2990,
     });
-    expect(estado.jobs).toEqual([
-      {
-        nome: "issue",
-        dados: { kind: "issue", chargeKey: "stripe:ch_cartao_1" },
-        opcoes: { jobId: "issue-stripe-ch_cartao_1" },
-      },
-    ]);
+    // Registro imediato, emissao adiada (R2).
+    expect(estado.jobs).toEqual([]);
+  });
+
+  it("competencia e o dia de BRASILIA da venda: 23:30 de 31/10 e outubro", async () => {
+    await registerFiscalInvoice({
+      userId: USER,
+      subscriptionId: SUB_ROW,
+      paymentProvider: "stripe",
+      providerChargeId: "ch_cartao_2",
+      stripeInvoiceId: null,
+      stripePaymentIntentId: null,
+      amountCents: 2990,
+      planCode: "pro_monthly",
+      periodStart: null,
+      periodEnd: null,
+      meio: "cartao",
+      occurredAt: "2026-11-01T02:30:00.000Z",
+    });
+
+    expect(estado.upsertsFiscais[0].carga).toMatchObject({
+      competencia: "2026-10-31",
+    });
+  });
+
+  it("meio que nao se classifica nao gera linha", async () => {
+    const decisao = await registerFiscalInvoice({
+      userId: USER,
+      subscriptionId: SUB_ROW,
+      paymentProvider: "stripe",
+      providerChargeId: "ch_link_1",
+      stripeInvoiceId: null,
+      stripePaymentIntentId: null,
+      amountCents: 2990,
+      planCode: "pro_monthly",
+      periodStart: null,
+      periodEnd: null,
+      meio: null,
+      occurredAt: "2026-09-01T15:00:00.000Z",
+    });
+
+    expect(decisao).toEqual({ elegivel: false, motivo: "meio_desconhecido" });
+    expect(estado.upsertsFiscais).toEqual([]);
+  });
+
+  it("venda antes do corte nao gera linha", async () => {
+    const decisao = await registerFiscalInvoice({
+      userId: USER,
+      subscriptionId: SUB_ROW,
+      paymentProvider: "stripe",
+      providerChargeId: "ch_antigo",
+      stripeInvoiceId: null,
+      stripePaymentIntentId: null,
+      amountCents: 2990,
+      planCode: "pro_monthly",
+      periodStart: null,
+      periodEnd: null,
+      meio: "cartao",
+      // 23:59 de 31/07 em Brasilia; o corte deste arquivo e 2026-08-01.
+      occurredAt: "2026-08-01T02:59:00.000Z",
+    });
+
+    expect(decisao).toEqual({ elegivel: false, motivo: "before_cutoff" });
+    expect(estado.upsertsFiscais).toEqual([]);
   });
 });

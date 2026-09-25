@@ -30,6 +30,7 @@ import type {
   FiscalProvider,
   IssueInvoiceInput,
   IssueInvoiceResult,
+  IssueInvoiceTomador,
 } from "./fiscalTypes";
 
 /**
@@ -81,7 +82,7 @@ type FocusEndereco = {
  * contrato da Fase 1 diz que endereco ausente nao pode impedir a emissao.
  */
 export function serializeEndereco(
-  endereco: IssueInvoiceInput["tomador"]["endereco"],
+  endereco: IssueInvoiceTomador["endereco"],
 ): FocusEndereco | undefined {
   if (!endereco) return undefined;
   const { logradouro, numero, bairro, codigoMunicipio, uf, cep } = endereco;
@@ -112,8 +113,33 @@ export function serializeNfsePayload(
   input: IssueInvoiceInput,
   agora: Date,
 ): FocusNfsePayload {
-  const pj = input.tomador.tipoDocumento === "cnpj";
-  const endereco = serializeEndereco(input.tomador.endereco);
+  // NOTA SEM TOMADOR (regra R4) NAO SAI POR ESTE ADAPTER, por falta de fonte e
+  // nao por escolha: o schema de /v2/nfse na doc oficial da Focus
+  // (https://doc.focusnfe.com.br/reference/emitir_nfse.md, conferido em
+  // 2026-09-25) lista `tomador` em `required` e nao descreve em lugar nenhum a
+  // emissao sem ele, nem para Brasilia. Omitir o bloco por palpite poderia
+  // produzir rejeicao assincrona ou, pior, um documento aceito com tomador
+  // presumido pela prefeitura. Lancar aqui cai em `falhaDeTransporte` como falha
+  // NAO retentavel: a linha fica 'failed' com esta mensagem, visivel no admin e
+  // retentavel por la depois da decisao. Nenhuma nota e emitida errada.
+  // TODO(Ana): mensagem tecnica, aparece no admin como erro da nota.
+  if (!input.tomador) {
+    throw new Error(
+      "Emissao sem tomador sem fonte na doc da Focus para /v2/nfse (tomador consta como obrigatorio). Decisao pendente; ver relatorio-fiscal-regras-01.md.",
+    );
+  }
+  const tomador = input.tomador;
+  const pj = tomador.tipoDocumento === "cnpj";
+  const endereco = serializeEndereco(tomador.endereco);
+
+  // Aliquota e percentual de tributos (regra R7) sao valores que SAO a
+  // informacao: nota com imposto errado sai valida e so aparece no fechamento.
+  // O boot ja aborta sem eles; esta guarda cobre quem chegar por outro caminho.
+  if (env.nfseServicoAliquota === null || env.nfsePercentualTributos === null) {
+    throw new Error(
+      "NFSE_SERVICO_ALIQUOTA ou NFSE_PERCENTUAL_TRIBUTOS ausente ou invalido. A tributacao nao pode ser presumida.",
+    );
+  }
 
   // ENQUADRAMENTO TRIBUTARIO. Lanca em vez de omitir, porque este e um valor
   // que E a informacao, nao apresentacao dela: emitir como nao-optante uma
@@ -128,6 +154,12 @@ export function serializeNfsePayload(
   }
 
   return {
+    // A COMPETENCIA (regra R6, `input.servico.competencia`) NAO vai no payload:
+    // o schema de /v2/nfse na doc oficial nao tem campo de competencia, so
+    // `data_emissao` ("Data/hora de emissao da NFSe"). Mandar a data da venda
+    // aqui seria declarar uma emissao retroativa, que e outra coisa. Sem fonte,
+    // esta parte PARA (ver o relatorio do lote); a competencia vive na linha e
+    // decide o lote.
     data_emissao: dataEmissaoBrasilia(agora),
     optante_simples_nacional: env.nfseOptanteSimples,
     // Os dois abaixo sao OPCIONAIS e vao verbatim quando configurados. Chave
@@ -152,19 +184,22 @@ export function serializeNfsePayload(
       // A chave do documento e ESCOLHIDA pelo tipo declarado, e a outra nem
       // aparece: mandar `cpf: null` junto de `cnpj` faria a Focus decidir por
       // nos qual dos dois vale.
-      ...(pj
-        ? { cnpj: input.tomador.documento }
-        : { cpf: input.tomador.documento }),
-      razao_social: input.tomador.nome,
-      email: input.tomador.email,
+      ...(pj ? { cnpj: tomador.documento } : { cpf: tomador.documento }),
+      razao_social: tomador.nome,
+      email: tomador.email,
       ...(endereco ? { endereco } : {}),
     },
     servico: {
-      // TODO(homologacao): confirmar se a prefeitura espera a aliquota como
-      // fracao (0.02) ou percentual (2). A env carrega o numero exatamente como
-      // o contador informou; nao ha conversao aqui de proposito, porque
-      // converter errado produz um imposto plausivel e errado.
+      // FRACAO DECIMAL, conferido na doc oficial em 2026-09-25: `aliquota` e
+      // `number`, "Aliquota do ISS", exemplo 0.05. A env ja chega validada no
+      // formato e no dominio (lib/fiscalRegras.ts), sem conversao aqui.
       aliquota: env.nfseServicoAliquota,
+      // Lei 12.741/2012. Mesma doc: `percentual_total_tributos`, `number`,
+      // exemplo 0.34, "Disponivel apenas em alguns municipios".
+      // TODO(homologacao): confirmar que Brasilia (5300108) le o campo; o JSON
+      // de exemplo por municipio da Focus exige autenticacao e nao foi
+      // consultado.
+      percentual_total_tributos: env.nfsePercentualTributos,
       discriminacao: input.servico.descricao,
       iss_retido: false,
       item_lista_servico: env.nfseServicoItemLista,
