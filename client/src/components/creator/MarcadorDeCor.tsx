@@ -12,6 +12,7 @@ export function MarcadorDeCor({
   nome,
   meu = false,
   compacto = false,
+  soNoSm = false,
   testId,
   className = "",
 }: {
@@ -26,6 +27,10 @@ export function MarcadorDeCor({
    * A borda vem do mapa de cores (`border-2`), compartilhado com as outras
    * telas, entao aqui ela so e afinada abaixo de `sm`. */
   compacto?: boolean;
+  /** Escondido abaixo de `sm` (lote 11m). E prop, e nao `className`, porque
+   * o display ja esta aqui (`inline-block`): um `hidden` vindo de fora
+   * disputaria com ele pela ordem do CSS, e perdeu. */
+  soNoSm?: boolean;
   testId?: string;
   className?: string;
 }) {
@@ -35,7 +40,7 @@ export function MarcadorDeCor({
       title={nome}
       data-testid={testId}
       data-cor={cor ?? ""}
-      className={`inline-block shrink-0 rounded-full ${
+      className={`${soNoSm ? "hidden sm:inline-block" : "inline-block"} shrink-0 rounded-full ${
         compacto ? "h-2 w-2 max-sm:border sm:h-3 sm:w-3" : "h-3 w-3"
       } ${classeDoMarcador(cor)} ${
         meu ? "ring-2 ring-[var(--bnt-accent-solid)] ring-offset-1" : ""

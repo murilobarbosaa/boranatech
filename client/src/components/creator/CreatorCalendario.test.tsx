@@ -597,16 +597,96 @@ describe("CreatorCalendario: acao alinhada e estado do pedido (lote 10c)", () =>
       const botao = screen.getByTestId(`creator-collab-pedir-${id}`);
       expect(botao.className, id).toContain("ml-auto");
       expect(botao.className, id).toContain("shrink-0");
-      // A nota (ou o espaco dela) esta la nas duas linhas, ocupando o meio.
+      // No celular so o icone; o texto continua para o leitor de tela e volta
+      // a aparecer no `sm:` (lote 11m).
+      expect(botao.textContent).toBe("Pedir collab");
+      const texto = botao.querySelector("span") as HTMLElement;
+      expect(texto.getAttribute("class") ?? "").toBe("sr-only sm:not-sr-only");
+      expect(botao.querySelector("svg")?.getAttribute("class") ?? "").toContain(
+        "sm:hidden",
+      );
+      // A nota (ou o espaco dela) esta la nas duas linhas, ocupando o meio
+      // a partir do `sm:` (lote 11m: no celular ela vai para a linha de baixo).
       const nota = screen.getByTestId(`creator-marcacao-nota-${id}`);
-      expect(nota.className).toContain("flex-1");
-      expect(nota.className).toContain("min-w-0");
-      expect(nota.className).toContain("truncate");
+      expect(nota.className).toContain("sm:flex-1");
+      expect(nota.className).toContain("sm:min-w-0");
+      expect(nota.className).toContain("sm:whitespace-nowrap");
+      expect(nota.className).toContain("sm:text-ellipsis");
     }
     // A minha tem o Desmarcar na mesma coluna.
     expect(
       screen.getByTestId(`creator-marcacao-remover-${MINHA.id}`).className,
     ).toContain("ml-auto");
+  });
+
+  it("no celular (lote 11m) cada marcacao sao duas linhas: quem e a acao em cima, a nota e a collab embaixo", async () => {
+    responderCom([
+      MINHA,
+      {
+        ...DE_OUTRO,
+        collabs: [{ user_id: MEU_ID, name: "Cria", avatar_url: null }],
+        minha_collab: true,
+        meu_pedido: { id: PEDIDO.id, status: "aceita" },
+      },
+    ]);
+    render(<CreatorCalendario />);
+    const linha = await screen.findByTestId(`creator-marcacao-${DE_OUTRO.id}`);
+    const cl = linha.getAttribute("class") ?? "";
+    expect(cl).toContain("flex-wrap");
+    expect(cl).toContain("gap-x-2 gap-y-1.5");
+    expect(cl).toContain("sm:gap-3");
+    // O chip de texto da rede so no `sm:`: o glifo ja diz a rede.
+    const rede = within(linha).getByTestId(
+      `creator-marcacao-rede-${DE_OUTRO.id}`,
+    );
+    expect(rede.getAttribute("class") ?? "").toContain("hidden");
+    expect(rede.getAttribute("class") ?? "").toContain("sm:inline-flex");
+    // A cor e o avatar juntos no celular; o wrapper some no `sm:`.
+    const quem = within(linha).getByTestId(
+      `creator-marcacao-quem-${DE_OUTRO.id}`,
+    );
+    expect(quem.getAttribute("class") ?? "").toContain("sm:contents");
+    expect(
+      within(quem).getByTestId(`creator-marcacao-cor-${DE_OUTRO.id}`),
+    ).toBeTruthy();
+    // O nome ocupa o meio e empurra a acao; volta ao tamanho natural no `sm:`.
+    const nome = within(linha).getByTestId(
+      `creator-marcacao-nome-${DE_OUTRO.id}`,
+    );
+    // Sem `min-w-0`: a palavra mais longa e o minimo, e a acao desce inteira
+    // quando nao cabe, em vez de cobrir o nome.
+    expect(nome.getAttribute("class") ?? "").toContain("flex-1");
+    expect(nome.getAttribute("class") ?? "").not.toContain("min-w-0");
+    expect(nome.getAttribute("class") ?? "").toContain("sm:flex-initial");
+    // A nota: linha propria, ate duas linhas.
+    const nota = within(linha).getByTestId(
+      `creator-marcacao-nota-${DE_OUTRO.id}`,
+    );
+    const cn = nota.getAttribute("class") ?? "";
+    expect(cn).toContain("order-last");
+    expect(cn).toContain("line-clamp-2");
+    expect(cn).toContain("basis-full");
+    expect(cn).toContain("sm:order-none");
+    expect(cn).toContain("sm:block");
+    // O chip de collab tambem na segunda linha, sem sair do cartao.
+    const chip = within(linha).getByTestId(
+      `creator-collab-fechada-${DE_OUTRO.id}`,
+    );
+    const cc = chip.getAttribute("class") ?? "";
+    expect(cc).toContain("order-last");
+    expect(cc).toContain("max-w-full");
+    expect(cc).toContain("sm:order-none");
+    // Painel mais justo no celular.
+    expect(
+      screen.getByTestId("creator-dia-painel").getAttribute("class") ?? "",
+    ).toContain("p-3 sm:p-4");
+    // Desmarcar com 40 px de alvo no celular.
+    const desmarcar = screen.getByTestId(
+      `creator-marcacao-remover-${MINHA.id}`,
+    );
+    const cd = desmarcar.getAttribute("class") ?? "";
+    expect(cd).toContain("h-10 w-10");
+    expect(cd).toContain("sm:inline-block sm:h-auto sm:w-auto");
   });
 
   it("bug 2: depois de Enviar pedido, o mes e recarregado e o botao vira o chip 'pedido enviado'", async () => {
@@ -901,8 +981,16 @@ describe("CreatorCalendario: marcadores de cor", () => {
     // so a partir do `sm:`.
     expect(classes.slice(0, 2).every((c) => !c.includes("hidden"))).toBe(true);
     expect(
-      classes.slice(2).every((c) => c.includes("hidden sm:inline-block")),
+      classes.slice(2).every((c) => c.startsWith("hidden sm:inline-block ")),
     ).toBe(true);
+    // Um display so por marcador: `inline-block` solto ao lado de `hidden`
+    // disputa pela ordem do CSS e ganha (foi o que a medicao renderizada
+    // mostrou antes deste teste existir).
+    for (const c of classes) {
+      expect(c.split(" ").filter((k) => k === "inline-block").length).toBe(
+        c.startsWith("hidden ") ? 0 : 1,
+      );
+    }
     // Marcador pequeno, borda fina, so abaixo do `sm:`.
     for (const c of classes) {
       expect(c).toContain("h-2 w-2");
