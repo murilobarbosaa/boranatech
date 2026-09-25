@@ -270,9 +270,9 @@ describe("CreatorRanking: podio", () => {
     // Metal por TOKEN fixo (lote 11c): medalha, chip, anel e marca d'agua na
     // mesma cor nos dois temas; a tinta sobre o metal e a escura fixa.
     const metais: Array<[1 | 2 | 3, string, string, string, string]> = [
-      [1, "Ouro", "bg-amber-100", "bg-[var(--metal-ouro)]", "pt-10"],
-      [2, "Prata", "bg-slate-200", "bg-[var(--metal-prata)]", "pt-8"],
-      [3, "Bronze", "bg-orange-100", "bg-[var(--metal-bronze)]", "pt-8"],
+      [1, "Ouro", "bg-amber-100", "bg-[var(--metal-ouro)]", "md:pt-10"],
+      [2, "Prata", "bg-slate-200", "bg-[var(--metal-prata)]", "md:pt-8"],
+      [3, "Bronze", "bg-orange-100", "bg-[var(--metal-bronze)]", "md:pt-8"],
     ];
     for (const [lugar, rotulo, fundo, corDaMedalha, topo] of metais) {
       const cartao = within(podio).getByTestId(
@@ -282,8 +282,8 @@ describe("CreatorRanking: podio", () => {
       expect(classes, `fundo do ${lugar}`).toContain(fundo);
       expect(classes).toContain("relative");
       expect(classes).toContain("overflow-visible");
-      // O espaco de cima acompanha o tamanho da medalha.
-      expect(classes, `topo do ${lugar}`).toContain(topo);
+      // O espaco de cima acompanha o tamanho da medalha, no cartao do `md:`.
+      expect(classes.split(" "), `topo do ${lugar}`).toContain(topo);
       // Chip: fundo do metal, tinta fixa, borda preta.
       const chip = within(cartao).getByTestId(`creator-ranking-metal-${lugar}`);
       const cc = chip.getAttribute("class") ?? "";
@@ -298,7 +298,8 @@ describe("CreatorRanking: podio", () => {
       const cmk = marca.getAttribute("class") ?? "";
       expect(cmk).toContain(corDaMedalha.replace("bg-", "text-"));
       expect(cmk).toContain("opacity-25");
-      // A medalha e o PRIMEIRO filho, montada na borda de cima e centralizada.
+      // A medalha e o PRIMEIRO filho, montada na borda de cima e centralizada
+      // no cartao do `md:` (lote 11m: no celular ela abre a faixa).
       const medalha = cartao.firstElementChild as HTMLElement;
       expect(medalha.getAttribute("data-testid")).toBe(
         `creator-ranking-medalha-${lugar}`,
@@ -306,14 +307,14 @@ describe("CreatorRanking: podio", () => {
       expect(medalha.textContent).toBe(String(lugar));
       const cm = medalha.getAttribute("class") ?? "";
       for (const c of [
-        "absolute",
-        "-top-4",
-        "left-1/2",
-        "-translate-x-1/2",
+        "md:absolute",
+        "md:-top-4",
+        "md:left-1/2",
+        "md:-translate-x-1/2",
         corDaMedalha,
         "text-[var(--avatar-ink-amarelo)]",
       ]) {
-        expect(cm, c).toContain(c);
+        expect(cm.split(" "), c).toContain(c);
       }
       expect(
         within(cartao).getByTestId(`creator-ranking-metal-${lugar}`)
@@ -326,13 +327,19 @@ describe("CreatorRanking: podio", () => {
     expect(screen.getByTestId("creator-ranking-lista").innerHTML).not.toContain(
       "ring-2 ring-slate-900",
     );
-    // A do primeiro e um pouco maior.
-    expect(
-      screen.getByTestId("creator-ranking-medalha-1").getAttribute("class"),
-    ).toContain("h-12");
-    expect(
-      screen.getByTestId("creator-ranking-medalha-2").getAttribute("class"),
-    ).toContain("h-10");
+    // A do primeiro e um pouco maior, nos dois tamanhos.
+    const m1 = (
+      screen.getByTestId("creator-ranking-medalha-1").getAttribute("class") ??
+      ""
+    ).split(" ");
+    const m2 = (
+      screen.getByTestId("creator-ranking-medalha-2").getAttribute("class") ??
+      ""
+    ).split(" ");
+    expect(m1).toContain("md:h-12");
+    expect(m2).toContain("md:h-10");
+    expect(m1).toContain("h-8");
+    expect(m2).toContain("h-7");
     // Sem `dark:` e sem hex no podio.
     expect(podio.innerHTML).not.toContain("dark:");
     expect(podio.innerHTML).not.toMatch(/#[0-9a-f]{3,8}\b/i);
@@ -341,6 +348,82 @@ describe("CreatorRanking: podio", () => {
     expect(
       screen.getByTestId("creator-ranking-lista").querySelector("[data-cor]"),
     ).toBeNull();
+  });
+
+  it("no celular (lote 11m) cada lugar e uma faixa compacta; o md: volta ao cartao em coluna", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 226, { handle: "joaopedro.dev.backend.java" }),
+        posicao(2, "b", 197),
+        posicao(3, "c", 135),
+      ]),
+    );
+    montar();
+    const podio = await screen.findByTestId("creator-ranking-podio");
+    const cp = (podio.getAttribute("class") ?? "").split(" ");
+    for (const c of ["grid", "gap-6", "pt-3", "md:grid-cols-3", "md:gap-4"]) {
+      expect(cp, c).toContain(c);
+    }
+    const faixa = within(podio).getByTestId("creator-ranking-podio-1");
+    const cf = (faixa.getAttribute("class") ?? "").split(" ");
+    for (const c of [
+      "flex-row",
+      "flex-wrap",
+      "items-center",
+      "text-left",
+      "md:flex-col",
+      "md:flex-nowrap",
+      "md:text-center",
+    ]) {
+      expect(cf, c).toContain(c);
+    }
+    // A medalha abre a faixa no celular e so sobe para a borda no `md:`.
+    const medalha = within(faixa).getByTestId("creator-ranking-medalha-1");
+    const cm = (medalha.getAttribute("class") ?? "").split(" ");
+    expect(cm).toContain("relative");
+    expect(cm).not.toContain("absolute");
+    // O chip do metal vira aba sobre a borda no celular.
+    const chip = within(faixa).getByTestId("creator-ranking-metal-1");
+    const cc = (chip.getAttribute("class") ?? "").split(" ");
+    expect(cc).toContain("absolute");
+    expect(cc).toContain("md:static");
+    // Avatar de 56 px no celular (size md, h-14); o grande so no `md:`.
+    const celular = within(faixa).getByTestId(
+      "creator-ranking-avatar-celular-1",
+    );
+    expect(celular.getAttribute("class")).toBe("block md:hidden");
+    expect(celular.innerHTML).toContain("h-14 w-14");
+    expect(celular.nextElementSibling?.getAttribute("class")).toBe(
+      "hidden md:block",
+    );
+    expect(celular.nextElementSibling?.innerHTML).toContain("h-32 w-32");
+    // O meio (@ e nome) some do layout no `md:`.
+    expect(
+      within(faixa)
+        .getByTestId("creator-ranking-meio-1")
+        .getAttribute("class") ?? "",
+    ).toContain("md:contents");
+    // O @ quebra ENTRE os segmentos no celular, nunca no meio de um.
+    const handle = within(faixa).getByTestId("creator-ranking-handle-a");
+    expect(handle.textContent).toBe("@joaopedro.dev.backend.java");
+    expect(handle.querySelectorAll("wbr")).toHaveLength(3);
+    expect(handle.getAttribute("class")).toBe("min-w-0 md:hidden");
+    // No `md:` o span de sempre, sem ponto de quebra (o `<wbr>` quebra mesmo
+    // com `nowrap`, e era isso que partia o @ no desktop).
+    const noMd = handle.nextElementSibling as HTMLElement;
+    expect(noMd.getAttribute("class")).toBe("hidden truncate md:inline");
+    expect(noMd.textContent).toBe("@joaopedro.dev.backend.java");
+    expect(noMd.querySelectorAll("wbr")).toHaveLength(0);
+    // Pontos: destaque da faixa no celular, o numero grande no `md:`.
+    const pontos = within(faixa).getByTestId("creator-ranking-pontos-podio-1");
+    const cpt = (pontos.getAttribute("class") ?? "").split(" ");
+    expect(cpt).toContain("text-2xl");
+    expect(cpt).toContain("md:text-5xl");
+    // Contagens embaixo, a esquerda; centralizadas so no `md:`.
+    const detalhe = within(faixa).getByTestId("creator-ranking-detalhe-a");
+    const cd = (detalhe.getAttribute("class") ?? "").split(" ");
+    expect(cd).toContain("md:justify-center");
+    expect(cd).not.toContain("justify-center");
   });
 
   it("um pontuado: os outros dois lugares ficam vazios, com 'ainda ninguém'", async () => {
