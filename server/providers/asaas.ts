@@ -7,7 +7,9 @@ import {
   montarEstornoAsaas,
 } from "../lib/asaasLedger";
 import { registrarNoLedger } from "../lib/asaasLedgerWriter";
+import { chargeKeyOf } from "../lib/fiscalChargeKey";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
+import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import {
   resolverAssinaturaDoAsaas,
   type AssinaturaDoAsaas,
@@ -936,6 +938,7 @@ export async function processAsaasEvent(
         receivedAtIso,
       });
       await marcarStatusDoEstorno(chargeId, "REFUNDED");
+      await aplicarEstornoNaNota(event, chargeId);
       return { received: true, activated: false };
     }
     if (REFUND_PROGRESS_EVENTS.has(eventType)) {
@@ -1543,6 +1546,48 @@ async function registrarEstornoNoLedger(args: {
       planCode,
     }),
   );
+}
+
+/**
+ * Estorno Pix confirmado: repercute na nota fiscal da cobranca. NUNCA LANCA.
+ *
+ * Espelha `aplicarReembolsoNaNota` do webhook da Stripe, e pelo mesmo motivo
+ * mora no WEBHOOK e nao na rota administrativa: o webhook e o unico ponto por
+ * onde passam TODOS os estornos, inclusive os feitos direto no painel do Asaas.
+ * A rota `reembolsarNoAsaas` (server/routes/admin.ts) tambem deixa o ledger para
+ * este evento, e o fiscal segue o ledger.
+ *
+ * So estorno INTEGRAL chega aqui (`PAYMENT_PARTIALLY_REFUNDED` nao e tratado,
+ * ver `PARTIAL_REFUND_EVENTS`), entao o acumulado devolvido e o proprio valor
+ * do pagamento, e `applyRefundToFiscalInvoice` classifica como total: cancela a
+ * nota se ela estiver emitida.
+ *
+ * O try/catch cobre o que roda FORA de `applyRefundToFiscalInvoice` (a chave):
+ * uma excecao aqui cairia no `catch` de `processAsaasEvent`, que apaga o dedupe
+ * de um estorno cujo ledger ja foi gravado.
+ */
+async function aplicarEstornoNaNota(
+  event: AsaasEvent,
+  chargeId: string | null,
+): Promise<void> {
+  if (!env.nfseEnabled) return;
+  try {
+    if (!chargeId) return;
+    const valor = paidAmountCentsFromAsaas(event);
+    if (valor === null) return;
+    await applyRefundToFiscalInvoice({
+      chargeKey: chargeKeyOf("asaas", chargeId),
+      grossCents: valor,
+      refundedTotalCents: valor,
+      origem: "webhook",
+    });
+  } catch (fiscalErr) {
+    console.error(
+      `[fiscal] falha ao aplicar o estorno Asaas ${chargeId ?? "?"} na nota; o ESTORNO nao foi afetado:`,
+      fiscalErr,
+    );
+    Sentry.captureException(fiscalErr);
+  }
 }
 
 /**
