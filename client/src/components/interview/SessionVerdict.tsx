@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import confetti from "canvas-confetti";
 import { Award } from "lucide-react";
 
+import { dispararConfete } from "@/lib/proConfetti";
 import { cn } from "@/lib/utils";
 import type { InterviewVerdict } from "@/services/interviewService";
 
@@ -66,7 +66,7 @@ export default function SessionVerdict({
             y: (rect.top + rect.height / 2) / window.innerHeight,
           }
         : { x: 0.5, y: 0.5 };
-      confetti({
+      dispararConfete({
         particleCount: 90,
         spread: 100,
         origin,

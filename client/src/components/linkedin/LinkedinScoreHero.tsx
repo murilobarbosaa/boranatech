@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
 import { ArrowRight, CircleHelp, Linkedin, Sparkles } from "lucide-react";
 import {
   faixaLabelOf,
   faixaUiOf,
 } from "@/components/linkedin/faixaUi";
+import { dispararConfete } from "@/lib/proConfetti";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -129,7 +129,7 @@ export default function LinkedinScoreHero({
             y: (rect.top + rect.height / 2) / window.innerHeight,
           }
         : { x: 0.5, y: 0.35 };
-      confetti({
+      dispararConfete({
         particleCount: 90,
         spread: 100,
         origin,

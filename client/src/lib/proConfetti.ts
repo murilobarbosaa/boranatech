@@ -22,6 +22,18 @@ function disparador(): confetti.CreateTypes {
   return instancia;
 }
 
+// Porta unica para confete fora da celebracao Pro: nenhum outro arquivo importa
+// a biblioteca, porque o `confetti` padrao dela volta a usar o worker que a CSP
+// bloqueia (`confettiImport.test.ts` trava isso). Reduced-motion continua
+// com quem chama; aqui fica so a segunda defesa da biblioteca.
+export function dispararConfete(opcoes: confetti.Options): void {
+  void disparador()({
+    zIndex: Z_INDEX_PADRAO,
+    ...opcoes,
+    disableForReducedMotion: true,
+  });
+}
+
 // Celebration used when a customer subscribes to Pro (checkout success screen).
 // A strong initial burst at `origin`, then a ~2s "festao" cycle that alternates
 // scattered bursts and bottom-corner cannons every 240ms. `origin` is normalized
