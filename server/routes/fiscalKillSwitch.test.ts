@@ -143,8 +143,8 @@ vi.mock("../lib/redis", () => ({
   cacheConnection: null,
 }));
 vi.mock("../lib/fiscalQueue", () => ({
-  enqueueFiscalInvoice: async (stripeChargeId: string) => {
-    estado.enfileirados.push(stripeChargeId);
+  enqueueFiscalInvoice: async (chargeKey: string) => {
+    estado.enfileirados.push(chargeKey);
   },
 }));
 vi.mock("../lib/fiscalStorage", () => ({
@@ -489,7 +489,7 @@ describe("POST /admin/fiscal-invoices/:id/retry", () => {
       data: {
         id: NOTA_ID,
         status: "failed",
-        stripe_charge_id: "ch_1",
+        charge_key: "stripe:ch_1",
       },
       error: null,
     };
@@ -502,7 +502,7 @@ describe("POST /admin/fiscal-invoices/:id/retry", () => {
     const updates = estado.chamadas.filter((c) => c.op === "update");
     expect(updates).toHaveLength(1);
     expect(updates[0].payload).toMatchObject({ status: "pending" });
-    expect(estado.enfileirados).toEqual(["ch_1"]);
+    expect(estado.enfileirados).toEqual(["stripe:ch_1"]);
   });
 
   it("com a emissao desligada a recusa vem antes da validacao de id", async () => {

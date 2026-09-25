@@ -60,6 +60,7 @@ import "./lib/homologacaoGuard.mts";
 
 import { env } from "../server/lib/env";
 import { supabaseAdmin } from "../server/lib/supabaseAdmin";
+import { chargeKeyOf } from "../server/lib/fiscalChargeKey";
 import { processFiscalInvoiceJob } from "../server/lib/fiscalQueue";
 import { getFiscalProvider } from "../server/providers/fiscal";
 import { setFocusObserver } from "../server/providers/focusClient";
@@ -136,11 +137,11 @@ setFocusObserver((evento) => {
 
 type LinhaFiscal = Record<string, unknown> & { id: string; status: string };
 
-async function lerLinha(chargeId: string): Promise<LinhaFiscal | null> {
+async function lerLinha(chargeKey: string): Promise<LinhaFiscal | null> {
   const { data, error } = await supabaseAdmin
     .from("fiscal_invoices")
     .select("*")
-    .eq("stripe_charge_id", chargeId)
+    .eq("charge_key", chargeKey)
     .maybeSingle();
   if (error) abortar(`falha ao ler a linha: ${error.message}`);
   return (data as LinhaFiscal | null) ?? null;
@@ -331,6 +332,9 @@ passo("linha de fiscal_invoices");
 // com um id real da Stripe (`ch_...`) e permite achar e apagar as notas de
 // teste depois com um filtro trivial.
 const chargeId = `homolog_${Date.now()}`;
+// A fila le a linha pela chave, nao pelo stripe_charge_id. Montada pelo MESMO
+// helper do servidor, para o script nao ter um formato proprio de chave.
+const chargeKey = chargeKeyOf("stripe", chargeId);
 
 // `--ref` reaproveita uma nota JA emitida para provocar o 422 de ref repetida.
 // A `ref` que o adapter manda a Focus e o fiscal_invoices.id, entao o id da
@@ -340,6 +344,8 @@ const idDaLinha = refExistente;
 const novaLinha: Record<string, unknown> = {
   ...(idDaLinha ? { id: idDaLinha } : {}),
   user_id: userId,
+  payment_provider: "stripe",
+  charge_key: chargeKey,
   stripe_charge_id: chargeId,
   status: "pending",
   amount_cents: 100,
@@ -370,7 +376,7 @@ if (refExistente) {
   );
 }
 
-const antesDoJob = await lerLinha(chargeId);
+const antesDoJob = await lerLinha(chargeKey);
 imprimirLinha("estado inicial", antesDoJob);
 
 // --- Emissao ---------------------------------------------------------------
@@ -378,7 +384,7 @@ imprimirLinha("estado inicial", antesDoJob);
 passo("processFiscalInvoiceJob (chamado direto, sem Redis)");
 
 try {
-  await processFiscalInvoiceJob(chargeId);
+  await processFiscalInvoiceJob(chargeKey);
   console.log("job concluiu sem relancar.");
 } catch (err) {
   // Relancar e o sinal de "merece retry". Aqui nao ha fila, entao so imprime.
@@ -387,7 +393,7 @@ try {
   );
 }
 
-let linha = await lerLinha(chargeId);
+let linha = await lerLinha(chargeKey);
 imprimirLinha("estado apos a emissao", linha);
 
 // --- Polling ---------------------------------------------------------------
@@ -417,13 +423,13 @@ if (linha && linha.status === "processing" && linha.provider_invoice_id) {
       // de gravar o desfecho a mao aqui.
       passo("desfecho chegou; reprocessando pelo caminho normal");
       try {
-        await processFiscalInvoiceJob(chargeId);
+        await processFiscalInvoiceJob(chargeKey);
       } catch (err) {
         console.log(
           `reprocessamento relancou: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
-      linha = await lerLinha(chargeId);
+      linha = await lerLinha(chargeKey);
       imprimirLinha("estado final", linha);
       break;
     }

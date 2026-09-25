@@ -23,6 +23,9 @@ function charge(
   over: Partial<ChargeParaReconciliar> = {},
 ): ChargeParaReconciliar {
   return {
+    provider: "stripe",
+    // Balance transaction: na Stripe NAO e a identidade da cobranca.
+    provider_transaction_id: "txn_1",
     stripe_charge_id: "ch_1",
     stripe_invoice_id: "in_1",
     gross_cents: 2990,
@@ -35,13 +38,16 @@ function charge(
 
 describe("decidirCharge, corte", () => {
   it("cria para cobranca depois do corte", () => {
-    expect(decidirCharge(charge(), CUTOFF)).toEqual({ acao: "criar" });
+    expect(decidirCharge(charge(), CUTOFF)).toEqual({
+      acao: "criar",
+      chargeKey: "stripe:ch_1",
+    });
   });
 
   it("cria para cobranca NO dia do corte (o corte e inclusivo)", () => {
     expect(
       decidirCharge(charge({ occurred_at: "2026-08-01T12:00:00Z" }), CUTOFF),
-    ).toEqual({ acao: "criar" });
+    ).toEqual({ acao: "criar", chargeKey: "stripe:ch_1" });
   });
 
   it("pula cobranca anterior ao corte", () => {
@@ -60,7 +66,7 @@ describe("decidirCharge, corte", () => {
     // 01/09 as 02:00 UTC e 31/08 em Brasilia: depois do corte, entra.
     expect(
       decidirCharge(charge({ occurred_at: "2026-09-01T02:00:00Z" }), CUTOFF),
-    ).toEqual({ acao: "criar" });
+    ).toEqual({ acao: "criar", chargeKey: "stripe:ch_1" });
   });
 
   it("data invalida NAO vira nota", () => {
@@ -98,6 +104,62 @@ describe("decidirCharge, dono", () => {
       acao: "pular",
       motivo: "sem_charge_id",
     });
+  });
+});
+
+describe("decidirCharge, cobranca Pix do Asaas", () => {
+  // Linha do ledger como o webhook do Asaas grava: sem nenhum id da Stripe, e
+  // com o id do PAGAMENTO em provider_transaction_id.
+  function pix(
+    over: Partial<ChargeParaReconciliar> = {},
+  ): ChargeParaReconciliar {
+    return charge({
+      provider: "asaas",
+      provider_transaction_id: "pay_8x2k1m9q",
+      stripe_charge_id: null,
+      stripe_invoice_id: null,
+      ...over,
+    });
+  }
+
+  it("cria com a chave do pagamento no Asaas", () => {
+    expect(decidirCharge(pix(), CUTOFF)).toEqual({
+      acao: "criar",
+      chargeKey: "asaas:pay_8x2k1m9q",
+    });
+  });
+
+  it("pula sem_charge_id quando falta o id DO ASAAS", () => {
+    expect(
+      decidirCharge(pix({ provider_transaction_id: null }), CUTOFF),
+    ).toEqual({ acao: "pular", motivo: "sem_charge_id" });
+  });
+
+  it("corte e dono valem igual para o Pix", () => {
+    expect(
+      decidirCharge(pix({ occurred_at: "2026-07-31T12:00:00Z" }), CUTOFF),
+    ).toEqual({ acao: "pular", motivo: "before_cutoff" });
+    expect(decidirCharge(pix({ user_id: null }), CUTOFF)).toEqual({
+      acao: "pular",
+      motivo: "no_user",
+    });
+  });
+
+  it("Stripe sem charge id NAO usa a balance transaction como chave", () => {
+    // provider_transaction_id da Stripe e `txn_...`, que nao identifica a
+    // cobranca: emitir por ele criaria uma nota que nenhum reembolso acha.
+    expect(
+      decidirCharge(
+        charge({ stripe_charge_id: null, provider_transaction_id: "txn_1" }),
+        CUTOFF,
+      ),
+    ).toEqual({ acao: "pular", motivo: "sem_charge_id" });
+  });
+
+  it("provedor desconhecido LANCA em vez de pular calado", () => {
+    expect(() =>
+      decidirCharge(charge({ provider: "mercadopago" }), CUTOFF),
+    ).toThrow(/Provedor de pagamento desconhecido/);
   });
 });
 

@@ -120,6 +120,7 @@ function semearLinha(over: Partial<Linha> = {}): Linha {
     attempts: 1,
     tomador_email: "maria@example.com",
     stripe_charge_id: "ch_1",
+    charge_key: "stripe:ch_1",
     ...over,
   };
   estado.linhas = [linha];
@@ -150,7 +151,7 @@ beforeEach(() => {
 describe("transicao para issued pelo ramo de reconsulta", () => {
   it("marca issued e enfileira UM e-mail", async () => {
     const linha = semearLinha();
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
 
     expect(linha.status).toBe("issued");
     expect(linha.numero).toBe("123");
@@ -166,13 +167,13 @@ describe("transicao para issued pelo ramo de reconsulta", () => {
 
   it("REPROCESSAR nao reenvia o e-mail", async () => {
     semearLinha();
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
     expect(estado.emails).toHaveLength(1);
 
     // Segunda passada: a linha ja esta 'issued', o curto-circuito de status
     // terminal nem chega ao provedor. Mesmo se chegasse, o UPDATE condicional
     // casaria zero linhas.
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
     expect(estado.emails).toHaveLength(1);
   });
 
@@ -180,7 +181,7 @@ describe("transicao para issued pelo ramo de reconsulta", () => {
     // Modela a corrida: outro processamento concluiu entre a leitura e a
     // escrita. O `neq` nao casa e o e-mail nao sai duas vezes.
     semearLinha({ status: "issued" });
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
     expect(estado.emails).toHaveLength(0);
   });
 });
@@ -195,7 +196,7 @@ describe("transicao para issued pelo retorno do issue()", () => {
       numero: "456",
     };
 
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
 
     expect(estado.emails).toHaveLength(1);
     expect(estado.emails[0]).toMatchObject({ numero: "456" });
@@ -206,7 +207,7 @@ describe("desfechos que NAO enviam e-mail", () => {
   it("cancelado no provedor nao envia", async () => {
     const linha = semearLinha();
     estado.statusRemoto = { status: "canceled" };
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
     expect(linha.status).toBe("canceled");
     expect(estado.emails).toHaveLength(0);
   });
@@ -219,7 +220,7 @@ describe("desfechos que NAO enviam e-mail", () => {
       errorMessage: "Inscricao invalida",
       retryable: false,
     };
-    await processFiscalInvoiceJob("ch_1");
+    await processFiscalInvoiceJob("stripe:ch_1");
     expect(linha.status).toBe("failed");
     expect(linha.error_code).toBe("E123");
     expect(estado.emails).toHaveLength(0);
@@ -233,7 +234,7 @@ describe("desfechos que NAO enviam e-mail", () => {
       errorMessage: "Focus fora do ar",
       retryable: true,
     };
-    await expect(processFiscalInvoiceJob("ch_1")).rejects.toThrow(
+    await expect(processFiscalInvoiceJob("stripe:ch_1")).rejects.toThrow(
       /retentavel/i,
     );
     expect(linha.status).toBe("processing");
@@ -243,7 +244,7 @@ describe("desfechos que NAO enviam e-mail", () => {
   it("ainda processando relanca para o backoff, sem e-mail", async () => {
     semearLinha();
     estado.statusRemoto = { status: "processing" };
-    await expect(processFiscalInvoiceJob("ch_1")).rejects.toThrow(
+    await expect(processFiscalInvoiceJob("stripe:ch_1")).rejects.toThrow(
       /ainda em processamento/i,
     );
     expect(estado.emails).toHaveLength(0);

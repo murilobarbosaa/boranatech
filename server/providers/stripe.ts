@@ -5,6 +5,7 @@ import { findValidCoupon } from "../lib/coupons";
 import { recordCreatorEvent } from "../lib/creatorEvents";
 import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import { env } from "../lib/env";
+import { chargeKeyOf } from "../lib/fiscalChargeKey";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
@@ -1311,7 +1312,8 @@ async function registrarNotaFiscalDeInvoice(
     await registerFiscalInvoice({
       userId,
       subscriptionId: row?.id ?? null,
-      stripeChargeId: refs.chargeId,
+      paymentProvider: "stripe",
+      providerChargeId: refs.chargeId,
       stripeInvoiceId: invoice.id ?? null,
       stripePaymentIntentId: refs.paymentIntentId,
       amountCents,
@@ -1362,7 +1364,8 @@ async function registrarNotaFiscalDeBoleto(
     await registerFiscalInvoice({
       userId: dados.userId,
       subscriptionId: dados.subscriptionRowId,
-      stripeChargeId: chargeId,
+      paymentProvider: "stripe",
+      providerChargeId: chargeId,
       // Boleto nao tem invoice na Stripe.
       stripeInvoiceId: null,
       stripePaymentIntentId: paymentIntentId,
@@ -1392,7 +1395,7 @@ async function aplicarReembolsoNaNota(charge: Stripe.Charge): Promise<void> {
   if (!env.nfseEnabled) return;
   if (!charge.id) return;
   await applyRefundToFiscalInvoice({
-    stripeChargeId: charge.id,
+    chargeKey: chargeKeyOf("stripe", charge.id),
     grossCents: charge.amount ?? 0,
     refundedTotalCents: charge.amount_refunded ?? 0,
     origem: "webhook",
