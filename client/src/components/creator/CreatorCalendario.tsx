@@ -108,6 +108,10 @@ type Parceiro = {
 
 /** Quantos marcadores cabem na celula do dia antes do "+N". */
 const MARCADORES_POR_DIA = 4;
+// No celular (lote 11m) a celula de 7 colunas a 360 px tem uns 40 px de
+// largura, e quatro marcadores de 12 px vazavam para a vizinha. Ali cabem
+// DOIS, e o aperto de mao da collab ocupa um deles.
+const MARCADORES_POR_DIA_NO_CELULAR = 2;
 
 type MarcadorDoDia = {
   chave: string;
@@ -737,6 +741,10 @@ export function CreatorCalendario({
                 (m) => (m.collabs?.length ?? 0) > 0,
               );
               const selecionado = quadrado.dia === dia;
+              const noCelular = temCollab
+                ? MARCADORES_POR_DIA_NO_CELULAR - 1
+                : MARCADORES_POR_DIA_NO_CELULAR;
+              const aMaisNoCelular = marcadores.length - noCelular;
               return (
                 <button
                   key={quadrado.dia}
@@ -749,7 +757,9 @@ export function CreatorCalendario({
                   }}
                   aria-pressed={selecionado}
                   className={[
-                    "flex min-h-14 flex-col items-center justify-center rounded-xl border-2 p-1 text-sm font-black",
+                    // Altura FIXA e `overflow-hidden` no celular (lote 11m): a
+                    // celula nunca cresce nem vaza por causa dos marcadores.
+                    "flex h-14 min-h-14 flex-col items-center justify-center overflow-hidden rounded-xl border-2 p-1 text-sm font-black sm:h-auto sm:overflow-visible",
                     selecionado
                       ? "border-slate-900 bg-violet-200 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "border-slate-300 bg-white text-slate-900",
@@ -765,23 +775,36 @@ export function CreatorCalendario({
                   {quantas > 0 ? (
                     <span
                       data-testid={`creator-dia-marcadores-${quadrado.dia}`}
-                      className="mt-1 flex items-center gap-1"
+                      className="mt-1 flex items-center gap-0.5 sm:gap-1"
                     >
                       {marcadores
                         .slice(0, MARCADORES_POR_DIA)
-                        .map((marcador) => (
+                        .map((marcador, i) => (
                           <MarcadorDeCor
                             key={marcador.chave}
                             cor={marcador.cor}
                             nome={marcador.nome}
                             meu={marcador.meu}
+                            compacto
+                            // Do limite do celular em diante, so no `sm:`.
+                            className={
+                              i < noCelular ? "" : "hidden sm:inline-block"
+                            }
                             testId={`creator-marcador-${marcador.chave}`}
                           />
                         ))}
+                      {aMaisNoCelular > 0 ? (
+                        <span
+                          data-testid={`creator-dia-mais-celular-${quadrado.dia}`}
+                          className="text-[9px] font-black leading-none text-slate-600 sm:hidden"
+                        >
+                          {`+${aMaisNoCelular}`}
+                        </span>
+                      ) : null}
                       {marcadores.length > MARCADORES_POR_DIA ? (
                         <span
                           data-testid={`creator-dia-mais-${quadrado.dia}`}
-                          className="text-[10px] font-black text-slate-600"
+                          className="hidden text-[10px] font-black text-slate-600 sm:inline"
                         >
                           {`+${marcadores.length - MARCADORES_POR_DIA}`}
                         </span>
@@ -792,7 +815,7 @@ export function CreatorCalendario({
                           data-testid={`creator-dia-collab-${quadrado.dia}`}
                           // Token, e nao `dark:`: roxo no claro e amarelo no
                           // escuro (ver --bnt-collab-ink no index.css).
-                          className="h-3 w-3 text-[var(--bnt-collab-ink)]"
+                          className="h-2.5 w-2.5 shrink-0 text-[var(--bnt-collab-ink)] sm:h-3 sm:w-3"
                         />
                       ) : null}
                     </span>

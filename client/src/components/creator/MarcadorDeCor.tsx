@@ -11,6 +11,7 @@ export function MarcadorDeCor({
   cor,
   nome,
   meu = false,
+  compacto = false,
   testId,
   className = "",
 }: {
@@ -20,6 +21,11 @@ export function MarcadorDeCor({
   /** Os MEUS marcadores ganham o anel do acento: e assim que o meu dia se
    * distingue na grade sem ponto amarelo a parte. */
   meu?: boolean;
+  /** Menor no celular (lote 11m): a grade de 7 colunas a 360 px nao
+   * cabe o circulo de 12 px com borda de 2. `sm:` volta ao tamanho de sempre.
+   * A borda vem do mapa de cores (`border-2`), compartilhado com as outras
+   * telas, entao aqui ela so e afinada abaixo de `sm`. */
+  compacto?: boolean;
   testId?: string;
   className?: string;
 }) {
@@ -29,7 +35,9 @@ export function MarcadorDeCor({
       title={nome}
       data-testid={testId}
       data-cor={cor ?? ""}
-      className={`inline-block h-3 w-3 shrink-0 rounded-full ${classeDoMarcador(cor)} ${
+      className={`inline-block shrink-0 rounded-full ${
+        compacto ? "h-2 w-2 max-sm:border sm:h-3 sm:w-3" : "h-3 w-3"
+      } ${classeDoMarcador(cor)} ${
         meu ? "ring-2 ring-[var(--bnt-accent-solid)] ring-offset-1" : ""
       } ${className}`}
     />

@@ -880,6 +880,90 @@ describe("CreatorCalendario: marcadores de cor", () => {
       "+1",
     );
   });
+
+  it("no celular (lote 11m): dois marcadores pequenos e +N a partir do terceiro; o sm: volta aos quatro", async () => {
+    const cinco = [1, 2, 3, 4, 5].map((n) => ({
+      ...DE_OUTRO,
+      id: C(n),
+      user_id: `${n}4444444-4444-4444-4444-444444444444`,
+      calendar_color: "cyan",
+    }));
+    responderCom(cinco);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-painel");
+    const marcadores = Array.from(
+      screen
+        .getByTestId(`creator-dia-marcadores-${HOJE}`)
+        .querySelectorAll("[data-cor]"),
+    );
+    const classes = marcadores.map((m) => m.getAttribute("class") ?? "");
+    // Os dois primeiros aparecem em qualquer largura; do terceiro ao quarto,
+    // so a partir do `sm:`.
+    expect(classes.slice(0, 2).every((c) => !c.includes("hidden"))).toBe(true);
+    expect(
+      classes.slice(2).every((c) => c.includes("hidden sm:inline-block")),
+    ).toBe(true);
+    // Marcador pequeno, borda fina, so abaixo do `sm:`.
+    for (const c of classes) {
+      expect(c).toContain("h-2 w-2");
+      expect(c).toContain("max-sm:border");
+      expect(c).toContain("sm:h-3 sm:w-3");
+    }
+    const maisCelular = screen.getByTestId(`creator-dia-mais-celular-${HOJE}`);
+    expect(maisCelular.textContent).toBe("+3");
+    expect(maisCelular.getAttribute("class") ?? "").toContain("sm:hidden");
+    const maisDesktop = screen.getByTestId(`creator-dia-mais-${HOJE}`);
+    expect(maisDesktop.getAttribute("class") ?? "").toContain(
+      "hidden text-[10px]",
+    );
+    expect(maisDesktop.getAttribute("class") ?? "").toContain("sm:inline");
+    // A celula nunca cresce por causa dos marcadores no celular.
+    const celula = screen.getByTestId(`creator-dia-${HOJE}`);
+    const cc = celula.getAttribute("class") ?? "";
+    expect(cc).toContain("h-14 min-h-14");
+    expect(cc).toContain("overflow-hidden");
+    expect(cc).toContain("sm:h-auto sm:overflow-visible");
+  });
+
+  it("no celular o aperto de mao conta como um dos dois marcadores (lote 11m)", async () => {
+    responderCom([
+      {
+        ...DE_OUTRO,
+        calendar_color: "emerald",
+        collabs: [
+          {
+            user_id: "44444444-4444-4444-4444-444444444444",
+            name: "Terceira",
+            avatar_url: null,
+            calendar_color: "rose",
+          },
+        ],
+        minha_collab: false,
+      },
+      {
+        ...DE_OUTRO,
+        id: C(7),
+        user_id: "74444444-4444-4444-4444-444444444444",
+      },
+    ]);
+    render(<CreatorCalendario />);
+    await screen.findByTestId("creator-dia-painel");
+    const classes = Array.from(
+      screen
+        .getByTestId(`creator-dia-marcadores-${HOJE}`)
+        .querySelectorAll("[data-cor]"),
+    ).map((m) => m.getAttribute("class") ?? "");
+    expect(classes).toHaveLength(3);
+    expect(classes[0]).not.toContain("hidden");
+    expect(classes[1]).toContain("hidden sm:inline-block");
+    expect(classes[2]).toContain("hidden sm:inline-block");
+    expect(
+      screen.getByTestId(`creator-dia-mais-celular-${HOJE}`).textContent,
+    ).toBe("+2");
+    expect(screen.getByTestId(`creator-dia-collab-${HOJE}`)).toBeTruthy();
+    // Ate quatro no desktop, entao nao ha +N do sm:.
+    expect(screen.queryByTestId(`creator-dia-mais-${HOJE}`)).toBeNull();
+  });
 });
 
 // JANELA RETROATIVA (lote 10d): dias entre 13/09/2026 e ontem sao marcaveis,
@@ -949,7 +1033,9 @@ describe("CreatorCalendario: cor do marcador logo depois de marcar", () => {
     const marcador = await screen.findByTestId(`creator-marcador-${MINHA.id}`);
     expect(marcador.className).toContain("bg-cyan-500");
     expect(marcador.className).toContain("ring-2");
-    expect(marcador.className).toContain("h-3 w-3");
+    // Pequeno no celular, o de sempre no `sm:` (lote 11m).
+    expect(marcador.className).toContain("h-2 w-2");
+    expect(marcador.className).toContain("sm:h-3 sm:w-3");
   });
 });
 
