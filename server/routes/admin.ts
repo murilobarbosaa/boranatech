@@ -3101,12 +3101,16 @@ router.get("/audit-logs", async (req, res, next) => {
 // ---------------------------------------------------------------------------
 
 const FISCAL_STATUSES = [
+  // Registrada no pagamento, esperando o lote do fim do mes (regra R2).
+  "awaiting_batch",
   "pending",
   "processing",
   "issued",
   "failed",
   "canceled",
   "blocked_missing_data",
+  // Dispensada: estorno integral antes da emissao (regra R5).
+  "skipped",
 ] as const;
 
 /** Mostra so os 4 ultimos digitos, coerente com a politica do reveal de CPF. */

@@ -19,6 +19,11 @@
 import { supabaseAdmin } from "./supabaseAdmin";
 import { chargeKeyOf } from "./fiscalChargeKey";
 import { enqueueFiscalInvoice, unblockFiscalInvoices } from "./fiscalQueue";
+import {
+  decidirElegibilidade,
+  meioDaLinhaDoLedger,
+  type MeioPagamento,
+} from "./fiscalRegras";
 import { env } from "./env";
 import { diaBrasilia, formatarDiaCivil } from "../../shared/brasiliaDay";
 import { PLAN_PRICING, isPlanId } from "../../shared/planPricing";
@@ -43,11 +48,29 @@ export type ChargeParaReconciliar = {
   occurred_at: string;
   user_id: string | null;
   plan_code: string | null;
+  /**
+   * `raw_payload->source->payment_method_details->>type`, so nas linhas da
+   * Stripe. Lido pelo caminho do json na consulta, sem trazer o payload.
+   */
+  stripe_pm_type?: string | null;
 };
 
 export type DecisaoDeCharge =
-  | { acao: "criar"; chargeKey: string }
-  | { acao: "pular"; motivo: "before_cutoff" | "no_user" | "sem_charge_id" };
+  | {
+      acao: "criar";
+      chargeKey: string;
+      competencia: string;
+      meio: MeioPagamento;
+    }
+  | {
+      acao: "pular";
+      motivo:
+        | "before_cutoff"
+        | "no_user"
+        | "sem_charge_id"
+        | "meio_fora_da_emissao"
+        | "meio_desconhecido";
+    };
 
 /**
  * O que fazer com uma cobranca encontrada em finance_transactions.
@@ -77,17 +100,25 @@ export type DecisaoDeCharge =
 export function decidirCharge(
   charge: ChargeParaReconciliar,
   cutoffISO: string,
+  meiosEmissao: readonly MeioPagamento[],
 ): DecisaoDeCharge {
   const idNoProvedor = idDaCobrancaNoProvedor(charge);
   if (!idNoProvedor) {
     return { acao: "pular", motivo: "sem_charge_id" };
   }
-  // Comparacao no DIA de Brasilia, nao no instante UTC: o corte e uma data
+  // Corte e meio pela MESMA decisao do registro no pagamento
+  // (`decidirElegibilidade`): o que um caminho recusa, o outro tambem recusa.
+  // O corte e comparado no DIA de Brasilia, nao no instante UTC: e uma data
   // civil dada pelo contador, e uma cobranca das 22h do dia do corte pertence
   // aquele dia para quem pagou.
-  const dia = diaBrasilia(charge.occurred_at);
-  if (!dia || dia < cutoffISO) {
-    return { acao: "pular", motivo: "before_cutoff" };
+  const elegibilidade = decidirElegibilidade({
+    meio: meioDaLinhaDoLedger(charge.provider, charge.stripe_pm_type),
+    occurredAtIso: charge.occurred_at,
+    meiosEmissao,
+    cutoffISO,
+  });
+  if (!elegibilidade.elegivel) {
+    return { acao: "pular", motivo: elegibilidade.motivo };
   }
   if (!charge.user_id) {
     return { acao: "pular", motivo: "no_user" };
@@ -95,6 +126,8 @@ export function decidirCharge(
   return {
     acao: "criar",
     chargeKey: chargeKeyOf(charge.provider, idNoProvedor),
+    competencia: elegibilidade.competencia,
+    meio: elegibilidade.meio,
   };
 }
 
@@ -140,6 +173,10 @@ export type ReconcileResult = {
   unblocked: number;
   skipped_no_user: number;
   skipped_before_cutoff: number;
+  /** Meio fora de NFSE_MEIOS_EMISSAO: a regra R1 funcionando. */
+  skipped_meio_fora_da_emissao: number;
+  /** Cobranca cujo meio nao foi possivel classificar: pede investigacao. */
+  skipped_meio_desconhecido: number;
   /** Amostra do que seria (ou foi) criado. Curta: e para leitura humana. */
   amostra: Array<{
     chargeKey: string;
@@ -180,6 +217,7 @@ async function chargesComNota(chaves: string[]): Promise<Set<string>> {
 /** VARREDURA A: cobranca sem nota. */
 async function varrerChargesSemNota(
   cutoffISO: string,
+  meiosEmissao: readonly MeioPagamento[],
   dryRun: boolean,
   resultado: ReconcileResult,
 ): Promise<void> {
@@ -193,7 +231,7 @@ async function varrerChargesSemNota(
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "provider, provider_transaction_id, stripe_charge_id, stripe_invoice_id, gross_cents, occurred_at, user_id, plan_code",
+        "provider, provider_transaction_id, stripe_charge_id, stripe_invoice_id, gross_cents, occurred_at, user_id, plan_code, stripe_pm_type:raw_payload->source->payment_method_details->>type",
       )
       .eq("type", "charge")
       .gte("occurred_at", desdeUtc)
@@ -208,23 +246,34 @@ async function varrerChargesSemNota(
     const candidatas: Array<{
       charge: ChargeParaReconciliar;
       chargeKey: string;
+      competencia: string;
+      meio: MeioPagamento;
     }> = [];
     for (const charge of linhas) {
-      const decisao = decidirCharge(charge, cutoffISO);
+      const decisao = decidirCharge(charge, cutoffISO, meiosEmissao);
       if (decisao.acao === "pular") {
         if (decisao.motivo === "before_cutoff") {
           resultado.skipped_before_cutoff += 1;
         } else if (decisao.motivo === "no_user") {
           resultado.skipped_no_user += 1;
+        } else if (decisao.motivo === "meio_fora_da_emissao") {
+          resultado.skipped_meio_fora_da_emissao += 1;
+        } else if (decisao.motivo === "meio_desconhecido") {
+          resultado.skipped_meio_desconhecido += 1;
         }
         continue;
       }
-      candidatas.push({ charge, chargeKey: decisao.chargeKey });
+      candidatas.push({
+        charge,
+        chargeKey: decisao.chargeKey,
+        competencia: decisao.competencia,
+        meio: decisao.meio,
+      });
     }
 
     if (candidatas.length > 0) {
       const jaTem = await chargesComNota(candidatas.map((c) => c.chargeKey));
-      for (const { charge, chargeKey } of candidatas) {
+      for (const { charge, chargeKey, competencia, meio } of candidatas) {
         if (jaTem.has(chargeKey)) continue;
         const stripeChargeId =
           charge.provider === "stripe" ? charge.stripe_charge_id : null;
@@ -266,7 +315,11 @@ async function varrerChargesSemNota(
               charge_key: chargeKey,
               stripe_charge_id: stripeChargeId,
               stripe_invoice_id: charge.stripe_invoice_id,
-              status: "pending",
+              // Mesmo estado do registro no pagamento (regra R2): quem
+              // enfileira e o lote do fim do mes, nao a reconciliacao.
+              status: "awaiting_batch",
+              competencia,
+              meio_pagamento: meio,
               amount_cents: charge.gross_cents,
               plan_code: charge.plan_code,
               service_description: descricao,
@@ -278,7 +331,6 @@ async function varrerChargesSemNota(
             `Falha ao criar nota para ${chargeKey}: ${insertError.message}`,
           );
         }
-        await enqueueFiscalInvoice(chargeKey);
       }
     }
 
@@ -357,12 +409,22 @@ export async function reconcileFiscalInvoices(
   const dryRun = opts.dryRun === true;
   const staleHours = opts.staleHours ?? DEFAULT_STALE_HOURS;
   const cutoffISO = env.nfseEmitirDesde;
+  const meiosEmissao = env.nfseMeiosEmissao;
 
   // Guarda de sanidade: o boot ja aborta sem a env, mas este modulo tambem e
   // alcancavel por chamada direta, e varrer sem corte varreria a base inteira.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoffISO)) {
     throw new Error(
       "NFSE_EMITIR_DESDE ausente ou invalido; a reconciliacao nao roda sem data de corte.",
+    );
+  }
+
+  // Mesma guarda para a lista de meios (regra R1): sem ela a reconciliacao nao
+  // sabe o que vira nota, e criar linha para tudo seria a decisao do contador
+  // tomada pelo codigo.
+  if (meiosEmissao === null) {
+    throw new Error(
+      "NFSE_MEIOS_EMISSAO ausente ou invalido; a reconciliacao nao roda sem a lista de meios.",
     );
   }
 
@@ -373,11 +435,13 @@ export async function reconcileFiscalInvoices(
     unblocked: 0,
     skipped_no_user: 0,
     skipped_before_cutoff: 0,
+    skipped_meio_fora_da_emissao: 0,
+    skipped_meio_desconhecido: 0,
     amostra: [],
     dryRun,
   };
 
-  await varrerChargesSemNota(cutoffISO, dryRun, resultado);
+  await varrerChargesSemNota(cutoffISO, meiosEmissao, dryRun, resultado);
   resultado.requeued_processing = await varrerParadas(
     "processing",
     staleHours,

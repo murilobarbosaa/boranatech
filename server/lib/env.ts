@@ -4,6 +4,13 @@ import { ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT } from "../../shared/aiRoadmap"
 import type { PlanId } from "../../shared/planPricing";
 // Type-only: nao cria dependencia de runtime de env.ts para os providers.
 import type { FiscalProviderName } from "../providers/fiscalTypes";
+import {
+  DOMINIO_ALIQUOTA_ISS,
+  DOMINIO_PERCENTUAL_TRIBUTOS,
+  parseFracaoTributaria,
+  parseMeiosEmissao,
+  type MeioPagamento,
+} from "./fiscalRegras";
 
 config({ quiet: true });
 
@@ -219,7 +226,36 @@ export const env = {
   // Classificacao do servico. Os dois primeiros vem do CONTADOR; errar aqui
   // produz nota valida com imposto errado, que e pior que nota recusada.
   nfseServicoItemLista: process.env.NFSE_SERVICO_ITEM_LISTA || "",
-  nfseServicoAliquota: process.env.NFSE_SERVICO_ALIQUOTA || "",
+  // Aliquota de ISS como FRACAO DECIMAL (0.02 = 2%), no formato que a doc da
+  // Focus mostra para `servico.aliquota`. `null` = ausente, fora do formato ou
+  // fora do dominio legal (2% a 5%); o boot aborta com null no caminho
+  // focus_nfse. Ate o lote FISCAL-REGRAS 01 ia VERBATIM como texto, e o teste do
+  // serializer usava "2", que a Focus leria como 200%.
+  nfseServicoAliquota: parseFracaoTributaria(
+    process.env.NFSE_SERVICO_ALIQUOTA,
+    DOMINIO_ALIQUOTA_ISS,
+  ),
+  // Percentual aproximado de tributos (Lei 12.741/2012), fracao decimal (0.06 =
+  // 6%), campo `servico.percentual_total_tributos` da Focus. Mesmo desenho da
+  // aliquota: sem default, dominio validado, boot aborta sem ele em focus_nfse.
+  nfsePercentualTributos: parseFracaoTributaria(
+    process.env.NFSE_PERCENTUAL_TRIBUTOS,
+    DOMINIO_PERCENTUAL_TRIBUTOS,
+  ),
+  // MEIOS DE PAGAMENTO que geram nota (regra R1 do contador): lista de cartao,
+  // pix e boleto separada por virgula. SEM DEFAULT: `null` e ausente ou
+  // invalido, e com NFSE_ENABLED=true o boot aborta (verificacao abaixo).
+  nfseMeiosEmissao: ((): MeioPagamento[] | null => {
+    const raw = process.env.NFSE_MEIOS_EMISSAO;
+    const parse = parseMeiosEmissao(raw);
+    if (parse.ok) return parse.meios;
+    if (raw) {
+      console.warn(
+        `[env] AVISO: NFSE_MEIOS_EMISSAO="${raw}" invalido (${parse.erro}). Use cartao, pix e/ou boleto separados por virgula.`,
+      );
+    }
+    return null;
+  })(),
   // Opcional: so alguns municipios exigem.
   nfseServicoCodigoTributarioMunicipio:
     process.env.NFSE_SERVICO_CODIGO_TRIBUTARIO_MUNICIPIO || "",
@@ -603,6 +639,17 @@ if (env.nfseEnabled) {
     process.exit(1);
   }
 
+  // MEIOS de emissao (R1): sem a lista, o pipeline nao sabe quais cobrancas
+  // viram nota. Qualquer default aqui seria uma decisao fiscal tomada pelo
+  // codigo; o processo NAO sobe.
+  if (env.nfseMeiosEmissao === null) {
+    console.error(
+      `[env] ERRO FATAL: NFSE_ENABLED=true exige NFSE_MEIOS_EMISSAO (cartao, pix e/ou boleto, separados por virgula; recebido: "${process.env.NFSE_MEIOS_EMISSAO ?? ""}"). ` +
+        "Esta lista e decisao do contador e NAO tem default.",
+    );
+    process.exit(1);
+  }
+
   if (env.nfseProvider === "focus_nfse") {
     // Fail-closed COMPLETO, nao so o token: uma emissao sem inscricao municipal
     // ou sem item da lista de servico e aceita pela nossa fila, enviada a
@@ -619,8 +666,17 @@ if (env.nfseEnabled) {
       missingNfse.push("NFSE_PRESTADOR_CODIGO_MUNICIPIO");
     }
     if (!env.nfseServicoItemLista) missingNfse.push("NFSE_SERVICO_ITEM_LISTA");
-    if (!env.nfseServicoAliquota) missingNfse.push("NFSE_SERVICO_ALIQUOTA");
-    // Sexta obrigatoria: `null` cobre ausente E invalido, e os dois precisam
+    if (env.nfseServicoAliquota === null) {
+      missingNfse.push(
+        "NFSE_SERVICO_ALIQUOTA (fracao decimal entre 0.02 e 0.05, ex. 0.02)",
+      );
+    }
+    if (env.nfsePercentualTributos === null) {
+      missingNfse.push(
+        "NFSE_PERCENTUAL_TRIBUTOS (fracao decimal entre 0 e 1, ex. 0.06)",
+      );
+    }
+    // Obrigatoria tambem: `null` cobre ausente E invalido, e os dois precisam
     // abortar. Uma env com "1" ou "sim" nao pode virar `false` por omissao.
     if (env.nfseOptanteSimples === null) {
       missingNfse.push('NFSE_OPTANTE_SIMPLES (exatamente "true" ou "false")');

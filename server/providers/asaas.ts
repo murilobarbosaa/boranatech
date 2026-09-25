@@ -1284,6 +1284,11 @@ async function activateOnPayment(args: {
     planCode: plan?.code ?? null,
     periodStart,
     periodEnd,
+    // MESMA regra do `occurred_at` do ledger (`occurredAtDe` em
+    // server/lib/asaasLedger.ts): o `dateCreated` do event, e a chegada do
+    // request quando ele nao for legivel. Duas regras dariam competencias
+    // diferentes para a mesma venda perto da meia-noite.
+    occurredAt: instanteAsaas(event.dateCreated) ?? receivedAtIso,
   });
 
   return { received: true, activated: true };
@@ -1316,6 +1321,8 @@ async function registrarNotaFiscalDoPix(dados: {
   planCode: string | null;
   periodStart: string;
   periodEnd: string;
+  /** Instante ISO da venda; a competencia sai dele. */
+  occurredAt: string;
 }): Promise<void> {
   if (!env.nfseEnabled) return;
   try {
@@ -1346,6 +1353,10 @@ async function registrarNotaFiscalDoPix(dados: {
       planCode: dados.planCode,
       periodStart: dados.periodStart,
       periodEnd: dados.periodEnd,
+      // Asaas e Pix por decisao do contador (regra R1): e a unica forma de
+      // cobranca que o produto cria no Asaas.
+      meio: "pix",
+      occurredAt: dados.occurredAt,
     });
   } catch (fiscalErr) {
     console.error(

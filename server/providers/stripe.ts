@@ -7,6 +7,7 @@ import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import { env } from "../lib/env";
 import { chargeKeyOf } from "../lib/fiscalChargeKey";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
+import { meioDaStripe, type MeioPagamento } from "../lib/fiscalRegras";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
@@ -1171,6 +1172,7 @@ export async function onBoletoAsyncPaymentSucceeded(
     planCode: plan?.code ?? null,
     periodStart,
     periodEnd,
+    paidAtIso,
   });
 }
 
@@ -1279,10 +1281,27 @@ async function chargeRefsFromInvoice(invoice: Stripe.Invoice): Promise<{
   return vazio;
 }
 
+/**
+ * Meio da cobranca (regra R1 do contador), lido da PROPRIA charge.
+ *
+ * Nao sai do metadata do checkout nem do `payment_method_types` da
+ * assinatura: esses dizem o que foi OFERECIDO, e a charge diz como o dinheiro
+ * de fato entrou. `payment_method_details.type` e 'card' para credito, debito
+ * e pre-pago, e 'boleto' para boleto.
+ */
+async function meioDaCobrancaStripe(
+  chargeId: string,
+): Promise<MeioPagamento | null> {
+  const charge = await getStripe().charges.retrieve(chargeId);
+  return meioDaStripe(charge.payment_method_details?.type ?? null);
+}
+
 /** Cartao: primeira cobranca e renovacoes. Nunca lanca. */
 async function registrarNotaFiscalDeInvoice(
   invoice: Stripe.Invoice,
   sub: Stripe.Subscription,
+  /** Instante do evento de pagamento: e a VENDA, de onde sai a competencia. */
+  eventCreatedAt: Date,
 ): Promise<void> {
   if (!env.nfseEnabled) return;
   try {
@@ -1320,6 +1339,8 @@ async function registrarNotaFiscalDeInvoice(
       planCode: resolvePlanCode(sub),
       periodStart: period.start,
       periodEnd: period.end,
+      meio: await meioDaCobrancaStripe(refs.chargeId),
+      occurredAt: eventCreatedAt.toISOString(),
     });
   } catch (fiscalErr) {
     console.error(
@@ -1339,6 +1360,8 @@ async function registrarNotaFiscalDeBoleto(
     planCode: string | null;
     periodStart: string;
     periodEnd: string;
+    /** Instante do evento de compensacao do boleto: a VENDA. */
+    paidAtIso: string;
   },
 ): Promise<void> {
   if (!env.nfseEnabled) return;
@@ -1373,6 +1396,8 @@ async function registrarNotaFiscalDeBoleto(
       planCode: dados.planCode,
       periodStart: dados.periodStart,
       periodEnd: dados.periodEnd,
+      meio: await meioDaCobrancaStripe(chargeId),
+      occurredAt: dados.paidAtIso,
     });
   } catch (fiscalErr) {
     console.error(
@@ -1477,7 +1502,7 @@ async function onInvoicePaid(
   await applySubscription(sub, event, eventCreatedAt);
   // DEPOIS da logica existente, de proposito: a assinatura precisa estar
   // gravada para a nota poder apontar para ela.
-  await registrarNotaFiscalDeInvoice(invoice, sub);
+  await registrarNotaFiscalDeInvoice(invoice, sub, eventCreatedAt);
 }
 
 async function onInvoiceFailed(

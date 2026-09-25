@@ -11,7 +11,10 @@ vi.mock("../lib/env", () => ({
     nfsePrestadorInscricaoMunicipal: "IM-12345",
     nfsePrestadorCodigoMunicipio: "3550308",
     nfseServicoItemLista: "1.05",
-    nfseServicoAliquota: "2",
+    // FRACAO, como a doc da Focus mostra (`aliquota` exemplo 0.05). Ate o lote
+    // FISCAL-REGRAS 01 este fixture era "2", que a Focus leria como 200%.
+    nfseServicoAliquota: 0.02,
+    nfsePercentualTributos: 0.06,
     nfseServicoCodigoTributarioMunicipio: "",
     nfseOptanteSimples: true,
     // Vazias por padrao: os testes de presenca sobrescrevem o modulo.
@@ -51,7 +54,7 @@ import { env } from "../lib/env";
  *     'retentavel' esconde um erro permanente atras de 12 tentativas.
  */
 
-const TOMADOR_PF: IssueInvoiceInput["tomador"] = {
+const TOMADOR_PF: NonNullable<IssueInvoiceInput["tomador"]> = {
   nome: "Maria da Silva",
   documento: "52998224725",
   tipoDocumento: "cpf",
@@ -75,6 +78,7 @@ function input(over: Partial<IssueInvoiceInput> = {}): IssueInvoiceInput {
     servico: {
       descricao: "Assinatura Bora na Tech Pro, plano mensal",
       valorCents: 2990,
+      competencia: "2026-10-15",
     },
     ...over,
   };
@@ -162,6 +166,12 @@ describe("serializeNfsePayload, pessoa fisica", () => {
     expect(servico.item_lista_servico).toBe("1.05");
   });
 
+  it("manda aliquota e percentual de tributos como FRACAO decimal (R7)", () => {
+    const servico = payload.servico as Record<string, unknown>;
+    expect(servico.aliquota).toBe(0.02);
+    expect(servico.percentual_total_tributos).toBe(0.06);
+  });
+
   it("omite codigo_tributario_municipio quando a env esta vazia", () => {
     const servico = payload.servico as Record<string, unknown>;
     expect("codigo_tributario_municipio" in servico).toBe(false);
@@ -178,12 +188,36 @@ describe("serializeNfsePayload, enquadramento tributario", () => {
     optante: env.nfseOptanteSimples,
     natureza: env.nfseNaturezaOperacao,
     regime: env.nfseRegimeEspecialTributacao,
+    aliquota: env.nfseServicoAliquota,
+    tributos: env.nfsePercentualTributos,
   };
 
   afterEach(() => {
     env.nfseOptanteSimples = original.optante;
     env.nfseNaturezaOperacao = original.natureza;
     env.nfseRegimeEspecialTributacao = original.regime;
+    env.nfseServicoAliquota = original.aliquota;
+    env.nfsePercentualTributos = original.tributos;
+  });
+
+  it("LANCA sem aliquota ou sem percentual de tributos, sem presumir", () => {
+    env.nfseServicoAliquota = null;
+    expect(() => serializeNfsePayload(input(), AGORA)).toThrow(
+      /NFSE_SERVICO_ALIQUOTA/,
+    );
+    env.nfseServicoAliquota = original.aliquota;
+    env.nfsePercentualTributos = null;
+    expect(() => serializeNfsePayload(input(), AGORA)).toThrow(
+      /NFSE_PERCENTUAL_TRIBUTOS/,
+    );
+  });
+
+  it("nota SEM tomador nao sai por este adapter: tomador e obrigatorio na doc", () => {
+    // PARE parcial da regra R4, ver o comentario no serializer: a doc oficial
+    // lista `tomador` em `required` e nao descreve emissao sem ele.
+    expect(() =>
+      serializeNfsePayload(input({ tomador: undefined }), AGORA),
+    ).toThrow(/sem tomador/);
   });
 
   it("declara optante_simples_nacional a partir da env", () => {

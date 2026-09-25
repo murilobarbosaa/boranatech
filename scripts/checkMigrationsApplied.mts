@@ -1127,6 +1127,11 @@ const COLUNAS_ESPERADAS: Record<string, string[]> = {
     // 20260925120000_fiscal_invoices_charge_key.sql
     "payment_provider",
     "charge_key",
+    // 20260925150000_fiscal_invoices_lote_mensal.sql
+    "competencia",
+    "meio_pagamento",
+    "refunded_cents",
+    "valor_liquido_cents",
   ],
   // 20260912120000_add_pix_reminder_columns_to_subscriptions.sql
   subscriptions: ["pix_due_date", "pix_invoice_url", "pix_reminders_sent"],

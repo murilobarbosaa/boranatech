@@ -58,8 +58,17 @@ export interface IssueInvoiceTomador {
 
 export interface IssueInvoiceServico {
   descricao: string;
-  /** Valor BRUTO em centavos. A taxa da Stripe e despesa nossa, nao deduz. */
+  /**
+   * Valor da nota em centavos: o bruto pago MENOS os estornos da propria
+   * cobranca ate a emissao (regra R5 do contador). A taxa da Stripe continua
+   * sendo despesa nossa e nao deduz.
+   */
   valorCents: number;
+  /**
+   * Competencia, `AAAA-MM-DD`: dia civil de Brasilia da VENDA (regra R6), nunca
+   * o dia do lote nem o da emissao.
+   */
+  competencia: string;
 }
 
 export interface IssueInvoiceInput {
@@ -68,7 +77,14 @@ export interface IssueInvoiceInput {
    * o que permite reconciliar os dois lados sem depender da ordem das chamadas.
    */
   referenceId: string;
-  tomador: IssueInvoiceTomador;
+  /**
+   * AUSENTE quando, no lote, o cadastro nao tinha nome e documento validos
+   * (regra R4 do contador: nenhuma nota espera dado do cliente depois do lote).
+   * Ausente e nao um tomador vazio: cada adapter decide se o seu provedor
+   * aceita nota sem tomador, e um objeto com campos em branco esconderia essa
+   * decisao.
+   */
+  tomador?: IssueInvoiceTomador;
   servico: IssueInvoiceServico;
 }
 

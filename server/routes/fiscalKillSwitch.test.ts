@@ -370,12 +370,14 @@ describe("GET /admin/fiscal-invoices/summary", () => {
     expect(r.body).toEqual({
       data: {
         porStatus: {
+          awaiting_batch: 0,
           pending: 0,
           processing: 0,
           issued: 0,
           failed: 0,
           canceled: 0,
           blocked_missing_data: 0,
+          skipped: 0,
         },
         precisaRevisao: 0,
         total: 0,

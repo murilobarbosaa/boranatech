@@ -43,7 +43,25 @@ type NotaAlvo = {
   id: string;
   status: string;
   precisa_revisao: boolean;
+  refunded_cents: number;
 };
+
+/**
+ * Estados em que a nota AINDA NAO FOI EMITIDA e o valor dela ainda pode descer
+ * (regra R5: valor = bruto menos estornos ate a emissao).
+ *
+ * 'processing' entra: o valor ja foi enviado, mas o acumulado gravado e o que
+ * mostra ao admin que houve estorno depois do envio. 'issued' fica de fora
+ * porque tem caminho proprio (cancelamento ou revisao, logo abaixo);
+ * 'canceled' e 'skipped' sao terminais sem valor a corrigir.
+ */
+const ESTADOS_ANTES_DA_EMISSAO = new Set([
+  "awaiting_batch",
+  "pending",
+  "processing",
+  "failed",
+  "blocked_missing_data",
+]);
 
 /**
  * Aplica o efeito do reembolso na nota daquela cobranca. NUNCA lanca.
@@ -71,7 +89,7 @@ export async function applyRefundToFiscalInvoice(params: {
 
     const { data, error } = await supabaseAdmin
       .from("fiscal_invoices")
-      .select("id, status, precisa_revisao")
+      .select("id, status, precisa_revisao, refunded_cents")
       .eq("charge_key", params.chargeKey)
       .maybeSingle();
     if (error) {
@@ -79,11 +97,35 @@ export async function applyRefundToFiscalInvoice(params: {
     }
     const nota = data as NotaAlvo | null;
 
-    // Sem nota emitida nao ha o que cancelar nem o que revisar. Nota em
-    // 'pending' cujo reembolso chegou antes da emissao tambem cai aqui: ela
-    // ainda vai ser emitida pela fila, e a proxima passagem do reembolso (ou a
-    // reconciliacao) reavalia. Nao ha o que fazer AGORA.
-    if (!nota || nota.status !== "issued") return;
+    if (!nota) return;
+
+    // NOTA AINDA NAO EMITIDA: registra o acumulado estornado na propria linha,
+    // e e dele que o worker tira o valor liquido (ou a dispensa, se o estorno
+    // for integral). Ate o lote FISCAL-REGRAS 01 este caso saia calado, e a
+    // nota seria emitida pelo bruto de uma cobranca ja devolvida.
+    //
+    // So CRESCE: o update casa apenas quando o acumulado novo e maior. Um
+    // evento antigo reentregue depois de um mais novo nao desfaz o valor.
+    if (ESTADOS_ANTES_DA_EMISSAO.has(nota.status)) {
+      if (params.refundedTotalCents <= (nota.refunded_cents ?? 0)) return;
+      const { error: refundError } = await supabaseAdmin
+        .from("fiscal_invoices")
+        .update({ refunded_cents: params.refundedTotalCents })
+        .eq("id", nota.id)
+        .lt("refunded_cents", params.refundedTotalCents);
+      if (refundError) {
+        throw new Error(
+          `Falha ao registrar o estorno na nota ${nota.id}: ${refundError.message}`,
+        );
+      }
+      console.log(
+        `[fiscal] estorno de ${params.refundedTotalCents} centavos registrado na nota ${nota.id} antes da emissao (${extensao}, origem ${params.origem}).`,
+      );
+      return;
+    }
+
+    // Cancelada ou dispensada: nao ha o que cancelar nem o que revisar.
+    if (nota.status !== "issued") return;
 
     if (extensao === "total") {
       await enqueueFiscalCancel(

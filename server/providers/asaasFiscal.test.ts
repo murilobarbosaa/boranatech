@@ -12,7 +12,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  *     e a chave do pagamento, mesmo com RECEIVED e CONFIRMED chegando;
  *   - kill-switch desligado nao toca a tabela;
  *   - falha do registro nao derruba o webhook nem apaga o dedupe;
- *   - estorno integral chega ao cancelamento pela chave Asaas.
+ *   - estorno integral chega ao cancelamento pela chave Asaas;
+ *   - (FISCAL-REGRAS 01) a nota nasce 'awaiting_batch', SEM job na fila (R2),
+ *     com a competencia do dia da venda (R6); Pix fora de NFSE_MEIOS_EMISSAO
+ *     nao gera linha (R1); estorno antes da emissao fica gravado na linha (R5).
  *
  * Expectativas em literais escritos a mao.
  */
@@ -21,6 +24,7 @@ type LinhaFiscal = Record<string, unknown> & { charge_key: string };
 
 const estado = vi.hoisted(() => ({
   nfseEnabled: true,
+  meios: ["cartao", "pix", "boleto"] as string[],
   /** fiscal_invoices, com o unique de charge_key aplicado no upsert. */
   notas: [] as Array<Record<string, unknown> & { charge_key: string }>,
   /** Upserts em fiscal_invoices, na ordem, com as opcoes. */
@@ -42,6 +46,10 @@ vi.mock("../lib/env", () => ({
     get nfseEnabled() {
       return estado.nfseEnabled;
     },
+    get nfseMeiosEmissao() {
+      return estado.meios;
+    },
+    nfseEmitirDesde: "2026-09-01",
     supabaseUrl: "https://exemplo.supabase.co",
     asaasApiUrl: "https://api-sandbox.asaas.com/v3",
     asaasApiKey: "chave-de-teste",
@@ -92,7 +100,16 @@ vi.mock("../lib/supabaseAdmin", () => {
     const filtros: Array<[string, unknown]> = [];
     let patch: Record<string, unknown> | null = null;
     const q: Record<string, unknown> = {};
-    for (const m of ["select", "in", "gt", "neq", "order", "limit", "not"]) {
+    for (const m of [
+      "select",
+      "in",
+      "gt",
+      "lt",
+      "neq",
+      "order",
+      "limit",
+      "not",
+    ]) {
       q[m] = () => q;
     }
     q.eq = (coluna: string, valor: unknown) => {
@@ -219,6 +236,7 @@ function ativacao(ativou: boolean) {
 
 beforeEach(() => {
   estado.nfseEnabled = true;
+  estado.meios = ["cartao", "pix", "boleto"];
   estado.notas = [];
   estado.upsertsFiscais = [];
   estado.toquesFiscais = 0;
@@ -258,7 +276,9 @@ describe("gancho fiscal do Pix", () => {
       stripe_charge_id: null,
       stripe_invoice_id: null,
       stripe_payment_intent_id: null,
-      status: "pending",
+      status: "awaiting_batch",
+      competencia: "2026-09-20",
+      meio_pagamento: "pix",
       amount_cents: 22200,
       plan_code: "pro_annual",
     });
@@ -266,13 +286,20 @@ describe("gancho fiscal do Pix", () => {
       onConflict: "charge_key",
       ignoreDuplicates: true,
     });
-    expect(estado.jobs).toEqual([
-      {
-        nome: "issue",
-        dados: { kind: "issue", chargeKey: "asaas:pay_8x2k1m9q" },
-        opcoes: { jobId: "issue-asaas-pay_8x2k1m9q" },
-      },
-    ]);
+    // Registro imediato, emissao adiada (R2): quem enfileira e o lote.
+    expect(estado.jobs).toEqual([]);
+  });
+
+  it("Pix fora de NFSE_MEIOS_EMISSAO nao gera linha", async () => {
+    estado.meios = ["cartao", "boleto"];
+    const r = await processAsaasEvent(
+      evento("PAYMENT_RECEIVED", "evt_recebido"),
+    );
+
+    expect(r).toEqual({ received: true, activated: true });
+    expect(estado.upsertsFiscais).toEqual([]);
+    expect(estado.notas).toEqual([]);
+    expect(estado.jobs).toEqual([]);
   });
 
   it("RECEIVED e depois CONFIRMED do mesmo pagamento: UMA nota", async () => {
@@ -290,16 +317,13 @@ describe("gancho fiscal do Pix", () => {
 
   it("mesmo se os DOIS eventos chegassem a registrar, a chave deduplica", async () => {
     // Corrida em que os dois eventos veem a linha ainda pendente: o segundo
-    // registro cai no unique de charge_key e no mesmo jobId.
+    // registro cai no unique de charge_key. Nenhum dos dois enfileira (R2).
     await processAsaasEvent(evento("PAYMENT_RECEIVED", "evt_recebido"));
     await processAsaasEvent(evento("PAYMENT_CONFIRMED", "evt_confirmado"));
 
     expect(estado.upsertsFiscais).toHaveLength(2);
     expect(estado.notas).toHaveLength(1);
-    expect(estado.jobs.map((j) => j.opcoes)).toEqual([
-      { jobId: "issue-asaas-pay_8x2k1m9q" },
-      { jobId: "issue-asaas-pay_8x2k1m9q" },
-    ]);
+    expect(estado.jobs).toEqual([]);
   });
 
   it("com a emissao desligada nao toca fiscal_invoices", async () => {
@@ -354,6 +378,27 @@ describe("estorno Pix na nota fiscal", () => {
         opcoes: { jobId: "cancel-asaas-pay_8x2k1m9q" },
       },
     ]);
+  });
+
+  it("estorno ANTES da emissao fica gravado na linha, sem cancelamento", async () => {
+    estado.notas = [
+      {
+        id: "nota-1",
+        status: "awaiting_batch",
+        precisa_revisao: false,
+        refunded_cents: 0,
+        payment_provider: "asaas",
+        charge_key: "asaas:pay_8x2k1m9q",
+      } as LinhaFiscal,
+    ];
+
+    await processAsaasEvent(evento("PAYMENT_REFUNDED", "evt_estorno"));
+
+    expect(estado.notas[0]).toMatchObject({
+      status: "awaiting_batch",
+      refunded_cents: 22200,
+    });
+    expect(estado.jobs).toEqual([]);
   });
 
   it("com a emissao desligada o estorno nao toca fiscal_invoices", async () => {
