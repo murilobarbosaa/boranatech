@@ -62,7 +62,8 @@ describe("runner de sql: formato de saida", () => {
         TABELA + "SELECT nome, preco FROM p ORDER BY preco;\n",
       );
       expect(r.status).toBe(0);
-      expect(r.stdout).toBe("nome | preco\ncaneta | 2.5\ncaderno | 12\n");
+      // 12 numa coluna REAL e real: sai 12.0, como no shell sqlite3.
+      expect(r.stdout).toBe("nome | preco\ncaneta | 2.5\ncaderno | 12.0\n");
     },
     LIMITE,
   );
@@ -122,6 +123,56 @@ describe("runner de sql: formato de saida", () => {
       const r = executar("SELECT 1 AS um;\n");
       expect(r.status).toBe(0);
       expect(r.stderr).toBe("");
+    },
+    LIMITE,
+  );
+});
+
+// Conserto da decisao 3. Real impresso pelo String() do JavaScript diverge do
+// que o aluno ve no shell sqlite3: 12.0 saia 12, AVG saia 8 em vez de 8.0, e
+// 0.1 + 0.2 saia 0.30000000000000004 em vez de 0.3. O real passa a ser
+// formatado pelo proprio SQLite com printf('%!.15g'), que e o formato do shell.
+describe("runner de sql: real no formato do shell sqlite3", () => {
+  const um = (sql: string) => executar(sql).stdout.split("\n")[1];
+
+  it(
+    "SELECT 12.0 sai 12.0",
+    () => {
+      expect(um("SELECT 12.0 AS v;\n")).toBe("12.0");
+    },
+    LIMITE,
+  );
+
+  it(
+    "SELECT 0.1 + 0.2 sai 0.3",
+    () => {
+      expect(um("SELECT 0.1 + 0.2 AS v;\n")).toBe("0.3");
+    },
+    LIMITE,
+  );
+
+  it(
+    "SELECT 2.5 sai 2.5",
+    () => {
+      expect(um("SELECT 2.5 AS v;\n")).toBe("2.5");
+    },
+    LIMITE,
+  );
+
+  it(
+    "AVG de 7 e 9 inteiros sai 8.0",
+    () => {
+      expect(
+        um("SELECT avg(x) AS v FROM (SELECT 7 AS x UNION ALL SELECT 9);\n"),
+      ).toBe("8.0");
+    },
+    LIMITE,
+  );
+
+  it(
+    "CONTROLE: inteiro continua inteiro",
+    () => {
+      expect(um("SELECT 7 AS v;\n")).toBe("7");
     },
     LIMITE,
   );

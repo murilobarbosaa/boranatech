@@ -15,8 +15,9 @@
 // FORMATO DE SAIDA (a trilha e a pool dependem dele):
 // - instrucao que devolve colunas: uma linha de cabecalho com os nomes
 //   separados por " | ", e uma linha por registro, valores separados por " | ";
-// - NULL sai NULL, inteiro exato, real pelo String() do JavaScript, texto cru,
-//   blob como x'<hex>';
+// - NULL sai NULL, inteiro exato, real no formato do shell sqlite3 (o proprio
+//   SQLite formata, com printf('%!.15g'): 12.0 sai 12.0, avg de 7 e 9 sai 8.0,
+//   0.1 + 0.2 sai 0.3), texto cru, blob como x'<hex>';
 // - consulta sem registro imprime so o cabecalho;
 // - blocos de duas consultas separados por UMA linha em branco;
 // - instrucao sem colunas (CREATE, INSERT sem RETURNING) nao imprime nada;
@@ -100,6 +101,11 @@ function codigoPrimario(erro) {
 
 const db = new DatabaseSync(":memory:");
 
+// Real formatado pelo SQLite, e nao pelo String() do JavaScript, que diverge
+// do que o aluno ve no shell sqlite3 (12.0 saia 12, 0.1 + 0.2 saia
+// 0.30000000000000004). '%!.15g' e o formato do shell. Preparado uma vez.
+const formatoDoReal = db.prepare("SELECT printf('%!.15g', ?) AS texto");
+
 // Proibicoes pelo autorizador do SQLite, que ve a instrucao ja analisada e nao
 // o texto: ATTACH e DETACH gravariam (ou soltariam) arquivo no diretorio do
 // executor, que entao nunca ficaria vazio; extensao e fora de escopo; gatilho
@@ -147,6 +153,8 @@ function celula(valor) {
   if (valor instanceof Uint8Array) {
     return `x'${Buffer.from(valor).toString("hex")}'`;
   }
+  // Com setReadBigInts o inteiro chega como bigint, entao number aqui e real.
+  if (typeof valor === "number") return formatoDoReal.get(valor).texto;
   return String(valor);
 }
 
