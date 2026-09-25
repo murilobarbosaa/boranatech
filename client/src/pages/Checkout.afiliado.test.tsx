@@ -25,7 +25,10 @@ const estado = vi.hoisted(() => ({
   chamadas: [] as Array<{ url: string; method: string }>,
 }));
 
-vi.mock("@/services/nfseStatus", () => ({ useNfseEnabled: () => false }));
+vi.mock("@/services/nfseStatus", () => ({
+  useNfseEnabled: () => false,
+  useFiscalCollectionEnabled: () => false,
+}));
 vi.mock("@/services/profileService", () => ({ getMyProfile: vi.fn() }));
 vi.mock("@/components/fiscal/FiscalDataModal", () => ({
   default: () => null,

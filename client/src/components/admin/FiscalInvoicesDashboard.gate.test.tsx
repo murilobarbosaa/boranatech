@@ -17,6 +17,7 @@ const estado = vi.hoisted(() => ({ nfseEnabled: false }));
 
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => false,
 }));
 
 const adminFetch = vi.hoisted(() => vi.fn());
