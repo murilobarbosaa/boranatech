@@ -136,15 +136,6 @@ function consumeSignupSource(): ContentSource {
   }
 }
 
-// Anon bate no muro de conteudo (area/subarea) e e redirecionado pro cadastro.
-// Espelha captureProGateHit: mede quantos visitantes o gate empurra hoje.
-export function captureContentGateHit(props: {
-  feature: "area_detail" | "subarea_detail";
-  path: string;
-}): void {
-  posthog.capture("content_gate_hit", props);
-}
-
 // Clique no CTA de suporte pelo WhatsApp (canal exclusivo Pro). source distingue
 // de onde partiu: a tela de sucesso do checkout ou o card persistente no perfil.
 export function captureWhatsappSupportClicked(props: {

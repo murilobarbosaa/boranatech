@@ -149,20 +149,8 @@ function Router() {
           )}
         </Route>
         <Route path="/areas" component={Areas} />
-        <Route path="/areas/:parent/:subarea">
-          {() => (
-            <RequireAuth>
-              <SubAreaDetalhe />
-            </RequireAuth>
-          )}
-        </Route>
-        <Route path="/areas/:slug">
-          {() => (
-            <RequireAuth>
-              <AreaDetalhe />
-            </RequireAuth>
-          )}
-        </Route>
+        <Route path="/areas/:parent/:subarea" component={SubAreaDetalhe} />
+        <Route path="/areas/:slug" component={AreaDetalhe} />
         <Route path="/tecnologias" component={Tecnologias} />
         <Route path="/tecnologias/comparar">
           {() => (
