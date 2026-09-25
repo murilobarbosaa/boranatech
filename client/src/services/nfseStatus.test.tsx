@@ -2,9 +2,12 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getFiscalCollectionStatus,
   getNfseStatus,
+  peekFiscalCollectionStatus,
   peekNfseStatus,
   resetNfseStatusCache,
+  useFiscalCollectionEnabled,
   useNfseEnabled,
 } from "./nfseStatus";
 
@@ -123,5 +126,99 @@ describe("useNfseEnabled", () => {
     vi.stubGlobal("fetch", responderCom({ data: { nfse: "enabled" } }, false));
     const { result } = renderHook(() => useNfseEnabled());
     await waitFor(() => expect(result.current).toBe(false));
+  });
+});
+
+/**
+ * COLETA E EMISSAO NA MESMA RESPOSTA, como flags independentes. Os quatro
+ * estados que a resposta pode ter, vistos pelos dois hooks montados JUNTOS (e o
+ * caso do /perfil, que tem o bloco de dados e a secao de notas na mesma tela),
+ * e a prova de que os dois custam uma requisicao so.
+ */
+function useAsDuasFlags() {
+  return {
+    coleta: useFiscalCollectionEnabled(),
+    nfse: useNfseEnabled(),
+  };
+}
+
+describe("coleta independente da emissao", () => {
+  it("coleta enabled + nfse disabled: o estado esperado ate a emissao ligar", async () => {
+    const spy = responderCom({ data: { nfse: "disabled", coleta: "enabled" } });
+    vi.stubGlobal("fetch", spy);
+
+    const { result } = renderHook(() => useAsDuasFlags());
+    // Comeca tudo falso: o default e esconder ate ter a resposta na mao.
+    expect(result.current).toEqual({ coleta: false, nfse: false });
+
+    await waitFor(() => expect(result.current.coleta).toBe(true));
+    expect(result.current).toEqual({ coleta: true, nfse: false });
+    expect(peekFiscalCollectionStatus()).toBe("enabled");
+    expect(peekNfseStatus()).toBe("disabled");
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ambos enabled", async () => {
+    const spy = responderCom({ data: { nfse: "enabled", coleta: "enabled" } });
+    vi.stubGlobal("fetch", spy);
+
+    const { result } = renderHook(() => useAsDuasFlags());
+
+    await waitFor(() =>
+      expect(result.current).toEqual({ coleta: true, nfse: true }),
+    );
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("JANELA DE DEPLOY: campo coleta ausente resolve para desligado, sem deduzir de nfse", async () => {
+    // Backend anterior a este campo: conhece `nfse`, nao conhece `coleta`. A
+    // implicacao "emissao ligada implica coleta ligada" e do servidor; o
+    // cliente so acredita no literal que recebeu.
+    const spy = responderCom({ data: { nfse: "enabled" } });
+    vi.stubGlobal("fetch", spy);
+
+    const { result } = renderHook(() => useAsDuasFlags());
+
+    await waitFor(() => expect(result.current.nfse).toBe(true));
+    expect(result.current).toEqual({ coleta: false, nfse: true });
+    expect(peekFiscalCollectionStatus()).toBe("disabled");
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("erro de rede: as duas flags ficam desligadas e nada e cacheado", async () => {
+    const spy = vi.fn(async () => {
+      throw new Error("rede caiu");
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", spy);
+
+    const { result } = renderHook(() => useAsDuasFlags());
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    await expect(getFiscalCollectionStatus()).rejects.toThrow();
+    expect(result.current).toEqual({ coleta: false, nfse: false });
+    expect(peekFiscalCollectionStatus()).toBeNull();
+    expect(peekNfseStatus()).toBeNull();
+  });
+
+  it('coleta so liga com o literal exato "enabled"', async () => {
+    vi.stubGlobal(
+      "fetch",
+      responderCom({ data: { nfse: "disabled", coleta: "true" } }),
+    );
+    await expect(getFiscalCollectionStatus()).resolves.toBe("disabled");
+  });
+
+  it("as duas leituras diretas dividem a mesma chamada em voo", async () => {
+    const spy = responderCom({ data: { nfse: "disabled", coleta: "enabled" } });
+    vi.stubGlobal("fetch", spy);
+
+    const [coleta, nfse] = await Promise.all([
+      getFiscalCollectionStatus(),
+      getNfseStatus(),
+    ]);
+
+    expect(coleta).toBe("enabled");
+    expect(nfse).toBe("disabled");
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });

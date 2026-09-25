@@ -36,7 +36,7 @@ import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
 import FiscalInvoicesSection from "@/components/fiscal/FiscalInvoicesSection";
-import { useNfseEnabled } from "@/services/nfseStatus";
+import { useFiscalCollectionEnabled } from "@/services/nfseStatus";
 import ProGate from "@/components/pro/ProGate";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
@@ -723,7 +723,7 @@ function ProToolCard({
 
 export default function Perfil() {
   const [, setLocation] = useLocation();
-  const nfseEnabled = useNfseEnabled();
+  const coletaFiscalEnabled = useFiscalCollectionEnabled();
   const {
     loading: authLoading,
     profile,
@@ -2355,11 +2355,13 @@ export default function Perfil() {
               checkout e pelo banner. Um segundo formulario aqui divergiria do
               primeiro na primeira mudanca de regra, e o dado e o mesmo.
 
-              Escondido com a emissao desligada: coletar CPF, CNPJ e endereco
-              para uma nota que ninguem vai emitir e pedir dado pessoal sem
-              finalidade, que e o oposto do que a propria copy do bloco promete
-              ("dados usados na emissao"). */}
-          {nfseEnabled ? (
+              Guardado pelo switch da COLETA, nao pelo da emissao: a coleta
+              antecede a emissao, para o backlog de notas sair com tomador
+              identificado. A secao de NOTAS logo abaixo continua no switch da
+              emissao, com guarda propria. Com a coleta desligada o bloco some:
+              pedir CPF, CNPJ e endereco sem o produto ter decidido coletar e
+              pedir dado pessoal sem finalidade. */}
+          {coletaFiscalEnabled ? (
             <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8">
               {/* TODO(Ana): eyebrow, titulo e subtitulo do bloco de dados
                   fiscais, e o rotulo do botao (nos dois estados). */}

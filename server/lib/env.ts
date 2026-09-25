@@ -114,6 +114,30 @@ export const env = {
     );
     return false;
   })(),
+  // Kill-switch da COLETA de dados fiscais (nome civil, CPF, CNPJ, endereco),
+  // no MESMO desenho do nfseEnabled: fail-closed, so o literal exato "true"
+  // liga. Existe separado porque a coleta ANTECEDE a emissao: a base de
+  // pagantes precisa ter tomador identificado antes de a emissao ligar, senao o
+  // backlog de notas nasce bloqueado por falta de cadastro.
+  //
+  // Este e o switch CRU. O valor efetivo da coleta e `coletaFiscalLigada(env)`,
+  // que soma a implicacao "emissao ligada implica coleta ligada". Ler este
+  // campo direto para decidir superficie de coleta esconderia o formulario
+  // justamente quando a nota precisa do dado.
+  fiscalCollectionEnabled: (() => {
+    const raw = process.env.FISCAL_DATA_COLLECTION_ENABLED;
+    if (!raw) return false; // ausente: coleta off, esperado em dev, sem alarde.
+    if (fiscalCollectionSwitchLigado(raw)) {
+      console.log(
+        "[env] Coleta de dados fiscais LIGADA (FISCAL_DATA_COLLECTION_ENABLED=true).",
+      );
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: FISCAL_DATA_COLLECTION_ENABLED="${raw}" nao liga a coleta de dados fiscais. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); coleta DESLIGADA.`,
+    );
+    return false;
+  })(),
   // Kill-switch do lembrete de Pix pendente, no MESMO desenho do billingEnabled:
   // fail-closed, so o literal exato "true" liga. Um e-mail de cobranca que sai
   // por engano e pior que um que nao sai. Existe para a PRIMEIRA execucao em
@@ -674,4 +698,35 @@ export function deveSubirWorkers(params: {
 }): boolean {
   const { nodeEnv, escapeLigado } = params;
   return nodeEnv === "production" || escapeLigado;
+}
+
+/**
+ * Leitura do switch da coleta fiscal: so o literal exato "true" liga.
+ *
+ * Funcao a parte, e nao a comparacao escrita dentro do IIFE, pelo mesmo motivo
+ * de `deveSubirWorkers`: a regra "caixa errada nao liga" fica testavel contra o
+ * codigo que roda no boot, sem recarregar este modulo com `process.env` forjado
+ * (o que dispararia os `process.exit` do bloco fail-closed fiscal).
+ */
+export function fiscalCollectionSwitchLigado(raw: string | undefined): boolean {
+  return raw === "true";
+}
+
+/**
+ * Valor EFETIVO da coleta de dados fiscais.
+ *
+ * Emissao ligada implica coleta ligada: uma nota so sai com tomador
+ * identificado, entao ligar `NFSE_ENABLED` sem a coleta produziria notas
+ * bloqueadas por falta de um dado que o produto se recusou a pedir. O contrario
+ * NAO vale, e e o motivo de este switch existir: a coleta liga sozinha, antes,
+ * para o backlog de notas sair com tomador identificado.
+ *
+ * Parametros explicitos em vez de ler `env` aqui dentro, como em
+ * `deveSubirWorkers`. Todo consumidor pergunta AQUI, nunca ao campo cru.
+ */
+export function coletaFiscalLigada(flags: {
+  fiscalCollectionEnabled: boolean;
+  nfseEnabled: boolean;
+}): boolean {
+  return flags.fiscalCollectionEnabled || flags.nfseEnabled;
 }

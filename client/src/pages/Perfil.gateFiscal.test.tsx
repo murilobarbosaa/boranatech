@@ -2,18 +2,21 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * O BLOCO DE DADOS FISCAIS DO PERFIL SOME COM A EMISSAO DESLIGADA.
+ * O BLOCO DE DADOS FISCAIS DO PERFIL OBEDECE AO SWITCH DA COLETA.
  *
- * Ele existe para coletar CPF, CNPJ e endereco, e a propria copy do bloco diz
- * para que serve ("dados usados na emissao das notas fiscais"). Com o
- * kill-switch desligado nao ha emissao, entao o bloco pede dado pessoal sem
- * finalidade. Some inteiro, junto com a secao de notas (coberta em
- * `components/fiscal/fiscalGate.test.tsx`).
+ * Ele existe para coletar CPF, CNPJ e endereco, e a coleta antecede a emissao,
+ * para o backlog de notas sair com tomador identificado. Com a coleta desligada
+ * o bloco some inteiro. A secao de NOTAS e outra superficie, com outro switch
+ * (emissao), coberta em `components/fiscal/fiscalGate.test.tsx`.
  */
 
-const estado = vi.hoisted(() => ({ nfseEnabled: false }));
+const estado = vi.hoisted(() => ({
+  nfseEnabled: false,
+  coletaEnabled: false,
+}));
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => estado.coletaEnabled,
 }));
 
 vi.mock("@/components/Layout", () => ({
@@ -21,9 +24,16 @@ vi.mock("@/components/Layout", () => ({
 }));
 vi.mock("@/components/SEO", () => ({ default: () => null }));
 vi.mock("@/components/fiscal/FiscalDataModal", () => ({ default: () => null }));
-vi.mock("@/components/fiscal/FiscalInvoicesSection", () => ({
-  default: () => null,
-}));
+// `FiscalInvoicesSection` e a REAL, de proposito. Dublada para `null` ela
+// estaria ausente em qualquer cenario, e "a secao de notas continua ausente com
+// a coleta ligada" seria uma afirmacao que nao tem como falhar. O que se dubla
+// e so a chamada que ela faz.
+const getMyFiscalInvoices = vi.hoisted(() => vi.fn());
+vi.mock("@/services/subscriptionService", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("@/services/subscriptionService")>();
+  return { ...real, getMyFiscalInvoices };
+});
 vi.mock("@/components/profile/AvatarPhotoPanel", () => ({
   default: () => null,
 }));
@@ -83,6 +93,9 @@ import Perfil from "./Perfil";
 
 beforeEach(() => {
   estado.nfseEnabled = false;
+  estado.coletaEnabled = false;
+  getMyFiscalInvoices.mockReset();
+  getMyFiscalInvoices.mockResolvedValue([]);
   vi.stubGlobal(
     "IntersectionObserver",
     class {
@@ -109,7 +122,7 @@ afterEach(() => {
 });
 
 describe("bloco de dados fiscais do perfil", () => {
-  it("com a emissao desligada nao aparece", async () => {
+  it("com a coleta desligada nao aparece", async () => {
     render(<Perfil />);
 
     // A pagina renderizou (ancora fora do dominio fiscal), e mesmo assim o
@@ -123,8 +136,9 @@ describe("bloco de dados fiscais do perfil", () => {
     ).toHaveLength(0);
   });
 
-  it("com a emissao ligada aparece, como hoje", async () => {
+  it("com a emissao ligada (que implica coleta ligada) aparece", async () => {
     estado.nfseEnabled = true;
+    estado.coletaEnabled = true;
     render(<Perfil />);
 
     await waitFor(() =>
@@ -133,5 +147,24 @@ describe("bloco de dados fiscais do perfil", () => {
     expect(screen.getAllByText("Para emitir sua nota").length).toBeGreaterThan(
       0,
     );
+    // Controle positivo da afirmacao de ausencia do caso abaixo: com a emissao
+    // ligada a secao de notas EXISTE nesta mesma pagina e busca as notas.
+    expect(screen.getAllByText("Suas notas").length).toBeGreaterThan(0);
+    await waitFor(() => expect(getMyFiscalInvoices).toHaveBeenCalledTimes(1));
+  });
+
+  it("coleta ligada e emissao DESLIGADA: o bloco de dados aparece e a secao de notas continua ausente", async () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    render(<Perfil />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText("Dados fiscais").length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText("Para emitir sua nota").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryAllByText("Suas notas")).toHaveLength(0);
+    expect(getMyFiscalInvoices).not.toHaveBeenCalled();
   });
 });

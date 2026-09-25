@@ -4,21 +4,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * GATE DE KILL-SWITCH NAS SUPERFICIES FISCAIS DE USUARIO.
  *
- * Duas superficies moram aqui: o banner (que atravessa toda pagina pelo Layout)
- * e a secao de notas do perfil. As duas SOMEM com a emissao desligada, e a
- * secao tem uma exigencia a mais: nao pode nem CHAMAR o backend, porque era
- * essa chamada, disparada a cada abertura do /perfil por qualquer usuario
- * logado, que ia ao banco perguntar por uma tabela que pode nem existir.
+ * Duas superficies moram aqui, e cada uma obedece a UM switch: o banner (que
+ * atravessa toda pagina pelo Layout) e COLETA, a secao de notas do perfil e
+ * EMISSAO. A secao tem uma exigencia a mais: desligada, nao pode nem CHAMAR o
+ * backend, porque era essa chamada, disparada a cada abertura do /perfil por
+ * qualquer usuario logado, que ia ao banco perguntar por uma tabela que pode
+ * nem existir.
  *
- * `useNfseEnabled` esta dublado: a resolucao do estado (incluindo o fail-closed
+ * Os dois hooks estao dublados: a resolucao do estado (incluindo o fail-closed
  * da janela de deploy) e exercitada em `services/nfseStatus.test.tsx`. Aqui a
  * pergunta e outra: dado o estado, o que a tela monta.
  */
 
-const estado = vi.hoisted(() => ({ nfseEnabled: false }));
+const estado = vi.hoisted(() => ({
+  nfseEnabled: false,
+  coletaEnabled: false,
+}));
 
 vi.mock("@/services/nfseStatus", () => ({
   useNfseEnabled: () => estado.nfseEnabled,
+  useFiscalCollectionEnabled: () => estado.coletaEnabled,
 }));
 
 const getMyFiscalInvoices = vi.hoisted(() => vi.fn());
@@ -55,6 +60,7 @@ import FiscalInvoicesSection from "./FiscalInvoicesSection";
 
 beforeEach(() => {
   estado.nfseEnabled = false;
+  estado.coletaEnabled = false;
   auth.user = { id: "u1" };
   // Perfil SEM dados fiscais: e a condicao em que o banner apareceria.
   auth.profile = { full_name: null, cpf: null };
@@ -69,15 +75,49 @@ afterEach(() => {
 });
 
 describe("FiscalDataBanner", () => {
-  it("com a emissao desligada nao renderiza, mesmo com assinante ativo sem dado fiscal", () => {
+  it("com a coleta desligada nao renderiza, mesmo com assinante ativo sem dado fiscal", () => {
     const { container } = render(<FiscalDataBanner />);
     expect(container.innerHTML).toBe("");
   });
 
-  it("com a emissao ligada renderiza o aviso, como hoje", () => {
+  it("com a emissao ligada (que implica coleta ligada) renderiza o aviso", () => {
     estado.nfseEnabled = true;
+    estado.coletaEnabled = true;
     render(<FiscalDataBanner />);
     expect(screen.getByText(/complete seus dados fiscais/i)).toBeTruthy();
+  });
+
+  it("coleta ligada e emissao DESLIGADA: assinante ativo sem documento ve o aviso", () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    render(<FiscalDataBanner />);
+    expect(screen.getByText(/complete seus dados fiscais/i)).toBeTruthy();
+  });
+
+  it("coleta ligada e emissao desligada: status free NAO ve o aviso", () => {
+    // Cortesia de admin e influencer tem status 'free': nao ha cobranca, nao
+    // ha nota, nao ha por que pedir documento.
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    assinatura.subscription = { status: "free" };
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("coleta ligada e emissao desligada: assinante ativo COM documento nao ve o aviso", () => {
+    estado.coletaEnabled = true;
+    auth.profile = { full_name: "Maria da Silva", cpf: "52998224725" };
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("so a emissao ligada NAO mostra o aviso: quem manda e o switch da coleta", () => {
+    // Estado que o servidor nao produz (emissao implica coleta), usado aqui
+    // para provar QUAL hook o banner le.
+    estado.nfseEnabled = true;
+    estado.coletaEnabled = false;
+    const { container } = render(<FiscalDataBanner />);
+    expect(container.innerHTML).toBe("");
   });
 });
 
@@ -88,6 +128,15 @@ describe("FiscalInvoicesSection", () => {
     expect(container.innerHTML).toBe("");
     // A prova que importa: zero chamadas. Esconder a secao depois de ja ter
     // perguntado deixaria o 500 acontecendo em silencio.
+    expect(getMyFiscalInvoices).not.toHaveBeenCalled();
+  });
+
+  it("coleta ligada NAO liga a secao de notas: continua ausente e sem chamar o backend", async () => {
+    estado.coletaEnabled = true;
+    estado.nfseEnabled = false;
+    const { container } = render(<FiscalInvoicesSection />);
+
+    expect(container.innerHTML).toBe("");
     expect(getMyFiscalInvoices).not.toHaveBeenCalled();
   });
 

@@ -50,9 +50,10 @@ import CompleteProfileModal from "@/components/certificates/CompleteProfileModal
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
-import { useNfseEnabled } from "@/services/nfseStatus";
+import { useFiscalCollectionEnabled } from "@/services/nfseStatus";
 import { getMyProfile } from "@/services/profileService";
-import { hasFiscalIdentity } from "@shared/fiscalIdentity";
+import type { MissingProfileField } from "@shared/certificates/types";
+import { hasFiscalIdentity, isValidFullName } from "@shared/fiscalIdentity";
 import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import CancelPendingPixDialog from "@/components/pro/CancelPendingPixDialog";
 import { allowedPaymentMethods } from "@shared/paymentMethods";
@@ -690,6 +691,15 @@ export default function Checkout() {
   // servidor na primeira correcao de regra. O round-trip custa uma requisicao e
   // deixa o servidor como unica autoridade.
   const [cpfStepOpen, setCpfStepOpen] = useState(false);
+  // O que o passo pede. O CPF esta SEMPRE na lista, porque quem o declara
+  // ausente e o 422 do servidor (paragrafo acima). O nome civil entra junto
+  // quando falta no perfil: `full_name`, ao contrario do CPF, e dado que o
+  // cliente le, e quem chega aqui sem ele (pessoa juridica, que passa no gate
+  // fiscal com razao social e CNPJ, ou leitura de perfil que falhou no gate)
+  // viraria pagante sem o nome que a nota precisa. Ver `camposDoPassoPix`.
+  const [cpfStepMissing, setCpfStepMissing] = useState<MissingProfileField[]>([
+    "cpf",
+  ]);
   // Cobranca Pix recem-criada, exibida SEM sair da pagina. `null` = modal
   // fechado. O valor vem do retorno da criacao, que e o que o provedor
   // registrou; nada e recalculado aqui.
@@ -709,7 +719,7 @@ export default function Checkout() {
   // Gate fiscal: quando falta nome/documento, a modal entra ANTES do checkout e,
   // ao salvar, o fluxo continua sozinho de onde parou (sem passo extra para a
   // pessoa). `fiscalPendente` guarda o que fazer depois de salvar.
-  const nfseEnabled = useNfseEnabled();
+  const coletaFiscalEnabled = useFiscalCollectionEnabled();
   const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
   const [fiscalPendente, setFiscalPendente] = useState<
     | null
@@ -846,11 +856,15 @@ export default function Checkout() {
       | { tipo: "dialog" }
       | { tipo: "checkout"; metodo: CheckoutPaymentMethod },
   ) {
-    // Emissao desligada: NAO ha gate. Segue direto ao pagamento, sem nem ler o
-    // perfil. E o mesmo desfecho que a falha de leitura ja tem logo abaixo, e
-    // pelo mesmo motivo: a venda nao pode ser barrada por causa de um dado que
-    // so serve a uma nota que nao vai ser emitida.
-    if (!nfseEnabled) {
+    // Coleta desligada: NAO ha gate. Segue direto ao pagamento, sem nem ler o
+    // perfil. E o mesmo desfecho que a falha de leitura ja tem logo abaixo: a
+    // venda nao pode ser barrada por dado fiscal.
+    //
+    // O switch e o da COLETA, nao o da emissao: a coleta antecede a emissao,
+    // para o backlog de notas sair com tomador identificado. Com a emissao
+    // ainda desligada e a coleta ligada, o gate pede nome civil e documento
+    // de quem esta prestes a virar pagante.
+    if (!coletaFiscalEnabled) {
       if (proximo.tipo === "checkout") {
         void doCheckout(proximo.metodo);
         return;
@@ -877,6 +891,36 @@ export default function Checkout() {
       return;
     }
     setPaymentDialogOpen(true);
+  }
+
+  /**
+   * Campos que o passo de identidade do Pix pede, decididos DENTRO do handler
+   * do 422.
+   *
+   * O CPF nao e checado aqui: ele entra porque o servidor acabou de dizer que
+   * falta. So o NOME e lido do perfil, com a mesma regra que o servidor e o
+   * gate fiscal usam (`isValidFullName`), para nao existir um terceiro criterio
+   * de "nome preenchido".
+   *
+   * Duas saidas conservadoras, e as duas pedem SO o CPF:
+   * - coleta desligada: o nome civil e coleta fiscal, e o kill-switch da coleta
+   *   tem que desliga-la em todos os pontos, inclusive neste. O CPF fica, porque
+   *   e exigencia do provedor do Pix e nao depende de switch nenhum;
+   * - leitura do perfil falhou: pedir o nome a quem talvez ja o tenha gravado
+   *   sobrescreveria um dado bom, e a venda nao e barrada por erro nosso.
+   */
+  async function camposDoPassoPix(): Promise<MissingProfileField[]> {
+    if (!coletaFiscalEnabled) return ["cpf"];
+    try {
+      const perfil = await getMyProfile();
+      return isValidFullName(perfil.full_name) ? ["cpf"] : ["full_name", "cpf"];
+    } catch (error) {
+      console.error(
+        "[Checkout] leitura de perfil para o passo do Pix falhou",
+        error,
+      );
+      return ["cpf"];
+    }
   }
 
   // Dispara o checkout com o metodo escolhido. captureCheckoutStarted vive AQUI (na
@@ -949,6 +993,7 @@ export default function Checkout() {
       } else if (code === "cpf_obrigatorio") {
         // Nao e erro para a pessoa ler: e um passo que falta. Abre a coleta em
         // vez de um toast, e o `onSaved` retoma o checkout na MESMA interacao.
+        setCpfStepMissing(await camposDoPassoPix());
         setCpfStepOpen(true);
       } else if (code === "valor_minimo_pix") {
         // TODO(Ana): copy do valor abaixo do minimo do Pix.
@@ -1533,7 +1578,7 @@ export default function Checkout() {
 
       <CompleteProfileModal
         open={cpfStepOpen}
-        missing={["cpf"]}
+        missing={cpfStepMissing}
         onClose={() => setCpfStepOpen(false)}
         onSaved={() => {
           setCpfStepOpen(false);
@@ -1541,10 +1586,20 @@ export default function Checkout() {
           // metodo de novo.
           void doCheckout("pix");
         }}
-        // TODO(Ana): titulo do passo de CPF no fluxo Pix.
-        titulo="Falta o seu CPF"
-        // TODO(Ana): razao visivel de por que pedimos CPF no Pix.
-        motivo="O Pix exige o CPF do pagador para gerar a cobrança. Ele fica só no seu cadastro."
+        titulo={
+          cpfStepMissing.includes("full_name")
+            ? // TODO(Ana): titulo do passo do Pix quando pede nome civil e CPF.
+              "Faltam seu nome completo e seu CPF"
+            : // TODO(Ana): titulo do passo de CPF no fluxo Pix.
+              "Falta o seu CPF"
+        }
+        motivo={
+          cpfStepMissing.includes("full_name")
+            ? // TODO(Ana): razao visivel de por que pedimos nome civil e CPF no Pix.
+              "O Pix exige o CPF do pagador para gerar a cobrança, e o nome completo identifica você na nota fiscal da assinatura. Os dois ficam só no seu cadastro."
+            : // TODO(Ana): razao visivel de por que pedimos CPF no Pix.
+              "O Pix exige o CPF do pagador para gerar a cobrança. Ele fica só no seu cadastro."
+        }
       />
 
       <PaymentMethodDialog

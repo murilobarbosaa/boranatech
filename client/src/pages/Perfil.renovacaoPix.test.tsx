@@ -88,7 +88,10 @@ vi.mock("@/components/pro/PixCheckoutModal", () => ({
     open ? <div>MODAL_PIX_ABERTO</div> : null,
 }));
 
-vi.mock("@/services/nfseStatus", () => ({ useNfseEnabled: () => false }));
+vi.mock("@/services/nfseStatus", () => ({
+  useNfseEnabled: () => false,
+  useFiscalCollectionEnabled: () => false,
+}));
 vi.mock("@/components/Layout", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
