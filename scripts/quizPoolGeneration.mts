@@ -427,6 +427,18 @@ export function completarExemplo(
       errado: 'git commit -m "ajusta o titulo"',
     };
   }
+  // sql (Lote 11a) tambem com ramo proprio, antes de qualquer compartilhado:
+  // a lacuna natural de SQL e uma clausula ou palavra-chave (WHERE, GROUP BY,
+  // LEFT JOIN), que e o que a linguagem tem de proprio. As erradas sao
+  // clausulas reais no lugar errado (HAVING sem GROUP BY, ON sem JOIN), o
+  // erro de quem esta aprendendo, nunca palavra inventada.
+  if (codeLanguages[0] === "sql") {
+    return {
+      trecho: `SELECT nome FROM alunos ${CODE_PLACEHOLDER} nota >= 7;`,
+      alternativas: "WHERE, HAVING, ON e GROUP BY",
+      errado: "SELECT nome FROM alunos WHERE nota >= 7;",
+    };
+  }
   // ts ANTES do ramo compartilhado com js, e nao dentro dele: o prompt de js
   // precisa ficar byte a byte (a pool dele esta publicada, mesmo criterio do
   // exemplo negativo logo abaixo). Em TypeScript a lacuna natural e sobre a
@@ -453,7 +465,7 @@ export function completarExemplo(
 // Exemplo NEGATIVO de codigo no enunciado, na linguagem da trilha. Nos Lotes
 // 06c e 06d o modelo repetiu o trecho dentro de pergunta em quase toda secao,
 // mesmo com a regra escrita; o errado ao lado do certo e a segunda defesa.
-// Python e bash; js fica sem: a pool de js esta publicada e o prompt dela fica
+// Python, bash e sql; js fica sem: a pool de js esta publicada e o prompt dela fica
 // byte a byte, mesmo criterio do exemplo de completar.
 function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
   if (codeLanguages[0] === "python") {
@@ -464,6 +476,11 @@ function exemploCodigoNoEnunciado(codeLanguages: string[]): string[] {
   if (codeLanguages[0] === "bash") {
     return [
       `- PROIBIDO (codigo no enunciado): pergunta "O que $ git status imprime num repositorio sem alteracoes?" com codigo.trecho "$ git status". CERTO: pergunta "Num repositorio sem alteracoes, o que este comando imprime?" e o comando so em codigo.trecho.`,
+    ];
+  }
+  if (codeLanguages[0] === "sql") {
+    return [
+      `- PROIBIDO (codigo no enunciado): pergunta "O que SELECT COUNT(*) FROM alunos; devolve?" com codigo.trecho "SELECT COUNT(*) FROM alunos;". CERTO: pergunta "O que esta consulta imprime?" e a consulta so em codigo.trecho.`,
     ];
   }
   return [];
@@ -1130,19 +1147,25 @@ export function poolRuleWarnings(
   );
 }
 
-// Cota de codigo por nivel: quantas perguntas de codigo o laco PREVIU (soma
-// das cotas das secoes do nivel) contra quantas a pool tem. Canal de AVISO,
-// separado de poolGateViolations: bloquear obrigaria a autorar codigo a mao
-// em toda secao que esgota tentativas, e o aviso deixa a decisao com quem
-// revisa (no Lote 06d o bestClean aceitou o avancado com 5 de 7 em silencio).
-// O nivel de cada secao vem das perguntas dela; id ausente aborta, como no
-// portao, em vez de conferir uma secao menor.
-export function codeQuotaWarnings(
+// Cota de codigo POR SECAO (Lote 11a): quantas perguntas de codigo o laco
+// PREVIU para cada secao contra quantas a pool tem nela. Antes o aviso somava
+// por nivel, e o deficit de uma secao e o excesso de outra do mesmo nivel se
+// cancelavam em silencio; a soma por nivel continua, mas como linha EXTRA,
+// nunca como a unica. O nivel de cada secao vem das perguntas dela; id
+// ausente aborta, como no portao, em vez de conferir uma secao menor.
+export interface DesvioDeCotaDeCodigo {
+  label: string;
+  nivel: QuizNivel;
+  cota: number;
+  veio: number;
+}
+
+export function codeQuotaDeviations(
   questions: QuizQuestion[],
   sections: GateSection[],
-): string[] {
+): DesvioDeCotaDeCodigo[] {
   const porId = new Map(questions.map((question) => [question.id, question]));
-  const porNivel = new Map<QuizNivel, { previstas: number; feitas: number }>();
+  const out: DesvioDeCotaDeCodigo[] = [];
   for (const section of sections) {
     const daSecao = section.ids.map((id) => {
       const question = porId.get(id);
@@ -1154,22 +1177,73 @@ export function codeQuotaWarnings(
       return question;
     });
     if (daSecao.length === 0) continue;
-    const nivel = daSecao[0].nivel;
-    const conta = porNivel.get(nivel) ?? { previstas: 0, feitas: 0 };
-    conta.previstas += section.codeQuota;
-    conta.feitas += daSecao.filter((question) =>
-      isCodeQuestion(question),
-    ).length;
-    porNivel.set(nivel, conta);
+    out.push({
+      label: section.label,
+      nivel: daSecao[0].nivel,
+      cota: section.codeQuota,
+      veio: daSecao.filter((question) => isCodeQuestion(question)).length,
+    });
   }
-  const out: string[] = [];
+  return out;
+}
+
+export function codeQuotaWarnings(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+): string[] {
+  const secoes = codeQuotaDeviations(questions, sections);
+  const out = secoes
+    .filter((secao) => secao.veio !== secao.cota)
+    .map(
+      (secao) =>
+        `secao "${secao.label}": ${secao.veio} pergunta(s) de codigo de ${secao.cota} prevista(s) (${secao.veio < secao.cota ? `deficit de ${secao.cota - secao.veio}` : `excesso de ${secao.veio - secao.cota}`})`,
+    );
   for (const nivel of NIVEIS) {
-    const conta = porNivel.get(nivel);
-    if (conta && conta.feitas !== conta.previstas) {
+    const doNivel = secoes.filter((secao) => secao.nivel === nivel);
+    const previstas = doNivel.reduce((soma, secao) => soma + secao.cota, 0);
+    const feitas = doNivel.reduce((soma, secao) => soma + secao.veio, 0);
+    if (doNivel.length > 0 && feitas !== previstas) {
       out.push(
-        `nivel ${nivel}: ${conta.feitas} perguntas de codigo de ${conta.previstas} previstas`,
+        `nivel ${nivel}: ${feitas} perguntas de codigo de ${previstas} previstas`,
       );
     }
   }
   return out;
+}
+
+// Desfecho da cota no fim da geracao (Lote 11a). Secao com DEFICIT faz o
+// comando sair com status diferente de zero, listando as secoes; o gerador
+// chama isto DEPOIS de gravar o arquivo, entao o trabalho e o credito nao se
+// perdem. Excesso nao reprova: e aviso, a pool tem mais codigo que o pedido.
+// `aceitarDeficit` e o --aceitar-deficit-de-codigo, que devolve o
+// comportamento antigo e deixa dito na saida que foi usado.
+export function codeQuotaExit(
+  questions: QuizQuestion[],
+  sections: GateSection[],
+  aceitarDeficit: boolean,
+): { status: 0 | 1; linhas: string[] } {
+  const deficits = codeQuotaDeviations(questions, sections).filter(
+    (secao) => secao.veio < secao.cota,
+  );
+  if (deficits.length === 0) return { status: 0, linhas: [] };
+  const lista = deficits.map(
+    (secao) => `- ${secao.label}: ${secao.veio} de ${secao.cota}`,
+  );
+  if (aceitarDeficit) {
+    return {
+      status: 0,
+      linhas: [
+        `--aceitar-deficit-de-codigo usado: ${deficits.length} secao(oes) com deficit de cota de codigo aceita(s):`,
+        ...lista,
+      ],
+    };
+  }
+  return {
+    status: 1,
+    linhas: [
+      `cota de codigo nao fechada em ${deficits.length} secao(oes); a pool foi gravada, mas o comando reprova:`,
+      ...lista,
+      "Para aceitar o deficit, rode de novo com --aceitar-deficit-de-codigo (o relatorio da geracao registra o uso).",
+    ],
+  };
 }

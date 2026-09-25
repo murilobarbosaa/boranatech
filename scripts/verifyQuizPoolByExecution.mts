@@ -87,10 +87,14 @@ export function fillGap(trecho: string, alternativa: string): string {
 // nenhuma, a primeira linha nao vazia.
 // Diagnostico do compilador de TS: "trecho.ts(1,7): error TS2322: ...".
 const ERRO_TS_RE = /^(.+)\((\d+),(\d+)\): error (TS\d+): (.*)$/m;
+// Erro do runner de SQL (runSqlSnippet.mjs): "q0.sql:3: error SQLITE_CONSTRAINT: ...".
+const ERRO_SQL_RE = /^(.+\.sql):(\d+): error (SQLITE_[A-Z]+): (.*)$/m;
 
 export function erroDoStderr(stderr: string): string {
   const ts = ERRO_TS_RE.exec(stderr);
   if (ts) return `${ts[4]}: ${ts[5]}`.trim();
+  const sql = ERRO_SQL_RE.exec(stderr);
+  if (sql) return `${sql[3]}: ${sql[4]}`.trim();
   const linhas = stderr.split("\n");
   const deErro = linhas.filter(
     (linha) => /^\s*\w*Error\b/.test(linha) || linha.includes("Error:"),
@@ -342,6 +346,8 @@ export function conferirCodigo(
 export function linhaDoErro(stderr: string): number | null {
   const tsc = ERRO_TS_RE.exec(stderr);
   if (tsc) return Number(tsc[2]);
+  const sql = ERRO_SQL_RE.exec(stderr);
+  if (sql) return Number(sql[2]);
   const py = [...stderr.matchAll(/File "([^"]*\.py)", line (\d+)/g)];
   if (py.length > 0) {
     const doTrecho = py.filter((m) => m[1] === py[0][1]);

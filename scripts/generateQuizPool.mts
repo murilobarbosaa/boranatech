@@ -34,6 +34,7 @@ import {
   buildQuestionSchema,
   buildUserPrompt,
   codeLeafIds,
+  codeQuotaExit,
   codeQuotaFor,
   codeQuotaWarnings,
   codeRuleViolations,
@@ -356,6 +357,11 @@ const withSchema = args.includes("--schema");
 // com runner (js, python) e criado uma vez por rodada e reaproveitado; o
 // dry-run nunca executa nada.
 const noExec = args.includes("--no-exec");
+// --aceitar-deficit-de-codigo (Lote 11a): secao que termina as tentativas com
+// menos perguntas de codigo que a cota faz o comando sair com status 1 depois
+// de gravar a pool; este flag devolve o comportamento antigo (so aviso), e a
+// saida da geracao registra que ele foi usado.
+const aceitarDeficitDeCodigo = args.includes("--aceitar-deficit-de-codigo");
 const executores = new Map<string, Executor>();
 const executarPor = (linguagem: string): Executor | null => {
   const runner = runnerFor(linguagem);
@@ -378,7 +384,7 @@ const slug = args.find(
 
 if (!slug || (repairIdx >= 0 && (!repairPath || repairPath.startsWith("--")))) {
   console.error(
-    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec] [--repair <pool.ts>]",
+    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec] [--aceitar-deficit-de-codigo] [--repair <pool.ts>]",
   );
   process.exit(1);
 }
@@ -730,9 +736,10 @@ const violacoes = poolGateViolations(
   roadmap.codeLanguages ?? [],
   noExec ? null : executarPor,
 );
-// Cota de codigo por nivel: AVISO no stdout, nunca bloqueio. Bloquear
-// obrigaria a autorar codigo a mao em toda secao que esgota tentativas; o
-// aviso deixa a decisao com quem revisa. Ver codeQuotaWarnings.
+// Cota de codigo por SECAO: o aviso sai aqui, e o deficit reprova o comando
+// no fim, DEPOIS de gravar a pool (ver codeQuotaExit). Nao bloqueia antes da
+// gravacao: a pool gerada custou credito, e o deficit se resolve autorando a
+// pergunta que falta, nao gerando tudo de novo.
 for (const aviso of codeQuotaWarnings(questions, gateSections)) {
   console.log(`[portao] [aviso] ${aviso}`);
 }
@@ -775,3 +782,15 @@ console.log(
   `[generateQuizPool] ${questions.length} perguntas -> ${path.relative(process.cwd(), outFile)}`,
 );
 console.log(`[generateQuizPool] ${custoLinha()}`);
+
+const cotaDeCodigo = codeQuotaExit(
+  questions,
+  gateSections,
+  aceitarDeficitDeCodigo,
+);
+for (const linha of cotaDeCodigo.linhas) {
+  (cotaDeCodigo.status === 0 ? console.log : console.error)(
+    `[generateQuizPool] ${linha}`,
+  );
+}
+if (cotaDeCodigo.status !== 0) process.exit(cotaDeCodigo.status);
