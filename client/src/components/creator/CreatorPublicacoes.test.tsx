@@ -192,6 +192,59 @@ describe("CreatorPublicacoes: leitura", () => {
     );
   });
 
+  it("no celular (lote 11m): tres faixas por item e o formulario empilhado; o sm: volta a linha unica", async () => {
+    responderLista([REEL], 1);
+    render(<CreatorPublicacoes />);
+    const linha = await screen.findByTestId(`creator-publicacao-${POST_ID}`);
+    const cl = linha.getAttribute("class") ?? "";
+    expect(cl).toContain("grid grid-cols-[minmax(0,1fr)_auto]");
+    expect(cl).toContain("sm:flex sm:flex-wrap sm:gap-x-3");
+    // Faixa (a): rede, tipo e status juntos; o wrapper some no `sm:`.
+    expect(
+      within(linha)
+        .getByTestId(`creator-publicacao-chips-${POST_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("sm:contents");
+    // A data a direita da primeira faixa.
+    expect(
+      within(linha)
+        .getByTestId(`creator-publicacao-data-${POST_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("col-start-2 row-start-1 justify-self-end");
+    // Faixa (b): o link numa linha propria, truncado no fim, alvo de 40 px.
+    const link = within(linha).getByTestId(
+      `creator-publicacao-link-${POST_ID}`,
+    );
+    const ck = link.getAttribute("class") ?? "";
+    expect(ck).toContain("col-span-2");
+    expect(ck).toContain("truncate");
+    expect(ck).toContain("py-2.5");
+    expect(ck).toContain("sm:py-0");
+    // Faixa (c): a acao embaixo, a direita, com 40 px.
+    const lixeira = within(linha).getByTestId(
+      `creator-publicacao-remover-${POST_ID}`,
+    );
+    const cr = lixeira.getAttribute("class") ?? "";
+    expect(cr).toContain("col-span-2 justify-self-end");
+    expect(cr).toContain("h-10 w-10");
+    expect(cr).toContain("sm:inline-block sm:h-auto sm:w-auto");
+    // Formulario: as tres redes numa linha; tipo, link e botao empilhados.
+    const redes = screen.getByTestId("creator-publicacoes-redes");
+    expect(redes.getAttribute("class") ?? "").toContain("grid grid-cols-3");
+    expect(redes.getAttribute("class") ?? "").toContain(
+      "sm:flex sm:flex-wrap sm:items-center",
+    );
+    for (const botao of within(redes).getAllByRole("radio")) {
+      expect(botao.getAttribute("class") ?? "").toContain(
+        "max-sm:flex-col max-sm:gap-1 max-sm:px-1 max-sm:text-xs",
+      );
+    }
+    expect(
+      screen.getByTestId("creator-publicacoes-campos").getAttribute("class") ??
+        "",
+    ).toContain("flex flex-col gap-2 sm:flex-row");
+  });
+
   it("dois lados no desktop: cabecalho e formulario de um, lista do outro", async () => {
     // Lote 10: o cabecalho passou a morar DENTRO do componente, porque ele e a
     // primeira coisa da coluna da esquerda. A lista rola por dentro, entao a

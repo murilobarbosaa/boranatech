@@ -105,6 +105,51 @@ describe("CreatorPublicacoesAdmin", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
+  it("no celular (lote 11m): tres faixas por item e alvos de 40 px; o sm: volta a linha unica", async () => {
+    responderLista([{ ...REEL, status: "pendente" }], 0);
+    render(<CreatorPublicacoesAdmin userId={UID} />);
+    const linha = await screen.findByTestId(
+      `creator-publicacao-admin-${POST_ID}`,
+    );
+    const cl = linha.getAttribute("class") ?? "";
+    expect(cl).toContain("grid grid-cols-[minmax(0,1fr)_auto]");
+    expect(cl).toContain("sm:flex sm:flex-wrap sm:gap-x-3");
+    expect(
+      within(linha)
+        .getByTestId(`creator-publicacao-admin-chips-${POST_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("sm:contents");
+    expect(
+      within(linha)
+        .getByTestId(`creator-publicacao-admin-data-${POST_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("col-start-2 row-start-1 justify-self-end");
+    const ck =
+      within(linha)
+        .getByTestId(`creator-publicacao-admin-link-${POST_ID}`)
+        .getAttribute("class") ?? "";
+    expect(ck).toContain("col-span-2");
+    expect(ck).toContain("truncate");
+    const acoes = within(linha).getByTestId(
+      `creator-publicacao-admin-acoes-${POST_ID}`,
+    );
+    const ca = acoes.getAttribute("class") ?? "";
+    expect(ca).toContain("col-span-2 flex flex-wrap items-center justify-end");
+    expect(ca).toContain("sm:contents");
+    const confirmar = within(acoes).getByTestId(
+      `creator-publicacao-admin-conferir-${POST_ID}`,
+    );
+    expect(confirmar.getAttribute("class") ?? "").toContain("min-h-10");
+    expect(confirmar.getAttribute("class") ?? "").toContain("sm:min-h-0");
+    const lixeira = within(acoes).getByTestId(
+      `creator-publicacao-admin-remover-${POST_ID}`,
+    );
+    expect(lixeira.getAttribute("class") ?? "").toContain("h-10 w-10");
+    expect(lixeira.getAttribute("class") ?? "").toContain(
+      "sm:inline-block sm:h-auto sm:w-auto",
+    );
+  });
+
   it("sem publicacao: a frase propria, e nenhuma linha", async () => {
     responderLista([], 0);
     render(<CreatorPublicacoesAdmin userId={UID} />);
