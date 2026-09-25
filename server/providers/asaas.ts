@@ -7,6 +7,7 @@ import {
   montarEstornoAsaas,
 } from "../lib/asaasLedger";
 import { registrarNoLedger } from "../lib/asaasLedgerWriter";
+import { registerFiscalInvoice } from "../lib/fiscalQueue";
 import {
   resolverAssinaturaDoAsaas,
   type AssinaturaDoAsaas,
@@ -1270,7 +1271,86 @@ async function activateOnPayment(args: {
     );
   }
 
+  // NOTA FISCAL, depois do acesso e do ledger, e sem lancar: mesmo contrato dos
+  // ganchos da Stripe (ver `registrarNotaFiscalDoPix`).
+  await registrarNotaFiscalDoPix({
+    chargeId,
+    userId: result.out_user_id,
+    subscriptionId: row.id,
+    amountCents: paidAmountCentsFromAsaas(event),
+    planCode: plan?.code ?? null,
+    periodStart,
+    periodEnd,
+  });
+
   return { received: true, activated: true };
+}
+
+/**
+ * Pix: registra a nota fiscal da cobranca que acabou de ativar. NUNCA LANCA.
+ *
+ * MESMO CONTRATO DOS GANCHOS DA STRIPE (`registrarNotaFiscalDeInvoice` e
+ * `registrarNotaFiscalDeBoleto`, em server/providers/stripe.ts): kill-switch
+ * primeiro; falha capturada, logada e mandada ao Sentry, sem relancar. Aqui o
+ * motivo e ainda mais concreto: uma excecao que escapasse cairia no `catch` de
+ * `processAsaasEvent`, que APAGA o billing_event e devolve 500, e a reentrega
+ * encontraria a linha ja `active` e nao refaria nada. Uma prefeitura fora do ar
+ * nao pode custar o dedupe de um pagamento ja ativado. O que escapar daqui a
+ * reconciliacao fiscal recolhe pelo ledger (server/lib/fiscalReconcile.ts).
+ *
+ * IDEMPOTENTE pela `charge_key` `asaas:<id do pagamento>`: o Asaas pode mandar
+ * PAYMENT_RECEIVED e PAYMENT_CONFIRMED para o mesmo pagamento, e o segundo, se
+ * chegar ate aqui, cai no `ignoreDuplicates` do registro e no jobId
+ * deterministico da fila.
+ *
+ * Nada de CPF passa por aqui: o tomador e lido pela fila, na emissao.
+ */
+async function registrarNotaFiscalDoPix(dados: {
+  chargeId: string | null;
+  userId: string;
+  subscriptionId: string;
+  amountCents: number | null;
+  planCode: string | null;
+  periodStart: string;
+  periodEnd: string;
+}): Promise<void> {
+  if (!env.nfseEnabled) return;
+  try {
+    if (!dados.chargeId) {
+      console.error(
+        `[fiscal] pagamento Asaas sem id na assinatura ${dados.subscriptionId}; nota nao registrada.`,
+      );
+      return;
+    }
+    // Valor BRUTO pago. Ausente nao vira zero, e zero nao vira nota: nota de
+    // valor zero nao existe, e inventar a base de um documento fiscal e pior
+    // que deixar a reconciliacao e o admin verem a falta.
+    if (dados.amountCents === null || dados.amountCents <= 0) {
+      console.error(
+        `[fiscal] pagamento Asaas ${dados.chargeId} sem valor pago; nota nao registrada.`,
+      );
+      return;
+    }
+    await registerFiscalInvoice({
+      userId: dados.userId,
+      subscriptionId: dados.subscriptionId,
+      paymentProvider: "asaas",
+      providerChargeId: dados.chargeId,
+      // Pix nao tem invoice nem payment intent da Stripe.
+      stripeInvoiceId: null,
+      stripePaymentIntentId: null,
+      amountCents: dados.amountCents,
+      planCode: dados.planCode,
+      periodStart: dados.periodStart,
+      periodEnd: dados.periodEnd,
+    });
+  } catch (fiscalErr) {
+    console.error(
+      `[fiscal] falha ao registrar nota do pagamento Asaas ${dados.chargeId ?? "?"}; ativacao NAO afetada:`,
+      fiscalErr,
+    );
+    Sentry.captureException(fiscalErr);
+  }
 }
 
 /**
