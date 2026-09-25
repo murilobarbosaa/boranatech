@@ -157,6 +157,16 @@ export function lerCerca(info: string): {
         problemasDaCerca.push(`nome de arquivo invalido na cerca: ${valor}`);
         continue;
       }
+      // Lote 11a: o wrapper de sql executa so o ULTIMO arquivo do grupo e nao
+      // carrega os anteriores (SQL nao tem import), entao erro no primeiro
+      // passaria calado, a classe do diagnostico perdido do ts no Lote 10b.
+      // O valor continua lido para a regra de banco= junto de arquivo= seguir
+      // acusando; o problema da cerca ja reprova o bloco.
+      if (linguagem === "sql") {
+        problemasDaCerca.push(
+          "arquivo= ainda nao vale em cerca sql: sql nao tem semantica de grupo (Lote 11), e so o ultimo arquivo executaria",
+        );
+      }
       arquivo = valor;
     }
     // banco= (Lote 11a): so em sql, nome do registro, nunca junto de

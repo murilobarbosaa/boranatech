@@ -87,9 +87,25 @@ describe("banco= na cerca: as tres regras", () => {
   });
 
   it("banco= junto de arquivo= e erro de cerca", () => {
-    expect(lerCerca("sql banco=teste arquivo=x.sql").problemasDaCerca).toEqual([
-      "banco= e arquivo= na mesma cerca",
+    // Pertinencia, e nao igualdade: desde que arquivo= em sql e erro por si
+    // (teste abaixo), a cerca acusa os dois problemas.
+    expect(
+      lerCerca("sql banco=teste arquivo=x.sql").problemasDaCerca,
+    ).toContain("banco= e arquivo= na mesma cerca");
+  });
+
+  // O wrapper de sql executa so o ULTIMO arquivo do grupo e nao carrega os
+  // anteriores, porque SQL nao tem import: erro no primeiro arquivo passaria
+  // calado, a mesma classe do diagnostico perdido do ts no Lote 10b. Ate a
+  // trilha de SQL dar semantica de grupo (Lote 11), arquivo= em sql e erro.
+  it("arquivo= em cerca sql e erro de cerca", () => {
+    expect(lerCerca("sql arquivo=a.sql").problemasDaCerca).toEqual([
+      "arquivo= ainda nao vale em cerca sql: sql nao tem semantica de grupo (Lote 11), e so o ultimo arquivo executaria",
     ]);
+  });
+
+  it("CONTROLE: arquivo= em cerca js continua valendo", () => {
+    expect(lerCerca("js arquivo=a.js").problemasDaCerca).toEqual([]);
   });
 
   it("CONTROLE: banco valido em sql nao tem problema", () => {
