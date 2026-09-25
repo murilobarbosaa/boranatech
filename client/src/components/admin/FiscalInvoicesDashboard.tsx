@@ -53,10 +53,12 @@ const STATUS_FILTROS = [
   { valor: "", label: "Todas" },
   { valor: "blocked_missing_data", label: "Bloqueadas" },
   { valor: "failed", label: "Falhas" },
+  { valor: "awaiting_batch", label: "Aguardando lote" },
   { valor: "pending", label: "Pendentes" },
   { valor: "processing", label: "Processando" },
   { valor: "issued", label: "Emitidas" },
   { valor: "canceled", label: "Canceladas" },
+  { valor: "skipped", label: "Dispensadas" },
 ];
 
 // Rotulo por status, com resolver de fallback: um status novo no servidor que
@@ -64,12 +66,14 @@ const STATUS_FILTROS = [
 // (regra dos lookups por valor do servidor, CLAUDE.md).
 // TODO(Ana): rotulos de status das notas (o mapa inteiro).
 const STATUS_LABEL: Record<string, string> = {
+  awaiting_batch: "Aguardando lote",
   pending: "Pendente",
   processing: "Processando",
   issued: "Emitida",
   failed: "Falhou",
   canceled: "Cancelada",
   blocked_missing_data: "Bloqueada",
+  skipped: "Dispensada",
 };
 
 function statusLabelOf(status: string): string {
