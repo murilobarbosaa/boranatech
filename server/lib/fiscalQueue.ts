@@ -5,10 +5,12 @@
 //
 // TRES escolhas de desenho que valem o comentario:
 //
-// 1. jobId DETERMINISTICO = stripe_charge_id. Reentrega de webhook (a Stripe
-//    reenvia por ate ~3 dias) vira no-op no `add`, sem duplicar job. Duplicar
-//    job aqui nao seria um retry a mais: seria risco de nota em duplicidade,
-//    que e problema fiscal, nao operacional.
+// 1. jobId DETERMINISTICO, derivado da `charge_key` da cobranca
+//    (`fiscalJobId`, em lib/fiscalChargeKey.ts). Reentrega de webhook (a
+//    Stripe reenvia por ate ~3 dias, o Asaas manda RECEIVED e CONFIRMED) vira
+//    no-op no `add`, sem duplicar job. Duplicar job aqui nao seria um retry a
+//    mais: seria risco de nota em duplicidade, que e problema fiscal, nao
+//    operacional.
 //
 // 2. attempts 12 com backoff exponencial base 60s. A escala e de HORAS, nao de
 //    segundos, porque a falha tipica e prefeitura fora do ar. Com base 60s as 12
@@ -26,6 +28,11 @@ import { Queue, Worker, type Job } from "bullmq";
 
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import { env } from "./env";
+import {
+  chargeKeyOf,
+  fiscalJobId,
+  type PaymentProvider,
+} from "./fiscalChargeKey";
 import {
   buildServiceDescription,
   isTerminalFiscalStatus,
@@ -76,12 +83,12 @@ const FISCAL_PROFILE_COLUMNS =
 export type FiscalInvoiceJobData =
   | {
       kind?: "issue";
-      /** Chave da linha em fiscal_invoices e tambem o jobId. */
-      stripeChargeId: string;
+      /** `fiscal_invoices.charge_key`; o jobId deriva dela. */
+      chargeKey: string;
     }
   | {
       kind: "cancel";
-      stripeChargeId: string;
+      chargeKey: string;
       justificativa: string;
     };
 
@@ -104,56 +111,61 @@ export const fiscalInvoiceQueue = queueConnection
  * (com captura no Sentry) porque falha fiscal nao pode derrubar ativacao de
  * acesso; um chamador futuro pode querer o contrario.
  */
-export async function enqueueFiscalInvoice(
-  stripeChargeId: string,
-): Promise<void> {
+export async function enqueueFiscalInvoice(chargeKey: string): Promise<void> {
   if (!fiscalInvoiceQueue) {
     console.warn(
-      `[fiscal] REDIS_URL ausente. Emissao de ${stripeChargeId} NAO enfileirada; a linha fica pending para a reconciliacao.`,
+      `[fiscal] REDIS_URL ausente. Emissao de ${chargeKey} NAO enfileirada; a linha fica pending para a reconciliacao.`,
     );
     return;
   }
   await withRedisOpTimeout(
     fiscalInvoiceQueue.add(
       "issue",
-      { kind: "issue", stripeChargeId },
-      { jobId: stripeChargeId },
+      { kind: "issue", chargeKey },
+      { jobId: fiscalJobId("issue", chargeKey) },
     ),
-    `fiscal:${stripeChargeId}`,
+    `fiscal:${chargeKey}`,
   );
 }
 
 /**
  * Enfileira o CANCELAMENTO de uma nota emitida.
  *
- * jobId com prefixo proprio (`cancel:`): se compartilhasse o jobId da emissao,
- * um cancelamento seria descartado como duplicata do job que emitiu aquela
- * mesma nota, e a nota ficaria valendo depois de um reembolso integral.
+ * jobId com prefixo proprio de cancelamento (ver `fiscalJobId`): se
+ * compartilhasse o jobId da emissao, um cancelamento seria descartado como
+ * duplicata do job que emitiu aquela mesma nota, e a nota ficaria valendo
+ * depois de um reembolso integral. Ate este lote o jobId era
+ * `cancel:${stripeChargeId}`, que o BullMQ recusa por conter `:`; todo
+ * cancelamento lancava no `add`, e a falha era engolida por
+ * `applyRefundToFiscalInvoice`.
  */
 export async function enqueueFiscalCancel(
-  stripeChargeId: string,
+  chargeKey: string,
   justificativa: string,
 ): Promise<void> {
   if (!fiscalInvoiceQueue) {
     console.warn(
-      `[fiscal] REDIS_URL ausente. Cancelamento de ${stripeChargeId} NAO enfileirado; a reconciliacao nao cobre este caso.`,
+      `[fiscal] REDIS_URL ausente. Cancelamento de ${chargeKey} NAO enfileirado; a reconciliacao nao cobre este caso.`,
     );
     return;
   }
   await withRedisOpTimeout(
     fiscalInvoiceQueue.add(
       "cancel",
-      { kind: "cancel", stripeChargeId, justificativa },
-      { jobId: `cancel:${stripeChargeId}` },
+      { kind: "cancel", chargeKey, justificativa },
+      { jobId: fiscalJobId("cancel", chargeKey) },
     ),
-    `fiscal-cancel:${stripeChargeId}`,
+    `fiscal-cancel:${chargeKey}`,
   );
 }
 
 export type RegisterFiscalInvoiceInput = {
   userId: string;
   subscriptionId: string | null;
-  stripeChargeId: string;
+  /** Provedor de PAGAMENTO da cobranca. */
+  paymentProvider: PaymentProvider;
+  /** Id da cobranca NO provedor: charge da Stripe, pagamento do Asaas. */
+  providerChargeId: string;
   stripeInvoiceId: string | null;
   stripePaymentIntentId: string | null;
   amountCents: number;
@@ -169,16 +181,25 @@ export type RegisterFiscalInvoiceInput = {
  * pode estar em 'processing' ou 'issued'. Sobrescrever devolveria uma nota
  * emitida para 'pending' e o worker tentaria emitir de novo. Reentrega tem que
  * ser no-op no banco e no-op na fila, e as duas coisas sao garantidas aqui (o
- * `ignoreDuplicates` de um lado, o jobId deterministico do outro).
+ * `ignoreDuplicates` sobre `charge_key` de um lado, o jobId deterministico do
+ * outro).
+ *
+ * `stripe_charge_id` segue preenchido nas linhas da Stripe e nulo nas do Asaas:
+ * a coluna diz de onde veio o dinheiro, e um id do Asaas nela mentiria sobre
+ * isso.
  */
 export async function registerFiscalInvoice(
   input: RegisterFiscalInvoiceInput,
 ): Promise<void> {
+  const chargeKey = chargeKeyOf(input.paymentProvider, input.providerChargeId);
   const { error } = await supabaseAdmin.from("fiscal_invoices").upsert(
     {
       user_id: input.userId,
       subscription_id: input.subscriptionId,
-      stripe_charge_id: input.stripeChargeId,
+      payment_provider: input.paymentProvider,
+      charge_key: chargeKey,
+      stripe_charge_id:
+        input.paymentProvider === "stripe" ? input.providerChargeId : null,
       stripe_invoice_id: input.stripeInvoiceId,
       stripe_payment_intent_id: input.stripePaymentIntentId,
       status: "pending",
@@ -190,12 +211,12 @@ export async function registerFiscalInvoice(
         periodEnd: input.periodEnd,
       }),
     },
-    { onConflict: "stripe_charge_id", ignoreDuplicates: true },
+    { onConflict: "charge_key", ignoreDuplicates: true },
   );
   if (error) {
     throw new Error(`Falha ao registrar nota fiscal: ${error.message}`);
   }
-  await enqueueFiscalInvoice(input.stripeChargeId);
+  await enqueueFiscalInvoice(chargeKey);
 }
 
 /**
@@ -221,7 +242,7 @@ export async function registerFiscalInvoice(
 export async function unblockFiscalInvoices(userId: string): Promise<number> {
   const { data: bloqueadas, error: readError } = await supabaseAdmin
     .from("fiscal_invoices")
-    .select("id, stripe_charge_id")
+    .select("id, charge_key")
     .eq("user_id", userId)
     .eq("status", "blocked_missing_data");
   if (readError) {
@@ -239,7 +260,7 @@ export async function unblockFiscalInvoices(userId: string): Promise<number> {
   let devolvidas = 0;
   for (const linha of bloqueadas as Array<{
     id: string;
-    stripe_charge_id: string;
+    charge_key: string;
   }>) {
     const { data: atualizada, error: updateError } = await supabaseAdmin
       .from("fiscal_invoices")
@@ -254,9 +275,9 @@ export async function unblockFiscalInvoices(userId: string): Promise<number> {
     }
     if (!atualizada || atualizada.length === 0) continue; // corrida: outro ja pegou.
 
-    // jobId deterministico por stripe_charge_id: se um job daquela cobranca
-    // ainda estiver vivo no Redis, este add e no-op, e nao ha duplicata.
-    await enqueueFiscalInvoice(linha.stripe_charge_id);
+    // jobId deterministico por charge_key: se um job daquela cobranca ainda
+    // estiver vivo no Redis, este add e no-op, e nao ha duplicata.
+    await enqueueFiscalInvoice(linha.charge_key);
     devolvidas += 1;
   }
 
@@ -441,15 +462,13 @@ function formatBrl(cents: number): string {
   });
 }
 
-async function loadRow(
-  stripeChargeId: string,
-): Promise<FiscalInvoiceRow | null> {
+async function loadRow(chargeKey: string): Promise<FiscalInvoiceRow | null> {
   const { data, error } = await supabaseAdmin
     .from("fiscal_invoices")
     .select(
       "id, user_id, status, amount_cents, service_description, provider_invoice_id, attempts, tomador_email",
     )
-    .eq("stripe_charge_id", stripeChargeId)
+    .eq("charge_key", chargeKey)
     .maybeSingle();
   if (error) {
     throw new Error(`Falha ao ler a nota fiscal: ${error.message}`);
@@ -497,15 +516,15 @@ async function loadTomadorSources(
  * nao conserta.
  */
 export async function processFiscalInvoiceJob(
-  stripeChargeId: string,
+  chargeKey: string,
 ): Promise<void> {
-  const row = await loadRow(stripeChargeId);
+  const row = await loadRow(chargeKey);
 
   // Sem linha: nada a emitir. Job de uma linha que foi removida a mao, ou
   // reentrega depois de um rollback. No-op, nao erro.
   if (!row) {
     console.warn(
-      `[fiscal] nenhuma linha para a cobranca ${stripeChargeId}; job ignorado.`,
+      `[fiscal] nenhuma linha para a cobranca ${chargeKey}; job ignorado.`,
     );
     return;
   }
@@ -661,13 +680,13 @@ export async function processFiscalInvoiceJob(
  * que o backoff resolve.
  */
 export async function processFiscalCancelJob(
-  stripeChargeId: string,
+  chargeKey: string,
   justificativa: string,
 ): Promise<void> {
-  const row = await loadRow(stripeChargeId);
+  const row = await loadRow(chargeKey);
   if (!row) {
     console.warn(
-      `[fiscal] cancelamento sem linha para ${stripeChargeId}; job ignorado.`,
+      `[fiscal] cancelamento sem linha para ${chargeKey}; job ignorado.`,
     );
     return;
   }
@@ -721,12 +740,12 @@ export function createFiscalInvoiceWorker() {
       // Fase 4 (ver o comentario do tipo).
       if (job.data.kind === "cancel") {
         await processFiscalCancelJob(
-          job.data.stripeChargeId,
+          job.data.chargeKey,
           job.data.justificativa,
         );
         return;
       }
-      await processFiscalInvoiceJob(job.data.stripeChargeId);
+      await processFiscalInvoiceJob(job.data.chargeKey);
     },
     {
       connection: queueConnection,

@@ -55,7 +55,8 @@ type NotaAlvo = {
  * registrado.
  */
 export async function applyRefundToFiscalInvoice(params: {
-  stripeChargeId: string;
+  /** `fiscal_invoices.charge_key` da cobranca reembolsada (`chargeKeyOf`). */
+  chargeKey: string;
   grossCents: number;
   refundedTotalCents: number;
   /** Aparece na justificativa enviada a prefeitura. */
@@ -71,7 +72,7 @@ export async function applyRefundToFiscalInvoice(params: {
     const { data, error } = await supabaseAdmin
       .from("fiscal_invoices")
       .select("id, status, precisa_revisao")
-      .eq("stripe_charge_id", params.stripeChargeId)
+      .eq("charge_key", params.chargeKey)
       .maybeSingle();
     if (error) {
       throw new Error(`Falha ao buscar a nota da cobranca: ${error.message}`);
@@ -86,7 +87,7 @@ export async function applyRefundToFiscalInvoice(params: {
 
     if (extensao === "total") {
       await enqueueFiscalCancel(
-        params.stripeChargeId,
+        params.chargeKey,
         "Reembolso integral ao tomador",
       );
       console.log(
@@ -117,7 +118,7 @@ export async function applyRefundToFiscalInvoice(params: {
     );
   } catch (err) {
     console.error(
-      `[fiscal] falha ao aplicar reembolso na nota de ${params.stripeChargeId}; o REEMBOLSO nao foi afetado:`,
+      `[fiscal] falha ao aplicar reembolso na nota de ${params.chargeKey}; o REEMBOLSO nao foi afetado:`,
       err,
     );
     Sentry.captureException(err);

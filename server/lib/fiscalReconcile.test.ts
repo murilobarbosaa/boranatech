@@ -23,6 +23,9 @@ function charge(
   over: Partial<ChargeParaReconciliar> = {},
 ): ChargeParaReconciliar {
   return {
+    provider: "stripe",
+    // Balance transaction: na Stripe NAO e a identidade da cobranca.
+    provider_transaction_id: "txn_1",
     stripe_charge_id: "ch_1",
     stripe_invoice_id: "in_1",
     gross_cents: 2990,
@@ -35,13 +38,16 @@ function charge(
 
 describe("decidirCharge, corte", () => {
   it("cria para cobranca depois do corte", () => {
-    expect(decidirCharge(charge(), CUTOFF)).toEqual({ acao: "criar" });
+    expect(decidirCharge(charge(), CUTOFF)).toEqual({
+      acao: "criar",
+      chargeKey: "stripe:ch_1",
+    });
   });
 
   it("cria para cobranca NO dia do corte (o corte e inclusivo)", () => {
     expect(
       decidirCharge(charge({ occurred_at: "2026-08-01T12:00:00Z" }), CUTOFF),
-    ).toEqual({ acao: "criar" });
+    ).toEqual({ acao: "criar", chargeKey: "stripe:ch_1" });
   });
 
   it("pula cobranca anterior ao corte", () => {
@@ -60,7 +66,7 @@ describe("decidirCharge, corte", () => {
     // 01/09 as 02:00 UTC e 31/08 em Brasilia: depois do corte, entra.
     expect(
       decidirCharge(charge({ occurred_at: "2026-09-01T02:00:00Z" }), CUTOFF),
-    ).toEqual({ acao: "criar" });
+    ).toEqual({ acao: "criar", chargeKey: "stripe:ch_1" });
   });
 
   it("data invalida NAO vira nota", () => {

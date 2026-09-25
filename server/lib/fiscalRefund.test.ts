@@ -13,15 +13,15 @@ type Linha = Record<string, unknown> & { id: string; status: string };
 
 const estado = vi.hoisted(() => ({
   linhas: [] as Linha[],
-  cancelamentos: [] as Array<{ chargeId: string; justificativa: string }>,
+  cancelamentos: [] as Array<{ chargeKey: string; justificativa: string }>,
 }));
 
 vi.mock("./redis", () => ({ queueConnection: null, cacheConnection: null }));
 vi.mock("./env", () => ({ env: { nfseEnabled: true, redisUrl: "" } }));
 vi.mock("./fiscalQueue", () => ({
   enqueueFiscalCancel: vi.fn(
-    async (chargeId: string, justificativa: string) => {
-      estado.cancelamentos.push({ chargeId, justificativa });
+    async (chargeKey: string, justificativa: string) => {
+      estado.cancelamentos.push({ chargeKey, justificativa });
     },
   ),
 }));
@@ -97,19 +97,23 @@ describe("applyRefundToFiscalInvoice", () => {
         status: "issued",
         precisa_revisao: false,
         stripe_charge_id: "ch_1",
+        charge_key: "stripe:ch_1",
       },
     ];
   });
 
   it("integral enfileira cancelamento e NAO marca revisao", async () => {
     await applyRefundToFiscalInvoice({
-      stripeChargeId: "ch_1",
+      chargeKey: "stripe:ch_1",
       grossCents: 2990,
       refundedTotalCents: 2990,
       origem: "webhook",
     });
     expect(estado.cancelamentos).toEqual([
-      { chargeId: "ch_1", justificativa: "Reembolso integral ao tomador" },
+      {
+        chargeKey: "stripe:ch_1",
+        justificativa: "Reembolso integral ao tomador",
+      },
     ]);
     expect(estado.linhas[0].precisa_revisao).toBe(false);
     // A nota SO vira canceled quando o provedor confirmar. Marcar aqui seria
@@ -119,7 +123,7 @@ describe("applyRefundToFiscalInvoice", () => {
 
   it("parcial marca revisao e NAO cancela", async () => {
     await applyRefundToFiscalInvoice({
-      stripeChargeId: "ch_1",
+      chargeKey: "stripe:ch_1",
       grossCents: 22200,
       refundedTotalCents: 5000,
       origem: "admin",
@@ -134,7 +138,7 @@ describe("applyRefundToFiscalInvoice", () => {
     estado.linhas[0].precisa_revisao = true;
     estado.linhas[0].error_code = "marcado_antes";
     await applyRefundToFiscalInvoice({
-      stripeChargeId: "ch_1",
+      chargeKey: "stripe:ch_1",
       grossCents: 22200,
       refundedTotalCents: 5000,
       origem: "webhook",
@@ -147,7 +151,7 @@ describe("applyRefundToFiscalInvoice", () => {
     // marcar revisao numa nota que ainda vai nascer so geraria ruido.
     estado.linhas[0].status = "pending";
     await applyRefundToFiscalInvoice({
-      stripeChargeId: "ch_1",
+      chargeKey: "stripe:ch_1",
       grossCents: 2990,
       refundedTotalCents: 2990,
       origem: "webhook",
@@ -160,7 +164,7 @@ describe("applyRefundToFiscalInvoice", () => {
     estado.linhas = [];
     await expect(
       applyRefundToFiscalInvoice({
-        stripeChargeId: "ch_sem_nota",
+        chargeKey: "stripe:ch_sem_nota",
         grossCents: 2990,
         refundedTotalCents: 2990,
         origem: "webhook",

@@ -50,6 +50,7 @@ import {
   parsePosthogPagesPeriod,
 } from "../lib/posthogPagesPeriod";
 import { isRetryableFiscalStatus } from "../lib/fiscalInvoice";
+import { chargeKeyOf } from "../lib/fiscalChargeKey";
 import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
@@ -3306,7 +3307,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
 
     const { data, error } = await supabaseAdmin
       .from("fiscal_invoices")
-      .select("id, status, stripe_charge_id")
+      .select("id, status, charge_key")
       .eq("id", id)
       .maybeSingle();
     if (error) {
@@ -3319,7 +3320,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
     const nota = data as {
       id: string;
       status: string;
-      stripe_charge_id: string;
+      charge_key: string;
     };
 
     // A regra de quais estados sao retentaveis mora em lib/fiscalInvoice.ts,
@@ -3344,7 +3345,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
       return next(dbError("fiscal retry", updateError, "Erro ao reprocessar."));
     }
 
-    await enqueueFiscalInvoice(nota.stripe_charge_id);
+    await enqueueFiscalInvoice(nota.charge_key);
 
     await logAudit({
       actorUserId: req.user!.id,
@@ -5668,7 +5669,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     // operacao, que e o acumulado com que a classificacao trabalha.
     if (env.nfseEnabled && chargeId) {
       await applyRefundToFiscalInvoice({
-        stripeChargeId: chargeId,
+        chargeKey: chargeKeyOf("stripe", chargeId),
         grossCents: alvo.gross_cents,
         refundedTotalCents: alvo.refunded_cents + validacao.amountCents,
         origem: "admin",

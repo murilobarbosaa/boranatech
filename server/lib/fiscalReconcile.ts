@@ -17,6 +17,7 @@
 // de "o que declarei existe?", que e a direcao que o CLAUDE.md cobra.
 
 import { supabaseAdmin } from "./supabaseAdmin";
+import { chargeKeyOf } from "./fiscalChargeKey";
 import { enqueueFiscalInvoice, unblockFiscalInvoices } from "./fiscalQueue";
 import { env } from "./env";
 import { diaBrasilia, formatarDiaCivil } from "../../shared/brasiliaDay";
@@ -28,6 +29,14 @@ export const DEFAULT_STALE_HOURS = 6;
 const PAGE = 500;
 
 export type ChargeParaReconciliar = {
+  /** `finance_transactions.provider`: quem cobrou. */
+  provider: string;
+  /**
+   * Identidade da linha no provedor. No Asaas e o id do PAGAMENTO, o mesmo que
+   * vira a chave da nota. Na Stripe e a balance transaction (`txn_...`), que NAO
+   * identifica a cobranca: la a chave vem de `stripe_charge_id`.
+   */
+  provider_transaction_id: string | null;
   stripe_charge_id: string | null;
   stripe_invoice_id: string | null;
   gross_cents: number;
@@ -37,7 +46,7 @@ export type ChargeParaReconciliar = {
 };
 
 export type DecisaoDeCharge =
-  | { acao: "criar" }
+  | { acao: "criar"; chargeKey: string }
   | { acao: "pular"; motivo: "before_cutoff" | "no_user" | "sem_charge_id" };
 
 /**
@@ -55,12 +64,22 @@ export type DecisaoDeCharge =
  * com dados de outra pessoa ou com dados em branco; as duas sao piores que nao
  * emitir, e o contador existe justamente para isso aparecer no admin em vez de
  * sumir.
+ *
+ * `sem_charge_id` so quando falta o id DO PROVEDOR daquela cobranca. Ate o lote
+ * FISCAL-PIX 01 esta funcao pulava toda linha sem `stripe_charge_id`, o que
+ * tirava da reconciliacao TODA cobranca Pix, porque o Asaas nunca preenche essa
+ * coluna.
+ *
+ * Provedor desconhecido LANCA, e nao pula: pular em silencio faria uma
+ * cobranca de um provedor novo sumir do pipeline fiscal com a reconciliacao
+ * reportando sucesso.
  */
 export function decidirCharge(
   charge: ChargeParaReconciliar,
   cutoffISO: string,
 ): DecisaoDeCharge {
-  if (!charge.stripe_charge_id) {
+  const idNoProvedor = idDaCobrancaNoProvedor(charge);
+  if (!idNoProvedor) {
     return { acao: "pular", motivo: "sem_charge_id" };
   }
   // Comparacao no DIA de Brasilia, nao no instante UTC: o corte e uma data
@@ -73,7 +92,19 @@ export function decidirCharge(
   if (!charge.user_id) {
     return { acao: "pular", motivo: "no_user" };
   }
-  return { acao: "criar" };
+  return {
+    acao: "criar",
+    chargeKey: chargeKeyOf(charge.provider, idNoProvedor),
+  };
+}
+
+/** Qual coluna identifica a cobranca, por provedor. */
+function idDaCobrancaNoProvedor(charge: ChargeParaReconciliar): string | null {
+  if (charge.provider === "stripe") return charge.stripe_charge_id;
+  if (charge.provider === "asaas") return charge.provider_transaction_id;
+  throw new Error(
+    `Provedor de pagamento desconhecido na reconciliacao fiscal: "${charge.provider}".`,
+  );
 }
 
 /**
@@ -111,7 +142,9 @@ export type ReconcileResult = {
   skipped_before_cutoff: number;
   /** Amostra do que seria (ou foi) criado. Curta: e para leitura humana. */
   amostra: Array<{
-    stripeChargeId: string;
+    chargeKey: string;
+    /** Nulo nas cobrancas do Asaas. Mantido para quem ja le a amostra. */
+    stripeChargeId: string | null;
     userId: string | null;
     amountCents: number;
     occurredAt: string;
@@ -124,21 +157,21 @@ function horasAtras(horas: number): string {
   return new Date(Date.now() - horas * 60 * 60 * 1000).toISOString();
 }
 
-/** Charge ids que JA tem linha em fiscal_invoices, consultados em lotes. */
-async function chargesComNota(ids: string[]): Promise<Set<string>> {
+/** Chaves que JA tem linha em fiscal_invoices, consultadas em lotes. */
+async function chargesComNota(chaves: string[]): Promise<Set<string>> {
   const existentes = new Set<string>();
   const CHUNK = 100; // mesmo tamanho do orphanPayments: o `.in()` vira query string.
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const chunk = ids.slice(i, i + CHUNK);
+  for (let i = 0; i < chaves.length; i += CHUNK) {
+    const chunk = chaves.slice(i, i + CHUNK);
     const { data, error } = await supabaseAdmin
       .from("fiscal_invoices")
-      .select("stripe_charge_id")
-      .in("stripe_charge_id", chunk);
+      .select("charge_key")
+      .in("charge_key", chunk);
     if (error) {
       throw new Error(`Falha ao consultar notas existentes: ${error.message}`);
     }
-    for (const linha of (data ?? []) as Array<{ stripe_charge_id: string }>) {
-      existentes.add(linha.stripe_charge_id);
+    for (const linha of (data ?? []) as Array<{ charge_key: string }>) {
+      existentes.add(linha.charge_key);
     }
   }
   return existentes;
@@ -160,7 +193,7 @@ async function varrerChargesSemNota(
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "stripe_charge_id, stripe_invoice_id, gross_cents, occurred_at, user_id, plan_code",
+        "provider, provider_transaction_id, stripe_charge_id, stripe_invoice_id, gross_cents, occurred_at, user_id, plan_code",
       )
       .eq("type", "charge")
       .gte("occurred_at", desdeUtc)
@@ -172,7 +205,10 @@ async function varrerChargesSemNota(
     const linhas = (data ?? []) as ChargeParaReconciliar[];
     if (linhas.length === 0) break;
 
-    const candidatas: ChargeParaReconciliar[] = [];
+    const candidatas: Array<{
+      charge: ChargeParaReconciliar;
+      chargeKey: string;
+    }> = [];
     for (const charge of linhas) {
       const decisao = decidirCharge(charge, cutoffISO);
       if (decisao.acao === "pular") {
@@ -183,16 +219,15 @@ async function varrerChargesSemNota(
         }
         continue;
       }
-      candidatas.push(charge);
+      candidatas.push({ charge, chargeKey: decisao.chargeKey });
     }
 
     if (candidatas.length > 0) {
-      const jaTem = await chargesComNota(
-        candidatas.map((c) => c.stripe_charge_id!),
-      );
-      for (const charge of candidatas) {
-        const chargeId = charge.stripe_charge_id!;
-        if (jaTem.has(chargeId)) continue;
+      const jaTem = await chargesComNota(candidatas.map((c) => c.chargeKey));
+      for (const { charge, chargeKey } of candidatas) {
+        if (jaTem.has(chargeKey)) continue;
+        const stripeChargeId =
+          charge.provider === "stripe" ? charge.stripe_charge_id : null;
 
         const descricao = descricaoPorCompetencia(
           charge.plan_code,
@@ -201,7 +236,8 @@ async function varrerChargesSemNota(
         resultado.created += 1;
         if (resultado.amostra.length < 20) {
           resultado.amostra.push({
-            stripeChargeId: chargeId,
+            chargeKey,
+            stripeChargeId,
             userId: charge.user_id,
             amountCents: charge.gross_cents,
             occurredAt: charge.occurred_at,
@@ -226,21 +262,23 @@ async function varrerChargesSemNota(
             {
               user_id: charge.user_id,
               subscription_id: sub?.id ?? null,
-              stripe_charge_id: chargeId,
+              payment_provider: charge.provider,
+              charge_key: chargeKey,
+              stripe_charge_id: stripeChargeId,
               stripe_invoice_id: charge.stripe_invoice_id,
               status: "pending",
               amount_cents: charge.gross_cents,
               plan_code: charge.plan_code,
               service_description: descricao,
             },
-            { onConflict: "stripe_charge_id", ignoreDuplicates: true },
+            { onConflict: "charge_key", ignoreDuplicates: true },
           );
         if (insertError) {
           throw new Error(
-            `Falha ao criar nota para ${chargeId}: ${insertError.message}`,
+            `Falha ao criar nota para ${chargeKey}: ${insertError.message}`,
           );
         }
-        await enqueueFiscalInvoice(chargeId);
+        await enqueueFiscalInvoice(chargeKey);
       }
     }
 
@@ -257,7 +295,7 @@ async function varrerParadas(
   const limite = horasAtras(staleHours);
   let query = supabaseAdmin
     .from("fiscal_invoices")
-    .select("stripe_charge_id")
+    .select("charge_key")
     .eq("status", status)
     .lt("updated_at", limite)
     .limit(PAGE);
@@ -273,14 +311,14 @@ async function varrerParadas(
   if (error) {
     throw new Error(`Falha ao varrer notas ${status}: ${error.message}`);
   }
-  const linhas = (data ?? []) as Array<{ stripe_charge_id: string }>;
+  const linhas = (data ?? []) as Array<{ charge_key: string }>;
   if (dryRun) return linhas.length;
 
   let reenfileiradas = 0;
   for (const linha of linhas) {
     // Seguro por construcao: o jobId deterministico dedupa contra um job vivo, e
     // o ramo de reconsulta impede reemissao de nota ja aberta no provedor.
-    await enqueueFiscalInvoice(linha.stripe_charge_id);
+    await enqueueFiscalInvoice(linha.charge_key);
     reenfileiradas += 1;
   }
   return reenfileiradas;
