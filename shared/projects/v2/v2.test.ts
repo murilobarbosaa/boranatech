@@ -57,6 +57,54 @@ const TERMOS_DO_DICIONARIO = new Set(dictionaryTerms.map((t) => t.term));
 const FERRAMENTAS = new Set(devTools.map((t) => t.name));
 const CATALOGO_POR_ID = new Map(projetos.map((p) => [p.id, p]));
 
+// Limites por nivel do CATALOGO: projeto maior tem mais etapas e mais horas.
+// Nivel fora desta tabela e reprovado pelo nome, nunca cai num limite padrao:
+// um padrao devolveria um veredito plausivel sobre um nivel que ninguem
+// classificou.
+//
+// O teto de horas do Iniciante e 16, e nao 12: tres modulos do piloto
+// (api-rest-tarefas e pipeline-etl-python com 16, dashboard-power-bi com 14)
+// ja estavam acima de 12 quando o guard nasceu, e o piloto nao foi reescrito
+// para caber na regra.
+const LIMITES_POR_NIVEL: Record<
+  string,
+  {
+    etapas: [number, number];
+    horas: { minInicio?: number; maxInicio?: number; maxFim?: number };
+  }
+> = {
+  Iniciante: {
+    etapas: [3, 6],
+    horas: { maxFim: 16 },
+  },
+  Intermediário: {
+    etapas: [4, 8],
+    horas: { minInicio: 8, maxInicio: 25 },
+  },
+  Avançado: {
+    etapas: [4, 8],
+    horas: { minInicio: 20 },
+  },
+};
+
+// A faixa da mensagem sai dos MESMOS numeros que o guard compara: um texto
+// escrito a parte ficaria certo ate o dia em que alguem mudasse so o numero.
+function faixaDeHoras(h: {
+  minInicio?: number;
+  maxInicio?: number;
+  maxFim?: number;
+}): string {
+  const partes: string[] = [];
+  if (h.minInicio !== undefined && h.maxInicio !== undefined)
+    partes.push(`horas[0] de ${h.minInicio} a ${h.maxInicio}`);
+  else if (h.minInicio !== undefined)
+    partes.push(`horas[0] a partir de ${h.minInicio}`);
+  else if (h.maxInicio !== undefined)
+    partes.push(`horas[0] ate ${h.maxInicio}`);
+  if (h.maxFim !== undefined) partes.push(`horas[1] ate ${h.maxFim}`);
+  return partes.join(" e ");
+}
+
 const VERIF_SO_DEPLOY = ["deploy_responde", "readme_tem_link_deploy"];
 const VERIF_SO_REPO = ["repo_publico", "readme_existe", "min_commits_5"];
 
@@ -80,8 +128,6 @@ describe("projetos v2", () => {
         ruins.push(`${d.id}: ids de requisito repetidos`);
 
       const etapas = d.etapas ?? [];
-      if (etapas.length < 3 || etapas.length > 5)
-        ruins.push(`${d.id}: ${etapas.length} etapas (esperado 3 a 5)`);
       if (new Set(etapas.map((e) => e.id)).size !== etapas.length)
         ruins.push(`${d.id}: ids de etapa repetidos`);
 
@@ -104,6 +150,59 @@ describe("projetos v2", () => {
     expect(
       ruins,
       `detalhes v2 incompletos (${ruins.length}):\n${ruins.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("2b. o numero de etapas cabe no nivel do catalogo", () => {
+    const ruins: string[] = [];
+    for (const d of PROJETOS_V2) {
+      const nivel = CATALOGO_POR_ID.get(d.id)?.nivel ?? "(fora do catalogo)";
+      const limite = LIMITES_POR_NIVEL[nivel];
+      const n = d.etapas.length;
+      if (!limite) {
+        ruins.push(`${d.id}: nivel "${nivel}" sem limite definido`);
+        continue;
+      }
+      const [min, max] = limite.etapas;
+      if (n < min || n > max)
+        ruins.push(
+          `${d.id} (${nivel}): ${n} etapas (esperado ${min} a ${max})`,
+        );
+    }
+    expect(
+      ruins,
+      `etapas fora do nivel (${ruins.length}):\n${ruins.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("2c. o tempo estimado e coerente com o nivel do catalogo", () => {
+    const ruins: string[] = [];
+    for (const d of PROJETOS_V2) {
+      const nivel = CATALOGO_POR_ID.get(d.id)?.nivel ?? "(fora do catalogo)";
+      const limite = LIMITES_POR_NIVEL[nivel];
+      const horas = d.briefing.tempoEstimado?.horas;
+      if (!limite) {
+        ruins.push(`${d.id}: nivel "${nivel}" sem limite definido`);
+        continue;
+      }
+      if (!horas) {
+        ruins.push(`${d.id} (${nivel}): sem tempoEstimado.horas`);
+        continue;
+      }
+      const [inicio, fim] = horas;
+      const { minInicio, maxInicio, maxFim } = limite.horas;
+      const fora =
+        (minInicio !== undefined && inicio < minInicio) ||
+        (maxInicio !== undefined && inicio > maxInicio) ||
+        (maxFim !== undefined && fim > maxFim);
+      if (fora)
+        ruins.push(
+          `${d.id} (${nivel}): horas ${inicio} a ${fim} (esperado ${faixaDeHoras(limite.horas)})`,
+        );
+    }
+    expect(
+      ruins,
+      `tempo fora do nivel (${ruins.length}):\n${ruins.join("\n")}`,
     ).toEqual([]);
   });
 
@@ -222,21 +321,40 @@ describe("projetos v2", () => {
     ).toEqual([]);
   });
 
-  it("9. id pro no catalogo tem requisitos nos DOIS lados", () => {
-    // O detalhe v2 nao pode tirar nada da validacao por leitor de GitHub, que
-    // le `requisitos` do CATALOGO (server/routes/projectValidations.ts).
+  it("9. id pro no catalogo tem no modulo v2 os MESMOS requisitos do catalogo", () => {
+    // `requisitosParaValidar` (server/routes/projectValidations.ts) prefere os
+    // requisitos do modulo v2 aos do catalogo. Um pro que ganha modulo com
+    // requisitos diferentes muda a regua de quem ja validou: a mesma entrega
+    // passaria a ter outra nota. Por isso a igualdade e total, id, ordem,
+    // descricao e verificacao.
     const ruins: string[] = [];
     for (const d of PROJETOS_V2) {
       const noCatalogo = CATALOGO_POR_ID.get(d.id);
       if (noCatalogo?.pro !== true) continue;
-      if (!(d.requisitos?.length ?? 0))
-        ruins.push(`${d.id}: pro sem requisitos no detalhe v2`);
-      if (!(noCatalogo.requisitos?.length ?? 0))
+      const doCatalogo = noCatalogo.requisitos ?? [];
+      const doModulo = d.requisitos ?? [];
+      if (doCatalogo.length === 0) {
         ruins.push(`${d.id}: pro sem requisitos no catalogo`);
+        continue;
+      }
+      if (doModulo.length !== doCatalogo.length) {
+        ruins.push(
+          `${d.id}: ${doModulo.length} requisitos no modulo, ${doCatalogo.length} no catalogo`,
+        );
+        continue;
+      }
+      doCatalogo.forEach((c, i) => {
+        const m = doModulo[i];
+        for (const campo of ["id", "descricao", "verificacao"] as const)
+          if (m[campo] !== c[campo])
+            ruins.push(
+              `${d.id}: requisitos[${i}].${campo} diverge do catalogo ("${c[campo]}" no catalogo, "${m[campo]}" no modulo)`,
+            );
+      });
     }
     expect(
       ruins,
-      `projetos pro incompletos (${ruins.length}): ${ruins.join(", ")}`,
+      `projetos pro com requisitos divergentes do catalogo (${ruins.length}):\n${ruins.join("\n")}`,
     ).toEqual([]);
   });
 
