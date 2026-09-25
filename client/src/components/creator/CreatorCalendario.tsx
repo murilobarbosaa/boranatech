@@ -590,7 +590,7 @@ export function CreatorCalendario({
           <button
             type="button"
             onClick={recarregar}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo
@@ -686,7 +686,7 @@ export function CreatorCalendario({
           type="button"
           data-testid="creator-calendario-anterior"
           onClick={() => andarMes(-1)}
-          className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+          className="bnt-pressable min-h-10 min-w-10 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:min-h-0 sm:min-w-0"
           // TODO(Ana)
           aria-label="Mês anterior"
         >
@@ -702,7 +702,7 @@ export function CreatorCalendario({
           type="button"
           data-testid="creator-calendario-proximo"
           onClick={() => andarMes(1)}
-          className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+          className="bnt-pressable min-h-10 min-w-10 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:min-h-0 sm:min-w-0"
           // TODO(Ana)
           aria-label="Próximo mês"
         >

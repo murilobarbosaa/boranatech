@@ -60,7 +60,7 @@ function CampoDoLink({ link }: { link: string }) {
         <button
           type="button"
           onClick={() => void copiar()}
-          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-slate-950 bg-slate-950 px-3 py-1.5 text-xs font-black text-white"
+          className="bnt-pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-slate-950 bg-slate-950 px-3 py-1.5 text-xs font-black text-white min-h-10 sm:min-h-0"
         >
           {estado === "copiado" ? (
             <Check className={ICONE} />

@@ -118,7 +118,7 @@ function BotaoTentarDeNovo({ onClick }: { onClick: () => void }) {
       <button
         type="button"
         onClick={onClick}
-        className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+        className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
       >
         {/* TODO(Ana) */}
         Tentar de novo
@@ -251,7 +251,7 @@ function Pilulas<T extends string>({
           role="radio"
           aria-checked={opcao.valor === valor}
           onClick={() => onChange(opcao.valor)}
-          className={`-ml-0.5 border-l-2 border-slate-900 px-3 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 sm:px-4 ${
+          className={`-ml-0.5 min-h-10 border-l-2 border-slate-900 px-3 py-2 text-xs font-black uppercase sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 sm:px-4 ${
             opcao.valor === valor
               ? "bg-yellow-300 text-ink-on-accent"
               : "bg-white text-slate-500 hover:bg-yellow-50 dark:hover:bg-secondary"
@@ -531,7 +531,7 @@ function Quadro({
             type="button"
             onClick={() => onPage(Math.max(1, page - 1))}
             disabled={page <= 1}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Anterior
@@ -544,7 +544,7 @@ function Quadro({
             type="button"
             onClick={() => onPage(Math.min(totalDePaginas, page + 1))}
             disabled={page >= totalDePaginas}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Próxima
@@ -657,7 +657,7 @@ function RankingDaAba() {
           data-testid="creators-ranking-recolher"
           aria-expanded={aberto}
           onClick={() => setAberto((a) => !a)}
-          className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+          className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
         >
           {aberto ? (
             <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" />
@@ -730,7 +730,7 @@ export function CreatorsSection() {
             <button
               type="button"
               onClick={() => trocarParametro(CHAVE.creator, null)}
-              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
             >
               {/* TODO(Ana) */}
               Voltar ao quadro

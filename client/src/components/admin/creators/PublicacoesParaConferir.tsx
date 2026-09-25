@@ -227,7 +227,7 @@ export function PublicacoesParaConferir() {
             <button
               type="button"
               onClick={() => setTentativa((n) => n + 1)}
-              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
             >
               {/* TODO(Ana) */}
               Tentar de novo
@@ -362,7 +362,7 @@ export function PublicacoesParaConferir() {
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Anterior
@@ -375,7 +375,7 @@ export function PublicacoesParaConferir() {
             type="button"
             onClick={() => setPage((p) => Math.min(totalDePaginas, p + 1))}
             disabled={page >= totalDePaginas}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Próxima

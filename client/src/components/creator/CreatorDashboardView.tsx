@@ -202,7 +202,7 @@ function SeletorDeJanela({
             aria-pressed={ativa}
             disabled={desabilitado}
             onClick={() => onChange(opcao.valor)}
-            className={`rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-wait sm:py-1.5 ${
+            className={`rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-wait sm:py-1.5 min-h-10 sm:min-h-0 ${
               ativa
                 ? "bg-slate-950 text-white"
                 : "bg-white text-slate-700 hover:bg-slate-100"

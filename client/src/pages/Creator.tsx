@@ -145,7 +145,7 @@ export default function Creator() {
           data-testid="creator-cabecalho"
           className={`container ${
             kind === "afiliado"
-              ? "grid gap-6 md:grid-cols-[1fr_minmax(0,28rem)] md:items-center md:gap-8"
+              ? "grid grid-cols-1 gap-6 md:grid-cols-[1fr_minmax(0,28rem)] md:items-center md:gap-8"
               : ""
           }`}
         >
@@ -221,7 +221,7 @@ export default function Creator() {
                 <section
                   data-testid="creator-card-publicacoes"
                   aria-labelledby="creator-publicacoes-titulo"
-                  className="card-surface rounded-3xl bg-white p-6 md:p-8"
+                  className="card-surface rounded-3xl bg-white p-4 sm:p-6 md:p-8"
                 >
                   <CreatorPublicacoes />
                 </section>
@@ -343,7 +343,7 @@ function PainelDeNumeros() {
           <button
             type="button"
             onClick={() => setTentativa((n) => n + 1)}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo
@@ -403,7 +403,7 @@ function Comunidade() {
       <section
         data-testid="creator-comunidade"
         aria-labelledby="creator-calendario-titulo"
-        className="card-surface rounded-3xl bg-white p-6 md:p-8"
+        className="card-surface rounded-3xl bg-white p-4 sm:p-6 md:p-8"
       >
         <CreatorCalendario />
       </section>
@@ -445,7 +445,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
           <button
             type="button"
             onClick={recarregar}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo
@@ -464,7 +464,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
     // naturais diferentes, e um mais curto que o outro lia como cartao pela
     // metade. Funciona porque o BlocoBoundary devolve os filhos sem elemento
     // proprio (o ErrorBoundary tambem), entao a `section` E o item da grade.
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
       <BlocoBoundary
         // TODO(Ana)
         nome="Redes"
@@ -472,7 +472,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-redes"
           aria-labelledby="creator-redes-titulo"
-          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-4 sm:p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-redes-titulo"
@@ -502,7 +502,7 @@ function AbaDePerfil({ perfil }: { perfil: PerfilDoCreator }) {
         <section
           data-testid="creator-card-pagamento"
           aria-labelledby="creator-pagamento-titulo"
-          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-4 sm:p-6 md:p-8"
         >
           <CabecalhoDeSecao
             id="creator-pagamento-titulo"

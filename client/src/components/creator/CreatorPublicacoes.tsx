@@ -300,7 +300,7 @@ export function CreatorPublicacoes() {
           <button
             type="button"
             onClick={() => setTentativa((n) => n + 1)}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo

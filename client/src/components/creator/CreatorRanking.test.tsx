@@ -167,6 +167,13 @@ describe("CreatorRanking: busca e mes", () => {
     const history = montar("/creator?aba=ranking&mes=2026-08");
     await screen.findByTestId("creator-ranking-podio");
 
+    // 40 px de alvo no celular (lote 11m).
+    for (const id of ["creator-ranking-anterior", "creator-ranking-proximo"]) {
+      const c = (screen.getByTestId(id).getAttribute("class") ?? "").split(" ");
+      for (const k of ["min-h-10", "min-w-10", "sm:min-h-0", "sm:min-w-0"]) {
+        expect(c, `${id} ${k}`).toContain(k);
+      }
+    }
     fireEvent.click(screen.getByTestId("creator-ranking-anterior"));
     expect(history[history.length - 1]).toBe(
       "/creator?aba=ranking&mes=2026-07",
@@ -424,6 +431,42 @@ describe("CreatorRanking: podio", () => {
     const cd = (detalhe.getAttribute("class") ?? "").split(" ");
     expect(cd).toContain("md:justify-center");
     expect(cd).not.toContain("justify-center");
+  });
+
+  it("lista no celular (lote 11m): contagens numa linha inteira embaixo e o @ quebrando entre segmentos", async () => {
+    responderCom(
+      ranking([
+        posicao(1, "a", 90),
+        posicao(2, "b", 80),
+        posicao(3, "c", 70),
+        posicao(4, "d", 60, { handle: "mari.ux.research" }),
+      ]),
+    );
+    montar();
+    const linha = await screen.findByTestId("creator-ranking-linha-d");
+    const cl = (linha.getAttribute("class") ?? "").split(" ");
+    for (const k of ["flex-wrap", "gap-x-3", "gap-y-2", "sm:flex-nowrap"]) {
+      expect(cl, k).toContain(k);
+    }
+    const contagens = within(linha).getByTestId("creator-ranking-contagens-d");
+    expect(contagens.getAttribute("class")).toBe(
+      "order-last basis-full sm:order-none sm:ml-auto sm:basis-auto",
+    );
+    // O meio some do layout no celular, para as contagens virarem item da
+    // linha; no `sm:` ele volta a ser o flex de antes, com elas dentro.
+    const meio = within(linha).getByTestId("creator-ranking-meio-linha-d");
+    expect((meio.getAttribute("class") ?? "").split(" ")[0]).toBe("contents");
+    expect(meio.getAttribute("class") ?? "").toContain("sm:flex sm:min-w-0");
+    expect(meio.contains(contagens)).toBe(true);
+    expect(
+      within(contagens).getByTestId("creator-ranking-detalhe-d"),
+    ).toBeTruthy();
+    const handle = within(linha).getByTestId("creator-ranking-handle-d");
+    expect(handle.getAttribute("class")).toBe("min-w-0 sm:hidden");
+    expect(handle.querySelectorAll("wbr")).toHaveLength(2);
+    expect(handle.nextElementSibling?.getAttribute("class")).toBe(
+      "hidden truncate sm:inline",
+    );
   });
 
   it("um pontuado: os outros dois lugares ficam vazios, com 'ainda ninguém'", async () => {

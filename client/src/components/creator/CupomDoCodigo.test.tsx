@@ -19,7 +19,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CreatorDashboardCodigo } from "@shared/creatorDashboard";
 import { CupomDoCodigo } from "./CupomDoCodigo";
 
-function codigo(parcial: Partial<CreatorDashboardCodigo> = {}): CreatorDashboardCodigo {
+function codigo(
+  parcial: Partial<CreatorDashboardCodigo> = {},
+): CreatorDashboardCodigo {
   return {
     id: "a1",
     code: "ANA30",
@@ -67,7 +69,10 @@ describe("CupomDoCodigo", () => {
 
   it("sem desconto, o selo diz isso em vez de 0%", () => {
     render(
-      <CupomDoCodigo codigo={codigo({ discount_percent: 0 })} visao="creator" />,
+      <CupomDoCodigo
+        codigo={codigo({ discount_percent: 0 })}
+        visao="creator"
+      />,
     );
     const cupom = screen.getByTestId("creator-codigo-ANA30");
     expect(cupom.textContent).toContain("Sem desconto para quem usar");
@@ -81,6 +86,12 @@ describe("CupomDoCodigo", () => {
       configurable: true,
     });
     render(<CupomDoCodigo codigo={codigo()} visao="creator" />);
+    // 40 px de alvo no celular (lote 11m).
+    const cc = (
+      screen.getByRole("button", { name: "Copiar" }).getAttribute("class") ?? ""
+    ).split(" ");
+    expect(cc).toContain("min-h-10");
+    expect(cc).toContain("sm:min-h-0");
     fireEvent.click(screen.getByRole("button", { name: "Copiar" }));
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
@@ -107,7 +118,9 @@ describe("CupomDoCodigo", () => {
   });
 
   it("status pausado mostra o selo; ativo nao", () => {
-    render(<CupomDoCodigo codigo={codigo({ status: "paused" })} visao="creator" />);
+    render(
+      <CupomDoCodigo codigo={codigo({ status: "paused" })} visao="creator" />,
+    );
     expect(screen.getByTestId("creator-codigo-ANA30").textContent).toContain(
       "Pausado",
     );
@@ -121,9 +134,9 @@ describe("CupomDoCodigo", () => {
   it("a nota interna so aparece na visao admin", () => {
     const comNota = codigo({ notes: "contrato assinado" });
     render(<CupomDoCodigo codigo={comNota} visao="admin" />);
-    expect(
-      screen.getByTestId("creator-codigo-notas-ANA30").textContent,
-    ).toBe("contrato assinado");
+    expect(screen.getByTestId("creator-codigo-notas-ANA30").textContent).toBe(
+      "contrato assinado",
+    );
     cleanup();
     render(<CupomDoCodigo codigo={comNota} visao="creator" />);
     expect(screen.queryByTestId("creator-codigo-notas-ANA30")).toBeNull();

@@ -333,6 +333,14 @@ describe("quadro", () => {
     rotear();
     montar();
     await screen.findByTestId("creators-quadro");
+    // 40 px de alvo no celular nos filtros (lote 11m).
+    for (const radio of within(
+      screen.getByRole("radiogroup", { name: "Status da concessão" }),
+    ).getAllByRole("radio")) {
+      const c = (radio.getAttribute("class") ?? "").split(" ");
+      expect(c).toContain("min-h-10");
+      expect(c).toContain("sm:min-h-0");
+    }
 
     fireEvent.click(
       within(

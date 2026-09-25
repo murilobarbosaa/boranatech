@@ -98,7 +98,7 @@ const CHIP_SAIU =
   "rounded-full border-2 border-slate-300 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600";
 
 const BOTAO_DO_MES =
-  "bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 disabled:cursor-not-allowed disabled:opacity-40";
+  "bnt-pressable min-h-10 min-w-10 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:min-h-0 sm:min-w-0 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** O `?mes=` da URL, ou o mes atual quando ele nao serve. */
 function mesDaUrl(search: string, mesAtual: string): string {
@@ -250,19 +250,21 @@ function DetalheDaPontuacao({
 /**
  * O @ com o glifo da rede, ou o nome quando nao ha @.
  *
- * `quebraNoCelular` (lote 11m, faixa do podio): abaixo de `md` o @ quebra
+ * `quebraAte` (lote 11m, podio e lista): abaixo do breakpoint o @ quebra
  * ENTRE os segmentos (depois de `.` e `_`, com `<wbr>`), porque a faixa tem
- * uns 90 px para ele e o @ e a informacao principal, que nao pode sair
+ * pouco espaco para ele e o @ e a informacao principal, que nao pode sair
  * cortada no meio. No `md:` volta o span com `truncate` de antes.
  */
 function Handle({
   p,
   className,
-  quebraNoCelular = false,
+  quebraAte = null,
 }: {
   p: PosicaoDoRanking;
   className: string;
-  quebraNoCelular?: boolean;
+  /** Ate qual breakpoint o @ quebra entre os segmentos: o podio muda de
+   * layout no `md:`, a lista no `sm:`. `null` e o truncate de sempre. */
+  quebraAte?: "sm" | "md" | null;
 }) {
   const texto = nomeDeExibicao(p);
   return (
@@ -270,7 +272,7 @@ function Handle({
       {p.rede_do_handle ? (
         <IconeDaRede rede={p.rede_do_handle} className="h-3.5 w-3.5 shrink-0" />
       ) : null}
-      {quebraNoCelular ? (
+      {quebraAte ? (
         <>
           {/* Duas versoes, e nao uma com `md:truncate`: o `<wbr>` continua
               sendo ponto de quebra mesmo com `nowrap`, e o desktop quebrava
@@ -278,7 +280,9 @@ function Handle({
               de acessibilidade, entao o @ nao e lido duas vezes. */}
           <span
             data-testid={`creator-ranking-handle-${p.user_id}`}
-            className="min-w-0 md:hidden"
+            className={
+              quebraAte === "sm" ? "min-w-0 sm:hidden" : "min-w-0 md:hidden"
+            }
           >
             {texto.split(/(?<=[._])/).map((parte, i) => (
               <Fragment key={i}>
@@ -287,7 +291,15 @@ function Handle({
               </Fragment>
             ))}
           </span>
-          <span className="hidden truncate md:inline">{texto}</span>
+          <span
+            className={
+              quebraAte === "sm"
+                ? "hidden truncate sm:inline"
+                : "hidden truncate md:inline"
+            }
+          >
+            {texto}
+          </span>
         </>
       ) : (
         <span className="truncate">{texto}</span>
@@ -443,7 +455,7 @@ function LugarDoPodio({
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 md:mt-4 md:flex-nowrap md:gap-2">
               <Handle
                 p={p}
-                quebraNoCelular
+                quebraAte="md"
                 className="font-display text-sm font-black text-slate-950 md:text-lg"
               />
               {p.eu ? (
@@ -504,7 +516,10 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
   return (
     <li
       data-testid={`creator-ranking-linha-${p.user_id}`}
-      className={`flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 ${
+      // No celular (lote 11m) os chips das contagens descem para uma linha
+      // inteira (`order-last basis-full`): no meio da linha eles tinham uns
+      // 110 px e quebravam por dentro. O `sm:` volta a linha de antes.
+      className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 px-3 py-2.5 sm:flex-nowrap ${
         p.eu
           ? "border-[var(--bnt-accent-solid)] bg-amber-50 shadow-[3px_3px_0_var(--bnt-accent-solid)]"
           : "border-slate-200 bg-white"
@@ -519,9 +534,19 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
         avatarUrl={p.avatar_url}
         size="sm"
       />
-      <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-        <span className="flex min-w-0 items-center gap-2">
-          <Handle p={p} className="text-sm font-black text-slate-950" />
+      {/* `contents` no celular: o @ e as contagens viram itens da linha, e
+          as contagens descem inteiras; no `sm:` o meio volta a ser o flex de
+          antes, com as contagens dentro dele. */}
+      <span
+        data-testid={`creator-ranking-meio-linha-${p.user_id}`}
+        className="contents sm:flex sm:min-w-0 sm:flex-1 sm:flex-row sm:items-center sm:gap-3"
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial">
+          <Handle
+            p={p}
+            quebraAte="sm"
+            className="text-sm font-black text-slate-950"
+          />
           {p.name && p.handle ? (
             <span className="hidden truncate text-xs font-bold text-slate-500 sm:inline">
               {p.name}
@@ -545,7 +570,10 @@ function LinhaDaLista({ p }: { p: PosicaoDoRanking }) {
             </span>
           ) : null}
         </span>
-        <span className="sm:ml-auto">
+        <span
+          data-testid={`creator-ranking-contagens-${p.user_id}`}
+          className="order-last basis-full sm:order-none sm:ml-auto sm:basis-auto"
+        >
           <DetalheDaPontuacao p={p} align="end" />
         </span>
       </span>
@@ -761,7 +789,7 @@ export function CreatorRanking({
             <button
               type="button"
               onClick={() => setTentativa((n) => n + 1)}
-              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
             >
               {/* TODO(Ana) */}
               Tentar de novo
@@ -861,7 +889,7 @@ function Corpo({
             type="button"
             data-testid="creator-ranking-ver-mais"
             onClick={onVerMais}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             {`Ver mais (${resto.length - visiveis})`}

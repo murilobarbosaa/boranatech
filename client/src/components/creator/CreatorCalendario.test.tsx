@@ -502,6 +502,16 @@ describe("CreatorCalendario: navegacao de mes", () => {
       mesAntes,
     );
     expect(screen.getByTestId("creator-calendario-anterior")).toBeTruthy();
+    // 40 px de alvo no celular (lote 11m), nas duas setas.
+    for (const id of [
+      "creator-calendario-anterior",
+      "creator-calendario-proximo",
+    ]) {
+      const c = (screen.getByTestId(id).getAttribute("class") ?? "").split(" ");
+      for (const k of ["min-h-10", "min-w-10", "sm:min-h-0", "sm:min-w-0"]) {
+        expect(c, `${id} ${k}`).toContain(k);
+      }
+    }
     // As celulas viraram esqueleto, do mesmo tamanho e no mesmo numero de
     // linhas (semanas inteiras); nenhuma celula do mes velho ficou.
     const esqueleto = screen.getAllByTestId(/^creator-calendario-esqueleto-/);
