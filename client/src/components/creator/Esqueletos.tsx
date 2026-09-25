@@ -69,12 +69,12 @@ export function EsqueletoDoPerfil() {
     <div
       data-testid="creator-perfil-esqueleto"
       aria-busy="true"
-      className="grid gap-6 lg:grid-cols-2 lg:items-stretch"
+      className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch"
     >
       {[0, 1].map((cartao) => (
         <section
           key={cartao}
-          className="card-surface h-full space-y-5 rounded-3xl bg-white p-6 md:p-8"
+          className="card-surface h-full space-y-5 rounded-3xl bg-white p-4 sm:p-6 md:p-8"
         >
           <Cabecalho />
           <div className="space-y-4">

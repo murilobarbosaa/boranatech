@@ -227,7 +227,7 @@ export function PublicacoesParaConferir() {
             <button
               type="button"
               onClick={() => setTentativa((n) => n + 1)}
-              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
             >
               {/* TODO(Ana) */}
               Tentar de novo
@@ -250,7 +250,11 @@ export function PublicacoesParaConferir() {
               <li
                 key={linha.id}
                 data-testid={`creators-pendente-${linha.id}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2"
+                // TRES FAIXAS NO CELULAR (lote 11m): quem e a data; os chips;
+                // o link numa linha propria e as acoes embaixo, a direita. A
+                // grade de duas colunas so existe abaixo do `sm:`, que volta
+                // a linha unica de antes (os wrappers viram `contents`).
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2 sm:flex sm:flex-wrap sm:gap-x-3"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <AvatarDoCreator
@@ -261,31 +265,41 @@ export function PublicacoesParaConferir() {
                   />
                   <span
                     data-testid="creators-pendente-dono"
-                    className="truncate text-sm font-black text-slate-950"
+                    // No celular o nome quebra por palavra em vez de cortar.
+                    className="min-w-0 text-sm font-black text-slate-950 sm:truncate"
                   >
                     {nome}
                   </span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
-                  <IconeDaRede rede={linha.network} className="h-3 w-3" />
-                  {rotuloDaRede(linha.network)}
-                </span>
-                <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
-                  {rotuloDoTipo(linha.kind)}
+                <span
+                  data-testid={`creators-pendente-chips-${linha.id}`}
+                  className="col-span-2 flex flex-wrap items-center gap-2 sm:contents"
+                >
+                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
+                    <IconeDaRede rede={linha.network} className="h-3 w-3" />
+                    {rotuloDaRede(linha.network)}
+                  </span>
+                  <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
+                    {rotuloDoTipo(linha.kind)}
+                  </span>
                 </span>
                 <a
                   href={linha.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex-1 truncate text-sm font-bold text-violet-800 underline underline-offset-2"
+                  data-testid={`creators-pendente-link-${linha.id}`}
+                  className="col-span-2 min-w-0 flex-1 truncate py-2.5 text-sm font-bold text-violet-800 underline underline-offset-2 sm:py-0"
                 >
                   {urlCurta(linha.url)}
                 </a>
-                <span className="text-xs font-bold tabular-nums text-slate-500">
+                <span
+                  data-testid={`creators-pendente-data-${linha.id}`}
+                  className="col-start-2 row-start-1 justify-self-end text-xs font-bold tabular-nums text-slate-500"
+                >
                   {dataCurta(linha.created_at)}
                 </span>
                 {confirmandoRemocao === linha.id ? (
-                  <span className="flex flex-wrap items-center gap-2">
+                  <span className="col-span-2 flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
                       data-testid={`creators-pendente-confirmar-remocao-${linha.id}`}
@@ -309,7 +323,10 @@ export function PublicacoesParaConferir() {
                     </button>
                   </span>
                 ) : (
-                  <span className="flex flex-wrap items-center gap-2">
+                  <span
+                    data-testid={`creators-pendente-acoes-${linha.id}`}
+                    className="col-span-2 flex flex-wrap items-center justify-end gap-2"
+                  >
                     <button
                       type="button"
                       data-testid={`creators-pendente-confirmar-${linha.id}`}
@@ -325,7 +342,7 @@ export function PublicacoesParaConferir() {
                       data-testid={`creators-pendente-remover-${linha.id}`}
                       onClick={() => setConfirmandoRemocao(linha.id)}
                       disabled={agindo === linha.id}
-                      className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+                      className="bnt-pressable inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:inline-block sm:h-auto sm:w-auto"
                       // TODO(Ana)
                       aria-label="Remover publicação"
                     >
@@ -345,7 +362,7 @@ export function PublicacoesParaConferir() {
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Anterior
@@ -358,7 +375,7 @@ export function PublicacoesParaConferir() {
             type="button"
             onClick={() => setPage((p) => Math.min(totalDePaginas, p + 1))}
             disabled={page >= totalDePaginas}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+            className="min-h-10 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] sm:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
           >
             {/* TODO(Ana) */}
             Próxima

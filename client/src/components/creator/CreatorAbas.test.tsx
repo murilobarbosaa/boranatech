@@ -55,6 +55,49 @@ describe("CreatorAbas: as quatro abas", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(4);
   });
 
+  it("no celular (lote 11m) a faixa rola com snap e sem barra; o sm: quebra linha", () => {
+    desenhar("perfil", true, true);
+    const lista = screen.getByTestId("creator-abas-lista");
+    const c = (lista.getAttribute("class") ?? "").split(" ");
+    for (const k of [
+      "overflow-x-auto",
+      "snap-x",
+      "snap-mandatory",
+      "[scrollbar-width:none]",
+      "[&::-webkit-scrollbar]:hidden",
+      "sm:snap-none",
+      "sm:flex-wrap",
+      "sm:overflow-visible",
+    ]) {
+      expect(c, k).toContain(k);
+    }
+    for (const aba of screen.getAllByRole("tab")) {
+      expect((aba.getAttribute("class") ?? "").split(" ")).toContain(
+        "snap-start",
+      );
+    }
+  });
+
+  it("trocar de aba rola a faixa ate a ativa, so na horizontal (lote 11m)", () => {
+    const onAba = vi.fn();
+    const { rerender } = render(
+      <CreatorAbas aba="numeros" onAba={onAba} temRedes temPix />,
+    );
+    const lista = screen.getByTestId("creator-abas-lista");
+    // O jsdom nao faz layout: a faixa finge transbordar e a aba ativa finge
+    // estar fora da vista, a direita.
+    Object.defineProperty(lista, "scrollWidth", { value: 500 });
+    Object.defineProperty(lista, "clientWidth", { value: 300 });
+    lista.getBoundingClientRect = () => ({ left: 0, width: 300 }) as DOMRect;
+    const perfil = screen.getByTestId(idDaAba("perfil"));
+    perfil.getBoundingClientRect = () => ({ left: 400, width: 80 }) as DOMRect;
+    const rolar = vi.fn();
+    lista.scrollTo = rolar as unknown as typeof lista.scrollTo;
+    rerender(<CreatorAbas aba="perfil" onAba={onAba} temRedes temPix />);
+    // 0 + (400 - 0) - (300 - 80) / 2 = 290: a aba no meio da faixa.
+    expect(rolar).toHaveBeenCalledWith({ left: 290, behavior: "smooth" });
+  });
+
   it("a ordem na faixa e Numeros, Calendario, Ranking e Perfil", () => {
     // O Ranking entra ENTRE Calendario e Perfil (lote 09): a ordem e a da
     // lista em creatorAbas.ts, e este teste e o que trava isso.

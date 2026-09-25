@@ -87,6 +87,22 @@ describe("CreatorIdentidade", () => {
     );
   });
 
+  it("no celular o avatar vai em cima do nome; o sm: volta ao lado a lado (lote 11m)", () => {
+    render(
+      <CreatorIdentidade perfil={perfil()} creator={creator()} visao="admin" />,
+    );
+    const topo = screen.getByTestId("creator-identidade-topo");
+    const c = (topo.getAttribute("class") ?? "").split(" ");
+    for (const k of [
+      "flex-col",
+      "items-start",
+      "sm:flex-row",
+      "sm:items-center",
+    ]) {
+      expect(c, k).toContain(k);
+    }
+  });
+
   it("o chip do kind tem a forma do botao Creator do header", () => {
     render(
       <CreatorIdentidade

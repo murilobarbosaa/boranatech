@@ -96,6 +96,25 @@ afterEach(() => {
 });
 
 describe("CartaoDoRanking", () => {
+  it("no celular o @ quebra entre os segmentos, nunca no meio; o md: volta a truncar (lote 11m)", async () => {
+    responderCom([
+      posicao(1, 50, false, { handle: "joaopedro.dev.backend.java" }),
+      posicao(2, 40),
+      posicao(3, 30),
+    ]);
+    montar();
+    await screen.findByTestId("creator-card-ranking");
+    const celular = screen.getByTestId("creator-card-ranking-nome-u1");
+    expect(celular.textContent).toBe("@joaopedro.dev.backend.java");
+    expect(celular.querySelectorAll("wbr")).toHaveLength(3);
+    expect(celular.getAttribute("class") ?? "").toContain("md:hidden");
+    const noMd = celular.nextElementSibling as HTMLElement;
+    expect(noMd.getAttribute("class") ?? "").toContain(
+      "hidden truncate text-sm font-black text-slate-950 md:inline",
+    );
+    expect(noMd.querySelectorAll("wbr")).toHaveLength(0);
+  });
+
   it("viewer no top 3: as tres linhas, a dele com o chip Voce, sem linha extra, e o link", async () => {
     responderCom([
       posicao(1, 50),
@@ -135,6 +154,13 @@ describe("CartaoDoRanking", () => {
     expect(
       screen.getByTestId("creator-card-ranking-link").textContent,
     ).toContain("Ver ranking completo");
+    // 40 px de alvo no celular (lote 11m).
+    const cl = (
+      screen.getByTestId("creator-card-ranking-link").getAttribute("class") ??
+      ""
+    ).split(" ");
+    expect(cl).toContain("min-h-10");
+    expect(cl).toContain("sm:min-h-0");
   });
 
   it("viewer fora do top 3: as tres linhas e a dele abaixo, com o chip", async () => {

@@ -401,6 +401,11 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     // Lote 10: mesma altura. O `items-stretch` sozinho nao basta; cada cartao
     // precisa do `h-full`, e e o par que faz os dois terminarem juntos.
     expect(grade?.className).toContain("lg:items-stretch");
+    // Uma coluna explicita no celular e respiro menor (lote 11m).
+    expect(grade?.className.split(" ")).toContain("grid-cols-1");
+    for (const id of ["creator-card-redes", "creator-card-pagamento"]) {
+      expect(screen.getByTestId(id).className).toContain("p-4 sm:p-6 md:p-8");
+    }
     expect(screen.getByTestId("creator-card-redes").className).toContain(
       "h-full",
     );
@@ -451,6 +456,10 @@ describe("pagina /creator: aba Perfil (lote 08b)", () => {
     const classes = cabecalho.getAttribute("class") ?? "";
     expect(classes).toContain("md:grid-cols-[1fr_minmax(0,28rem)]");
     expect(classes).toContain("md:items-center");
+    // Uma coluna EXPLICITA no celular (lote 11m): a implicita e `auto`, cresce
+    // ate o conteudo mais largo, e um @ longo do mini ranking levava a pagina
+    // inteira a 450 px numa tela de 360.
+    expect(classes.split(" ")).toContain("grid-cols-1");
     expect(classes).not.toContain("md:items-start");
     const coluna = within(cabecalho).getByTestId("creator-cabecalho-ranking");
     expect(within(coluna).getByTestId("cartao-ranking")).toBeTruthy();

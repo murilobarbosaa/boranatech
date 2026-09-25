@@ -300,7 +300,7 @@ export function CreatorPublicacoes() {
           <button
             type="button"
             onClick={() => setTentativa((n) => n + 1)}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo
@@ -338,7 +338,10 @@ export function CreatorPublicacoes() {
             role="radiogroup"
             // TODO(Ana)
             aria-label="Rede da publicação"
-            className="flex flex-wrap items-center gap-2"
+            // No celular (lote 11m) os tres numa linha, um terco cada; o
+            // `sm:` volta a fileira de antes.
+            data-testid="creator-publicacoes-redes"
+            className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center"
           >
             {REDES_DE_CREATOR.map((opcao) => (
               <button
@@ -348,7 +351,10 @@ export function CreatorPublicacoes() {
                 aria-checked={rede === opcao}
                 data-testid={`creator-publicacoes-rede-${opcao}`}
                 onClick={() => escolherRede(opcao)}
-                className={`${rede === opcao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} gap-2`}
+                // O terco de 360 px nao cabe glifo e nome lado a lado: no
+                // celular o glifo vai em cima. `max-sm:` porque as classes
+                // base vem do botao compartilhado (`px-4`, `text-sm`).
+                className={`${rede === opcao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} gap-2 max-sm:flex-col max-sm:gap-1 max-sm:px-1 max-sm:text-xs`}
               >
                 <IconeDaRede rede={opcao} />
                 {rotuloDaRede(opcao)}
@@ -359,7 +365,10 @@ export function CreatorPublicacoes() {
               tem mais de um: no TikTok e no LinkedIn o tipo ja foi escolhido
               junto com a rede. O select vem ANTES do link: e a escolha que
               define o que o link precisa ser. */}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div
+            data-testid="creator-publicacoes-campos"
+            className="flex flex-col gap-2 sm:flex-row"
+          >
             {ehRedeDeCreator(rede) && TIPOS_POR_REDE[rede].length > 1 ? (
               <div className="sm:w-44">
                 <BntSelect
@@ -456,26 +465,38 @@ export function CreatorPublicacoes() {
               <li
                 key={post.id}
                 data-testid={`creator-publicacao-${post.id}`}
-                className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2 ${classeDaLinhaPorStatus(post.status)}`}
+                // TRES FAIXAS NO CELULAR (lote 11m): rede, tipo e status com
+                // a data; o link numa linha propria; a acao embaixo, a
+                // direita. O `sm:` volta a linha unica de antes.
+                className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 py-2 sm:flex sm:flex-wrap sm:gap-x-3 ${classeDaLinhaPorStatus(post.status)}`}
               >
-                <IconeDaRede rede={post.network} />
-                <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
-                  {rotuloDoTipo(post.kind)}
+                <span
+                  data-testid={`creator-publicacao-chips-${post.id}`}
+                  className="flex flex-wrap items-center gap-2 sm:contents"
+                >
+                  <IconeDaRede rede={post.network} />
+                  <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
+                    {rotuloDoTipo(post.kind)}
+                  </span>
+                  <ChipDeStatusDaPublicacao status={post.status} />
                 </span>
-                <ChipDeStatusDaPublicacao status={post.status} />
                 <a
                   href={post.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex-1 truncate text-sm font-bold text-violet-800 underline underline-offset-2"
+                  data-testid={`creator-publicacao-link-${post.id}`}
+                  className="col-span-2 min-w-0 flex-1 truncate py-2.5 text-sm font-bold text-violet-800 underline underline-offset-2 sm:py-0"
                 >
                   {urlCurta(post.url)}
                 </a>
-                <span className="text-xs font-bold text-slate-500 tabular-nums">
+                <span
+                  data-testid={`creator-publicacao-data-${post.id}`}
+                  className="col-start-2 row-start-1 justify-self-end text-xs font-bold text-slate-500 tabular-nums"
+                >
                   {diaCurto(post.created_at)}
                 </span>
                 {confirmando === post.id ? (
-                  <span className="flex flex-wrap items-center gap-2">
+                  <span className="col-span-2 flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
                       data-testid={`creator-publicacao-confirmar-${post.id}`}
@@ -501,7 +522,7 @@ export function CreatorPublicacoes() {
                     type="button"
                     data-testid={`creator-publicacao-remover-${post.id}`}
                     onClick={() => setConfirmando(post.id)}
-                    className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+                    className="bnt-pressable col-span-2 justify-self-end inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:inline-block sm:h-auto sm:w-auto"
                     // TODO(Ana)
                     aria-label="Remover publicação"
                   >

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ArrowRight, Trophy } from "lucide-react";
 import { Link } from "wouter";
 
@@ -67,7 +67,27 @@ function Linha({ p, eu }: { p: PosicaoDoRanking; eu: boolean }) {
         size="sm"
       />
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-black text-slate-950">
+        {/* Abaixo de `md` (lote 11m) o cartao ocupa a largura do celular e
+            o @ quebra ENTRE os segmentos (depois de `.` e `_`), porque e a
+            informacao principal da linha e nao pode sair cortada no meio.
+            Duas versoes, e nao uma com `md:truncate`: o `<wbr>` quebra mesmo
+            com `nowrap`. O `md:` volta ao `truncate` de antes. */}
+        <span
+          data-testid={`creator-card-ranking-nome-${p.user_id}`}
+          className="min-w-0 text-sm font-black text-slate-950 md:hidden"
+        >
+          {eu
+            ? "Você"
+            : nomeDeExibicao(p)
+                .split(/(?<=[._])/)
+                .map((parte, i) => (
+                  <Fragment key={i}>
+                    {i > 0 ? <wbr /> : null}
+                    {parte}
+                  </Fragment>
+                ))}
+        </span>
+        <span className="hidden truncate text-sm font-black text-slate-950 md:inline">
           {eu ? "Você" : nomeDeExibicao(p)}
         </span>
         {eu ? (
@@ -142,7 +162,7 @@ export function CartaoDoRanking() {
         <Link
           href="/creator?aba=ranking"
           data-testid="creator-card-ranking-link"
-          className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+          className="bnt-pressable inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
         >
           {/* TODO(Ana) */}
           Ver ranking completo

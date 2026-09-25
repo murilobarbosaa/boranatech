@@ -333,6 +333,14 @@ describe("quadro", () => {
     rotear();
     montar();
     await screen.findByTestId("creators-quadro");
+    // 40 px de alvo no celular nos filtros (lote 11m).
+    for (const radio of within(
+      screen.getByRole("radiogroup", { name: "Status da concessão" }),
+    ).getAllByRole("radio")) {
+      const c = (radio.getAttribute("class") ?? "").split(" ");
+      expect(c).toContain("min-h-10");
+      expect(c).toContain("sm:min-h-0");
+    }
 
     fireEvent.click(
       within(
@@ -668,6 +676,49 @@ describe("publicacoes para conferir (lote 10b)", () => {
       within(outra).getByTestId("creators-pendente-dono").textContent,
     ).toBe("@bia");
     expect(outra.textContent).toContain("Vídeo");
+  });
+
+  it("no celular (lote 11m): cada pendente em tres faixas; o sm: volta a linha unica", async () => {
+    rotear({ pendentes: PENDENTES });
+    montar();
+    const linha = await screen.findByTestId(`creators-pendente-${PENDENTE_ID}`);
+    const cl = linha.getAttribute("class") ?? "";
+    expect(cl).toContain("grid grid-cols-[minmax(0,1fr)_auto]");
+    expect(cl).toContain("sm:flex sm:flex-wrap sm:gap-x-3");
+    // (a) quem, com o nome quebrando por palavra no celular, e a data.
+    const dono = within(linha).getByTestId("creators-pendente-dono");
+    expect(dono.getAttribute("class") ?? "").toContain("sm:truncate");
+    expect(dono.getAttribute("class") ?? "").not.toMatch(/(^| )truncate/);
+    expect(
+      within(linha)
+        .getByTestId(`creators-pendente-data-${PENDENTE_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("col-start-2 row-start-1 justify-self-end");
+    // (b) os chips de rede e tipo numa faixa; o wrapper some no `sm:`.
+    const chips = within(linha).getByTestId(
+      `creators-pendente-chips-${PENDENTE_ID}`,
+    );
+    expect(chips.getAttribute("class") ?? "").toContain("col-span-2");
+    expect(chips.getAttribute("class") ?? "").toContain("sm:contents");
+    expect(chips.textContent).toContain("Instagram");
+    expect(chips.textContent).toContain("Reel");
+    // (c) o link numa linha propria e as acoes embaixo, a direita.
+    const link = within(linha).getByTestId(
+      `creators-pendente-link-${PENDENTE_ID}`,
+    );
+    expect(link.getAttribute("class") ?? "").toContain("col-span-2");
+    expect(link.getAttribute("class") ?? "").toContain("truncate");
+    const acoes = within(linha).getByTestId(
+      `creators-pendente-acoes-${PENDENTE_ID}`,
+    );
+    expect(acoes.getAttribute("class") ?? "").toContain(
+      "col-span-2 flex flex-wrap items-center justify-end gap-2",
+    );
+    expect(
+      within(acoes)
+        .getByTestId(`creators-pendente-remover-${PENDENTE_ID}`)
+        .getAttribute("class") ?? "",
+    ).toContain("h-10 w-10");
   });
 
   it("confirmar chama a rota do creator dono, tira a linha e desconta o total", async () => {

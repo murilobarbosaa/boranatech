@@ -188,7 +188,7 @@ function PixDoCreator({
           data-testid="creator-pix-revelar"
           onClick={() => void revelar()}
           disabled={revelando}
-          className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+          className="mt-3 min-h-10 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60 sm:min-h-0"
         >
           {/* TODO(Ana) */}
           {revelando ? "Revelando..." : "Revelar chave Pix"}
@@ -226,7 +226,12 @@ export function CreatorIdentidade({
       data-testid="creator-identidade"
       className="card-surface rounded-3xl bg-white p-5"
     >
-      <div className="flex items-center gap-4">
+      {/* Avatar em cima do nome no celular (lote 11m): ao lado, o nome em
+          `text-2xl` nao cabia e vazava da tela. O `sm:` volta ao lado a lado. */}
+      <div
+        data-testid="creator-identidade-topo"
+        className="flex flex-col items-start gap-4 sm:flex-row sm:items-center"
+      >
         <AvatarDoCreator
           name={nome}
           avatar={perfil.avatar}

@@ -108,6 +108,10 @@ type Parceiro = {
 
 /** Quantos marcadores cabem na celula do dia antes do "+N". */
 const MARCADORES_POR_DIA = 4;
+// No celular (lote 11m) a celula de 7 colunas a 360 px tem uns 40 px de
+// largura, e quatro marcadores de 12 px vazavam para a vizinha. Ali cabem
+// DOIS, e o aperto de mao da collab ocupa um deles.
+const MARCADORES_POR_DIA_NO_CELULAR = 2;
 
 type MarcadorDoDia = {
   chave: string;
@@ -266,7 +270,9 @@ function ChipDeCollab({
   return (
     <span
       data-testid={`creator-collab-fechada-${marcacao.id}`}
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800"
+      // Segunda linha no celular (lote 11m), junto da nota; `max-w-full` e o
+      // texto truncado so ali, para o chip nao sair do cartao.
+      className="order-last inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border-2 border-emerald-700 bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-800 sm:order-none"
     >
       <Handshake aria-hidden="true" className="h-3 w-3" />
       {/* Os parceiros com o avatar deles (lote 11b), antes do texto, no
@@ -282,7 +288,10 @@ function ChipDeCollab({
           size="sm"
         />
       ))}
-      <span data-testid={`creator-collab-fechada-texto-${marcacao.id}`}>
+      <span
+        data-testid={`creator-collab-fechada-texto-${marcacao.id}`}
+        className="truncate sm:overflow-visible sm:whitespace-normal"
+      >
         {texto}
       </span>
     </span>
@@ -581,7 +590,7 @@ export function CreatorCalendario({
           <button
             type="button"
             onClick={recarregar}
-            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] min-h-10 sm:min-h-0"
           >
             {/* TODO(Ana) */}
             Tentar de novo
@@ -677,7 +686,7 @@ export function CreatorCalendario({
           type="button"
           data-testid="creator-calendario-anterior"
           onClick={() => andarMes(-1)}
-          className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+          className="bnt-pressable min-h-10 min-w-10 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:min-h-0 sm:min-w-0"
           // TODO(Ana)
           aria-label="Mês anterior"
         >
@@ -693,7 +702,7 @@ export function CreatorCalendario({
           type="button"
           data-testid="creator-calendario-proximo"
           onClick={() => andarMes(1)}
-          className="bnt-pressable rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+          className="bnt-pressable min-h-10 min-w-10 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:min-h-0 sm:min-w-0"
           // TODO(Ana)
           aria-label="Próximo mês"
         >
@@ -737,6 +746,10 @@ export function CreatorCalendario({
                 (m) => (m.collabs?.length ?? 0) > 0,
               );
               const selecionado = quadrado.dia === dia;
+              const noCelular = temCollab
+                ? MARCADORES_POR_DIA_NO_CELULAR - 1
+                : MARCADORES_POR_DIA_NO_CELULAR;
+              const aMaisNoCelular = marcadores.length - noCelular;
               return (
                 <button
                   key={quadrado.dia}
@@ -749,7 +762,9 @@ export function CreatorCalendario({
                   }}
                   aria-pressed={selecionado}
                   className={[
-                    "flex min-h-14 flex-col items-center justify-center rounded-xl border-2 p-1 text-sm font-black",
+                    // Altura FIXA e `overflow-hidden` no celular (lote 11m): a
+                    // celula nunca cresce nem vaza por causa dos marcadores.
+                    "flex h-14 min-h-14 flex-col items-center justify-center overflow-hidden rounded-xl border-2 p-0.5 text-sm font-black sm:h-auto sm:overflow-visible sm:p-1",
                     selecionado
                       ? "border-slate-900 bg-violet-200 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "border-slate-300 bg-white text-slate-900",
@@ -765,23 +780,34 @@ export function CreatorCalendario({
                   {quantas > 0 ? (
                     <span
                       data-testid={`creator-dia-marcadores-${quadrado.dia}`}
-                      className="mt-1 flex items-center gap-1"
+                      className="mt-1 flex items-center gap-px sm:gap-1"
                     >
                       {marcadores
                         .slice(0, MARCADORES_POR_DIA)
-                        .map((marcador) => (
+                        .map((marcador, i) => (
                           <MarcadorDeCor
                             key={marcador.chave}
                             cor={marcador.cor}
                             nome={marcador.nome}
                             meu={marcador.meu}
+                            compacto
+                            // Do limite do celular em diante, so no `sm:`.
+                            soNoSm={i >= noCelular}
                             testId={`creator-marcador-${marcador.chave}`}
                           />
                         ))}
+                      {aMaisNoCelular > 0 ? (
+                        <span
+                          data-testid={`creator-dia-mais-celular-${quadrado.dia}`}
+                          className="text-[9px] font-black leading-none text-slate-600 sm:hidden"
+                        >
+                          {`+${aMaisNoCelular}`}
+                        </span>
+                      ) : null}
                       {marcadores.length > MARCADORES_POR_DIA ? (
                         <span
                           data-testid={`creator-dia-mais-${quadrado.dia}`}
-                          className="text-[10px] font-black text-slate-600"
+                          className="hidden text-[10px] font-black text-slate-600 sm:inline"
                         >
                           {`+${marcadores.length - MARCADORES_POR_DIA}`}
                         </span>
@@ -792,7 +818,7 @@ export function CreatorCalendario({
                           data-testid={`creator-dia-collab-${quadrado.dia}`}
                           // Token, e nao `dark:`: roxo no claro e amarelo no
                           // escuro (ver --bnt-collab-ink no index.css).
-                          className="h-3 w-3 text-[var(--bnt-collab-ink)]"
+                          className="h-2.5 w-2.5 shrink-0 text-[var(--bnt-collab-ink)] sm:h-3 sm:w-3"
                         />
                       ) : null}
                     </span>
@@ -805,7 +831,7 @@ export function CreatorCalendario({
       {dia ? (
         <div
           data-testid="creator-dia-painel"
-          className="space-y-3 rounded-2xl border-2 border-slate-300 bg-slate-50 p-4"
+          className="space-y-3 rounded-2xl border-2 border-slate-300 bg-slate-50 p-3 sm:p-4"
         >
           <p className="text-sm font-black text-slate-900">
             {formatarDiaCivil(dia) ?? dia}
@@ -846,26 +872,51 @@ export function CreatorCalendario({
                     // direita com `ml-auto`. `flex-wrap` continua por causa
                     // do formulario do recado, que precisa de uma linha
                     // inteira (`w-full`).
-                    className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-slate-300 bg-white px-3 py-2"
+                    //
+                    // DUAS LINHAS NO CELULAR (lote 11m): na primeira, glifo,
+                    // avatar com a cor, nome e a acao a direita; na segunda,
+                    // a nota inteira (duas linhas no maximo) e o chip de
+                    // collab, os dois com `order-last`. O `sm:` volta a linha
+                    // unica de antes.
+                    className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border-2 border-slate-300 bg-white px-3 py-2 sm:gap-3"
                   >
                     <IconeDaRede rede={marcacao.network} />
-                    <span className="rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700">
+                    {/* O glifo ja diz a rede: o chip de texto so no `sm:`. */}
+                    <span
+                      data-testid={`creator-marcacao-rede-${marcacao.id}`}
+                      className="hidden rounded-full border-2 border-slate-400 px-2 py-0.5 text-[11px] font-black uppercase text-slate-700 sm:inline-flex"
+                    >
                       {rotuloDaRede(marcacao.network)}
                     </span>
-                    <MarcadorDeCor
-                      cor={marcacao.calendar_color}
-                      meu={minha}
-                      testId={`creator-marcacao-cor-${marcacao.id}`}
-                    />
-                    {/* O avatar de quem marcou (lote 11b), como o site o
-                        desenha; o proprio tambem, para a linha ser igual. */}
-                    <AvatarDoCreator
-                      name={nomeDoAutor(marcacao.autor)}
-                      avatar={marcacao.autor?.avatar}
-                      avatarUrl={marcacao.autor?.avatar_url}
-                      size="sm"
-                    />
-                    <span className="text-sm font-bold text-slate-900">
+                    {/* A cor junto do avatar no celular; no `sm:` o wrapper
+                        some do layout (`contents`) e os dois voltam a ser
+                        itens da linha, com o espaco de sempre. */}
+                    <span
+                      data-testid={`creator-marcacao-quem-${marcacao.id}`}
+                      className="inline-flex shrink-0 items-center gap-1 sm:contents"
+                    >
+                      <MarcadorDeCor
+                        cor={marcacao.calendar_color}
+                        meu={minha}
+                        testId={`creator-marcacao-cor-${marcacao.id}`}
+                      />
+                      {/* O avatar de quem marcou (lote 11b), como o site o
+                          desenha; o proprio tambem, para a linha ser igual. */}
+                      <AvatarDoCreator
+                        name={nomeDoAutor(marcacao.autor)}
+                        avatar={marcacao.autor?.avatar}
+                        avatarUrl={marcacao.autor?.avatar_url}
+                        size="sm"
+                      />
+                    </span>
+                    <span
+                      data-testid={`creator-marcacao-nome-${marcacao.id}`}
+                      // Sem `min-w-0` de proposito: a palavra mais longa do
+                      // nome e a largura minima, e quando a acao nao cabe ao
+                      // lado ela desce inteira, em vez de cobrir o nome ou de
+                      // o nome ser cortado no meio de uma palavra.
+                      className="flex-1 text-sm font-bold text-slate-900 sm:flex-initial"
+                    >
                       {minha
                         ? // TODO(Ana)
                           "Você"
@@ -873,7 +924,10 @@ export function CreatorCalendario({
                     </span>
                     <span
                       data-testid={`creator-marcacao-nota-${marcacao.id}`}
-                      className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-600"
+                      // Celular: linha propria, ate duas linhas. `sm:`: o
+                      // `block` desliga o clamp e a nota volta a truncar numa
+                      // linha so, no meio da linha.
+                      className="order-last line-clamp-2 basis-full text-sm font-semibold text-slate-600 sm:order-none sm:block sm:min-w-0 sm:flex-1 sm:text-ellipsis sm:whitespace-nowrap"
                     >
                       {marcacao.note ?? ""}
                     </span>
@@ -883,7 +937,8 @@ export function CreatorCalendario({
                         type="button"
                         data-testid={`creator-marcacao-remover-${marcacao.id}`}
                         onClick={() => void desmarcar(marcacao.id)}
-                        className="bnt-pressable ml-auto shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900"
+                        // 40 px de alvo no celular; o `sm:` volta ao de sempre.
+                        className="bnt-pressable ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 sm:inline-block sm:h-auto sm:w-auto"
                         // TODO(Ana)
                         aria-label="Desmarcar"
                       >
@@ -912,8 +967,16 @@ export function CreatorCalendario({
                         }}
                         className={`${BOTAO_SECUNDARIO} ml-auto shrink-0`}
                       >
-                        {/* TODO(Ana) */}
-                        Pedir collab
+                        {/* No celular so o aperto de mao (lote 11m): o texto
+                            ocupava metade da linha e empurrava o nome. */}
+                        <Handshake
+                          aria-hidden="true"
+                          className="h-4 w-4 sm:hidden"
+                        />
+                        <span className="sr-only sm:not-sr-only">
+                          {/* TODO(Ana) */}
+                          Pedir collab
+                        </span>
                       </button>
                     ) : null}
                     {deOutro && meuPedido !== null ? (

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   AtSign,
   BarChart3,
@@ -101,6 +101,21 @@ export function CreatorAbas({
   temPix: boolean | null;
 }) {
   const pendencias = pendenciasDoPerfil(temRedes, temPix);
+  const listaRef = useRef<HTMLDivElement>(null);
+
+  // No celular a faixa rola na horizontal (lote 11m): a aba ativa e rolada
+  // para o meio da faixa ao trocar, para nunca ficar escondida atras da
+  // borda. So mexe no `scrollLeft` da propria faixa, nunca na pagina.
+  useEffect(() => {
+    const lista = listaRef.current;
+    const ativa = lista?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!lista || !ativa || lista.scrollWidth <= lista.clientWidth) return;
+    if (typeof lista.scrollTo !== "function") return;
+    const l = lista.getBoundingClientRect();
+    const a = ativa.getBoundingClientRect();
+    const alvo = lista.scrollLeft + (a.left - l.left) - (l.width - a.width) / 2;
+    lista.scrollTo({ left: Math.max(0, alvo), behavior: "smooth" });
+  }, [aba]);
 
   return (
     <div
@@ -111,7 +126,11 @@ export function CreatorAbas({
         role="tablist"
         // TODO(Ana)
         aria-label="Seções do painel"
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+        ref={listaRef}
+        data-testid="creator-abas-lista"
+        // Rolagem com `snap` e sem barra visivel no celular; no `sm:` as
+        // abas quebram linha e nao ha rolagem.
+        className="-mx-1 flex snap-x snap-mandatory scroll-px-1 gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:snap-none sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden"
       >
         {abas.map((id) => (
           <button
@@ -123,7 +142,7 @@ export function CreatorAbas({
             aria-controls={idDoPainel(id)}
             data-testid={idDaAba(id)}
             onClick={() => onAba(id)}
-            className={`inline-flex items-center gap-2 ${aba === id ? ABA_ATIVA : ABA_INATIVA}`}
+            className={`inline-flex snap-start items-center gap-2 ${aba === id ? ABA_ATIVA : ABA_INATIVA}`}
           >
             {ICONE_DA_ABA[id]}
             {ROTULO_DA_ABA[id]}
